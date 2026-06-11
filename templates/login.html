@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RosliNarnia – Logowanie</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 2.5rem 2.5rem 2rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+
+    .logo h1 {
+      font-size: 1.7rem;
+      color: #2d6a4f;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .logo p {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-top: 0.3rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.35rem;
+    }
+
+    .remember {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .remember input[type="checkbox"] {
+      width: 1rem;
+      height: 1rem;
+      accent-color: #2d6a4f;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .remember label {
+      margin: 0;
+      font-weight: 400;
+      color: #6b7280;
+      cursor: pointer;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+      color: #111827;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: #2d6a4f;
+    }
+
+    .field {
+      margin-bottom: 1.1rem;
+    }
+
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+      border-radius: 8px;
+      padding: 0.6rem 0.9rem;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 0.75rem;
+      background: #2d6a4f;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 0.5rem;
+    }
+
+    button[type="submit"]:hover {
+      background: #1b4332;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <h1>RosliNarnia</h1>
+      <p>System zarządzania finansami</p>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" autocomplete="off">
+      <div class="field">
+        <label for="login">Login</label>
+        <input type="text" id="login" name="login" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Hasło</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <div class="remember">
+        <input type="checkbox" id="remember" name="remember" value="1">
+        <label for="remember">Pozostań zalogowany przez 2 tygodnie</label>
+      </div>
+      <button type="submit">Zaloguj się</button>
+    </form>
+  </div>
+</body>
+</html>

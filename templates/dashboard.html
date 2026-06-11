@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RosliNarnia – Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+    }
+
+    nav {
+      background: #2d6a4f;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    nav .brand {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    nav a.logout {
+      color: #d1fae5;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: 1px solid #52b788;
+      border-radius: 6px;
+      padding: 0.3rem 0.8rem;
+      transition: background 0.2s;
+    }
+
+    nav a.logout:hover {
+      background: #1b4332;
+    }
+
+    main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 56px);
+    }
+
+    .welcome {
+      text-align: center;
+    }
+
+    .welcome h2 {
+      font-size: 2rem;
+      color: #1b4332;
+      font-weight: 700;
+    }
+
+    .welcome p {
+      color: #6b7280;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">RosliNarnia</span>
+    <a href="/logout" class="logout">Wyloguj</a>
+  </nav>
+  <main>
+    <div class="welcome">
+      <h2>Witaj, {{ login }}!</h2>
+      <p>System zarządzania finansami – dashboard</p>
+    </div>
+  </main>
+</body>
+</html>
