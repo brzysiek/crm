@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Wydatki{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Wydatki</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('expenses.new_expense') }}" class="btn btn-primary">+ Dodaj wydatek</a>
+    <button class="btn btn-outline" onclick="document.getElementById('csvModal').classList.add('open')">
+      ↑ Import CSV
+    </button>
+  </div>
+</div>
+
+{# ── Filtry ─────────────────────────────────────────────────────────────────── #}
+<form class="filter-bar" method="get" action="{{ url_for('expenses.list_expenses') }}">
+  <input type="text" name="search" placeholder="Szukaj opisu, osoby…"
+         value="{{ filters.search }}" class="filter-input">
+
+  <select name="month" class="filter-select">
+    <option value="">Wszystkie miesiące</option>
+    {% for m in months %}
+      <option value="{{ m.value }}" {{ 'selected' if filters.month == m.value }}>
+        {{ m.label }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <select name="category" class="filter-select">
+    <option value="">Wszystkie kategorie</option>
+    {% for cat in categories %}
+      <option value="{{ cat }}" {{ 'selected' if filters.category == cat }}>{{ cat }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="invoice_status" class="filter-select">
+    <option value="">Każdy status faktury</option>
+    <option value="ksef"  {{ 'selected' if filters.invoice_status == 'ksef' }}>KSeF</option>
+    <option value="disk"  {{ 'selected' if filters.invoice_status == 'disk' }}>Na dysku</option>
+    <option value="none"  {{ 'selected' if filters.invoice_status == 'none' }}>Brak faktury</option>
+  </select>
+
+  <select name="payment_filter" class="filter-select">
+    <option value="">Każdy % opłacenia</option>
+    <option value="full"    {{ 'selected' if filters.payment_filter == 'full' }}>W pełni opłacone</option>
+    <option value="partial" {{ 'selected' if filters.payment_filter == 'partial' }}>Częściowo</option>
+    <option value="none"    {{ 'selected' if filters.payment_filter == 'none' }}>Nieopłacone</option>
+  </select>
+
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('expenses.list_expenses') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{# ── Tabela ─────────────────────────────────────────────────────────────────── #}
+{% if expenses %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Kontrahent</th>
+        <th>Opis</th>
+        <th>Kategoria</th>
+        <th class="text-right">Brutto</th>
+        <th>Opłacone</th>
+        <th>Faktura</th>
+        <th>Forma</th>
+        <th>Odpowiedzialny</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in expenses %}
+      {% set pct_row = e.payment_percent|float %}
+      <tr class="{% if pct_row >= 100 %}row-paid{% elif pct_row > 0 %}row-partial{% else %}row-unpaid{% endif %}">
+        <td class="nowrap">{{ e.date|ddmmyyyy }}</td>
+        <td>
+          {% if e.contractor_name %}
+            <span class="desc-cell" title="{{ e.contractor_name }}{% if e.contractor_nip %} NIP: {{ e.contractor_nip }}{% endif %}">
+              {{ e.contractor_name }}
+            </span>
+            {% if e.contractor_nip %}<div class="text-muted small">{{ e.contractor_nip }}</div>{% endif %}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="desc-cell" title="{{ e.description }}">{{ e.description }}</span>
+          {% if e.is_recurring %}<span class="badge badge-gray" title="Koszt stały">↺</span>{% endif %}
+        </td>
+        <td><span class="text-muted">{{ e.category or '—' }}</span></td>
+        <td class="text-right nowrap">{{ e.amount_gross|pln }}</td>
+        <td>
+          {% set pct = e.payment_percent|float %}
+          <span class="badge badge-pct
+            {% if pct >= 100 %}badge-green
+            {% elif pct > 0 %}badge-yellow
+            {% else %}badge-red{% endif %}">{{ pct|int }}%</span>
+        </td>
+        <td>
+          {% if e.invoice_status == 'ksef' %}
+            <button class="badge badge-green badge-btn" title="{{ e.invoice_ref }}"
+                    onclick="showKsefPreview('expense', {{ e.id }})">KSeF</button>
+          {% elif e.invoice_status == 'disk' %}
+            <span class="badge badge-blue" title="{{ e.invoice_ref }}">Dysk</span>
+          {% else %}
+            <span class="badge badge-gray">Brak</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if e.payment_method == 'mbank' %}
+            <span class="badge badge-outline">mBank</span>
+          {% elif e.payment_method == 'unicredit' %}
+            <span class="badge badge-outline">UniCredit</span>
+          {% elif e.payment_method == 'cash' %}
+            <span class="badge badge-outline">gotówka</span>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td class="nowrap">{{ e.responsible_person or '—' }}</td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('expenses.edit_expense', expense_id=e.id) }}"
+             class="action-btn" title="Edytuj">✎</a>
+          <form method="post"
+                action="{{ url_for('expenses.delete_expense_view', expense_id=e.id) }}"
+                class="inline-form"
+                onsubmit="return confirm('Usunąć ten wydatek?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="table-sum-row">
+        <td colspan="4">Suma ({{ expenses|length }} rekordów)</td>
+        <td class="text-right nowrap">{{ expenses|sum(attribute='amount_gross')|pln }}</td>
+        <td colspan="5"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak wydatków spełniających kryteria.</p>
+  <a href="{{ url_for('expenses.new_expense') }}" class="btn btn-primary">Dodaj pierwszy wydatek</a>
+</div>
+{% endif %}
+
+{# ── Modal Import CSV ────────────────────────────────────────────────────────── #}
+<div id="csvModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Import CSV</h3>
+      <button onclick="document.getElementById('csvModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('expenses.import_csv') }}"
+          enctype="multipart/form-data">
+      <div class="form-group">
+        <label>Plik CSV</label>
+        <input type="file" name="csv_file" accept=".csv" required>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Importuj</button>
+        <button type="button" class="btn btn-outline"
+                onclick="document.getElementById('csvModal').classList.remove('open')">Anuluj</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

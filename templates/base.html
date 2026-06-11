@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="{{ url_for('dashboard.index') }}" class="navbar-brand">
+    <span class="brand-leaf">⬡</span> RośliNarnia Finanse
+  </a>
+  <ul class="navbar-nav">
+    <li>
+      <a href="{{ url_for('dashboard.index') }}"
+         class="{{ 'active' if request.endpoint == 'dashboard.index' else '' }}">
+        Dashboard
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('expenses.list_expenses') }}"
+         class="{{ 'active' if request.blueprint == 'expenses' else '' }}">
+        Wydatki
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('income.list_incomes') }}"
+         class="{{ 'active' if request.blueprint == 'income' else '' }}">
+        Przychody
+      </a>
+    </li>
+    <li>
+      <a href="#" class="nav-placeholder" title="Wkrótce">Przepływy</a>
+    </li>
+    <li>
+      <a href="{{ url_for('settings.index') }}"
+         class="{{ 'active' if request.blueprint in ('settings','users') else '' }}">
+        Ustawienia
+        {% if pending_count > 0 %}
+          <span class="nav-badge">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<div class="page-wrapper">
+  {% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+{# ── Modal: podgląd faktury KSeF ──────────────────────────────────────────── #}
+<div id="ksefPreviewModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 id="ksefPreviewTitle">Podgląd faktury KSeF</h3>
+      <button onclick="document.getElementById('ksefPreviewModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="ksefPreviewBody" style="max-height:75vh;overflow-y:auto;padding:1rem">
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

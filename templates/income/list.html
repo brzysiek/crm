@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Przychody{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Przychody</h1>
+  <a href="{{ url_for('income.new_income') }}" class="btn btn-primary">+ Dodaj przychód</a>
+</div>
+
+{# ── KPI ─────────────────────────────────────────────────────────────────────── #}
+{% if kpi %}
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Przychód brutto</div>
+    <div class="kpi-value">{{ kpi.total_gross|pln }}</div>
+  </div>
+  <div class="kpi-card kpi-green">
+    <div class="kpi-label">Opłacone</div>
+    <div class="kpi-value">{{ kpi.paid|pln }}</div>
+  </div>
+  <div class="kpi-card kpi-yellow">
+    <div class="kpi-label">Nieopłacone</div>
+    <div class="kpi-value">{{ kpi.unpaid|pln }}</div>
+  </div>
+  {% if kpi.partial|float > 0 %}
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-label">Częściowo</div>
+    <div class="kpi-value">{{ kpi.partial|pln }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Filtry ─────────────────────────────────────────────────────────────────── #}
+<form class="filter-bar" method="get" action="{{ url_for('income.list_incomes') }}">
+  <input type="text" name="search" placeholder="Szukaj opisu, klienta, faktury…"
+         value="{{ filters.search }}" class="filter-input">
+
+  <select name="month" class="filter-select">
+    <option value="">Wszystkie miesiące</option>
+    {% for m in months %}
+      <option value="{{ m.value }}" {{ 'selected' if filters.month == m.value }}>
+        {{ m.label }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <select name="category" class="filter-select">
+    <option value="">Wszystkie kategorie</option>
+    {% for cat in categories %}
+      <option value="{{ cat }}" {{ 'selected' if filters.category == cat }}>{{ cat }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="payment_status" class="filter-select">
+    <option value="">Każdy status płatności</option>
+    <option value="paid"    {{ 'selected' if filters.payment_status == 'paid' }}>Opłacone</option>
+    <option value="unpaid"  {{ 'selected' if filters.payment_status == 'unpaid' }}>Nieopłacone</option>
+    <option value="partial" {{ 'selected' if filters.payment_status == 'partial' }}>Częściowo</option>
+  </select>
+
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('income.list_incomes') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{# ── Tabela ─────────────────────────────────────────────────────────────────── #}
+{% if incomes %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Klient</th>
+        <th>Opis</th>
+        <th>Kategoria</th>
+        <th class="text-right">Brutto</th>
+        <th>Status płatności</th>
+        <th>Faktura</th>
+        <th>Forma</th>
+        <th>Odpowiedzialny</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inc in incomes %}
+      <tr class="{% if inc.payment_status == 'paid' %}row-paid{% elif inc.payment_status == 'partial' %}row-partial{% else %}row-unpaid{% endif %}">
+        <td class="nowrap">{{ inc.date|ddmmyyyy }}</td>
+        <td>
+          <span class="desc-cell" title="{{ inc.client_name or '' }}">{{ inc.client_name or '—' }}</span>
+          {% if inc.client_nip %}
+            <span class="text-muted small"> NIP: {{ inc.client_nip }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="desc-cell" title="{{ inc.description }}">{{ inc.description }}</span>
+        </td>
+        <td><span class="text-muted">{{ inc.category or '—' }}</span></td>
+        <td class="text-right nowrap">{{ inc.amount_gross|pln }}</td>
+        <td>
+          {% if inc.payment_status == 'paid' %}
+            <span class="badge badge-green">Opłacone</span>
+          {% elif inc.payment_status == 'partial' %}
+            <span class="badge badge-yellow">Częściowo</span>
+          {% else %}
+            <span class="badge badge-red">Nieopłacone</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if inc.invoice_status == 'ksef' %}
+            <button class="badge badge-green badge-btn" title="{{ inc.invoice_ref }}"
+                    onclick="showKsefPreview('income', {{ inc.id }})">KSeF</button>
+          {% elif inc.invoice_status == 'disk' %}
+            <span class="badge badge-blue" title="{{ inc.invoice_ref }}">Dysk</span>
+          {% else %}
+            <span class="badge badge-gray">Brak</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if inc.payment_method == 'mbank' %}
+            <span class="badge badge-outline">mBank</span>
+          {% elif inc.payment_method == 'unicredit' %}
+            <span class="badge badge-outline">UniCredit</span>
+          {% elif inc.payment_method == 'cash' %}
+            <span class="badge badge-outline">gotówka</span>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td class="nowrap">{{ inc.paid_by or '—' }}</td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('income.edit_income', income_id=inc.id) }}"
+             class="action-btn" title="Edytuj">✎</a>
+          <form method="post"
+                action="{{ url_for('income.delete_income_view', income_id=inc.id) }}"
+                class="inline-form"
+                onsubmit="return confirm('Usunąć ten przychód?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="table-sum-row">
+        <td colspan="4">Suma ({{ incomes|length }} rekordów)</td>
+        <td class="text-right nowrap">{{ incomes|sum(attribute='amount_gross')|pln }}</td>
+        <td colspan="5"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak przychodów spełniających kryteria.</p>
+  <a href="{{ url_for('income.new_income') }}" class="btn btn-primary">Dodaj pierwszy przychód</a>
+</div>
+{% endif %}
+{% endblock %}

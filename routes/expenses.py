@@ -1,0 +1,281 @@
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
+from flask import (Blueprint, flash, redirect, render_template,
+                   request, url_for)
+
+from models.expense import (create_expense, delete_expense,
+                             get_all_expenses, get_categories,
+                             get_expense_by_id, update_expense)
+from models.user import get_active_users
+
+
+def _fix_vendor_from_raw(raw: dict) -> str:
+    """Zwraca nazwę dostawcy z raw_json (buyer_name = dostawca dla faktur kosztowych)."""
+    return (raw.get('buyer_name') or '').strip()
+
+bp = Blueprint('expenses', __name__, url_prefix='/expenses')
+
+MONTHS_PL = {
+    1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
+    5: 'maj', 6: 'czerwiec', 7: 'lipiec', 8: 'sierpień',
+    9: 'wrzesień', 10: 'październik', 11: 'listopad', 12: 'grudzień',
+}
+
+
+def _last_months(n=18):
+    months = []
+    today = date.today()
+    for i in range(n):
+        d = today - relativedelta(months=i)
+        months.append({
+            'value': d.strftime('%Y-%m'),
+            'label': f"{MONTHS_PL[d.month]} {d.year}",
+        })
+    return months
+
+
+def _parse_form(form):
+    person = form.get('responsible_person', '').strip()
+    if person == '__other__':
+        person = form.get('responsible_person_other', '').strip()
+
+    category = form.get('category', '').strip()
+    if category == '__new__':
+        category = form.get('category_new', '').strip()
+
+    try:
+        vat_rate = float(form.get('vat_rate', 23))
+    except ValueError:
+        vat_rate = 23.0
+
+    try:
+        amount_gross = float(form.get('amount_gross', 0))
+    except ValueError:
+        amount_gross = 0.0
+
+    if vat_rate < 0:
+        amount_net = amount_gross
+    else:
+        amount_net = round(amount_gross / (1 + vat_rate / 100), 2)
+
+    try:
+        amount_net_form = float(form.get('amount_net') or amount_net)
+    except ValueError:
+        amount_net_form = amount_net
+
+    return {
+        'date':               form.get('date', date.today().isoformat()),
+        'responsible_person': person,
+        'contractor_name':    form.get('contractor_name', '').strip() or None,
+        'contractor_nip':     form.get('contractor_nip', '').strip() or None,
+        'invoice_number':     form.get('invoice_number', '').strip() or None,
+        'description':        form.get('description', '').strip(),
+        'amount_gross':       amount_gross,
+        'vat_rate':           vat_rate,
+        'amount_net':         amount_net_form,
+        'payment_percent':    float(form.get('payment_percent', 0) or 0),
+        'invoice_status':     form.get('invoice_status', 'none'),
+        'invoice_ref':        form.get('invoice_ref', '').strip() or None,
+        'paid_by':            person or None,
+        'payment_method':     form.get('payment_method') or None,
+        'is_recurring':       form.get('is_recurring', '0') == '1',
+        'category':           category or None,
+        'notes':              form.get('notes', '').strip() or None,
+    }
+
+
+def _validate(data):
+    errors = []
+    if not data.get('date'):
+        errors.append('Data jest wymagana.')
+    if not data.get('responsible_person'):
+        errors.append('Osoba odpowiedzialna jest wymagana.')
+    if not data.get('description'):
+        errors.append('Opis jest wymagany.')
+    if not data.get('amount_gross') or float(data.get('amount_gross', 0)) <= 0:
+        errors.append('Kwota brutto musi być większa od zera.')
+    return errors
+
+
+@bp.route('/')
+def list_expenses():
+    month = request.args.get('month', date.today().strftime('%Y-%m'))
+    category = request.args.get('category', '')
+    invoice_status = request.args.get('invoice_status', '')
+    payment_filter = request.args.get('payment_filter', '')
+    search = request.args.get('search', '')
+
+    expenses = get_all_expenses(
+        month=month or None,
+        category=category or None,
+        invoice_status=invoice_status or None,
+        payment_filter=payment_filter or None,
+        search=search or None,
+    )
+    categories = get_categories()
+
+    return render_template('expenses/list.html',
+        expenses=expenses,
+        categories=categories,
+        months=_last_months(),
+        filters={
+            'month': month, 'category': category,
+            'invoice_status': invoice_status,
+            'payment_filter': payment_filter, 'search': search,
+        },
+    )
+
+
+@bp.route('/new', methods=['GET', 'POST'])
+def new_expense():
+    users = get_active_users()
+    categories = get_categories()
+    today = date.today().isoformat()
+
+    if request.method == 'POST':
+        data = _parse_form(request.form)
+        errors = _validate(data)
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('expenses/form.html',
+                expense=request.form, users=users, categories=categories,
+                action=url_for('expenses.new_expense'),
+                title='Nowy wydatek', today=today)
+
+        expense_id = create_expense(data)
+
+        # Oznacz fakturę jako przypisaną jeśli formularz pochodzi z Fakturowni
+        fi_id = request.form.get('fakturownia_id', '').strip()
+        if fi_id:
+            try:
+                from database import get_db
+                db = get_db()
+                with db.cursor() as cur:
+                    cur.execute(
+                        "UPDATE fakturownia_invoices "
+                        "SET status='assigned', assigned_expense_id=%s "
+                        "WHERE fakturownia_id=%s",
+                        (expense_id, fi_id)
+                    )
+                db.commit()
+            except Exception:
+                pass
+
+        txn_ids = request.form.getlist('bank_txn_ids[]')
+        if txn_ids:
+            from models.expense import link_transaction
+            for tid in txn_ids:
+                try:
+                    link_transaction(expense_id, int(tid))
+                except Exception:
+                    pass
+
+        flash('Wydatek został zapisany.', 'success')
+        return redirect(url_for('expenses.list_expenses'))
+
+    # Prefill z transakcji bankowej
+    bank_txn_id = request.args.get('bank_txn')
+    if bank_txn_id:
+        try:
+            from models.bank_transaction import get_bank_transaction_by_id
+            txn = get_bank_transaction_by_id(int(bank_txn_id))
+            if txn:
+                amount = abs(float(txn['amount'] or 0))
+                prefill = {
+                    'amount_gross':    amount,
+                    'vat_rate':        '23',
+                    'contractor_name': txn.get('counterparty') or '',
+                    'description':     '',
+                    'invoice_status':  'none',
+                    'bank_txn_id':     txn['id'],
+                }
+                return render_template('expenses/form.html',
+                    expense=prefill, users=users, categories=categories,
+                    action=url_for('expenses.new_expense'),
+                    title='Nowy wydatek', today=today)
+        except Exception:
+            pass
+
+    # Prefill z faktury Fakturowni
+    inv_id = request.args.get('inv')
+    prefill = {}
+    if inv_id:
+        try:
+            import json as _json
+            from models.invoice import get_invoice_by_id
+            inv = get_invoice_by_id(int(inv_id))
+            if inv:
+                raw = _json.loads(inv['raw_json']) if inv.get('raw_json') else {}
+                # ksef_number może być pustym stringiem w kolumnie — szukamy też w raw_json
+                ksef = (inv.get('ksef_number') or '').strip() \
+                    or (raw.get('ksef_number') or '').strip() \
+                    or (raw.get('ksef_id') or '').strip() \
+                    or (raw.get('gov_id') or '').strip()
+                vendor = _fix_vendor_from_raw(raw) or inv.get('vendor_name', '')
+                vendor_nip = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
+                prefill = {
+                    'amount_gross':    inv.get('amount_gross', ''),
+                    'vat_rate':        '23',
+                    'contractor_name': vendor,
+                    'contractor_nip':  vendor_nip,
+                    'invoice_number':  inv.get('invoice_number', ''),
+                    'description':     '',
+                    'invoice_status':  'ksef' if ksef else 'none',
+                    'invoice_ref':     ksef,
+                    'fakturownia_id':  inv['fakturownia_id'],
+                }
+        except Exception:
+            pass
+
+    return render_template('expenses/form.html',
+        expense=prefill, users=users, categories=categories,
+        action=url_for('expenses.new_expense'),
+        title='Nowy wydatek', today=today)
+
+
+@bp.route('/<int:expense_id>/edit', methods=['GET', 'POST'])
+def edit_expense(expense_id):
+    expense = get_expense_by_id(expense_id)
+    if not expense:
+        flash('Wydatek nie istnieje.', 'error')
+        return redirect(url_for('expenses.list_expenses'))
+
+    users = get_active_users()
+    categories = get_categories()
+    today = date.today().isoformat()
+
+    if request.method == 'POST':
+        data = _parse_form(request.form)
+        errors = _validate(data)
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('expenses/form.html',
+                expense=request.form, users=users, categories=categories,
+                action=url_for('expenses.edit_expense', expense_id=expense_id),
+                title='Edytuj wydatek', today=today)
+
+        update_expense(expense_id, data)
+        flash('Wydatek został zaktualizowany.', 'success')
+        return redirect(url_for('expenses.list_expenses'))
+
+    return render_template('expenses/form.html',
+        expense=expense, users=users, categories=categories,
+        action=url_for('expenses.edit_expense', expense_id=expense_id),
+        title='Edytuj wydatek', today=today,
+        expense_id=expense_id)
+
+
+@bp.route('/<int:expense_id>/delete', methods=['POST'])
+def delete_expense_view(expense_id):
+    delete_expense(expense_id)
+    flash('Wydatek został usunięty.', 'success')
+    return redirect(url_for('expenses.list_expenses'))
+
+
+@bp.route('/import-csv', methods=['POST'])
+def import_csv():
+    flash('Import CSV zostanie wkrótce dostępny.', 'info')
+    return redirect(url_for('expenses.list_expenses'))

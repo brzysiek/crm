@@ -1,0 +1,410 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">← Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+  {% if income.fakturownia_id is defined %}
+    <input type="hidden" name="fakturownia_id" value="{{ income.fakturownia_id or '' }}">
+  {% endif %}
+
+  <div class="form-grid form-grid-2">
+
+    {# ── Data ── #}
+    <div class="form-group">
+      <label for="date">Data <span class="req">*</span></label>
+      <input type="date" id="date" name="date" required
+             value="{{ income.date|date_iso if income.date else today }}">
+    </div>
+
+    {# ── Numer faktury ── #}
+    <div class="form-group">
+      <label for="invoice_number">Numer faktury</label>
+      <input type="text" id="invoice_number" name="invoice_number"
+             placeholder="np. FV/2024/05/001"
+             value="{{ income.invoice_number or '' }}">
+    </div>
+
+  </div>
+
+  <div class="form-grid form-grid-2">
+
+    {# ── Kontrahent ── #}
+    <div class="form-group">
+      <label for="client_name">Kontrahent (odbiorca)</label>
+      <input type="text" id="client_name" name="client_name"
+             placeholder="Nazwa firmy lub osoby"
+             value="{{ income.client_name or '' }}">
+    </div>
+
+    {# ── NIP ── #}
+    <div class="form-group">
+      <label for="client_nip">NIP kontrahenta</label>
+      <input type="text" id="client_nip" name="client_nip"
+             placeholder="000-000-00-00"
+             value="{{ income.client_nip or '' }}">
+    </div>
+
+  </div>
+
+  {# ── Opis ── #}
+  <div class="form-group">
+    <label for="description">Opis <span class="req">*</span></label>
+    <textarea id="description" name="description" rows="2"
+              required placeholder="Czego dotyczy przychód…">{{ income.description or '' }}</textarea>
+  </div>
+
+  <div class="form-grid form-grid-3">
+
+    {# ── Kwota brutto ── #}
+    <div class="form-group">
+      <label for="amount_gross">Kwota brutto (zł) <span class="req">*</span></label>
+      <input type="number" id="amount_gross" name="amount_gross"
+             step="0.01" min="0.01" required
+             value="{{ income.amount_gross or '' }}"
+             oninput="calcNet()">
+    </div>
+
+    {# ── Stawka VAT ── #}
+    <div class="form-group">
+      <label for="vat_rate">Stawka VAT <span class="req">*</span></label>
+      {% set cur_vat = income.vat_rate|float if income.vat_rate is defined else 23 %}
+      <select id="vat_rate" name="vat_rate" onchange="calcNet()">
+        {% for rate, label in [('23','23%'),('8','8%'),('5','5%'),('0','0%'),('-1','zw.')] %}
+          <option value="{{ rate }}"
+            {{ 'selected' if cur_vat|string == rate or (rate == '-1' and cur_vat < 0) }}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {# ── Kwota netto (readonly) ── #}
+    <div class="form-group">
+      <label for="amount_net">Kwota netto (zł)</label>
+      <input type="number" id="amount_net" name="amount_net"
+             step="0.01" readonly
+             value="{{ income.amount_net or '' }}">
+    </div>
+
+  </div>
+
+  <div class="form-grid form-grid-3">
+
+    {# ── Status płatności ── #}
+    <div class="form-group">
+      <label for="payment_status">Status płatności</label>
+      {% set cur_ps = income.payment_status if income.payment_status is defined else 'unpaid' %}
+      <select id="payment_status" name="payment_status">
+        <option value="unpaid"  {{ 'selected' if cur_ps == 'unpaid' }}>Nieopłacone</option>
+        <option value="paid"    {{ 'selected' if cur_ps == 'paid' }}>Opłacone</option>
+        <option value="partial" {{ 'selected' if cur_ps == 'partial' }}>Częściowo opłacone</option>
+      </select>
+    </div>
+
+    {# ── Forma płatności ── #}
+    <div class="form-group">
+      <label for="payment_method">Forma płatności</label>
+      {% set cur_pm = income.payment_method if income.payment_method is defined else '' %}
+      <select id="payment_method" name="payment_method">
+        <option value="">— brak —</option>
+        <option value="mbank"     {{ 'selected' if cur_pm == 'mbank' }}>Przelew mBank</option>
+        <option value="unicredit" {{ 'selected' if cur_pm == 'unicredit' }}>Przelew UniCredit</option>
+        <option value="cash"      {{ 'selected' if cur_pm == 'cash' }}>Gotówka</option>
+      </select>
+    </div>
+
+    {# ── Kategoria ── #}
+    <div class="form-group">
+      <label for="category_select">Kategoria</label>
+      {% set cur_cat = income.category if income.category is defined else '' %}
+      {% set cat_in_list = cur_cat and (categories | select('equalto', cur_cat) | list | length > 0) %}
+      <select id="category_select" name="category" onchange="toggleNewCategory(this)">
+        <option value="">— brak kategorii —</option>
+        {% for cat in categories %}
+          <option value="{{ cat }}" {{ 'selected' if cur_cat == cat }}>{{ cat }}</option>
+        {% endfor %}
+        <option value="__new__"
+          {{ 'selected' if cur_cat and not cat_in_list }}>
+          + Nowa kategoria…
+        </option>
+      </select>
+      <input type="text" id="category_new" name="category_new"
+             placeholder="Wpisz nazwę kategorii"
+             value="{{ cur_cat if cur_cat and not cat_in_list else '' }}"
+             style="margin-top:6px; display:{{ 'block' if cur_cat and not cat_in_list else 'none' }}">
+    </div>
+
+  </div>
+
+  <div class="form-grid form-grid-3">
+
+    {# ── Status faktury ── #}
+    <div class="form-group">
+      <label>Status faktury</label>
+      <div class="radio-group">
+        {% set cur_inv = income.invoice_status if income.invoice_status is defined else 'none' %}
+        {% for val, lbl in [('ksef','KSeF'),('disk','Na dysku'),('none','Brak')] %}
+          <label class="radio-label">
+            <input type="radio" name="invoice_status" value="{{ val }}"
+                   {{ 'checked' if cur_inv == val }}
+                   onchange="toggleInvoiceRef()">
+            {{ lbl }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ── Numer referencji faktury ── #}
+    <div class="form-group" id="invoice_ref_wrap"
+         style="display:{{ 'block' if income.invoice_status is defined and income.invoice_status != 'none' else 'none' }}">
+      <label for="invoice_ref" id="invoice_ref_label">
+        {% if income.invoice_status == 'disk' %}Ścieżka pliku{% else %}Numer KSeF{% endif %}
+      </label>
+      <input type="text" id="invoice_ref" name="invoice_ref"
+             value="{{ income.invoice_ref or '' }}">
+    </div>
+
+    {# ── spacer ── #}
+    <div></div>
+
+  </div>
+
+  {# ── Osoba odpowiedzialna ── #}
+  <div class="form-group">
+    <label for="paid_by">Osoba odpowiedzialna</label>
+    <input type="text" id="paid_by" name="paid_by"
+           placeholder="Imię i nazwisko"
+           value="{{ income.paid_by or '' }}">
+  </div>
+
+  {# ── Notatki ── #}
+  <div class="form-group">
+    <label for="notes">Notatki</label>
+    <textarea id="notes" name="notes" rows="2">{{ income.notes or '' }}</textarea>
+  </div>
+
+  {# ── Transakcje bankowe ── #}
+  <div class="form-section-divider">
+    <div class="txn-section-header">
+      <span class="form-section-title">TRANSAKCJE BANKOWE</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="openTxnSearch()">+ Dodaj transakcję</button>
+    </div>
+    <div id="linked-txns-list" style="margin-top:.5rem"></div>
+    <div id="txn-summary" style="font-size:.85rem;color:var(--bottle-dark);margin-top:.25rem"></div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz przychód</button>
+    <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+</div>
+
+{# ── Modal wyszukiwania transakcji ── #}
+<div id="txnSearchModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-txn">
+    <div class="modal-header">
+      <h3>Wyszukaj transakcję bankową</h3>
+      <button class="modal-close" onclick="document.getElementById('txnSearchModal').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="txn-search-bar">
+        <input type="text" id="txnSearchQ" class="form-control" placeholder="Szukaj opisu, kontrahenta…" oninput="debounceTxnSearch()">
+        <select id="txnBank" class="form-control" onchange="doTxnSearch()" style="width:auto">
+          <option value="">Wszystkie banki</option>
+          <option value="mbank">mBank</option>
+          <option value="unicredit">UniCredit</option>
+        </select>
+        <input type="number" id="txnMinAmt" class="form-control txn-amt-input" placeholder="Kwota min" step="0.01" oninput="debounceTxnSearch()">
+        <input type="number" id="txnMaxAmt" class="form-control txn-amt-input" placeholder="Kwota max" step="0.01" oninput="debounceTxnSearch()">
+      </div>
+      <div id="txnSearchResults" style="margin-top:1rem"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  calcNet();
+  toggleInvoiceRef();
+  loadLinkedTransactions();
+  doTxnSearch();
+});
+</script>
+<script>
+const ENTITY_TYPE = 'income';
+const ENTITY_ID   = {{ (income_id if income_id is defined else none)|tojson }};
+const IS_EDIT     = ENTITY_ID !== null;
+let _pendingTxns       = [];
+let _lastSearchResults = [];
+
+async function loadLinkedTransactions() {
+  const el = document.getElementById('linked-txns-list');
+  let txns;
+  if (IS_EDIT) {
+    const resp = await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions');
+    txns = await resp.json();
+  } else {
+    txns = _pendingTxns;
+  }
+
+  const sumEl = document.getElementById('txn-summary');
+  const totalAmount = txns.reduce((s, t) => s + Math.abs(parseFloat(t.amount) || 0), 0);
+  if (sumEl) sumEl.innerHTML = totalAmount > 0
+    ? 'Łącznie: <strong>' + fmtPLN(totalAmount) + '</strong>' : '';
+
+  if (txns.length === 0) {
+    el.innerHTML = '<p class="text-muted small" style="padding:.25rem 0">Brak powiązanych transakcji.</p>';
+    return;
+  }
+  let html = '<div class="table-wrapper"><table class="data-table data-table-sm"><thead><tr>'
+    + '<th>Data</th><th>Bank</th><th>Kontrahent</th><th>Opis</th>'
+    + '<th class="text-right">Kwota</th><th></th></tr></thead><tbody>';
+  for (const t of txns) {
+    html += '<tr>'
+      + '<td class="nowrap">' + (t.date || '—') + '</td>'
+      + '<td><span class="badge ' + bankBadgeClass(t.bank) + '">' + esc(t.bank) + '</span></td>'
+      + '<td>' + esc(t.counterparty || '—') + '</td>'
+      + '<td><span class="desc-cell">' + esc(t.description || '') + '</span></td>'
+      + '<td class="text-right nowrap txn-income">' + fmtPLN(t.amount) + '</td>'
+      + '<td><button type="button" class="btn btn-ghost btn-sm" onclick="unlinkTxn(' + t.id + ')">Odepnij</button></td>'
+      + '</tr>';
+  }
+  el.innerHTML = html + '</tbody></table></div>';
+}
+
+async function unlinkTxn(txnId) {
+  if (!confirm('Odpiąć tę transakcję? Wróci do listy oczekujących.')) return;
+  if (IS_EDIT) {
+    await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions/' + txnId, { method: 'DELETE' });
+  } else {
+    _pendingTxns = _pendingTxns.filter(t => t.id !== txnId);
+    _updateHiddenInputs();
+  }
+  loadLinkedTransactions();
+  if (document.getElementById('txnSearchModal')?.classList.contains('open')) doTxnSearch();
+}
+
+function _updateHiddenInputs() {
+  document.querySelectorAll('input[name="bank_txn_ids[]"]').forEach(el => el.remove());
+  const form = document.querySelector('form');
+  _pendingTxns.forEach(t => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'bank_txn_ids[]'; inp.value = t.id;
+    form.appendChild(inp);
+  });
+}
+
+function openTxnSearch() {
+  document.getElementById('txnSearchModal').classList.add('open');
+}
+
+let _txnSearchTimer = null;
+function debounceTxnSearch() {
+  clearTimeout(_txnSearchTimer);
+  _txnSearchTimer = setTimeout(doTxnSearch, 350);
+}
+
+async function doTxnSearch() {
+  const q      = document.getElementById('txnSearchQ')?.value || '';
+  const minAmt = document.getElementById('txnMinAmt')?.value || '';
+  const maxAmt = document.getElementById('txnMaxAmt')?.value || '';
+  const bank   = document.getElementById('txnBank')?.value || '';
+  const params = new URLSearchParams({ entity_type: ENTITY_TYPE });
+  if (IS_EDIT) {
+    params.set('entity_id', ENTITY_ID);
+  } else {
+    const amt = document.getElementById('amount_gross')?.value;
+    const inv = document.getElementById('invoice_number')?.value?.trim();
+    if (amt)  params.set('amount', amt);
+    if (inv)  params.set('invoice_number', inv);
+  }
+  if (q)      params.set('q', q);
+  if (minAmt) params.set('min_amount', minAmt);
+  if (maxAmt) params.set('max_amount', maxAmt);
+  if (bank)   params.set('bank', bank);
+
+  const resultsEl = document.getElementById('txnSearchResults');
+  const resp = await fetch('/api/bank/search?' + params);
+  _lastSearchResults = await resp.json();
+
+  if (_lastSearchResults.length === 0) {
+    resultsEl.innerHTML = '<p class="text-muted">Brak transakcji.</p>'; return;
+  }
+  resultsEl.innerHTML = _buildTxnTable(_lastSearchResults);
+}
+
+async function linkTxn(txnId) {
+  if (IS_EDIT) {
+    await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bank_txn_id: txnId }),
+    });
+  } else {
+    const txnData = _lastSearchResults.find(r => r.id === txnId);
+    if (txnData && !_pendingTxns.find(t => t.id === txnId)) {
+      _pendingTxns.push({ ...txnData });
+      _updateHiddenInputs();
+    }
+  }
+  loadLinkedTransactions();
+  doTxnSearch();
+}
+
+function fmtPLN(v) {
+  if (v === null || v === undefined) return '—';
+  return parseFloat(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' PLN';
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function bankBadgeClass(b) { return b === 'mbank' ? 'bank-badge-mbank' : 'bank-badge-unicredit'; }
+
+function _txnRow(t) {
+  const linked    = IS_EDIT ? t.linked_to_this : _pendingTxns.some(p => p.id === t.id);
+  const suggested = (t.score || 0) > 0 && !linked;
+  return '<tr' + (linked ? ' class="row-txn-linked"' : (suggested ? ' class="row-txn-suggested"' : '')) + '>'
+    + '<td class="nowrap">' + (t.date || '') + '</td>'
+    + '<td><span class="badge ' + bankBadgeClass(t.bank) + '">' + esc(t.bank) + '</span></td>'
+    + '<td>' + esc(t.counterparty || '—') + '</td>'
+    + '<td><span class="desc-cell">' + esc(t.description || '') + '</span></td>'
+    + '<td class="text-right nowrap ' + (parseFloat(t.amount) < 0 ? 'txn-expense' : 'txn-income') + '">' + fmtPLN(t.amount) + '</td>'
+    + '<td>'
+    + (suggested ? '<span class="badge badge-lime" style="margin-right:4px">Sugerowana</span>' : '')
+    + '<span class="badge badge-' + (t.status === 'pending' ? 'yellow' : 'green') + '">'
+    + (t.status === 'pending' ? 'oczekująca' : 'zaakceptowana') + '</span></td>'
+    + (linked
+        ? '<td><span class="badge badge-green">Powiązana ✓</span></td>'
+        : '<td><button type="button" class="btn btn-primary btn-sm" onclick="linkTxn(' + t.id + ')">Powiąż</button></td>')
+    + '</tr>';
+}
+
+function _buildTxnTable(rows) {
+  const THEAD = '<div class="table-wrapper"><table class="data-table data-table-sm"><thead><tr>'
+    + '<th>Data</th><th>Bank</th><th>Kontrahent</th><th>Opis</th>'
+    + '<th class="text-right">Kwota</th><th>Status</th><th></th></tr></thead><tbody>';
+
+  const suggested = rows.filter(t => (t.score || 0) > 0 && !(IS_EDIT ? t.linked_to_this : _pendingTxns.some(p => p.id === t.id)));
+  const rest      = rows.filter(t => !suggested.includes(t));
+
+  let html = '';
+  if (suggested.length > 0) {
+    html += '<div class="txn-group-label txn-group-suggested">Sugerowane dopasowania</div>';
+    html += THEAD + suggested.map(_txnRow).join('') + '</tbody></table></div>';
+  }
+  if (rest.length > 0) {
+    if (suggested.length > 0)
+      html += '<div class="txn-group-label" style="margin-top:.75rem">Pozostałe transakcje</div>';
+    html += THEAD + rest.map(_txnRow).join('') + '</tbody></table></div>';
+  }
+  return html;
+}
+</script>
+{% endblock %}

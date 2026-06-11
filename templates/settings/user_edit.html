@@ -1,0 +1,49 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<div class="section-header">
+  <h2>Edytuj użytkownika</h2>
+  <a href="{{ url_for('users.list_users') }}" class="btn btn-outline btn-sm">← Wróć</a>
+</div>
+
+<div class="settings-section">
+  <form method="post" action="{{ url_for('users.edit_user', user_id=user.id) }}">
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label>Login</label>
+        <input type="text" value="{{ user.username }}" disabled class="input-disabled">
+      </div>
+      <div class="form-group">
+        <label for="full_name">Imię i nazwisko <span class="req">*</span></label>
+        <input type="text" id="full_name" name="full_name"
+               value="{{ user.full_name }}" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email"
+               value="{{ user.email or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="role">Rola</label>
+        <select id="role" name="role">
+          <option value="cashier"  {{ 'selected' if user.role == 'cashier' }}>Kasjer</option>
+          <option value="owner"    {{ 'selected' if user.role == 'owner' }}>Właściciel</option>
+          <option value="admin"    {{ 'selected' if user.role == 'admin' }}>Administrator</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="is_active">Status</label>
+        <select id="is_active" name="is_active">
+          <option value="1" {{ 'selected' if user.is_active }}>Aktywny</option>
+          <option value="0" {{ 'selected' if not user.is_active }}>Nieaktywny</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+      <a href="{{ url_for('users.list_users') }}" class="btn btn-outline">Anuluj</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

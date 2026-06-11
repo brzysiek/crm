@@ -1,0 +1,160 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<div class="section-header">
+  <h2>Użytkownicy</h2>
+  <button class="btn btn-primary btn-sm"
+          onclick="document.getElementById('addUserForm').classList.toggle('hidden')">
+    + Dodaj użytkownika
+  </button>
+</div>
+
+{# ── Tabela użytkowników ──────────────────────────────────────────────────── #}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Imię i nazwisko</th>
+        <th>Login</th>
+        <th>Email</th>
+        <th>Rola</th>
+        <th>Status</th>
+        <th>Akcje</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="{{ 'row-inactive' if not u.is_active }}">
+        <td>{{ u.full_name }}</td>
+        <td><code>{{ u.username }}</code></td>
+        <td>{{ u.email or '—' }}</td>
+        <td>
+          {% if u.role == 'admin' %}
+            <span class="badge badge-green">administrator</span>
+          {% elif u.role == 'owner' %}
+            <span class="badge badge-blue">właściciel</span>
+          {% else %}
+            <span class="badge badge-gray">kasjer</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.is_active %}
+            <span class="badge badge-green">aktywny</span>
+          {% else %}
+            <span class="badge badge-gray">nieaktywny</span>
+          {% endif %}
+        </td>
+        <td class="nowrap">
+          <a href="{{ url_for('users.edit_user', user_id=u.id) }}"
+             class="btn btn-ghost btn-sm">Edytuj</a>
+
+          <form method="post"
+                action="{{ url_for('users.toggle_user', user_id=u.id) }}"
+                class="inline-form">
+            <button type="submit" class="btn btn-ghost btn-sm">
+              {{ 'Dezaktywuj' if u.is_active else 'Aktywuj' }}
+            </button>
+          </form>
+
+          <button class="btn btn-ghost btn-sm"
+                  onclick="openPasswordModal({{ u.id }}, '{{ u.full_name }}')">
+            Zmień hasło
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── Formularz dodawania użytkownika ─────────────────────────────────────── #}
+<div id="addUserForm" class="settings-section hidden" style="margin-top:2rem">
+  <h3>Nowy użytkownik</h3>
+  <form method="post" action="{{ url_for('users.new_user') }}">
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label for="new_username">Login <span class="req">*</span></label>
+        <input type="text" id="new_username" name="username" required
+               autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="new_full_name">Imię i nazwisko <span class="req">*</span></label>
+        <input type="text" id="new_full_name" name="full_name" required>
+      </div>
+      <div class="form-group">
+        <label for="new_email">Email</label>
+        <input type="email" id="new_email" name="email">
+      </div>
+      <div class="form-group">
+        <label for="new_role">Rola</label>
+        <select id="new_role" name="role">
+          <option value="cashier">Kasjer</option>
+          <option value="owner">Właściciel</option>
+          <option value="admin">Administrator</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="new_password">Hasło <span class="req">*</span></label>
+        <input type="password" id="new_password" name="password" required
+               autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="new_password2">Powtórz hasło <span class="req">*</span></label>
+        <input type="password" id="new_password2" name="password2" required
+               autocomplete="new-password">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Dodaj użytkownika</button>
+      <button type="button" class="btn btn-outline"
+              onclick="document.getElementById('addUserForm').classList.add('hidden')">
+        Anuluj
+      </button>
+    </div>
+  </form>
+</div>
+
+{# ── Modal zmiany hasła ──────────────────────────────────────────────────── #}
+<div id="passwordModal" class="modal-overlay"
+     onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Zmień hasło — <span id="modalUserName"></span></h3>
+      <button onclick="document.getElementById('passwordModal').classList.remove('open')"
+              class="modal-close">✕</button>
+    </div>
+    <form id="passwordForm" method="post">
+      <div class="form-group">
+        <label for="modal_pw">Nowe hasło</label>
+        <input type="password" id="modal_pw" name="new_password" required
+               autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="modal_pw2">Powtórz hasło</label>
+        <input type="password" id="modal_pw2" name="new_password2" required
+               autocomplete="new-password">
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Zmień hasło</button>
+        <button type="button" class="btn btn-outline"
+                onclick="document.getElementById('passwordModal').classList.remove('open')">
+          Anuluj
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openPasswordModal(userId, name) {
+  document.getElementById('modalUserName').textContent = name;
+  document.getElementById('passwordForm').action =
+    '/settings/users/' + userId + '/password';
+  document.getElementById('passwordModal').classList.add('open');
+  document.getElementById('modal_pw').focus();
+}
+</script>
+{% endblock %}

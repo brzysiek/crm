@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Ustawienia{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+
+  <aside class="settings-sidebar">
+    <nav class="settings-nav">
+      <a href="{{ url_for('settings.general') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'general' }}">
+        Ogólne
+      </a>
+      <a href="{{ url_for('users.list_users') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'users' }}">
+        Użytkownicy
+      </a>
+      <a href="{{ url_for('settings.bank') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'bank' }}">
+        Import z banku
+        {% if bank_pending_count > 0 %}
+          <span class="nav-badge">{{ bank_pending_count }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('settings.fakturownia') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'fakturownia' }}">
+        Fakturownia
+        {% if pending_count > 0 %}
+          <span class="nav-badge">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+    </nav>
+  </aside>
+
+  <section class="settings-content">
+    {% block settings_content %}{% endblock %}
+  </section>
+
+</div>
+{% endblock %}

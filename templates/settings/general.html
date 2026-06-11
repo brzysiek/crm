@@ -1,0 +1,15 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+{% if placeholder_msg %}
+  <div class="placeholder-section">
+    <p>{{ placeholder_msg }}</p>
+  </div>
+{% else %}
+  <h2>Ustawienia ogólne</h2>
+  <div class="placeholder-section">
+    <p>Ustawienia ogólne aplikacji będą dostępne wkrótce.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

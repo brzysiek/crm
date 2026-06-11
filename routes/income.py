@@ -1,0 +1,256 @@
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
+from flask import (Blueprint, flash, redirect, render_template,
+                   request, url_for)
+
+from models.income import (create_income, delete_income, get_all_incomes,
+                           get_income_by_id, get_income_categories,
+                           update_income)
+
+bp = Blueprint('income', __name__, url_prefix='/income')
+
+MONTHS_PL = {
+    1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
+    5: 'maj', 6: 'czerwiec', 7: 'lipiec', 8: 'sierpień',
+    9: 'wrzesień', 10: 'październik', 11: 'listopad', 12: 'grudzień',
+}
+
+
+def _last_months(n=18):
+    months = []
+    today = date.today()
+    for i in range(n):
+        d = today - relativedelta(months=i)
+        months.append({
+            'value': d.strftime('%Y-%m'),
+            'label': f"{MONTHS_PL[d.month]} {d.year}",
+        })
+    return months
+
+
+def _parse_form(form):
+    category = form.get('category', '').strip()
+    if category == '__new__':
+        category = form.get('category_new', '').strip()
+
+    try:
+        vat_rate = float(form.get('vat_rate', 23))
+    except ValueError:
+        vat_rate = 23.0
+
+    try:
+        amount_gross = float(form.get('amount_gross', 0))
+    except ValueError:
+        amount_gross = 0.0
+
+    if vat_rate < 0:
+        amount_net = amount_gross
+    else:
+        amount_net = round(amount_gross / (1 + vat_rate / 100), 2)
+
+    try:
+        amount_net_form = float(form.get('amount_net') or amount_net)
+    except ValueError:
+        amount_net_form = amount_net
+
+    return {
+        'date':            form.get('date', date.today().isoformat()),
+        'client_name':     form.get('client_name', '').strip() or None,
+        'client_nip':      form.get('client_nip', '').strip() or None,
+        'description':     form.get('description', '').strip(),
+        'invoice_number':  form.get('invoice_number', '').strip() or None,
+        'amount_gross':    amount_gross,
+        'vat_rate':        vat_rate,
+        'amount_net':      amount_net_form,
+        'invoice_status':  form.get('invoice_status', 'none'),
+        'invoice_ref':     form.get('invoice_ref', '').strip() or None,
+        'payment_method':  form.get('payment_method') or None,
+        'payment_status':  form.get('payment_status', 'unpaid'),
+        'category':        category or None,
+        'notes':           form.get('notes', '').strip() or None,
+        'paid_by':         form.get('paid_by', '').strip() or None,
+    }
+
+
+def _validate(data):
+    errors = []
+    if not data.get('date'):
+        errors.append('Data jest wymagana.')
+    if not data.get('description'):
+        errors.append('Opis jest wymagany.')
+    if not data.get('amount_gross') or float(data.get('amount_gross', 0)) <= 0:
+        errors.append('Kwota brutto musi być większa od zera.')
+    return errors
+
+
+@bp.route('/')
+def list_incomes():
+    month = request.args.get('month', date.today().strftime('%Y-%m'))
+    category = request.args.get('category', '')
+    payment_status = request.args.get('payment_status', '')
+    search = request.args.get('search', '')
+
+    from models.income import get_monthly_income_kpi
+    incomes = get_all_incomes(
+        month=month or None,
+        category=category or None,
+        payment_status=payment_status or None,
+        search=search or None,
+    )
+    kpi = get_monthly_income_kpi(month) if month else None
+    categories = get_income_categories()
+
+    return render_template('income/list.html',
+        incomes=incomes,
+        kpi=kpi,
+        categories=categories,
+        months=_last_months(),
+        filters={
+            'month': month, 'category': category,
+            'payment_status': payment_status, 'search': search,
+        },
+    )
+
+
+@bp.route('/new', methods=['GET', 'POST'])
+def new_income():
+    categories = get_income_categories()
+    today = date.today().isoformat()
+
+    if request.method == 'POST':
+        data = _parse_form(request.form)
+        errors = _validate(data)
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('income/form.html',
+                income=request.form, categories=categories,
+                action=url_for('income.new_income'),
+                title='Nowy przychód', today=today)
+
+        income_id = create_income(data)
+
+        fi_id = request.form.get('fakturownia_id', '').strip()
+        if fi_id:
+            try:
+                from database import get_db
+                db = get_db()
+                with db.cursor() as cur:
+                    cur.execute(
+                        "UPDATE fakturownia_invoices "
+                        "SET status='assigned', assigned_expense_id=%s "
+                        "WHERE fakturownia_id=%s",
+                        (income_id, fi_id)
+                    )
+                db.commit()
+            except Exception:
+                pass
+
+        txn_ids = request.form.getlist('bank_txn_ids[]')
+        if txn_ids:
+            from models.income import link_income_transaction
+            for tid in txn_ids:
+                try:
+                    link_income_transaction(income_id, int(tid))
+                except Exception:
+                    pass
+
+        flash('Przychód został zapisany.', 'success')
+        return redirect(url_for('income.list_incomes'))
+
+    # Prefill z transakcji bankowej
+    bank_txn_id = request.args.get('bank_txn')
+    if bank_txn_id:
+        try:
+            from models.bank_transaction import get_bank_transaction_by_id
+            txn = get_bank_transaction_by_id(int(bank_txn_id))
+            if txn:
+                amount = abs(float(txn['amount'] or 0))
+                prefill = {
+                    'amount_gross':  amount,
+                    'vat_rate':      '23',
+                    'client_name':   txn.get('counterparty') or '',
+                    'description':   '',
+                    'invoice_status': 'none',
+                    'bank_txn_id':   txn['id'],
+                }
+                return render_template('income/form.html',
+                    income=prefill, categories=categories,
+                    action=url_for('income.new_income'),
+                    title='Nowy przychód', today=today)
+        except Exception:
+            pass
+
+    inv_id = request.args.get('inv')
+    prefill = {}
+    if inv_id:
+        try:
+            from models.invoice import get_invoice_by_id
+            inv = get_invoice_by_id(int(inv_id))
+            if inv:
+                import json as _json
+                raw = _json.loads(inv['raw_json']) if inv.get('raw_json') else {}
+                ksef = (inv.get('ksef_number') or '').strip() \
+                    or (raw.get('ksef_number') or '').strip() \
+                    or (raw.get('ksef_id') or '').strip() \
+                    or (raw.get('gov_id') or '').strip()
+                client_name = (raw.get('buyer_name') or inv.get('vendor_name') or '').strip()
+                client_nip  = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
+                prefill = {
+                    'amount_gross':   inv.get('amount_gross', ''),
+                    'vat_rate':       '23',
+                    'invoice_number': inv.get('invoice_number', ''),
+                    'client_name':    client_name,
+                    'client_nip':     client_nip,
+                    'description':    '',
+                    'invoice_status': 'ksef' if ksef else 'none',
+                    'invoice_ref':    ksef,
+                    'fakturownia_id': inv['fakturownia_id'],
+                }
+        except Exception:
+            pass
+
+    return render_template('income/form.html',
+        income=prefill, categories=categories,
+        action=url_for('income.new_income'),
+        title='Nowy przychód', today=today)
+
+
+@bp.route('/<int:income_id>/edit', methods=['GET', 'POST'])
+def edit_income(income_id):
+    income = get_income_by_id(income_id)
+    if not income:
+        flash('Przychód nie istnieje.', 'error')
+        return redirect(url_for('income.list_incomes'))
+
+    categories = get_income_categories()
+    today = date.today().isoformat()
+
+    if request.method == 'POST':
+        data = _parse_form(request.form)
+        errors = _validate(data)
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('income/form.html',
+                income=request.form, categories=categories,
+                action=url_for('income.edit_income', income_id=income_id),
+                title='Edytuj przychód', today=today)
+
+        update_income(income_id, data)
+        flash('Przychód został zaktualizowany.', 'success')
+        return redirect(url_for('income.list_incomes'))
+
+    return render_template('income/form.html',
+        income=income, categories=categories,
+        action=url_for('income.edit_income', income_id=income_id),
+        title='Edytuj przychód', today=today,
+        income_id=income_id)
+
+
+@bp.route('/<int:income_id>/delete', methods=['POST'])
+def delete_income_view(income_id):
+    delete_income(income_id)
+    flash('Przychód został usunięty.', 'success')
+    return redirect(url_for('income.list_incomes'))
