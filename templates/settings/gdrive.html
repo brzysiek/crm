@@ -1,0 +1,704 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<h2>Import z Dysku Google</h2>
+
+{% set drive_configured = cfg.google_drive_api_token and cfg.google_drive_folder_id %}
+{% set gemini_configured = cfg.gemini_api_key %}
+
+{% if not drive_configured or not gemini_configured %}
+<div class="api-result api-error" style="margin-bottom:1rem">
+  {% if not drive_configured %}
+    Brak konfiguracji Google Drive.
+  {% endif %}
+  {% if not gemini_configured %}
+    Brak klucza API Gemini.
+  {% endif %}
+  <a href="{{ url_for('settings.general') }}" style="color:inherit;text-decoration:underline">
+    Skonfiguruj w Ustawieniach ogólnych &rarr;
+  </a>
+</div>
+{% endif %}
+
+{# ── A. Przeglądarka Dysku Google ──────────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Przeglądarka Dysku Google</h3>
+
+  <div class="form-group" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap">
+    <div style="flex:1;min-width:160px">
+      <label for="selYear">Rok</label>
+      <select id="selYear" class="form-control" onchange="onYearChange()" {% if not drive_configured %}disabled{% endif %}>
+        <option value="">— wybierz rok —</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:160px">
+      <label for="selMonth">Miesiąc</label>
+      <select id="selMonth" class="form-control" onchange="onMonthChange()" disabled>
+        <option value="">— wybierz miesiąc —</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="driveStatus" class="api-result" style="display:none"></div>
+
+  <div id="fileListSection" style="display:none;margin-top:1rem">
+    <div class="bulk-select-bar" style="margin-bottom:.5rem">
+      <label class="checkbox-label">
+        <input type="checkbox" id="selectAllFiles" onchange="toggleSelectAllFiles(this)">
+        Zaznacz wszystkie pliki
+      </label>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table data-table-sm" id="fileTable">
+        <thead>
+          <tr>
+            <th style="width:2rem"></th>
+            <th>Nazwa pliku</th>
+            <th>Data modyfikacji</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="fileTableBody"></tbody>
+      </table>
+    </div>
+    <div class="form-actions" style="margin-top:.75rem">
+      <button type="button" class="btn btn-primary" id="btnRunOcr" onclick="runOcr()"
+              {% if not gemini_configured %}disabled{% endif %}>
+        Przeprowadź OCR na zaznaczonych
+      </button>
+    </div>
+    <div id="ocrResult" class="api-result" style="display:none;margin-top:.75rem;white-space:pre-wrap"></div>
+  </div>
+</div>
+
+{# ── B. Faktury do akceptacji ──────────────────────────────────────────────── #}
+<div class="settings-section" id="pending">
+  <div class="pending-header">
+    <h3>
+      Faktury do akceptacji
+      {% if pending_invoices %}
+        <span class="badge badge-red">{{ pending_invoices|length }}</span>
+      {% endif %}
+    </h3>
+    {% if pending_invoices %}
+    <div class="bulk-actions" id="bulkActions" style="display:none">
+      <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+      <button type="button" class="btn btn-primary btn-sm" id="btnBulkAccept">
+        Akceptuj zaznaczone
+      </button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkReject">
+        Odrzuć zaznaczone
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="pending-filter-bar">
+    <a href="{{ url_for('settings.gdrive') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if not type_filter else 'btn-ghost' }}">
+      Wszystkie
+    </a>
+    <a href="{{ url_for('settings.gdrive', type_filter='expense') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if type_filter == 'expense' else 'btn-ghost' }}">
+      Kosztowe
+    </a>
+    <a href="{{ url_for('settings.gdrive', type_filter='income') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if type_filter == 'income' else 'btn-ghost' }}">
+      Przychodowe
+    </a>
+    <button type="button" id="btnFilterMatched"
+            class="btn btn-sm btn-ghost" style="display:none"
+            onclick="toggleMatchedFilter(this)">
+      Z dopasowaniem
+      <span class="badge badge-yellow" id="matchedCount" style="margin-left:.25rem">0</span>
+    </button>
+  </div>
+
+  <div id="apiResult" class="api-result" style="display:none"></div>
+
+  {% if pending_invoices %}
+  <div class="bulk-select-bar">
+    <label class="checkbox-label">
+      <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+      Zaznacz wszystkie
+    </label>
+  </div>
+
+  <div class="invoice-cards" id="invoiceCardsList">
+    {% for inv in pending_invoices %}
+    {% set is_income = inv.invoice_type == 'income' %}
+    <div class="invoice-card {{ 'invoice-card-income' if is_income else 'invoice-card-expense' }}"
+         data-inv-id="{{ inv.id }}"
+         data-inv-type="{{ inv.invoice_type or 'expense' }}"
+         data-amount="{{ inv.amount_gross or 0 }}"
+         data-invoice-number="{{ inv.invoice_number or '' }}">
+      <div class="invoice-card-header">
+        <div class="invoice-card-header-left">
+          <input type="checkbox" class="inv-checkbox" value="{{ inv.id }}"
+                 onchange="updateBulkBar()">
+          <strong>{{ inv.invoice_number or '— brak numeru —' }}</strong>
+          <span class="text-muted">{{ inv.issue_date or '' }}</span>
+        </div>
+        <span class="invoice-type-badge {{ 'badge-income' if is_income else 'badge-expense' }}">
+          {{ 'Przychodowa' if is_income else 'Kosztowa' }}
+        </span>
+      </div>
+      <div class="invoice-card-body">
+        <div class="invoice-meta">
+          <span class="inv-party-label">{{ 'Odbiorca:' if is_income else 'Wystawiający:' }}</span>
+          <span><strong>{{ inv.vendor_name or '— brak nazwy —' }}</strong></span>
+          {% if inv.vendor_nip %}
+            <span class="text-muted">NIP: {{ inv.vendor_nip }}</span>
+          {% endif %}
+        </div>
+        <div class="invoice-amounts">
+          <span>Brutto: <strong>{{ inv.amount_gross|pln }}</strong></span>
+          <span>VAT: {{ inv.vat_amount|pln }}</span>
+          <span>Netto: {{ inv.amount_net|pln }}</span>
+        </div>
+        <div class="text-muted small" style="margin-top:.25rem">
+          Plik: {{ inv.file_name }}
+          {% if inv.gdrive_year and inv.gdrive_month %}
+            &nbsp;·&nbsp; {{ inv.gdrive_year }}/{{ '%02d'|format(inv.gdrive_month) }}
+          {% endif %}
+        </div>
+      </div>
+      <div class="invoice-txn-slot" id="txn-slot-{{ inv.id }}"></div>
+      <div class="invoice-card-footer">
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                onclick="acceptSingle({{ inv.id }})">
+          {{ 'Utwórz przychód' if is_income else 'Utwórz wydatek' }}
+        </button>
+        <button type="button" class="btn btn-outline btn-sm"
+                onclick="showInvoiceDetails({{ inv.id }}, '{{ inv.invoice_number or inv.file_name }}')">
+          Szczegóły dokumentu
+        </button>
+        <form method="post"
+              action="{{ url_for('settings.reject_gdrive_invoice_view', inv_id=inv.id) }}"
+              class="inline-form"
+              onsubmit="return confirm('Na pewno odrzucić tę fakturę?')">
+          <button type="submit" class="btn btn-outline btn-sm">Odrzuć</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted">Brak faktur oczekujących na akceptację.</p>
+  {% endif %}
+</div>
+
+{# ── Modal podglądu transakcji ──────────────────────────────────────────── #}
+<div id="txnPreviewModal" class="modal-overlay"
+     onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3>Sugerowana transakcja bankowa</h3>
+      <button onclick="document.getElementById('txnPreviewModal').classList.remove('open')"
+              class="modal-close">&#x2715;</button>
+    </div>
+    <div id="txnPreviewBody" class="modal-body" style="padding:1.25rem"></div>
+  </div>
+</div>
+
+{# ── Modal szczegółów dokumentu ──────────────────────────────────────────── #}
+<div id="invoiceDetailsModal" class="modal-overlay"
+     onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 id="detailsModalTitle">Szczegóły dokumentu OCR</h3>
+      <button onclick="document.getElementById('invoiceDetailsModal').classList.remove('open')"
+              class="modal-close">&#x2715;</button>
+    </div>
+    <div id="detailsModalBody" class="modal-body">
+      <div class="details-loading">Ładowanie…</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+// Drive folder browser
+// ──────────────────────────────────────────────────────────────────────────────
+let _currentYearFolderId   = null;
+let _currentMonthFolderId  = null;
+let _currentFiles          = [];
+
+async function loadYears() {
+  const statusEl = document.getElementById('driveStatus');
+  statusEl.style.display = 'block';
+  statusEl.className = 'api-result api-loading';
+  statusEl.textContent = 'Ładowanie lat…';
+
+  try {
+    const r = await fetch('/api/gdrive/folders');
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    const sel = document.getElementById('selYear');
+    sel.innerHTML = '<option value="">— wybierz rok —</option>';
+    // sort by name ascending so last = newest year
+    d.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+    d.forEach(folder => {
+      const opt = document.createElement('option');
+      opt.value = folder.id;
+      opt.textContent = folder.name;
+      sel.appendChild(opt);
+    });
+
+    statusEl.className = 'api-result api-ok';
+    statusEl.textContent = `Załadowano ${d.length} folderów lat.`;
+
+    // Auto-select latest year and load its months
+    if (d.length) {
+      sel.value = d[d.length - 1].id;
+      await onYearChange();
+    }
+  } catch (e) {
+    statusEl.className = 'api-result api-error';
+    statusEl.textContent = 'Błąd: ' + e.message;
+  }
+}
+
+async function onYearChange() {
+  const selYear  = document.getElementById('selYear');
+  const selMonth = document.getElementById('selMonth');
+  const folderId = selYear.value;
+  if (!folderId) {
+    selMonth.innerHTML = '<option value="">— wybierz miesiąc —</option>';
+    selMonth.disabled = true;
+    document.getElementById('fileListSection').style.display = 'none';
+    return;
+  }
+  _currentYearFolderId = folderId;
+
+  const statusEl = document.getElementById('driveStatus');
+  statusEl.style.display = 'block';
+  statusEl.className = 'api-result api-loading';
+  statusEl.textContent = 'Ładowanie miesięcy…';
+
+  try {
+    const r = await fetch('/api/gdrive/folders?parent_id=' + encodeURIComponent(folderId));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    // sort by name ascending so last = newest month
+    d.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+
+    selMonth.innerHTML = '<option value="">— wybierz miesiąc —</option>';
+    d.forEach(folder => {
+      const opt = document.createElement('option');
+      opt.value = folder.id;
+      opt.textContent = folder.name;
+      selMonth.appendChild(opt);
+    });
+    selMonth.disabled = false;
+
+    statusEl.className = 'api-result api-ok';
+    statusEl.textContent = `Załadowano ${d.length} folderów miesięcy.`;
+
+    // Auto-select latest month and load its files
+    if (d.length) {
+      selMonth.value = d[d.length - 1].id;
+      await onMonthChange();
+    }
+  } catch (e) {
+    statusEl.className = 'api-result api-error';
+    statusEl.textContent = 'Błąd: ' + e.message;
+  }
+}
+
+async function onMonthChange() {
+  const selMonth = document.getElementById('selMonth');
+  const folderId = selMonth.value;
+  if (!folderId) {
+    document.getElementById('fileListSection').style.display = 'none';
+    return;
+  }
+  _currentMonthFolderId = folderId;
+
+  const statusEl = document.getElementById('driveStatus');
+  statusEl.style.display = 'block';
+  statusEl.className = 'api-result api-loading';
+  statusEl.textContent = 'Ładowanie plików PDF…';
+
+  try {
+    const r = await fetch('/api/gdrive/files?folder_id=' + encodeURIComponent(folderId));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    _currentFiles = d;
+    renderFileTable(d);
+    document.getElementById('fileListSection').style.display = 'block';
+
+    statusEl.className = 'api-result api-ok';
+    statusEl.textContent = `Znaleziono ${d.length} plików PDF.`;
+  } catch (e) {
+    statusEl.className = 'api-result api-error';
+    statusEl.textContent = 'Błąd: ' + e.message;
+  }
+}
+
+function renderFileTable(files) {
+  const tbody = document.getElementById('fileTableBody');
+  tbody.innerHTML = '';
+  files.forEach(f => {
+    const tr = document.createElement('tr');
+    const processed = f.already_processed;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="file-checkbox" value="${_esc(f.id)}"
+          data-name="${_esc(f.name)}" data-modified="${_esc(f.modifiedTime||'')}"
+          ${processed ? 'disabled title="Już przetworzona"' : ''}></td>
+      <td>${_esc(f.name)}</td>
+      <td class="nowrap text-muted">${_esc((f.modifiedTime||'').substring(0,10))}</td>
+      <td>${processed
+           ? '<span class="badge badge-green">Przetworzona</span>'
+           : '<span class="badge badge-yellow">Nowa</span>'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleSelectAllFiles(cb) {
+  document.querySelectorAll('.file-checkbox:not(:disabled)').forEach(c => {
+    c.checked = cb.checked;
+  });
+}
+
+async function runOcr() {
+  const checked = [...document.querySelectorAll('.file-checkbox:checked')];
+  if (!checked.length) {
+    alert('Zaznacz co najmniej jeden plik PDF.');
+    return;
+  }
+
+  const ocrEl = document.getElementById('ocrResult');
+  ocrEl.style.display = 'block';
+  ocrEl.className = 'api-result api-loading';
+  ocrEl.textContent = `Przetwarzam ${checked.length} pliki przez Gemini OCR…`;
+
+  // Resolve year and month numbers from selected folder names
+  const selYear  = document.getElementById('selYear');
+  const selMonth = document.getElementById('selMonth');
+  const yearText  = selYear.options[selYear.selectedIndex]?.text || '';
+  const monthText = selMonth.options[selMonth.selectedIndex]?.text || '';
+  const yearNum  = parseInt(yearText) || null;
+  const monthNum = _monthNameToNum(monthText);
+
+  const fileList = checked.map(c => ({
+    id:           c.value,
+    name:         c.dataset.name,
+    modifiedTime: c.dataset.modified,
+  }));
+
+  try {
+    const r = await fetch('/api/gdrive/ocr', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ file_ids: fileList, year: yearNum, month: monthNum }),
+    });
+    const d = await r.json();
+
+    if (d.error) {
+      ocrEl.className = 'api-result api-error';
+      ocrEl.textContent = 'Błąd: ' + d.error;
+      return;
+    }
+
+    const ok      = d.results.filter(x => x.success);
+    const failed  = d.results.filter(x => !x.success);
+    const newOnes = ok.filter(x => x.is_new);
+
+    let msg = `OCR zakończony: ${ok.length} sukces, ${failed.length} błędów`;
+    if (newOnes.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
+    if (failed.length) {
+      msg += '\n\nBłędy:\n' + failed.map(x => `${x.file_name}: ${x.error}`).join('\n');
+    }
+
+    ocrEl.className = failed.length ? 'api-result api-error' : 'api-result api-ok';
+    ocrEl.textContent = msg;
+
+    if (newOnes.length) {
+      setTimeout(() => location.reload(), 2000);
+    }
+  } catch (e) {
+    ocrEl.className = 'api-result api-error';
+    ocrEl.textContent = 'Błąd żądania: ' + e.message;
+  }
+}
+
+function _monthNameToNum(name) {
+  const num = parseInt(name);
+  if (!isNaN(num)) return num;
+  const map = {
+    'styczeń':1,'luty':2,'marzec':3,'kwiecień':4,'maj':5,'czerwiec':6,
+    'lipiec':7,'sierpień':8,'wrzesień':9,'październik':10,'listopad':11,'grudzień':12
+  };
+  return map[name.toLowerCase()] || null;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Invoice details modal (OCR data)
+// ──────────────────────────────────────────────────────────────────────────────
+async function showInvoiceDetails(invId, label) {
+  const modal = document.getElementById('invoiceDetailsModal');
+  const body  = document.getElementById('detailsModalBody');
+  const title = document.getElementById('detailsModalTitle');
+
+  title.textContent = 'Szczegóły OCR: ' + label;
+  body.innerHTML = '<div class="details-loading">Ładowanie…</div>';
+  modal.classList.add('open');
+
+  try {
+    const r = await fetch('/api/gdrive/invoices/' + invId + '/details');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+
+    const rows = Object.entries(d).map(([k, v]) =>
+      `<tr><th style="width:180px">${_esc(k)}</th><td>${_esc(String(v === null ? '—' : v))}</td></tr>`
+    ).join('');
+
+    body.innerHTML = rows
+      ? `<table class="data-table data-table-sm"><tbody>${rows}</tbody></table>`
+      : '<p class="text-muted">Brak danych OCR.</p>';
+  } catch (e) {
+    body.innerHTML = '<div class="api-error" style="padding:1rem">Błąd ładowania: ' + e.message + '</div>';
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Bulk select / actions for invoice cards
+// ──────────────────────────────────────────────────────────────────────────────
+function getCheckedIds() {
+  return [...document.querySelectorAll('.inv-checkbox:checked')].map(el => parseInt(el.value));
+}
+
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  const bar = document.getElementById('bulkActions');
+  const cnt = document.getElementById('bulkCount');
+  if (!bar) return;
+  bar.style.display = ids.length > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'y' : 'ych');
+
+  const visibleBoxes = [...document.querySelectorAll('.invoice-card')]
+    .filter(c => c.style.display !== 'none')
+    .map(c => c.querySelector('.inv-checkbox'))
+    .filter(Boolean);
+  const selectAllCb = document.getElementById('selectAll');
+  if (selectAllCb) {
+    selectAllCb.checked = visibleBoxes.length > 0 && visibleBoxes.every(b => b.checked);
+    selectAllCb.indeterminate = visibleBoxes.some(b => b.checked) && !visibleBoxes.every(b => b.checked);
+  }
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.invoice-card').forEach(card => {
+    if (card.style.display === 'none') return;
+    const box = card.querySelector('.inv-checkbox');
+    if (box) box.checked = cb.checked;
+  });
+  updateBulkBar();
+}
+
+async function bulkAction(url, ids, confirmMsg) {
+  if (!confirm(confirmMsg)) return;
+  const el = document.getElementById('apiResult');
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.textContent = 'Przetwarzanie…';
+  try {
+    const r = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ ids }),
+    });
+    const d = await r.json();
+
+    if (url.includes('reject')) {
+      if (d.status === 'ok' || d.status === 'partial') {
+        el.className = 'api-result api-ok';
+        el.textContent = `Odrzucono: ${d.affected}`;
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        el.className = 'api-result api-error';
+        el.textContent = d.message || 'Błąd operacji.';
+      }
+      return;
+    }
+
+    // Akceptacja
+    const created = (d.created_expenses || 0) + (d.created_incomes || 0);
+    const linked   = d.auto_linked > 0 ? `, dopasowano transakcji: ${d.auto_linked}` : '';
+    const unlinked = d.unlinked > 0 ? ` (${d.unlinked} bez dopasowania)` : '';
+
+    if (d.errors && d.errors.length) {
+      el.className = 'api-result api-error';
+      el.style.whiteSpace = 'pre-wrap';
+      el.textContent = `Błędy (${d.errors.length}):\n` + d.errors.join('\n')
+        + (created > 0 ? `\n\nUtworzono mimo błędów: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}` : '');
+    } else {
+      el.className = 'api-result api-ok';
+      el.style.whiteSpace = 'pre-wrap';
+      let msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}${unlinked}`;
+      if (d.created_expenses > 0 && d.created_incomes > 0) {
+        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>  |  <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
+      } else if (d.created_expenses > 0) {
+        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>`;
+        setTimeout(() => { window.location.href = '/expenses/?month='; }, 3000);
+      } else if (d.created_incomes > 0) {
+        msg += `\n→ <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
+        setTimeout(() => { window.location.href = '/income/?month='; }, 3000);
+      } else {
+        msg += `\n(nic nie utworzono — sprawdź konsolę)`;
+        setTimeout(() => location.reload(), 2000);
+      }
+      el.innerHTML = msg;
+    }
+  } catch (e) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd żądania: ' + e.message;
+  }
+}
+
+async function acceptSingle(invId) {
+  await bulkAction('/api/gdrive/bulk-accept', [invId],
+    'Automatycznie utwórz wydatek/przychód z tej faktury?');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Transaction suggestions
+// ──────────────────────────────────────────────────────────────────────────────
+const _txnSuggestions = {};
+
+function _renderSuggestionSlot(invId, txn) {
+  const slot = document.getElementById('txn-slot-' + invId);
+  if (!slot || !txn) return;
+  _txnSuggestions[invId] = txn;
+  const scoreLabel = txn.score >= 3 ? 'Silne dopasowanie'
+                   : txn.score === 2 ? 'Dopasowanie kwoty'
+                   : 'Dopasowanie numeru';
+  const amt = parseFloat(txn.amount || 0).toLocaleString('pl-PL', {minimumFractionDigits:2, maximumFractionDigits:2});
+  slot.innerHTML = `
+    <div class="invoice-txn-suggestion">
+      <span class="txn-suggestion-icon">&#x1F4B3;</span>
+      <div class="txn-suggestion-info">
+        <span class="txn-suggestion-label">${scoreLabel}</span>
+        <span class="txn-suggestion-detail">
+          ${_esc(txn.date || '')}
+          &nbsp;·&nbsp;<strong>${_esc(txn.bank || '')}</strong>
+          &nbsp;·&nbsp;${_esc(txn.counterparty || '—')}
+          &nbsp;·&nbsp;<strong>${amt} PLN</strong>
+        </span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm"
+              onclick="showTxnPreview('${invId}')">Podejrzyj</button>
+    </div>`;
+}
+
+async function loadInvoiceSuggestions() {
+  const cards = document.querySelectorAll('.invoice-card[data-inv-id]');
+  if (!cards.length) return;
+
+  const invoices = [...cards].map(card => ({
+    id:             card.dataset.invId,
+    amount:         parseFloat(card.dataset.amount || 0),
+    invoice_number: card.dataset.invoiceNumber || '',
+  }));
+
+  try {
+    const r = await fetch('/api/bank/suggest-for-invoices', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ invoices }),
+    });
+    const suggestions = await r.json();
+    for (const [invId, txn] of Object.entries(suggestions)) {
+      if (txn) _renderSuggestionSlot(invId, txn);
+    }
+  } catch (e) {
+    console.warn('loadInvoiceSuggestions error:', e);
+  }
+
+  const matchedCount = Object.keys(_txnSuggestions).length;
+  const filterBtn = document.getElementById('btnFilterMatched');
+  const cntEl     = document.getElementById('matchedCount');
+  if (filterBtn && matchedCount > 0) {
+    filterBtn.style.display = 'inline-flex';
+    if (cntEl) cntEl.textContent = matchedCount;
+  }
+}
+
+let _matchedFilterActive = false;
+
+function toggleMatchedFilter(btn) {
+  _matchedFilterActive = !_matchedFilterActive;
+  btn.classList.toggle('btn-primary', _matchedFilterActive);
+  btn.classList.toggle('btn-ghost',   !_matchedFilterActive);
+
+  const matchedIds = new Set(Object.keys(_txnSuggestions));
+  document.querySelectorAll('.invoice-card[data-inv-id]').forEach(card => {
+    if (_matchedFilterActive) {
+      card.style.display = matchedIds.has(card.dataset.invId) ? '' : 'none';
+    } else {
+      card.style.display = '';
+    }
+  });
+  updateBulkBar();
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showTxnPreview(invId) {
+  const txn = _txnSuggestions[invId];
+  if (!txn) return;
+  const body = document.getElementById('txnPreviewBody');
+  const fmtAmt = v => parseFloat(v||0).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' PLN';
+
+  body.innerHTML = `
+    <table class="data-table data-table-sm">
+      <tbody>
+        <tr><th style="width:160px">Data</th><td>${_esc(txn.date||'—')}</td></tr>
+        <tr><th>Bank</th><td>${_esc(txn.bank||'—')}</td></tr>
+        <tr><th>Kontrahent</th><td>${_esc(txn.counterparty||'—')}</td></tr>
+        <tr><th>Opis</th><td>${_esc(txn.description||'—')}</td></tr>
+        <tr><th>Kwota</th><td><strong>${fmtAmt(txn.amount)}</strong></td></tr>
+        <tr><th>Status</th><td>${_esc(txn.status||'—')}</td></tr>
+        ${txn.category ? `<tr><th>Kategoria</th><td>${_esc(txn.category)}</td></tr>` : ''}
+      </tbody>
+    </table>`;
+  document.getElementById('txnPreviewModal').classList.add('open');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+  loadInvoiceSuggestions();
+
+  const btnAccept = document.getElementById('btnBulkAccept');
+  const btnReject = document.getElementById('btnBulkReject');
+  if (btnAccept) {
+    btnAccept.addEventListener('click', () => {
+      const ids = getCheckedIds();
+      bulkAction('/api/gdrive/bulk-accept', ids,
+        `Automatycznie utwórz wydatki/przychody z ${ids.length} faktur?`);
+    });
+  }
+  if (btnReject) {
+    btnReject.addEventListener('click', () => {
+      const ids = getCheckedIds();
+      bulkAction('/api/gdrive/bulk-reject', ids,
+        `Odrzucić ${ids.length} zaznaczonych faktur?`);
+    });
+  }
+
+  loadYears();
+});
+</script>
+{% endblock %}

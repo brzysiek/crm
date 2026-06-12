@@ -58,6 +58,92 @@
   </form>
 </div>
 
+{# ── Konfiguracja Google Drive & Gemini ────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Konfiguracja Google Drive &amp; Gemini</h3>
+  <form method="post" action="{{ url_for('settings.general') }}">
+    {# Preserve Fakturownia fields as hidden so the single POST saves all settings #}
+    <input type="hidden" name="subdomain"      value="{{ cfg.fakturownia_subdomain or '' }}">
+    <input type="hidden" name="api_key"         value="{{ cfg.fakturownia_api_key or '' }}">
+    <input type="hidden" name="sync_schedule"   value="{{ cfg.fakturownia_sync_schedule or 'manual' }}">
+
+    <div class="form-group">
+      <label for="google_drive_folder_id">ID folderu głównego Google Drive</label>
+      <input type="text" id="google_drive_folder_id" name="google_drive_folder_id"
+             placeholder="np. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
+             value="{{ cfg.google_drive_folder_id or '' }}">
+      <small class="text-muted">Skopiuj ID folderu z adresu URL w Google Drive.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="google_drive_api_token">Token / klucz API Google Drive</label>
+      <textarea id="google_drive_api_token" name="google_drive_api_token"
+                rows="5" style="font-family:monospace;font-size:.8rem"
+                placeholder='Wklej JSON konta usługi (zaczyna się od "{") lub prosty klucz API'>{{ cfg.google_drive_api_token or '' }}</textarea>
+      <small class="text-muted">
+        Jeśli wartość zaczyna się od <code>{</code> — traktowana jako JSON konta usługi (service account).
+        W przeciwnym razie — prosty klucz API.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="gemini_api_key">Klucz API Gemini (Google AI)</label>
+      <div class="input-reveal-wrap">
+        <input type="password" id="gemini_api_key" name="gemini_api_key"
+               value="{{ cfg.gemini_api_key or '' }}"
+               autocomplete="off"
+               placeholder="AIza…">
+        <button type="button" class="btn-reveal" onclick="toggleReveal('gemini_api_key', this)">
+          Pokaż
+        </button>
+      </div>
+      <small class="text-muted">Klucz API z <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="gemini_model">Model Gemini do OCR</label>
+      <select id="gemini_model" name="gemini_model">
+        <optgroup label="Gemini 2.5 — z obsługą PDF (stabilne)">
+          <option value="gemini-2.5-flash-lite"
+            {{ 'selected' if cfg.gemini_model == 'gemini-2.5-flash-lite' }}>
+            gemini-2.5-flash-lite — najszybszy, najtańszy ($0.10/1M)
+          </option>
+          <option value="gemini-2.5-flash"
+            {{ 'selected' if (cfg.gemini_model == 'gemini-2.5-flash' or not cfg.gemini_model) }}>
+            gemini-2.5-flash — zalecany do OCR, dobra cena/jakość ($0.30/1M) ★
+          </option>
+          <option value="gemini-2.5-pro"
+            {{ 'selected' if cfg.gemini_model == 'gemini-2.5-pro' }}>
+            gemini-2.5-pro — najwyższa dokładność ($1.25/1M)
+          </option>
+        </optgroup>
+        <optgroup label="Gemini 3.x — z obsługą PDF (nowe)">
+          <option value="gemini-3.1-flash-lite"
+            {{ 'selected' if cfg.gemini_model == 'gemini-3.1-flash-lite' }}>
+            gemini-3.1-flash-lite — nowy, obsługuje PDF, ekonomiczny ($0.25/1M)
+          </option>
+          <option value="gemini-3.5-flash"
+            {{ 'selected' if cfg.gemini_model == 'gemini-3.5-flash' }}>
+            gemini-3.5-flash — najnowszy, obsługuje PDF ($1.50/1M)
+          </option>
+        </optgroup>
+      </select>
+      <small class="text-muted">
+        Wszystkie modele na liście obsługują wczytywanie plików PDF.
+        ★ = domyślny zalecany. Ceny orientacyjne za 1M tokenów wejściowych.
+      </small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz konfigurację Drive / Gemini</button>
+      <button type="button" class="btn btn-outline" id="btnTestDrive">Testuj Google Drive</button>
+      <button type="button" class="btn btn-outline" id="btnTestGemini">Testuj Gemini</button>
+    </div>
+    <div id="driveTestResult" class="api-result" style="display:none"></div>
+    <div id="geminiTestResult" class="api-result" style="display:none"></div>
+  </form>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -75,6 +161,38 @@ document.getElementById('btnTest').addEventListener('click', async function () {
   el.textContent = 'Testowanie…';
   try {
     const r = await fetch('/api/fakturownia/test');
+    const d = await r.json();
+    el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
+    el.textContent = d.message;
+  } catch (e) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd żądania: ' + e.message;
+  }
+});
+
+document.getElementById('btnTestDrive').addEventListener('click', async function () {
+  const el = document.getElementById('driveTestResult');
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.textContent = 'Testowanie połączenia z Google Drive…';
+  try {
+    const r = await fetch('/api/gdrive/test');
+    const d = await r.json();
+    el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
+    el.textContent = d.message;
+  } catch (e) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd żądania: ' + e.message;
+  }
+});
+
+document.getElementById('btnTestGemini').addEventListener('click', async function () {
+  const el = document.getElementById('geminiTestResult');
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.textContent = 'Testowanie połączenia z Gemini…';
+  try {
+    const r = await fetch('/api/gemini/test');
     const d = await r.json();
     el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
     el.textContent = d.message;

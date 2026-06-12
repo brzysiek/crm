@@ -28,6 +28,13 @@
           <span class="nav-badge">{{ pending_count }}</span>
         {% endif %}
       </a>
+      <a href="{{ url_for('settings.gdrive') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'gdrive' }}">
+        Import z Dysku Google
+        {% if gdrive_pending_count > 0 %}
+          <span class="nav-badge">{{ gdrive_pending_count }}</span>
+        {% endif %}
+      </a>
     </nav>
   </aside>
 

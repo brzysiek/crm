@@ -101,7 +101,7 @@ def _validate(data):
 
 @bp.route('/')
 def list_expenses():
-    month = request.args.get('month', date.today().strftime('%Y-%m'))
+    month = request.args.get('month', '')
     category = request.args.get('category', '')
     invoice_status = request.args.get('invoice_status', '')
     payment_filter = request.args.get('payment_filter', '')

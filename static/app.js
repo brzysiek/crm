@@ -184,6 +184,59 @@ async function showKsefPreview(entityType, entityId) {
   }
 }
 
+/* ── Dysk (GDrive) preview modal ─────────────────────────────────────────── */
+async function showDiskPreview(entityType, entityId) {
+  const modal = document.getElementById('ksefPreviewModal');
+  if (!modal) return;
+  const title = document.getElementById('ksefPreviewTitle');
+  const body  = document.getElementById('ksefPreviewBody');
+  if (title) title.textContent = 'Podgląd faktury z Dysku Google';
+  modal.classList.add('open');
+  if (body) body.innerHTML = '<div style="padding:1rem;color:#666">Ładowanie…</div>';
+
+  try {
+    const r = await fetch('/api/disk-preview/' + entityType + '/' + entityId);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    const fmt = v => (v !== null && v !== undefined && v !== '') ? v : '—';
+    const fmtMoney = v => v !== null && v !== undefined
+      ? parseFloat(v).toLocaleString('pl-PL', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' zł'
+      : '—';
+    const monthPad = m => m ? String(m).padStart(2, '0') : '—';
+
+    const rows = [
+      ['Plik',            fmt(d.file_name)],
+      ['Rok / miesiąc',   d.gdrive_year ? d.gdrive_year + ' / ' + monthPad(d.gdrive_month) : '—'],
+      ['Numer faktury',   fmt(d.invoice_number)],
+      ['Kontrahent',      fmt(d.vendor_name)],
+      ['NIP',             fmt(d.vendor_nip)],
+      ['Data wystawienia',fmt(d.issue_date)],
+      ['Typ',             d.invoice_type === 'income' ? 'Przychodowa' : 'Kosztowa'],
+      ['Kwota brutto',    fmtMoney(d.amount_gross)],
+      ['Kwota netto',     fmtMoney(d.amount_net)],
+      ['VAT',             fmtMoney(d.vat_amount)],
+    ];
+
+    if (d.ocr && d.ocr.confidence_note) {
+      rows.push(['Uwagi OCR', fmt(d.ocr.confidence_note)]);
+    }
+
+    const tableRows = rows.map(([label, value]) =>
+      `<tr><th style="width:160px;font-weight:600;padding:.4rem .75rem;white-space:nowrap">${label}</th>` +
+      `<td style="padding:.4rem .75rem">${String(value).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td></tr>`
+    ).join('');
+
+    body.innerHTML =
+      '<div class="inv-details">' +
+      '<table class="data-table data-table-sm"><tbody>' + tableRows + '</tbody></table>' +
+      '</div>';
+  } catch (e) {
+    if (body) body.innerHTML = '<div style="padding:1rem;color:#c00">Błąd ładowania: ' + e.message + '</div>';
+  }
+}
+
 function buildDetailsHTML(d, isIncome) {
   const fmt = (v) => v !== null && v !== undefined && v !== '' ? v : '—';
   const fmtMoney = (v) => v !== null && v !== undefined && v !== '' ?

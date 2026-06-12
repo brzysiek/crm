@@ -21,6 +21,10 @@ def general():
             'fakturownia_subdomain':     request.form.get('subdomain', '').strip(),
             'fakturownia_api_key':       request.form.get('api_key', '').strip(),
             'fakturownia_sync_schedule': request.form.get('sync_schedule', 'manual'),
+            'google_drive_folder_id':    request.form.get('google_drive_folder_id', '').strip(),
+            'google_drive_api_token':    request.form.get('google_drive_api_token', '').strip(),
+            'gemini_api_key':            request.form.get('gemini_api_key', '').strip(),
+            'gemini_model':              request.form.get('gemini_model', 'gemini-2.5-flash').strip(),
         })
         flash('Konfiguracja została zapisana.', 'success')
         return redirect(url_for('settings.general'))
@@ -110,4 +114,25 @@ def reject_invoice_view(inv_id):
     flash('Faktura została odrzucona.', 'success')
     return redirect(url_for('settings.fakturownia') + '#pending')
 
+
+@bp.route('/gdrive', methods=['GET'])
+def gdrive():
+    from models.gdrive_invoice import get_pending_gdrive_invoices
+    type_filter = request.args.get('type_filter', '')
+    cfg = get_all_settings()
+    pending = get_pending_gdrive_invoices(invoice_type=type_filter or None)
+    return render_template('settings/gdrive.html',
+        active_tab='gdrive',
+        cfg=cfg,
+        pending_invoices=pending,
+        type_filter=type_filter,
+    )
+
+
+@bp.route('/gdrive/invoices/<int:inv_id>/reject', methods=['POST'])
+def reject_gdrive_invoice_view(inv_id):
+    from models.gdrive_invoice import reject_gdrive_invoice
+    reject_gdrive_invoice(inv_id)
+    flash('Faktura została odrzucona.', 'success')
+    return redirect(url_for('settings.gdrive') + '#pending')
 

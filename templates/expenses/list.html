@@ -127,7 +127,8 @@
             <button class="badge badge-green badge-btn" title="{{ e.invoice_ref }}"
                     onclick="showKsefPreview('expense', {{ e.id }})">KSeF</button>
           {% elif e.invoice_status == 'disk' %}
-            <span class="badge badge-blue" title="{{ e.invoice_ref }}">Dysk</span>
+            <button class="badge badge-blue badge-btn" title="{{ e.invoice_ref }}"
+                    onclick="showDiskPreview('expense', {{ e.id }})">Dysk</button>
           {% else %}
             <span class="badge badge-gray">Brak</span>
           {% endif %}

@@ -87,7 +87,7 @@ def _validate(data):
 
 @bp.route('/')
 def list_incomes():
-    month = request.args.get('month', date.today().strftime('%Y-%m'))
+    month = request.args.get('month', '')
     category = request.args.get('category', '')
     payment_status = request.args.get('payment_status', '')
     search = request.args.get('search', '')
