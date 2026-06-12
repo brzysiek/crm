@@ -17,15 +17,21 @@ def index():
 def general():
     from models.settings import get_all_settings, set_many
     if request.method == 'POST':
-        set_many({
+        data = {
             'fakturownia_subdomain':     request.form.get('subdomain', '').strip(),
             'fakturownia_api_key':       request.form.get('api_key', '').strip(),
             'fakturownia_sync_schedule': request.form.get('sync_schedule', 'manual'),
             'google_drive_folder_id':    request.form.get('google_drive_folder_id', '').strip(),
-            'google_drive_api_token':    request.form.get('google_drive_api_token', '').strip(),
-            'gemini_api_key':            request.form.get('gemini_api_key', '').strip(),
             'gemini_model':              request.form.get('gemini_model', 'gemini-2.5-flash').strip(),
-        })
+        }
+        # Only overwrite secret tokens when a new value is explicitly provided
+        drive_token = request.form.get('google_drive_api_token', '').strip()
+        if drive_token:
+            data['google_drive_api_token'] = drive_token
+        gemini_key = request.form.get('gemini_api_key', '').strip()
+        if gemini_key:
+            data['gemini_api_key'] = gemini_key
+        set_many(data)
         flash('Konfiguracja została zapisana.', 'success')
         return redirect(url_for('settings.general'))
     cfg = get_all_settings()

@@ -77,27 +77,28 @@
 
     <div class="form-group">
       <label for="google_drive_api_token">Token / klucz API Google Drive</label>
-      <textarea id="google_drive_api_token" name="google_drive_api_token"
-                rows="5" style="font-family:monospace;font-size:.8rem"
-                placeholder='Wklej JSON konta usługi (zaczyna się od "{") lub prosty klucz API'>{{ cfg.google_drive_api_token or '' }}</textarea>
-      <small class="text-muted">
-        Jeśli wartość zaczyna się od <code>{</code> — traktowana jako JSON konta usługi (service account).
-        W przeciwnym razie — prosty klucz API.
-      </small>
+      <input type="password" id="google_drive_api_token" name="google_drive_api_token"
+             autocomplete="off"
+             placeholder="{{ '••••••••' if cfg.google_drive_api_token else 'Wklej token lub JSON konta usługi' }}"
+             value="">
+      {% if cfg.google_drive_api_token %}
+      <small class="text-muted">Token jest zapisany. Wpisz nowy, aby go zastąpić — pozostaw puste, żeby zachować obecny.</small>
+      {% else %}
+      <small class="text-muted">Jeśli wartość zaczyna się od <code>{</code> — traktowana jako JSON konta usługi (service account). W przeciwnym razie — prosty klucz API.</small>
+      {% endif %}
     </div>
 
     <div class="form-group">
       <label for="gemini_api_key">Klucz API Gemini (Google AI)</label>
-      <div class="input-reveal-wrap">
-        <input type="password" id="gemini_api_key" name="gemini_api_key"
-               value="{{ cfg.gemini_api_key or '' }}"
-               autocomplete="off"
-               placeholder="AIza…">
-        <button type="button" class="btn-reveal" onclick="toggleReveal('gemini_api_key', this)">
-          Pokaż
-        </button>
-      </div>
+      <input type="password" id="gemini_api_key" name="gemini_api_key"
+             autocomplete="off"
+             placeholder="{{ '••••••••' if cfg.gemini_api_key else 'AIza…' }}"
+             value="">
+      {% if cfg.gemini_api_key %}
+      <small class="text-muted">Klucz jest zapisany. Wpisz nowy, aby go zastąpić — pozostaw puste, żeby zachować obecny. Źródło: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</small>
+      {% else %}
       <small class="text-muted">Klucz API z <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</small>
+      {% endif %}
     </div>
 
     <div class="form-group">
