@@ -23,7 +23,7 @@
       </a>
       <a href="{{ url_for('settings.fakturownia') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'fakturownia' }}">
-        Fakturownia
+        Import z Fakturowni
         {% if pending_count > 0 %}
           <span class="nav-badge">{{ pending_count }}</span>
         {% endif %}

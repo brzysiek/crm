@@ -1,82 +1,20 @@
 {% extends 'settings/_layout.html' %}
 {% block settings_content %}
 
-<h2>Fakturownia</h2>
+<h2>Import z Fakturowni</h2>
 
-{# ── A. Konfiguracja API ──────────────────────────────────────────────────── #}
+{# ── A. Historia synchronizacji ──────────────────────────────────────────── #}
 <div class="settings-section">
-  <h3>Konfiguracja API</h3>
-  <form method="post" action="{{ url_for('settings.fakturownia') }}">
-
-    <div class="form-group">
-      <label for="subdomain">Subdomena konta</label>
-      <div class="input-suffix-wrap">
-        <input type="text" id="subdomain" name="subdomain"
-               placeholder="nazwa-firmy"
-               value="{{ cfg.fakturownia_subdomain or '' }}">
-        <span class="input-suffix">.fakturownia.pl</span>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="api_key">Klucz API</label>
-      <div class="input-reveal-wrap">
-        <input type="password" id="api_key" name="api_key"
-               value="{{ cfg.fakturownia_api_key or '' }}"
-               autocomplete="off">
-        <button type="button" class="btn-reveal" onclick="toggleReveal('api_key', this)">
-          Pokaż
-        </button>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="sync_schedule">Harmonogram synchronizacji</label>
-      <select id="sync_schedule" name="sync_schedule">
-        <option value="manual"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'manual' }}>
-          Ręcznie
-        </option>
-        <option value="daily"   {{ 'selected' if cfg.fakturownia_sync_schedule == 'daily' }}>
-          Codziennie o 08:00
-        </option>
-        <option value="hourly"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'hourly' }}>
-          Co godzinę
-        </option>
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label for="filter_category">Filtr kategorii</label>
-      <select id="filter_category" name="filter_category">
-        <option value="expense" {{ 'selected' if cfg.fakturownia_filter_category == 'expense' }}>
-          Faktury kosztowe (zakupowe)
-        </option>
-        <option value="income"  {{ 'selected' if cfg.fakturownia_filter_category == 'income' }}>
-          Faktury przychodowe (sprzedażowe)
-        </option>
-        <option value="all"     {{ 'selected' if cfg.fakturownia_filter_category == 'all' }}>
-          Wszystkie faktury
-        </option>
-      </select>
-    </div>
-
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Zapisz konfigurację</button>
-      <button type="button" class="btn btn-outline" id="btnTest">Testuj połączenie</button>
-      <button type="button" class="btn btn-outline" id="btnSync">Synchronizuj teraz</button>
-    </div>
-    <div id="apiResult" class="api-result" style="display:none"></div>
-
-    {% if cfg.fakturownia_last_sync %}
-    <p class="text-muted small">Ostatnia synchronizacja: {{ cfg.fakturownia_last_sync }}</p>
-    {% endif %}
-
-  </form>
-</div>
-
-{# ── B. Historia synchronizacji ──────────────────────────────────────────── #}
-<div class="settings-section">
-  <h3>Historia synchronizacji</h3>
+  <div class="section-header-row">
+    <h3>Historia synchronizacji</h3>
+    <button type="button" class="btn btn-outline btn-sm" id="btnSync">Synchronizuj teraz</button>
+  </div>
+  <div id="apiResult" class="api-result" style="display:none"></div>
+  {% if cfg.fakturownia_last_sync %}
+  <p class="text-muted small" style="margin-bottom:.75rem">
+    Ostatnia synchronizacja: {{ cfg.fakturownia_last_sync }}
+  </p>
+  {% endif %}
   {% if sync_log %}
   <div class="table-wrapper">
     <table class="data-table data-table-sm">
@@ -148,6 +86,12 @@
        class="btn btn-sm {{ 'btn-primary' if type_filter == 'income' else 'btn-ghost' }}">
       Przychodowe
     </a>
+    <button type="button" id="btnFilterMatched"
+            class="btn btn-sm btn-ghost" style="display:none"
+            onclick="toggleMatchedFilter(this)">
+      Z dopasowaniem
+      <span class="badge badge-yellow" id="matchedCount" style="margin-left:.25rem">0</span>
+    </button>
   </div>
 
   {% if pending_invoices %}
@@ -163,7 +107,9 @@
     {% set is_income = inv.invoice_type == 'income' %}
     <div class="invoice-card {{ 'invoice-card-income' if is_income else 'invoice-card-expense' }}"
          data-inv-id="{{ inv.id }}"
-         data-inv-type="{{ inv.invoice_type or 'expense' }}">
+         data-inv-type="{{ inv.invoice_type or 'expense' }}"
+         data-amount="{{ inv.amount_gross or 0 }}"
+         data-invoice-number="{{ inv.invoice_number or '' }}">
       <div class="invoice-card-header">
         <div class="invoice-card-header-left">
           <input type="checkbox" class="inv-checkbox" value="{{ inv.id }}"
@@ -192,6 +138,7 @@
           <div class="text-muted small">KSeF: {{ inv.ksef_number }}</div>
         {% endif %}
       </div>
+      <div class="invoice-txn-slot" id="txn-slot-{{ inv.id }}"></div>
       <div class="invoice-card-footer">
         {% if is_income %}
           <a href="{{ url_for('income.new_income', inv=inv.id) }}"
@@ -221,6 +168,19 @@
   {% else %}
   <p class="text-muted">Brak faktur oczekujących na akceptację.</p>
   {% endif %}
+</div>
+
+{# ── Modal podglądu transakcji ──────────────────────────────────────────── #}
+<div id="txnPreviewModal" class="modal-overlay"
+     onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3>Sugerowana transakcja bankowa</h3>
+      <button onclick="document.getElementById('txnPreviewModal').classList.remove('open')"
+              class="modal-close">✕</button>
+    </div>
+    <div id="txnPreviewBody" class="modal-body" style="padding:1.25rem"></div>
+  </div>
 </div>
 
 {# ── Modal szczegółów dokumentu ──────────────────────────────────────────── #}
@@ -279,17 +239,24 @@ function updateBulkBar() {
   bar.style.display = ids.length > 0 ? 'flex' : 'none';
   if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'y' : 'ych');
 
-  // synchronizuj "zaznacz wszystkie"
-  const all = document.querySelectorAll('.inv-checkbox');
+  // synchronizuj "zaznacz wszystkie" — tylko widoczne karty
+  const visibleBoxes = [...document.querySelectorAll('.invoice-card')]
+    .filter(c => c.style.display !== 'none')
+    .map(c => c.querySelector('.inv-checkbox'))
+    .filter(Boolean);
   const selectAllCb = document.getElementById('selectAll');
   if (selectAllCb) {
-    selectAllCb.checked = all.length > 0 && ids.length === all.length;
-    selectAllCb.indeterminate = ids.length > 0 && ids.length < all.length;
+    selectAllCb.checked = visibleBoxes.length > 0 && visibleBoxes.every(b => b.checked);
+    selectAllCb.indeterminate = visibleBoxes.some(b => b.checked) && !visibleBoxes.every(b => b.checked);
   }
 }
 
 function toggleSelectAll(cb) {
-  document.querySelectorAll('.inv-checkbox').forEach(el => { el.checked = cb.checked; });
+  document.querySelectorAll('.invoice-card').forEach(card => {
+    if (card.style.display === 'none') return;
+    const box = card.querySelector('.inv-checkbox');
+    if (box) box.checked = cb.checked;
+  });
   updateBulkBar();
 }
 
@@ -306,16 +273,47 @@ async function bulkAction(url, ids, confirmMsg) {
       body: JSON.stringify({ ids }),
     });
     const d = await r.json();
-    if (d.status === 'ok' || d.status === 'partial') {
-      el.className = 'api-result api-ok';
-      const msg = url.includes('reject')
-        ? `Odrzucono: ${d.affected}`
-        : `Wydatków: ${d.created_expenses}, przychodów: ${d.created_incomes}`;
-      el.textContent = msg + (d.errors && d.errors.length ? ` (błędy: ${d.errors.length})` : '');
-      setTimeout(() => location.reload(), 1500);
-    } else {
+    console.log('[bulk-accept response]', JSON.stringify(d, null, 2));
+    if (url.includes('reject')) {
+      if (d.status === 'ok' || d.status === 'partial') {
+        el.className = 'api-result api-ok';
+        el.textContent = `Odrzucono: ${d.affected}`;
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        el.className = 'api-result api-error';
+        el.textContent = d.message || 'Błąd operacji.';
+      }
+      return;
+    }
+
+    // Akceptacja
+    const created = (d.created_expenses || 0) + (d.created_incomes || 0);
+    const linked   = d.auto_linked > 0 ? `, dopasowano transakcji: ${d.auto_linked}` : '';
+    const unlinked = d.unlinked > 0 ? ` (${d.unlinked} bez dopasowania)` : '';
+
+    if (d.errors && d.errors.length) {
+      // Pokaż błędy – nie przekierowuj automatycznie
       el.className = 'api-result api-error';
-      el.textContent = d.message || 'Błąd operacji.';
+      el.style.whiteSpace = 'pre-wrap';
+      el.textContent = `Błędy (${d.errors.length}):\n` + d.errors.join('\n')
+        + (created > 0 ? `\n\nUtworzono mimo błędów: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}` : '');
+    } else {
+      el.className = 'api-result api-ok';
+      el.style.whiteSpace = 'pre-wrap';
+      let msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}${unlinked}`;
+      if (d.created_expenses > 0 && d.created_incomes > 0) {
+        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>  |  <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
+      } else if (d.created_expenses > 0) {
+        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>`;
+        setTimeout(() => { window.location.href = '/expenses/?month='; }, 3000);
+      } else if (d.created_incomes > 0) {
+        msg += `\n→ <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
+        setTimeout(() => { window.location.href = '/income/?month='; }, 3000);
+      } else {
+        msg += `\n(nic nie utworzono — sprawdź konsolę)`;
+        setTimeout(() => location.reload(), 2000);
+      }
+      el.innerHTML = msg;
     }
   } catch (e) {
     el.className = 'api-result api-error';
@@ -323,7 +321,116 @@ async function bulkAction(url, ids, confirmMsg) {
   }
 }
 
+// ── Sugestie transakcji dla faktur ────────────────────────────────────────
+const _txnSuggestions = {};   // invId → txn object
+
+function _renderSuggestionSlot(invId, txn) {
+  const slot = document.getElementById('txn-slot-' + invId);
+  if (!slot || !txn) return;
+  _txnSuggestions[invId] = txn;
+  const scoreLabel = txn.score >= 3 ? 'Silne dopasowanie'
+                   : txn.score === 2 ? 'Dopasowanie kwoty'
+                   : 'Dopasowanie numeru';
+  const amt = parseFloat(txn.amount || 0).toLocaleString('pl-PL', {minimumFractionDigits:2, maximumFractionDigits:2});
+  slot.innerHTML = `
+    <div class="invoice-txn-suggestion">
+      <span class="txn-suggestion-icon">💳</span>
+      <div class="txn-suggestion-info">
+        <span class="txn-suggestion-label">${scoreLabel}</span>
+        <span class="txn-suggestion-detail">
+          ${_esc(txn.date || '')}
+          &nbsp;·&nbsp;<strong>${_esc(txn.bank || '')}</strong>
+          &nbsp;·&nbsp;${_esc(txn.counterparty || '—')}
+          &nbsp;·&nbsp;<strong>${amt} PLN</strong>
+        </span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm"
+              onclick="showTxnPreview('${invId}')">Podejrzyj</button>
+    </div>`;
+}
+
+async function loadInvoiceSuggestions() {
+  const cards = document.querySelectorAll('.invoice-card[data-inv-id]');
+  if (!cards.length) return;
+
+  // Zbiorczy request — 1 połączenie do DB zamiast N
+  const invoices = [...cards].map(card => ({
+    id:             card.dataset.invId,
+    amount:         parseFloat(card.dataset.amount || 0),
+    invoice_number: card.dataset.invoiceNumber || '',
+  }));
+
+  try {
+    const r = await fetch('/api/bank/suggest-for-invoices', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ invoices }),
+    });
+    const suggestions = await r.json();   // { "invId": txn_or_null, ... }
+    for (const [invId, txn] of Object.entries(suggestions)) {
+      if (txn) _renderSuggestionSlot(invId, txn);
+    }
+  } catch (e) {
+    console.warn('loadInvoiceSuggestions error:', e);
+  }
+
+  // Pokaż filtr "Z dopasowaniem" jeśli są dopasowania
+  const matchedCount = Object.keys(_txnSuggestions).length;
+  const filterBtn = document.getElementById('btnFilterMatched');
+  const cntEl     = document.getElementById('matchedCount');
+  if (filterBtn && matchedCount > 0) {
+    filterBtn.style.display = 'inline-flex';
+    if (cntEl) cntEl.textContent = matchedCount;
+  }
+}
+
+let _matchedFilterActive = false;
+
+function toggleMatchedFilter(btn) {
+  _matchedFilterActive = !_matchedFilterActive;
+  btn.classList.toggle('btn-primary', _matchedFilterActive);
+  btn.classList.toggle('btn-ghost',   !_matchedFilterActive);
+
+  const matchedIds = new Set(Object.keys(_txnSuggestions));
+  document.querySelectorAll('.invoice-card[data-inv-id]').forEach(card => {
+    if (_matchedFilterActive) {
+      card.style.display = matchedIds.has(card.dataset.invId) ? '' : 'none';
+    } else {
+      card.style.display = '';
+    }
+  });
+  // Odśwież checkboxy/bulk bar
+  updateBulkBar();
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showTxnPreview(invId) {
+  const txn = _txnSuggestions[invId];
+  if (!txn) return;
+  const body = document.getElementById('txnPreviewBody');
+  const fmtAmt = v => parseFloat(v||0).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' PLN';
+
+  body.innerHTML = `
+    <table class="data-table data-table-sm">
+      <tbody>
+        <tr><th style="width:160px">Data</th><td>${_esc(txn.date||'—')}</td></tr>
+        <tr><th>Bank</th><td>${_esc(txn.bank||'—')}</td></tr>
+        <tr><th>Kontrahent</th><td>${_esc(txn.counterparty||'—')}</td></tr>
+        <tr><th>Opis</th><td>${_esc(txn.description||'—')}</td></tr>
+        <tr><th>Kwota</th><td><strong>${fmtAmt(txn.amount)}</strong></td></tr>
+        <tr><th>Status</th><td>${_esc(txn.status||'—')}</td></tr>
+        ${txn.category ? `<tr><th>Kategoria</th><td>${_esc(txn.category)}</td></tr>` : ''}
+      </tbody>
+    </table>`;
+  document.getElementById('txnPreviewModal').classList.add('open');
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  loadInvoiceSuggestions();
+
   const btnAccept = document.getElementById('btnBulkAccept');
   const btnReject = document.getElementById('btnBulkReject');
   if (btnAccept) {
@@ -343,22 +450,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ── Fakturownia API buttons ─────────────────────────────────────────────────
-document.getElementById('btnTest').addEventListener('click', async function () {
-  const el = document.getElementById('apiResult');
-  el.style.display = 'block';
-  el.className = 'api-result api-loading';
-  el.textContent = 'Testowanie…';
-  try {
-    const r = await fetch('/api/fakturownia/test');
-    const d = await r.json();
-    el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
-    el.textContent = d.message;
-  } catch (e) {
-    el.className = 'api-result api-error';
-    el.textContent = 'Błąd żądania: ' + e.message;
-  }
-});
-
 document.getElementById('btnSync').addEventListener('click', async function () {
   const el = document.getElementById('apiResult');
   el.style.display = 'block';

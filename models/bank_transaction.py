@@ -41,13 +41,7 @@ def upsert_bank_transaction(data: dict) -> bool:
     try:
         with db.cursor() as cur:
             cur.execute(
-                "SELECT id FROM bank_transactions WHERE transaction_id = %s",
-                (data['transaction_id'],)
-            )
-            if cur.fetchone():
-                return False
-            cur.execute(
-                """INSERT INTO bank_transactions
+                """INSERT IGNORE INTO bank_transactions
                    (bank, transaction_id, date, description, counterparty,
                     amount, currency, category, balance, raw_data, status)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
@@ -59,8 +53,9 @@ def upsert_bank_transaction(data: dict) -> bool:
                     data.get('raw_data'),
                 )
             )
+            inserted = cur.rowcount
         db.commit()
-        return True
+        return inserted > 0
     except Exception:
         db.rollback()
         raise
@@ -84,27 +79,57 @@ def search_bank_transactions(q: str = None, bank: str = None,
                               min_amount: float = None, max_amount: float = None,
                               for_expense_id: int = None,
                               for_income_id: int = None) -> list[dict]:
+    """
+    Zwraca transakcje bankowe do przypisania.
+
+    Reguła: pokazujemy TYLKO nieprzypisane (status='pending') oraz — gdy edytujemy
+    konkretny wydatek/przychód — transakcje już z nim powiązane (linked_to_this=True).
+    Transakcje 'accepted' przypisane do INNYCH rekordów są zawsze ukryte.
+    """
     db = get_db()
-    sql = "SELECT * FROM bank_transactions WHERE status != 'rejected'"
     params = []
+
+    if for_expense_id:
+        # pending + już przypisane do tego wydatku
+        base_filter = (
+            "(bt.status = 'pending'"
+            " OR bt.id IN (SELECT bank_txn_id FROM expense_transactions WHERE expense_id = %s))"
+        )
+        params.append(for_expense_id)
+    elif for_income_id:
+        # pending + już przypisane do tego przychodu
+        base_filter = (
+            "(bt.status = 'pending'"
+            " OR bt.id IN (SELECT bank_txn_id FROM income_transactions WHERE income_id = %s))"
+        )
+        params.append(for_income_id)
+    else:
+        # tryb sugestii / nowy formularz — tylko pending
+        base_filter = "bt.status = 'pending'"
+
+    sql = f"SELECT bt.* FROM bank_transactions bt WHERE {base_filter}"
+
     if bank in ('mbank', 'unicredit'):
-        sql += " AND bank = %s"
+        sql += " AND bt.bank = %s"
         params.append(bank)
     if q:
-        sql += " AND (description LIKE %s OR counterparty LIKE %s)"
+        sql += " AND (bt.description LIKE %s OR bt.counterparty LIKE %s)"
         like = f"%{q}%"
         params.extend([like, like])
     if min_amount is not None:
-        sql += " AND ABS(amount) >= %s"
+        sql += " AND ABS(bt.amount) >= %s"
         params.append(min_amount)
     if max_amount is not None:
-        sql += " AND ABS(amount) <= %s"
+        sql += " AND ABS(bt.amount) <= %s"
         params.append(max_amount)
-    sql += " ORDER BY date DESC, id DESC LIMIT 100"
+
+    sql += " ORDER BY bt.date DESC, bt.id DESC LIMIT 500"
+
     with db.cursor() as cur:
         cur.execute(sql, params)
         rows = cur.fetchall()
 
+    # Oznacz które transakcje są już powiązane z tym konkretnym rekordem
     linked_ids = set()
     if for_expense_id:
         with db.cursor() as cur:
@@ -125,6 +150,33 @@ def search_bank_transactions(q: str = None, bank: str = None,
         row['linked_to_this'] = row['id'] in linked_ids
 
     return rows
+
+
+def add_bank_import_log(bank: str, filename: str, rows_found: int,
+                        rows_new: int, status: str = 'ok',
+                        message: str = None) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """INSERT INTO bank_import_log
+                   (bank, filename, rows_found, rows_new, status, message)
+                   VALUES (%s,%s,%s,%s,%s,%s)""",
+                (bank, filename, rows_found, rows_new, status, message),
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
+def get_bank_import_log(limit: int = 15) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT * FROM bank_import_log ORDER BY imported_at DESC LIMIT %s",
+            (limit,),
+        )
+        return cur.fetchall()
 
 
 def bulk_reject_bank(ids: list[int]) -> int:

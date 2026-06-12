@@ -60,8 +60,8 @@ def create_expense(data: dict) -> int:
                    (date, responsible_person, contractor_name, contractor_nip,
                     invoice_number, description, amount_gross, vat_rate,
                     amount_net, payment_percent, invoice_status, invoice_ref,
-                    paid_by, payment_method, is_recurring, category, notes)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    paid_by, payment_method, is_recurring, category, notes, source)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['date'], data['responsible_person'],
                     data.get('contractor_name') or None,
@@ -77,6 +77,7 @@ def create_expense(data: dict) -> int:
                     1 if data.get('is_recurring') else 0,
                     data.get('category') or None,
                     data.get('notes') or None,
+                    data.get('source') or None,
                 )
             )
         db.commit()
@@ -97,7 +98,7 @@ def update_expense(expense_id: int, data: dict) -> None:
                    description=%s, amount_gross=%s, vat_rate=%s, amount_net=%s,
                    payment_percent=%s, invoice_status=%s, invoice_ref=%s,
                    paid_by=%s, payment_method=%s, is_recurring=%s,
-                   category=%s, notes=%s
+                   category=%s, notes=%s, source=%s
                    WHERE id = %s""",
                 (
                     data['date'], data['responsible_person'],
@@ -114,6 +115,7 @@ def update_expense(expense_id: int, data: dict) -> None:
                     1 if data.get('is_recurring') else 0,
                     data.get('category') or None,
                     data.get('notes') or None,
+                    data.get('source') or None,
                     expense_id,
                 )
             )
@@ -139,9 +141,11 @@ def get_monthly_kpi(month: str) -> dict:
     with db.cursor() as cur:
         cur.execute(
             """SELECT
-               COALESCE(SUM(amount_gross), 0)                              AS total_gross,
-               COALESCE(SUM(CASE WHEN payment_percent=100 THEN amount_gross ELSE 0 END), 0) AS paid,
-               COALESCE(SUM(CASE WHEN payment_percent<100  THEN amount_gross ELSE 0 END), 0) AS pending
+               COALESCE(SUM(amount_gross), 0) AS total_gross,
+               COALESCE(SUM(CASE WHEN payment_percent = 100 THEN amount_gross ELSE 0 END), 0) AS paid,
+               COALESCE(SUM(CASE WHEN payment_percent = 0   THEN amount_gross ELSE 0 END), 0) AS unpaid,
+               COALESCE(SUM(CASE WHEN payment_percent > 0
+                                  AND payment_percent < 100 THEN amount_gross ELSE 0 END), 0) AS partial
                FROM expenses WHERE DATE_FORMAT(date, '%%Y-%%m') = %s""",
             (month,)
         )

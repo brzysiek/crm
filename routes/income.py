@@ -70,6 +70,7 @@ def _parse_form(form):
         'category':        category or None,
         'notes':           form.get('notes', '').strip() or None,
         'paid_by':         form.get('paid_by', '').strip() or None,
+        'source':          form.get('source', '').strip() or None,
     }
 
 
@@ -156,6 +157,29 @@ def new_income():
                 except Exception:
                     pass
 
+            if not data.get('source') or not data.get('payment_method'):
+                try:
+                    from models.bank_transaction import get_bank_transaction_by_id
+                    first_txn = get_bank_transaction_by_id(int(txn_ids[0]))
+                    if first_txn:
+                        from database import get_db as _get_db
+                        _db = _get_db()
+                        _upd = {}
+                        if not data.get('source'):
+                            _upd['source'] = first_txn.get('bank')
+                        if not data.get('payment_method'):
+                            _upd['payment_method'] = 'transfer'
+                        if _upd:
+                            _sets = ', '.join(f"{k}=%s" for k in _upd)
+                            with _db.cursor() as _cur:
+                                _cur.execute(
+                                    f"UPDATE incomes SET {_sets} WHERE id=%s",
+                                    list(_upd.values()) + [income_id]
+                                )
+                            _db.commit()
+                except Exception:
+                    pass
+
         flash('Przychód został zapisany.', 'success')
         return redirect(url_for('income.list_incomes'))
 
@@ -198,6 +222,7 @@ def new_income():
                 client_name = (raw.get('buyer_name') or inv.get('vendor_name') or '').strip()
                 client_nip  = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
                 prefill = {
+                    'date':           str(inv.get('issue_date') or '')[:10] or today,
                     'amount_gross':   inv.get('amount_gross', ''),
                     'vat_rate':       '23',
                     'invoice_number': inv.get('invoice_number', ''),

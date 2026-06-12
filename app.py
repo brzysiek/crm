@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from config import Config
 import database
+import traceback as _tb
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -144,6 +145,84 @@ def api_expense_transactions_delete(expense_id, bank_txn_id):
     from models.expense import unlink_transaction
     result = unlink_transaction(expense_id, bank_txn_id)
     return jsonify(result)
+
+
+@app.route('/api/bank/suggest-for-invoice')
+def api_bank_suggest_for_invoice():
+    """Zwraca najlepiej pasującą transakcję bankową dla faktury (bez encji)."""
+    from models.bank_transaction import search_bank_transactions
+    amount         = request.args.get('amount', type=float)
+    invoice_number = request.args.get('invoice_number', '').strip()
+    rows = search_bank_transactions()
+    best, best_score = _score_best(rows, amount, invoice_number)
+    if best_score > 0 and best:
+        result = _txn_to_json(best)
+        result['score'] = best_score
+        return jsonify(result)
+    return jsonify(None)
+
+
+@app.route('/api/bank/suggest-for-invoices', methods=['POST'])
+def api_bank_suggest_for_invoices():
+    """Batch: przyjmuje listę faktur, zwraca mapę inv_id → najlepsza transakcja.
+
+    Body: {"invoices": [{"id": 1, "amount": 123.45, "invoice_number": "FS/1/2026"}, ...]}
+    Odpowiedź: {"1": {...txn...}, "2": null, ...}
+    """
+    from models.bank_transaction import search_bank_transactions
+    data = request.get_json(silent=True) or {}
+    invoices = data.get('invoices') or []
+    if not invoices:
+        return jsonify({})
+
+    rows = list(search_bank_transactions())   # 1 zapytanie do DB dla wszystkich
+
+    result = {}
+    available = rows          # będziemy filtrować użyte transakcje
+    for inv in invoices:
+        inv_id  = str(inv.get('id', ''))
+        amount  = float(inv.get('amount') or 0)
+        inv_num = str(inv.get('invoice_number') or '').strip()
+        best, best_score = _score_best(available, amount, inv_num)
+        if best_score > 0 and best:
+            txn = _txn_to_json(best)
+            txn['score'] = best_score
+            result[inv_id] = txn
+            # Usuń z puli — ta transakcja jest już "zarezerwowana" dla tej faktury
+            available = [r for r in available if r['id'] != best['id']]
+        else:
+            result[inv_id] = None
+    return jsonify(result)
+
+
+def _score_best(rows: list, amount: float, invoice_number: str):
+    """Pomocnicza: wybiera najlepiej pasującą transakcję ze zbioru wierszy."""
+    best = None
+    best_score = 0
+    inv_lower = (invoice_number or '').lower()
+    for row in rows:
+        score = 0
+        txn_abs = abs(float(row.get('amount') or 0))
+        if amount and amount > 0 and abs(txn_abs - amount) < 0.02:
+            score += 2
+        if inv_lower:
+            desc = ((row.get('description') or '') + ' ' +
+                    (row.get('counterparty') or '')).lower()
+            if inv_lower in desc:
+                score += 1
+        if score > best_score:
+            best_score = score
+            best = row
+    return best, best_score
+
+
+def _txn_to_json(row: dict) -> dict:
+    """Konwertuje wiersz transakcji do JSON-serializowalnego słownika."""
+    result = dict(row)
+    for k in ('date', 'created_at'):
+        if result.get(k):
+            result[k] = str(result[k])
+    return result
 
 
 @app.route('/api/bank/search')
@@ -378,8 +457,9 @@ def api_bulk_accept():
     import json as _json
     from datetime import datetime as _dt
     from models.invoice import get_invoices_by_ids
-    from models.expense import create_expense
-    from models.income import create_income
+    from models.expense import create_expense, link_transaction
+    from models.income import create_income, link_income_transaction
+    from models.bank_transaction import search_bank_transactions
     from database import get_db
 
     data = request.get_json(silent=True) or {}
@@ -390,7 +470,15 @@ def api_bulk_accept():
     invoices = get_invoices_by_ids(ids)
     created_expenses = 0
     created_incomes = 0
+    auto_linked = 0
     errors = []
+
+    # Pobierz transakcje raz — nie N razy w pętli
+    from models.bank_transaction import search_bank_transactions as _search_txns
+    try:
+        _all_txns = list(_search_txns())   # kopia — będziemy usuwać użyte
+    except Exception:
+        _all_txns = []
 
     for inv in invoices:
         if inv['status'] != 'pending':
@@ -398,41 +486,78 @@ def api_bulk_accept():
         try:
             raw = _json.loads(inv['raw_json']) if inv.get('raw_json') else {}
             issue_date = str(inv.get('issue_date') or '')[:10] or _dt.today().strftime('%Y-%m-%d')
-            gross = float(inv.get('amount_gross') or 0)
-            net   = float(inv.get('amount_net') or gross)
-            vat_a = float(inv.get('vat_amount') or 0)
+            gross    = float(inv.get('amount_gross') or 0)
+            net      = float(inv.get('amount_net') or gross)
             vat_rate = round((gross - net) / net * 100, 0) if net > 0 else 23.0
+            inv_number = (inv.get('invoice_number') or '').strip()
+
+            # Szukaj dopasowania wśród JESZCZE NIEUŻYTYCH transakcji
+            best, _ = _score_best(_all_txns, gross, inv_number)
+            best_bank = best['bank'] if best else None
+
+            # Fallback chain dla ksef_number (może być w raw_json)
+            ksef = (inv.get('ksef_number') or '').strip() \
+                or (raw.get('ksef_number') or '').strip() \
+                or (raw.get('ksef_id') or '').strip() \
+                or (raw.get('gov_id') or '').strip()
 
             if inv.get('invoice_type') == 'income':
+                client_name = (raw.get('buyer_name') or inv.get('vendor_name') or '').strip()
+                client_nip  = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
                 record_id = create_income({
                     'date':           issue_date,
-                    'client_name':    inv.get('vendor_name') or '',
-                    'client_nip':     inv.get('vendor_nip') or '',
-                    'description':    f"Faktura {inv['invoice_number']}",
-                    'invoice_number': inv.get('invoice_number') or '',
+                    'client_name':    client_name,
+                    'client_nip':     client_nip,
+                    'description':    f"Faktura {inv_number}",
+                    'invoice_number': inv_number,
                     'amount_gross':   gross,
                     'vat_rate':       vat_rate,
                     'amount_net':     net,
-                    'invoice_status': 'ksef' if inv.get('ksef_number') else 'none',
-                    'invoice_ref':    inv.get('ksef_number') or None,
+                    'invoice_status': 'ksef' if ksef else 'none',
+                    'invoice_ref':    ksef or None,
                     'payment_status': 'paid' if raw.get('payment_status') == 'paid' else 'unpaid',
                     'fakturownia_id': inv['fakturownia_id'],
+                    'source':         best_bank,
+                    'payment_method': 'transfer' if best_bank else None,
                 })
                 created_incomes += 1
+                if best:
+                    try:
+                        link_income_transaction(record_id, best['id'])
+                        auto_linked += 1
+                        # Usuń transakcję z puli żeby nie przypisać jej do kolejnej faktury
+                        _all_txns = [t for t in _all_txns if t['id'] != best['id']]
+                    except Exception:
+                        pass
             else:
+                vendor     = (raw.get('buyer_name') or inv.get('vendor_name') or '').strip()
+                vendor_nip = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
                 record_id = create_expense({
                     'date':               issue_date,
                     'responsible_person': 'Auto-import',
-                    'description':        f"Faktura {inv['invoice_number']}"
-                                          + (f" – {inv['vendor_name']}" if inv.get('vendor_name') else ''),
+                    'contractor_name':    vendor or None,
+                    'contractor_nip':     vendor_nip or None,
+                    'invoice_number':     inv_number or None,
+                    'description':        f"Faktura {inv_number}"
+                                          + (f" – {vendor}" if vendor else ''),
                     'amount_gross':       gross,
                     'vat_rate':           vat_rate,
                     'amount_net':         net,
                     'payment_percent':    0,
-                    'invoice_status':     'ksef' if inv.get('ksef_number') else 'none',
-                    'invoice_ref':        inv.get('ksef_number') or None,
+                    'invoice_status':     'ksef' if ksef else 'none',
+                    'invoice_ref':        ksef or None,
+                    'source':             best_bank,
+                    'payment_method':     'transfer' if best_bank else None,
                 })
                 created_expenses += 1
+                if best:
+                    try:
+                        link_transaction(record_id, best['id'])
+                        auto_linked += 1
+                        # Usuń transakcję z puli żeby nie przypisać jej do kolejnej faktury
+                        _all_txns = [t for t in _all_txns if t['id'] != best['id']]
+                    except Exception:
+                        pass
 
             db = get_db()
             with db.cursor() as cur:
@@ -443,14 +568,46 @@ def api_bulk_accept():
                 )
             db.commit()
         except Exception as exc:
-            errors.append(f"ID {inv['id']}: {exc}")
+            errors.append(f"ID {inv['id']}: {exc}\n{_tb.format_exc()}")
 
+    total_created = created_expenses + created_incomes
+    unlinked = total_created - auto_linked   # ile wydatków/przychodów bez transakcji
     return jsonify({
         'status':           'ok' if not errors else 'partial',
         'created_expenses': created_expenses,
         'created_incomes':  created_incomes,
+        'auto_linked':      auto_linked,
+        'unlinked':         unlinked,
         'errors':           errors,
     })
+
+
+def _find_best_txn(gross: float, invoice_number: str,
+                   for_expense_id: int = None,
+                   for_income_id: int = None) -> dict | None:
+    """Zwraca najlepiej pasującą transakcję bankową (score > 0) lub None."""
+    from models.bank_transaction import search_bank_transactions
+    rows = search_bank_transactions(
+        for_expense_id=for_expense_id,
+        for_income_id=for_income_id,
+    )
+    best = None
+    best_score = 0
+    inv_lower = (invoice_number or '').lower()
+    for row in rows:
+        score = 0
+        txn_abs = abs(float(row.get('amount') or 0))
+        if gross > 0 and abs(txn_abs - gross) < 0.02:
+            score += 2
+        if inv_lower:
+            desc = ((row.get('description') or '') + ' ' +
+                    (row.get('counterparty') or '')).lower()
+            if inv_lower in desc:
+                score += 1
+        if score > best_score:
+            best_score = score
+            best = row
+    return best if best_score > 0 else None
 
 
 from routes.dashboard import bp as dashboard_bp

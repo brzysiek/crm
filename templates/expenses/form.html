@@ -149,9 +149,8 @@
       {% set cur_pm = expense.payment_method if expense.payment_method is defined else '' %}
       <select id="payment_method" name="payment_method">
         <option value="">— brak —</option>
-        <option value="mbank"     {{ 'selected' if cur_pm == 'mbank' }}>Przelew mBank</option>
-        <option value="unicredit" {{ 'selected' if cur_pm == 'unicredit' }}>Przelew UniCredit</option>
-        <option value="cash"      {{ 'selected' if cur_pm == 'cash' }}>Gotówka</option>
+        <option value="transfer" {{ 'selected' if cur_pm in ('transfer','mbank','unicredit') }}>Przelew/karta</option>
+        <option value="cash"     {{ 'selected' if cur_pm == 'cash' }}>Gotówka</option>
       </select>
     </div>
 
@@ -198,6 +197,14 @@
         Stały / cykliczny
       </label>
     </div>
+  </div>
+
+  {# ── Skąd ── #}
+  <div class="form-group">
+    <label for="source">Skąd</label>
+    <input type="text" id="source" name="source"
+           placeholder="np. mBank, UniCredit…"
+           value="{{ expense.source or '' }}">
   </div>
 
   {# ── Notatki ── #}
@@ -279,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
   toggleInvoiceRef();
   loadLinkedTransactions();
   doTxnSearch();
+  autoLinkSuggested();
 });
 </script>
 <script>
@@ -394,6 +402,7 @@ async function doTxnSearch() {
 }
 
 async function linkTxn(txnId) {
+  const txnData = _lastSearchResults.find(r => r.id === txnId);
   if (IS_EDIT) {
     await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions', {
       method: 'POST',
@@ -401,14 +410,42 @@ async function linkTxn(txnId) {
       body: JSON.stringify({ bank_txn_id: txnId }),
     });
   } else {
-    const txnData = _lastSearchResults.find(r => r.id === txnId);
     if (txnData && !_pendingTxns.find(t => t.id === txnId)) {
       _pendingTxns.push({ ...txnData });
       _updateHiddenInputs();
     }
   }
+  if (txnData) _autofillSource(txnData.bank);
   loadLinkedTransactions();
   doTxnSearch();
+}
+
+function _autofillSource(bank) {
+  const src = document.getElementById('source');
+  if (src && !src.value.trim()) src.value = bank || '';
+  const pm = document.getElementById('payment_method');
+  if (pm && !pm.value) pm.value = 'transfer';
+}
+
+async function autoLinkSuggested() {
+  if (IS_EDIT) return;
+  const amt = document.getElementById('amount_gross')?.value;
+  const inv = document.getElementById('invoice_number')?.value?.trim();
+  if (!amt && !inv) return;
+
+  const params = new URLSearchParams();
+  if (amt) params.set('amount', amt);
+  if (inv) params.set('invoice_number', inv);
+
+  try {
+    const resp = await fetch('/api/bank/suggest-for-invoice?' + params);
+    const txn  = await resp.json();
+    if (!txn || _pendingTxns.find(t => t.id === txn.id)) return;
+    _pendingTxns.push(txn);
+    _updateHiddenInputs();
+    _autofillSource(txn.bank);
+    loadLinkedTransactions();
+  } catch (_) {}
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */

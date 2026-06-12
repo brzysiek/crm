@@ -77,6 +77,7 @@
         <th>Status płatności</th>
         <th>Faktura</th>
         <th>Forma</th>
+        <th>Skąd</th>
         <th>Odpowiedzialny</th>
         <th class="col-actions"></th>
       </tr>
@@ -116,14 +117,13 @@
           {% endif %}
         </td>
         <td>
-          {% if inc.payment_method == 'mbank' %}
-            <span class="badge badge-outline">mBank</span>
-          {% elif inc.payment_method == 'unicredit' %}
-            <span class="badge badge-outline">UniCredit</span>
+          {% if inc.payment_method in ('transfer','mbank','unicredit') %}
+            <span class="badge badge-outline">przelew/karta</span>
           {% elif inc.payment_method == 'cash' %}
             <span class="badge badge-outline">gotówka</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
+        <td>{{ inc.source or '—' }}</td>
         <td class="nowrap">{{ inc.paid_by or '—' }}</td>
         <td class="col-actions nowrap">
           <a href="{{ url_for('income.edit_income', income_id=inc.id) }}"
@@ -142,7 +142,7 @@
       <tr class="table-sum-row">
         <td colspan="4">Suma ({{ incomes|length }} rekordów)</td>
         <td class="text-right nowrap">{{ incomes|sum(attribute='amount_gross')|pln }}</td>
-        <td colspan="5"></td>
+        <td colspan="6"></td>
       </tr>
     </tfoot>
   </table>

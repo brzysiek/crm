@@ -12,6 +12,30 @@
   </div>
 </div>
 
+{# ── KPI ──────────────────────────────────────────────────────────────────────── #}
+{% if kpi %}
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Wydatki brutto</div>
+    <div class="kpi-value">{{ kpi.total_gross|pln }}</div>
+  </div>
+  <div class="kpi-card kpi-green">
+    <div class="kpi-label">Opłacone</div>
+    <div class="kpi-value">{{ kpi.paid|pln }}</div>
+  </div>
+  <div class="kpi-card kpi-alert">
+    <div class="kpi-label">Nieopłacone</div>
+    <div class="kpi-value">{{ kpi.unpaid|pln }}</div>
+  </div>
+  {% if kpi.partial|float > 0 %}
+  <div class="kpi-card kpi-yellow">
+    <div class="kpi-label">Częściowo</div>
+    <div class="kpi-value">{{ kpi.partial|pln }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {# ── Filtry ─────────────────────────────────────────────────────────────────── #}
 <form class="filter-bar" method="get" action="{{ url_for('expenses.list_expenses') }}">
   <input type="text" name="search" placeholder="Szukaj opisu, osoby…"
@@ -65,6 +89,7 @@
         <th>Opłacone</th>
         <th>Faktura</th>
         <th>Forma</th>
+        <th>Skąd</th>
         <th>Odpowiedzialny</th>
         <th class="col-actions"></th>
       </tr>
@@ -108,14 +133,13 @@
           {% endif %}
         </td>
         <td>
-          {% if e.payment_method == 'mbank' %}
-            <span class="badge badge-outline">mBank</span>
-          {% elif e.payment_method == 'unicredit' %}
-            <span class="badge badge-outline">UniCredit</span>
+          {% if e.payment_method in ('transfer','mbank','unicredit') %}
+            <span class="badge badge-outline">przelew/karta</span>
           {% elif e.payment_method == 'cash' %}
             <span class="badge badge-outline">gotówka</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
+        <td>{{ e.source or '—' }}</td>
         <td class="nowrap">{{ e.responsible_person or '—' }}</td>
         <td class="col-actions nowrap">
           <a href="{{ url_for('expenses.edit_expense', expense_id=e.id) }}"
@@ -134,7 +158,7 @@
       <tr class="table-sum-row">
         <td colspan="4">Suma ({{ expenses|length }} rekordów)</td>
         <td class="text-right nowrap">{{ expenses|sum(attribute='amount_gross')|pln }}</td>
-        <td colspan="5"></td>
+        <td colspan="6"></td>
       </tr>
     </tfoot>
   </table>

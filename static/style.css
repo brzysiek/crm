@@ -569,6 +569,13 @@ a:hover { text-decoration: underline; }
   margin-bottom: 1.25rem;
 }
 .section-header h2 { margin-bottom: 0; }
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.section-header-row h3 { margin: 0; }
 
 .placeholder-section {
   background: #fff;
@@ -877,6 +884,22 @@ a:hover { text-decoration: underline; }
 .row-txn-linked     { background: #f0faf0; }
 .row-txn-linked td  { opacity: .75; }
 .row-txn-suggested  { background: #fffde7; }
+
+.invoice-txn-suggestion {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: #fffde7;
+  border: 1px solid #ffe082;
+  border-radius: var(--radius);
+  padding: .45rem .7rem;
+  margin: .5rem 0 .25rem;
+  font-size: .82rem;
+}
+.txn-suggestion-icon { font-size: 1rem; flex-shrink: 0; }
+.txn-suggestion-info { display: flex; flex-direction: column; flex: 1; gap: .1rem; }
+.txn-suggestion-label { font-weight: 700; color: #5d4037; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+.txn-suggestion-detail { color: var(--bottle-dark); }
 
 .txn-group-label {
   font-size: .72rem;

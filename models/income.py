@@ -53,8 +53,8 @@ def create_income(data: dict) -> int:
                    (date, client_name, client_nip, description, invoice_number,
                     amount_gross, vat_rate, amount_net, invoice_status, invoice_ref,
                     payment_method, payment_status, category, fakturownia_id, notes,
-                    paid_by)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    paid_by, source)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['date'],
                     data.get('client_name') or None,
@@ -72,6 +72,7 @@ def create_income(data: dict) -> int:
                     data.get('fakturownia_id') or None,
                     data.get('notes') or None,
                     data.get('paid_by') or None,
+                    data.get('source') or None,
                 )
             )
         db.commit()
@@ -90,7 +91,7 @@ def update_income(income_id: int, data: dict) -> None:
                    date=%s, client_name=%s, client_nip=%s, description=%s,
                    invoice_number=%s, amount_gross=%s, vat_rate=%s, amount_net=%s,
                    invoice_status=%s, invoice_ref=%s, payment_method=%s,
-                   payment_status=%s, category=%s, notes=%s, paid_by=%s
+                   payment_status=%s, category=%s, notes=%s, paid_by=%s, source=%s
                    WHERE id = %s""",
                 (
                     data['date'],
@@ -108,6 +109,7 @@ def update_income(income_id: int, data: dict) -> None:
                     data.get('category') or None,
                     data.get('notes') or None,
                     data.get('paid_by') or None,
+                    data.get('source') or None,
                     income_id,
                 )
             )

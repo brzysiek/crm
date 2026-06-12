@@ -6,6 +6,12 @@ import re
 from datetime import datetime
 
 
+def _stable_hash(parts: list) -> str:
+    """MD5 z listy stringów po normalizacji whitespace."""
+    normalized = '|'.join(re.sub(r'\s+', ' ', str(p)).strip() for p in parts)
+    return hashlib.md5(normalized.encode('utf-8')).hexdigest()[:16]
+
+
 def parse_unicredit(content: str) -> list[dict]:
     """
     Format UniCredit (brak nagłówka, separator ,):
@@ -30,8 +36,8 @@ def parse_unicredit(content: str) -> list[dict]:
 
         transaction_id = line[9].strip() if len(line) > 9 else ''
         if not transaction_id:
-            src = f"uc|{date_str}|{amount}|{line[8].strip()[:40]}"
-            transaction_id = 'uc_' + hashlib.md5(src.encode()).hexdigest()[:16]
+            # Hash ze stabilnych pól (raw string kwoty, nie float)
+            transaction_id = 'uc_' + _stable_hash(['uc', date_str, line[10].strip(), line[8].strip()])
 
         counterparty = (line[4].strip() or line[6].strip())[:256]
         description  = line[8].strip().strip('"')
@@ -99,8 +105,8 @@ def parse_mbank(content: str) -> list[dict]:
         except ValueError:
             continue
 
-        src = f"mb|{date_str}|{amount}|{description[:50]}"
-        transaction_id = 'mb_' + hashlib.md5(src.encode()).hexdigest()[:16]
+        # Hash z raw amount stringa (nie float) i znormalizowanego opisu
+        transaction_id = 'mb_' + _stable_hash(['mb', date_str, amount_raw, description[:60]])
 
         # Próba wyciągnięcia nazwy kontrahenta z opisu (pierwsza linia/segment)
         counterparty = description.split(',')[0].strip()[:256]

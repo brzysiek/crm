@@ -1,15 +1,87 @@
 {% extends 'settings/_layout.html' %}
 {% block settings_content %}
 
-{% if placeholder_msg %}
-  <div class="placeholder-section">
-    <p>{{ placeholder_msg }}</p>
-  </div>
-{% else %}
-  <h2>Ustawienia ogólne</h2>
-  <div class="placeholder-section">
-    <p>Ustawienia ogólne aplikacji będą dostępne wkrótce.</p>
-  </div>
-{% endif %}
+<h2>Ustawienia ogólne</h2>
 
+{# ── Konfiguracja Fakturowni ───────────────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Konfiguracja Fakturowni</h3>
+  <form method="post" action="{{ url_for('settings.general') }}">
+
+    <div class="form-group">
+      <label for="subdomain">Subdomena konta</label>
+      <div class="input-suffix-wrap">
+        <input type="text" id="subdomain" name="subdomain"
+               placeholder="nazwa-firmy"
+               value="{{ cfg.fakturownia_subdomain or '' }}">
+        <span class="input-suffix">.fakturownia.pl</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="api_key">Klucz API</label>
+      <div class="input-reveal-wrap">
+        <input type="password" id="api_key" name="api_key"
+               value="{{ cfg.fakturownia_api_key or '' }}"
+               autocomplete="off">
+        <button type="button" class="btn-reveal" onclick="toggleReveal('api_key', this)">
+          Pokaż
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="sync_schedule">Harmonogram synchronizacji</label>
+      <select id="sync_schedule" name="sync_schedule">
+        <option value="manual"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'manual' }}>
+          Ręcznie
+        </option>
+        <option value="daily"   {{ 'selected' if cfg.fakturownia_sync_schedule == 'daily' }}>
+          Codziennie o 08:00
+        </option>
+        <option value="hourly"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'hourly' }}>
+          Co godzinę
+        </option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz konfigurację</button>
+      <button type="button" class="btn btn-outline" id="btnTest">Testuj połączenie</button>
+    </div>
+    <div id="testResult" class="api-result" style="display:none"></div>
+
+    {% if cfg.fakturownia_last_sync %}
+    <p class="text-muted small">Ostatnia synchronizacja: {{ cfg.fakturownia_last_sync }}</p>
+    {% endif %}
+
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleReveal(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = 'Ukryj'; }
+  else                         { inp.type = 'password'; btn.textContent = 'Pokaż'; }
+}
+
+document.getElementById('btnTest').addEventListener('click', async function () {
+  const el = document.getElementById('testResult');
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.textContent = 'Testowanie…';
+  try {
+    const r = await fetch('/api/fakturownia/test');
+    const d = await r.json();
+    el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
+    el.textContent = d.message;
+  } catch (e) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd żądania: ' + e.message;
+  }
+});
+</script>
 {% endblock %}
