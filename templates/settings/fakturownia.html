@@ -213,7 +213,7 @@ async function showInvoiceDetails(invId, invNumber, invType) {
   modal.classList.add('open');
 
   try {
-    const r = await fetch('/api/fakturownia/invoices/' + invId + '/details');
+    const r = await fetch(API_BASE + '/api/fakturownia/invoices/' + invId + '/details');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     // invType przekazany z szablonu jest wiarygodniejszy niż d.income przy starych rekordach
@@ -361,7 +361,7 @@ async function loadInvoiceSuggestions() {
   }));
 
   try {
-    const r = await fetch('/api/bank/suggest-for-invoices', {
+    const r = await fetch(API_BASE + '/api/bank/suggest-for-invoices', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ invoices }),
@@ -456,7 +456,7 @@ document.getElementById('btnSync').addEventListener('click', async function () {
   el.className = 'api-result api-loading';
   el.textContent = 'Synchronizacja…';
   try {
-    const r = await fetch('/api/fakturownia/sync', { method: 'POST' });
+    const r = await fetch(API_BASE + '/api/fakturownia/sync', { method: 'POST' });
     const d = await r.json();
     if (d.status === 'ok') {
       el.className = 'api-result api-ok';

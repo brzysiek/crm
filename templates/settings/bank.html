@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!ids.length) return;
       if (!confirm('Odrzucić ' + ids.length + ' zaznaczonych transakcji?')) return;
       try {
-        const r = await fetch('/api/bank/bulk-reject', {
+        const r = await fetch(API_BASE + '/api/bank/bulk-reject', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ids }),

@@ -235,7 +235,7 @@ async function loadYears() {
   statusEl.textContent = 'Ładowanie lat…';
 
   try {
-    const r = await fetch('/api/gdrive/folders');
+    const r = await fetch(API_BASE + '/api/gdrive/folders');
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
@@ -282,7 +282,7 @@ async function onYearChange() {
   statusEl.textContent = 'Ładowanie miesięcy…';
 
   try {
-    const r = await fetch('/api/gdrive/folders?parent_id=' + encodeURIComponent(folderId));
+    const r = await fetch(API_BASE + '/api/gdrive/folders?parent_id=' + encodeURIComponent(folderId));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
@@ -327,7 +327,7 @@ async function onMonthChange() {
   statusEl.textContent = 'Ładowanie plików PDF…';
 
   try {
-    const r = await fetch('/api/gdrive/files?folder_id=' + encodeURIComponent(folderId));
+    const r = await fetch(API_BASE + '/api/gdrive/files?folder_id=' + encodeURIComponent(folderId));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
@@ -395,7 +395,7 @@ async function runOcr() {
   }));
 
   try {
-    const r = await fetch('/api/gdrive/ocr', {
+    const r = await fetch(API_BASE + '/api/gdrive/ocr', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ file_ids: fileList, year: yearNum, month: monthNum }),
@@ -453,7 +453,7 @@ async function showInvoiceDetails(invId, label) {
   modal.classList.add('open');
 
   try {
-    const r = await fetch('/api/gdrive/invoices/' + invId + '/details');
+    const r = await fetch(API_BASE + '/api/gdrive/invoices/' + invId + '/details');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
 
@@ -610,7 +610,7 @@ async function loadInvoiceSuggestions() {
   }));
 
   try {
-    const r = await fetch('/api/bank/suggest-for-invoices', {
+    const r = await fetch(API_BASE + '/api/bank/suggest-for-invoices', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ invoices }),

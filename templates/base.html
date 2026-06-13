@@ -79,6 +79,10 @@
   </div>
 </div>
 
+<script>
+/* Prefix dla wszystkich fetch('/api/...) — obsługuje wdrożenie w podkatalogu */
+window.API_BASE = {{ request.script_root | tojson }};
+</script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

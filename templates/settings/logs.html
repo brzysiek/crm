@@ -55,7 +55,7 @@ async function loadLogs() {
   const lines = document.getElementById('linesSelect').value;
   const pre   = document.getElementById('logOutput');
   try {
-    const r = await fetch(`/api/logs?lines=${lines}`, { credentials: 'same-origin' });
+    const r = await fetch(API_BASE + `/api/logs?lines=${lines}`, { credentials: 'same-origin' });
     const d = await r.json();
     if (d.error) { pre.innerHTML = `<span style="color:var(--danger)">${esc(d.error)}</span>`; return; }
     if (!d.lines || d.lines.length === 0) {
@@ -80,7 +80,7 @@ document.getElementById('autoRefresh').addEventListener('change', function() {
 
 document.getElementById('btnClear').addEventListener('click', async () => {
   if (!confirm('Czy na pewno wyczyścić plik logów?')) return;
-  const r = await fetch('/api/logs/clear', { method: 'POST', credentials: 'same-origin' });
+  const r = await fetch(API_BASE + '/api/logs/clear', { method: 'POST', credentials: 'same-origin' });
   const d = await r.json();
   if (d.ok) loadLogs();
   else alert('Błąd: ' + (d.error || 'nieznany'));

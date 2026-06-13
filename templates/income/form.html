@@ -258,7 +258,7 @@ async function loadLinkedTransactions() {
   const el = document.getElementById('linked-txns-list');
   let txns;
   if (IS_EDIT) {
-    const resp = await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions');
+    const resp = await fetch(API_BASE + '/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions');
     txns = await resp.json();
   } else {
     txns = _pendingTxns;
@@ -292,7 +292,7 @@ async function loadLinkedTransactions() {
 async function unlinkTxn(txnId) {
   if (!confirm('Odpiąć tę transakcję? Wróci do listy oczekujących.')) return;
   if (IS_EDIT) {
-    await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions/' + txnId, { method: 'DELETE' });
+    await fetch(API_BASE + '/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions/' + txnId, { method: 'DELETE' });
   } else {
     _pendingTxns = _pendingTxns.filter(t => t.id !== txnId);
     _updateHiddenInputs();
@@ -341,7 +341,7 @@ async function doTxnSearch() {
   if (bank)   params.set('bank', bank);
 
   const resultsEl = document.getElementById('txnSearchResults');
-  const resp = await fetch('/api/bank/search?' + params);
+  const resp = await fetch(API_BASE + '/api/bank/search?' + params);
   _lastSearchResults = await resp.json();
 
   if (_lastSearchResults.length === 0) {
@@ -353,7 +353,7 @@ async function doTxnSearch() {
 async function linkTxn(txnId) {
   const txnData = _lastSearchResults.find(r => r.id === txnId);
   if (IS_EDIT) {
-    await fetch('/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions', {
+    await fetch(API_BASE + '/api/' + ENTITY_TYPE + 's/' + ENTITY_ID + '/transactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bank_txn_id: txnId }),
@@ -387,7 +387,7 @@ async function autoLinkSuggested() {
   if (inv) params.set('invoice_number', inv);
 
   try {
-    const resp = await fetch('/api/bank/suggest-for-invoice?' + params);
+    const resp = await fetch(API_BASE + '/api/bank/suggest-for-invoice?' + params);
     const txn  = await resp.json();
     if (!txn || _pendingTxns.find(t => t.id === txn.id)) return;
     _pendingTxns.push(txn);

@@ -161,7 +161,7 @@ async function apiTest(url, loadingText, elId) {
   el.className = 'api-result api-loading';
   el.textContent = loadingText;
   try {
-    const r = await fetch(url, { credentials: 'same-origin' });
+    const r = await fetch(API_BASE + url, { credentials: 'same-origin' });
     if (r.status === 401) {
       el.className = 'api-result api-error';
       el.textContent = 'Sesja wygasła — odśwież stronę i zaloguj się ponownie.';
