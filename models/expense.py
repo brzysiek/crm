@@ -245,3 +245,18 @@ def get_daily_totals(month: str) -> list[dict]:
             (month,)
         )
         return cur.fetchall()
+
+
+def get_unpaid_expenses(limit: int = 20) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT id, date, contractor_name, invoice_number,
+                      description, amount_gross, payment_percent
+               FROM expenses
+               WHERE payment_percent < 100
+               ORDER BY date ASC, id DESC
+               LIMIT %s""",
+            (limit,)
+        )
+        return cur.fetchall()

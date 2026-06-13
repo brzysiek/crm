@@ -199,6 +199,33 @@ def unlink_income_transaction(income_id: int, bank_txn_id: int) -> dict:
         raise
 
 
+def get_unpaid_incomes(limit: int = 20) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT id, date, client_name, invoice_number,
+                      description, amount_gross, payment_status
+               FROM incomes
+               WHERE payment_status != 'paid'
+               ORDER BY date ASC, id DESC
+               LIMIT %s""",
+            (limit,)
+        )
+        return cur.fetchall()
+
+
+def get_income_daily_totals(month: str) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT DAY(date) AS day, SUM(amount_gross) AS total
+               FROM incomes WHERE DATE_FORMAT(date, '%%Y-%%m') = %s
+               GROUP BY DAY(date) ORDER BY day""",
+            (month,)
+        )
+        return cur.fetchall()
+
+
 def get_monthly_income_kpi(month: str) -> dict:
     db = get_db()
     with db.cursor() as cur:

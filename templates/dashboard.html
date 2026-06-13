@@ -2,52 +2,225 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>Dashboard <span class="text-muted">{{ month_label }}</span></h1>
+<style>
+.db-row2 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+@media (max-width: 960px) { .db-row2 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px)  { .db-row2 { grid-template-columns: 1fr; } }
+
+.db-table-wrap { background: #fff; border: 1px solid var(--slate-light); border-radius: 6px; margin-bottom: 1.25rem; overflow: hidden; }
+.db-table-head { display: flex; align-items: center; justify-content: space-between; padding: .7rem 1.25rem; background: #fafaf8; border-bottom: 1px solid var(--slate-light); }
+.db-table-head h3 { margin: 0; font-size: .9rem; font-weight: 700; color: var(--bottle-dark); }
+.db-table-empty { padding: 1.25rem; color: var(--slate-mid); font-size: .875rem; }
+
+.chart-legend-inline { display: flex; align-items: center; gap: 1rem; font-size: .8rem; color: var(--slate-mid); }
+.leg-sw { display: inline-block; width: 12px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }
+.kpi-value-pos { color: #217a50; }
+.kpi-value-neg { color: var(--danger); }
+</style>
+
+<div class="page-header" style="margin-bottom:1.25rem">
+  <h1>Dashboard <span class="text-muted" style="font-size:.9rem;font-weight:400">{{ today|ddmmyyyy }} · {{ month_label }}</span></h1>
 </div>
 
-<div class="kpi-grid">
+{# ── Bilans bieżącego miesiąca (3 karty) ────────────────────────────────── #}
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-label">↑ Przychody brutto</div>
+    <div class="kpi-value">{{ income_kpi.total_gross|pln }}</div>
+    <div class="kpi-sub">
+      zapłacone {{ income_kpi.paid|pln }}
+      · <a href="{{ url_for('income.list_incomes', month=month) }}">szczegóły</a>
+    </div>
+  </div>
   <div class="kpi-card">
-    <div class="kpi-label">Łączne koszty brutto</div>
-    <div class="kpi-value">{{ kpi.total_gross|pln }}</div>
-    <div class="kpi-sub">bieżący miesiąc</div>
+    <div class="kpi-label">↓ Koszty brutto</div>
+    <div class="kpi-value">{{ expense_kpi.total_gross|pln }}</div>
+    <div class="kpi-sub">
+      opłacone {{ expense_kpi.paid|pln }}
+      · <a href="{{ url_for('expenses.list_expenses', month=month) }}">szczegóły</a>
+    </div>
   </div>
-  <div class="kpi-card kpi-green">
-    <div class="kpi-label">Opłacone</div>
-    <div class="kpi-value">{{ kpi.paid|pln }}</div>
-    <div class="kpi-sub">100% opłacone</div>
+  <div class="kpi-card {% if balance >= 0 %}kpi-green{% else %}kpi-alert{% endif %}">
+    <div class="kpi-label">= Bilans miesiąca</div>
+    <div class="kpi-value {% if balance >= 0 %}kpi-value-pos{% else %}kpi-value-neg{% endif %}">
+      {% if balance > 0 %}+{% endif %}{{ balance|pln }}
+    </div>
+    <div class="kpi-sub">przychody − koszty · {{ month_label }}</div>
   </div>
-  <div class="kpi-card kpi-yellow">
-    <div class="kpi-label">Oczekujące</div>
-    <div class="kpi-value">{{ kpi.pending|pln }}</div>
-    <div class="kpi-sub">częściowo lub nieopłacone</div>
-  </div>
-  <div class="kpi-card {% if pending_count > 0 %}kpi-alert{% endif %}">
-    <div class="kpi-label">Faktury do przeglądu</div>
-    <div class="kpi-value">{{ pending_count }}</div>
+</div>
+
+{# ── Wskaźniki działania (4 karty) ───────────────────────────────────────── #}
+<div class="db-row2">
+  <div class="kpi-card {% if (pending_count + gdrive_pending_count) > 0 %}kpi-alert{% endif %}">
+    <div class="kpi-label">Faktury do akceptacji</div>
+    <div class="kpi-value" style="font-size:2rem">{{ pending_count + gdrive_pending_count }}</div>
     <div class="kpi-sub">
       {% if pending_count > 0 %}
-        <a href="{{ url_for('settings.fakturownia') }}#pending">przejdź →</a>
+        <a href="{{ url_for('settings.fakturownia') }}#pending">Fakturownia: {{ pending_count }}</a>
+      {% endif %}
+      {% if gdrive_pending_count > 0 %}
+        {% if pending_count > 0 %} · {% endif %}
+        <a href="{{ url_for('settings.gdrive') }}#pending">Dysk: {{ gdrive_pending_count }}</a>
+      {% endif %}
+      {% if pending_count == 0 and gdrive_pending_count == 0 %}
+        wszystkie przypisane
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="kpi-card {% if bank_pending_count > 0 %}kpi-yellow{% endif %}">
+    <div class="kpi-label">Transakcje bankowe</div>
+    <div class="kpi-value" style="font-size:2rem">{{ bank_pending_count }}</div>
+    <div class="kpi-sub">
+      {% if bank_pending_count > 0 %}
+        <a href="{{ url_for('settings.bank') }}#pending">do przypisania →</a>
       {% else %}
         wszystkie przypisane
       {% endif %}
     </div>
   </div>
+
+  <div class="kpi-card {% if unpaid_incomes %}kpi-blue{% endif %}">
+    <div class="kpi-label">Niezapłacone przychody</div>
+    <div class="kpi-value" style="font-size:1.5rem">{{ unpaid_income_total|pln }}</div>
+    <div class="kpi-sub">{{ unpaid_incomes|length }} faktur oczekuje na płatność</div>
+  </div>
+
+  <div class="kpi-card {% if unpaid_expenses %}kpi-yellow{% endif %}">
+    <div class="kpi-label">Nieopłacone wydatki</div>
+    <div class="kpi-value" style="font-size:1.5rem">{{ unpaid_expense_total|pln }}</div>
+    <div class="kpi-sub">{{ unpaid_expenses|length }} pozycji do opłacenia</div>
+  </div>
 </div>
 
-<div class="chart-card">
-  <div class="chart-header">
-    <h2>Koszty dzienne — {{ month_label }}</h2>
+{# ── Wykres dzienny ──────────────────────────────────────────────────────── #}
+<div class="chart-card" style="margin-bottom:1.25rem">
+  <div class="chart-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+    <h2>Przychody vs Koszty — {{ month_label }}</h2>
+    <div class="chart-legend-inline">
+      <span><span class="leg-sw" style="background:#B5E619"></span>Przychody</span>
+      <span><span class="leg-sw" style="background:#1C4B40"></span>Koszty</span>
+    </div>
   </div>
-  <canvas id="dailyChart" height="180" data-values="{{ chart_data }}"></canvas>
+  <canvas id="dualChart" height="200"
+          data-expenses="{{ expense_chart }}"
+          data-incomes="{{ income_chart }}"></canvas>
 </div>
+
+{# ── Nieopłacone wydatki ─────────────────────────────────────────────────── #}
+<div class="db-table-wrap">
+  <div class="db-table-head">
+    <h3>Nieopłacone wydatki
+      {% if unpaid_expenses %}
+        <span class="badge badge-yellow" style="margin-left:.4rem">{{ unpaid_expenses|length }}</span>
+      {% endif %}
+    </h3>
+    <a href="{{ url_for('expenses.list_expenses', payment_filter='none') }}" class="btn btn-ghost btn-sm">
+      Wszystkie nieopłacone →
+    </a>
+  </div>
+  {% if unpaid_expenses %}
+  <div class="table-wrapper">
+    <table class="data-table data-table-sm">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Kontrahent / opis</th>
+          <th>Nr faktury</th>
+          <th class="text-right">Kwota brutto</th>
+          <th class="text-right">Opłacono</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in unpaid_expenses %}
+        <tr>
+          <td class="nowrap">{{ e.date|ddmmyyyy }}</td>
+          <td>{{ e.contractor_name or e.description or '—' }}</td>
+          <td class="text-muted" style="font-size:.8rem">{{ e.invoice_number or '—' }}</td>
+          <td class="text-right"><strong>{{ e.amount_gross|pln }}</strong></td>
+          <td class="text-right">
+            <span class="badge {% if e.payment_percent == 0 %}badge-red{% else %}badge-yellow{% endif %}">
+              {{ e.payment_percent|int }}%
+            </span>
+          </td>
+          <td class="text-right">
+            <a href="{{ url_for('expenses.edit_expense', expense_id=e.id) }}"
+               class="btn btn-ghost btn-sm">Edytuj</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="db-table-empty">Brak nieopłaconych wydatków.</div>
+  {% endif %}
+</div>
+
+{# ── Niezapłacone przychody ──────────────────────────────────────────────── #}
+<div class="db-table-wrap">
+  <div class="db-table-head">
+    <h3>Niezapłacone przychody
+      {% if unpaid_incomes %}
+        <span class="badge badge-blue" style="margin-left:.4rem">{{ unpaid_incomes|length }}</span>
+      {% endif %}
+    </h3>
+    <a href="{{ url_for('income.list_incomes', payment_status='unpaid') }}" class="btn btn-ghost btn-sm">
+      Wszystkie niezapłacone →
+    </a>
+  </div>
+  {% if unpaid_incomes %}
+  <div class="table-wrapper">
+    <table class="data-table data-table-sm">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Klient / opis</th>
+          <th>Nr faktury</th>
+          <th class="text-right">Kwota brutto</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inc in unpaid_incomes %}
+        <tr>
+          <td class="nowrap">{{ inc.date|ddmmyyyy }}</td>
+          <td>{{ inc.client_name or inc.description or '—' }}</td>
+          <td class="text-muted" style="font-size:.8rem">{{ inc.invoice_number or '—' }}</td>
+          <td class="text-right"><strong>{{ inc.amount_gross|pln }}</strong></td>
+          <td>
+            {% if inc.payment_status == 'unpaid' %}
+              <span class="badge badge-red">Nieopłacone</span>
+            {% elif inc.payment_status == 'partial' %}
+              <span class="badge badge-yellow">Częściowo</span>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            <a href="{{ url_for('income.edit_income', income_id=inc.id) }}"
+               class="btn btn-ghost btn-sm">Edytuj</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="db-table-empty">Brak niezapłaconych przychodów.</div>
+  {% endif %}
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
-  const canvas = document.getElementById('dailyChart');
-  if (canvas) drawBarChart(canvas, JSON.parse(canvas.dataset.values));
+  const canvas = document.getElementById('dualChart');
+  if (!canvas) return;
+  const exp = JSON.parse(canvas.dataset.expenses);
+  const inc = JSON.parse(canvas.dataset.incomes);
+  drawDualBarChart(canvas, exp, inc);
 })();
 </script>
 {% endblock %}

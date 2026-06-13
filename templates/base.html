@@ -47,6 +47,10 @@
       </a>
     </li>
   </ul>
+  <div class="nav-user">
+    <span class="nav-username">{{ current_user.full_name or current_user.username }}</span>
+    <a href="{{ url_for('auth.logout') }}" class="nav-logout" title="Wyloguj">Wyloguj</a>
+  </div>
 </nav>
 
 <div class="page-wrapper">

@@ -376,6 +376,91 @@ function section(title, rows) {
   return html;
 }
 
+/* ── Dual bar chart (income vs expenses, Canvas API) ─────────────────────────── */
+function drawDualBarChart(canvas, expData, incData) {
+  if (!canvas) return;
+  const hasData = expData.some(v => v > 0) || incData.some(v => v > 0);
+  if (!hasData) return;
+
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || canvas.parentElement.clientWidth || 900;
+  const cssH = 200;
+  canvas.width  = cssW * dpr;
+  canvas.height = cssH * dpr;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const padL = 60, padR = 16, padT = 16, padB = 36;
+  const W = cssW - padL - padR;
+  const H = cssH - padT - padB;
+  const n = expData.length;
+  const maxVal = Math.max(...expData, ...incData, 1);
+  const slotW  = W / n;
+  const barW   = Math.max(2, Math.floor(slotW * 0.38));
+
+  // Grid lines
+  ctx.strokeStyle = '#e8e8e6';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + H - (H * i / 4);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL + W, y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Y-axis labels
+  ctx.fillStyle = '#878782';
+  ctx.font = '11px Work Sans, system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const val = maxVal * i / 4;
+    const y   = padT + H - (H * i / 4);
+    ctx.fillText(formatK(val), padL - 6, y + 4);
+  }
+
+  // Grouped bars: income (lime) left, expense (bottle-green) right
+  expData.forEach((exp, i) => {
+    const inc = incData[i] || 0;
+    const cx  = padL + i * slotW + slotW / 2;
+    const gap = 1;
+
+    if (inc > 0) {
+      const h = (inc / maxVal) * H;
+      ctx.fillStyle = '#B5E619';
+      ctx.fillRect(cx - barW - gap, padT + H - h, barW, h);
+    }
+    if (exp > 0) {
+      const h = (exp / maxVal) * H;
+      ctx.fillStyle = '#1C4B40';
+      ctx.fillRect(cx + gap, padT + H - h, barW, h);
+    }
+  });
+
+  // X-axis day labels (1, every 5th)
+  ctx.fillStyle = '#878782';
+  ctx.textAlign = 'center';
+  ctx.font = '10px Work Sans, system-ui, sans-serif';
+  expData.forEach((_, i) => {
+    if ((i + 1) % 5 === 0 || i === 0) {
+      ctx.fillText(i + 1, padL + i * slotW + slotW / 2, padT + H + 18);
+    }
+  });
+
+  // Baseline
+  ctx.strokeStyle = '#cdcdc8';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT + H);
+  ctx.lineTo(padL + W, padT + H);
+  ctx.stroke();
+}
+
 /* ── Auto-submit filter form on select change ─────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
   const filterBar = document.querySelector('.filter-bar');

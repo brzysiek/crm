@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, redirect, request, session, url_for
 from config import Config
 import database
 import traceback as _tb
@@ -69,6 +69,18 @@ def month_pl(value):
         return str(value)
 
 
+@app.before_request
+def require_login():
+    open_endpoints = {'auth.login', 'auth.logout', 'static'}
+    ep = request.endpoint or ''
+    if ep in open_endpoints or ep.startswith('static'):
+        return
+    if not session.get('user_id'):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Unauthorized'}), 401
+        return redirect(url_for('auth.login'))
+
+
 @app.context_processor
 def inject_globals():
     try:
@@ -91,6 +103,11 @@ def inject_globals():
         'bank_pending_count':  bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
         'app_name':            Config.APP_NAME,
+        'current_user': {
+            'id':        session.get('user_id'),
+            'username':  session.get('username', ''),
+            'full_name': session.get('full_name', ''),
+        },
     }
 
 
@@ -968,12 +985,14 @@ def api_gdrive_bulk_reject():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+from routes.auth import bp as auth_bp
 from routes.dashboard import bp as dashboard_bp
 from routes.expenses import bp as expenses_bp
 from routes.income import bp as income_bp
 from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
 
+app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(income_bp)
