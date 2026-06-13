@@ -116,6 +116,7 @@ class FakturowniaClient:
                 'vendor_name':    counterparty_name,
                 'vendor_nip':     counterparty_nip,
                 'issue_date':     inv.get('sell_date') or inv.get('issue_date', ''),
+                'payment_to':     inv.get('payment_to') or '',
                 'amount_gross':   _to_float(inv.get('price_gross') or inv.get('gross_price')),
                 'amount_net':     _to_float(inv.get('price_net')   or inv.get('net_price')),
                 'vat_amount':     _to_float(inv.get('price_tax')   or inv.get('tax_price')),

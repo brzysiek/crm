@@ -64,6 +64,7 @@ def _parse_form(form):
         orig_amount   = None
 
     return {
+        'payment_due_date':  form.get('payment_due_date', '').strip() or None,
         'date':            form.get('date', date.today().isoformat()),
         'client_name':     form.get('client_name', '').strip() or None,
         'client_nip':      form.get('client_nip', '').strip() or None,
@@ -248,17 +249,23 @@ def new_income():
                     or (raw.get('gov_id') or '').strip()
                 client_name = (raw.get('buyer_name') or inv.get('vendor_name') or '').strip()
                 client_nip  = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
+                raw_payment_to = inv.get('payment_to') or ''
+                if not raw_payment_to and inv.get('raw_json'):
+                    import json as _json2
+                    _raw = _json.loads(inv['raw_json']) if isinstance(inv['raw_json'], str) else {}
+                    raw_payment_to = _raw.get('payment_to') or ''
                 prefill = {
-                    'date':           str(inv.get('issue_date') or '')[:10] or today,
-                    'amount_gross':   inv.get('amount_gross', ''),
-                    'vat_rate':       '23',
-                    'invoice_number': inv.get('invoice_number', ''),
-                    'client_name':    client_name,
-                    'client_nip':     client_nip,
-                    'description':    '',
-                    'invoice_status': 'ksef' if ksef else 'none',
-                    'invoice_ref':    ksef,
-                    'fakturownia_id': inv['fakturownia_id'],
+                    'date':             str(inv.get('issue_date') or '')[:10] or today,
+                    'payment_due_date': str(raw_payment_to)[:10] if raw_payment_to else '',
+                    'amount_gross':     inv.get('amount_gross', ''),
+                    'vat_rate':         '23',
+                    'invoice_number':   inv.get('invoice_number', ''),
+                    'client_name':      client_name,
+                    'client_nip':       client_nip,
+                    'description':      '',
+                    'invoice_status':   'ksef' if ksef else 'none',
+                    'invoice_ref':      ksef,
+                    'fakturownia_id':   inv['fakturownia_id'],
                 }
                 prefill_invoice = {
                     'source':         'fakturownia',

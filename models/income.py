@@ -50,13 +50,14 @@ def create_income(data: dict) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO incomes
-                   (date, client_name, client_nip, description, invoice_number,
+                   (date, payment_due_date, client_name, client_nip, description, invoice_number,
                     amount_gross, vat_rate, amount_net, orig_amount, orig_currency,
                     invoice_status, invoice_ref, payment_method, payment_status,
                     category, fakturownia_id, notes, paid_by, source)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['date'],
+                    data.get('payment_due_date') or None,
                     data.get('client_name') or None,
                     data.get('client_nip') or None,
                     data['description'],
@@ -90,7 +91,7 @@ def update_income(income_id: int, data: dict) -> None:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE incomes SET
-                   date=%s, client_name=%s, client_nip=%s, description=%s,
+                   date=%s, payment_due_date=%s, client_name=%s, client_nip=%s, description=%s,
                    invoice_number=%s, amount_gross=%s, vat_rate=%s, amount_net=%s,
                    orig_amount=%s, orig_currency=%s,
                    invoice_status=%s, invoice_ref=%s, payment_method=%s,
@@ -98,6 +99,7 @@ def update_income(income_id: int, data: dict) -> None:
                    WHERE id = %s""",
                 (
                     data['date'],
+                    data.get('payment_due_date') or None,
                     data.get('client_name') or None,
                     data.get('client_nip') or None,
                     data['description'],

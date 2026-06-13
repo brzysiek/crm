@@ -57,14 +57,16 @@ def create_expense(data: dict) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO expenses
-                   (date, responsible_person, contractor_name, contractor_nip,
+                   (date, payment_due_date, responsible_person, contractor_name, contractor_nip,
                     invoice_number, description, amount_gross, vat_rate,
                     amount_net, orig_amount, orig_currency,
                     payment_percent, invoice_status, invoice_ref,
                     paid_by, payment_method, is_recurring, category, notes, source)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
-                    data['date'], data['responsible_person'],
+                    data['date'],
+                    data.get('payment_due_date') or None,
+                    data['responsible_person'],
                     data.get('contractor_name') or None,
                     data.get('contractor_nip') or None,
                     data.get('invoice_number') or None,
@@ -96,7 +98,7 @@ def update_expense(expense_id: int, data: dict) -> None:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE expenses SET
-                   date=%s, responsible_person=%s,
+                   date=%s, payment_due_date=%s, responsible_person=%s,
                    contractor_name=%s, contractor_nip=%s, invoice_number=%s,
                    description=%s, amount_gross=%s, vat_rate=%s, amount_net=%s,
                    orig_amount=%s, orig_currency=%s,
@@ -105,7 +107,9 @@ def update_expense(expense_id: int, data: dict) -> None:
                    category=%s, notes=%s, source=%s
                    WHERE id = %s""",
                 (
-                    data['date'], data['responsible_person'],
+                    data['date'],
+                    data.get('payment_due_date') or None,
+                    data['responsible_person'],
                     data.get('contractor_name') or None,
                     data.get('contractor_nip') or None,
                     data.get('invoice_number') or None,

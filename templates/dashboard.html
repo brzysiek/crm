@@ -127,6 +127,7 @@
           <th>Data</th>
           <th>Kontrahent / opis</th>
           <th>Nr faktury</th>
+          <th>Termin płatności</th>
           <th class="text-right">Kwota brutto</th>
           <th class="text-right">Opłacono</th>
           <th></th>
@@ -134,10 +135,18 @@
       </thead>
       <tbody>
         {% for e in unpaid_expenses %}
-        <tr>
+        {% set overdue = e.payment_due_date and e.payment_due_date < today_date %}
+        <tr {% if overdue %}class="row-overdue"{% endif %}>
           <td class="nowrap">{{ e.date|ddmmyyyy }}</td>
           <td>{{ e.contractor_name or e.description or '—' }}</td>
           <td class="text-muted" style="font-size:.8rem">{{ e.invoice_number or '—' }}</td>
+          <td class="nowrap">
+            {% if e.payment_due_date %}
+              <span class="{% if overdue %}due-date-overdue{% else %}due-date-ok{% endif %}">
+                {{ e.payment_due_date|ddmmyyyy }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
           <td class="text-right"><strong>{{ e.amount_gross|pln }}</strong></td>
           <td class="text-right">
             <span class="badge {% if e.payment_percent == 0 %}badge-red{% else %}badge-yellow{% endif %}">
@@ -178,6 +187,7 @@
           <th>Data</th>
           <th>Klient / opis</th>
           <th>Nr faktury</th>
+          <th>Termin płatności</th>
           <th class="text-right">Kwota brutto</th>
           <th>Status</th>
           <th></th>
@@ -185,10 +195,18 @@
       </thead>
       <tbody>
         {% for inc in unpaid_incomes %}
-        <tr>
+        {% set overdue = inc.payment_due_date and inc.payment_due_date < today_date %}
+        <tr {% if overdue %}class="row-overdue"{% endif %}>
           <td class="nowrap">{{ inc.date|ddmmyyyy }}</td>
           <td>{{ inc.client_name or inc.description or '—' }}</td>
           <td class="text-muted" style="font-size:.8rem">{{ inc.invoice_number or '—' }}</td>
+          <td class="nowrap">
+            {% if inc.payment_due_date %}
+              <span class="{% if overdue %}due-date-overdue{% else %}due-date-ok{% endif %}">
+                {{ inc.payment_due_date|ddmmyyyy }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
           <td class="text-right"><strong>{{ inc.amount_gross|pln }}</strong></td>
           <td>
             {% if inc.payment_status == 'unpaid' %}

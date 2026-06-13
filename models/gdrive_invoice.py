@@ -44,7 +44,7 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                        SET file_name=%s, file_modified_at=%s,
                            gdrive_year=%s, gdrive_month=%s,
                            invoice_number=%s, vendor_name=%s, vendor_nip=%s,
-                           issue_date=%s, amount_gross=%s, amount_net=%s,
+                           issue_date=%s, payment_to=%s, amount_gross=%s, amount_net=%s,
                            vat_amount=%s, invoice_type=%s, ocr_raw=%s
                        WHERE gdrive_file_id=%s""",
                     (
@@ -56,6 +56,7 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                         data.get('vendor_name'),
                         data.get('vendor_nip'),
                         data.get('issue_date') or None,
+                        data.get('payment_to') or None,
                         data.get('amount_gross'),
                         data.get('amount_net'),
                         data.get('vat_amount'),
@@ -72,9 +73,9 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                    (gdrive_file_id, file_name, file_modified_at,
                     gdrive_year, gdrive_month,
                     invoice_number, vendor_name, vendor_nip,
-                    issue_date, amount_gross, amount_net, vat_amount,
+                    issue_date, payment_to, amount_gross, amount_net, vat_amount,
                     invoice_type, ocr_raw, status)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
                 (
                     data['gdrive_file_id'],
                     data.get('file_name', ''),
@@ -85,6 +86,7 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                     data.get('vendor_name'),
                     data.get('vendor_nip'),
                     data.get('issue_date') or None,
+                    data.get('payment_to') or None,
                     data.get('amount_gross'),
                     data.get('amount_net'),
                     data.get('vat_amount'),

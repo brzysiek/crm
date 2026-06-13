@@ -15,6 +15,7 @@ SYSTEM_PROMPT = (
     "- vendor_name: name of the vendor/seller (the company that issued the invoice)\n"
     "- vendor_nip: tax ID (NIP) of the vendor\n"
     "- issue_date: issue date in YYYY-MM-DD format\n"
+    "- payment_to: payment due date in YYYY-MM-DD format\n"
     "- amount_gross: total gross amount (plain number, no currency symbols)\n"
     "- amount_net: total net amount (plain number)\n"
     "- vat_amount: total VAT amount (plain number)\n"

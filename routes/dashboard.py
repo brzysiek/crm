@@ -52,4 +52,5 @@ def index():
         unpaid_incomes=unpaid_incomes,
         unpaid_expense_total=unpaid_expense_total,
         unpaid_income_total=unpaid_income_total,
+        today_date=today,
     )

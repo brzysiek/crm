@@ -18,27 +18,6 @@
          class="settings-nav-item {{ 'active' if active_tab == 'users' }}">
         Użytkownicy
       </a>
-      <a href="{{ url_for('settings.bank') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'bank' }}">
-        Import z banku
-        {% if bank_pending_count > 0 %}
-          <span class="nav-badge">{{ bank_pending_count }}</span>
-        {% endif %}
-      </a>
-      <a href="{{ url_for('settings.fakturownia') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'fakturownia' }}">
-        Import z Fakturowni
-        {% if pending_count > 0 %}
-          <span class="nav-badge">{{ pending_count }}</span>
-        {% endif %}
-      </a>
-      <a href="{{ url_for('settings.gdrive') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'gdrive' }}">
-        Import z Dysku Google
-        {% if gdrive_pending_count > 0 %}
-          <span class="nav-badge">{{ gdrive_pending_count }}</span>
-        {% endif %}
-      </a>
       <a href="{{ url_for('settings.logs') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'logs' }}">
         Logi

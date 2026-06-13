@@ -38,9 +38,9 @@ a:hover { text-decoration: underline; }
 .navbar {
   background: var(--bottle-green);
   color: #fff;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 2rem;
   height: 52px;
   position: sticky;
@@ -91,13 +91,61 @@ a:hover { text-decoration: underline; }
   border-radius: 20px;
   line-height: 1.4;
 }
+.nav-badge-dark {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+
+/* ── Dropdown w nawigacji ────────────────────────────────────────────────── */
+.nav-dropdown { position: relative; }
+
+.nav-dropdown-trigger { cursor: pointer; user-select: none; }
+.nav-caret { font-size: .65rem; opacity: .7; margin-left: .1rem; }
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #dde0db;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  list-style: none;
+  padding: .35rem 0;
+  min-width: 180px;
+  z-index: 200;
+}
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu { display: block; }
+
+.nav-dropdown-menu li a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .45rem 1rem;
+  color: var(--slate);
+  font-size: .875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 0;
+  background: none;
+  transition: background .12s;
+}
+.nav-dropdown-menu li a:hover,
+.nav-dropdown-menu li a.active {
+  background: #f2f5f0;
+  color: var(--bottle-green);
+  text-decoration: none;
+}
 
 .nav-user {
   display: flex;
   align-items: center;
   gap: .75rem;
-  margin-left: auto;
-  padding-left: 1.5rem;
+  justify-self: end;
 }
 .nav-username {
   color: rgba(255,255,255,.65);
@@ -909,6 +957,9 @@ a:hover { text-decoration: underline; }
 .row-txn-linked     { background: #f0faf0; }
 .row-txn-linked td  { opacity: .75; }
 .row-txn-suggested  { background: #fffde7; }
+.row-overdue        { background: #fff5f5; }
+.due-date-overdue   { color: #b71c1c; font-weight: 600; }
+.due-date-ok        { color: var(--slate-mid); }
 
 .invoice-txn-suggestion {
   display: flex;

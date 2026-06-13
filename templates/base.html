@@ -37,13 +37,52 @@
     <li>
       <a href="#" class="nav-placeholder" title="Wkrótce">Przepływy</a>
     </li>
+    <li class="nav-dropdown">
+      {% set imports_active = request.endpoint in ('settings.bank','settings.fakturownia','settings.gdrive') %}
+      {% set imports_badge = (bank_pending_count or 0) + (pending_count or 0) + (gdrive_pending_count or 0) %}
+      <a href="{{ url_for('settings.bank') }}"
+         class="nav-dropdown-trigger {{ 'active' if imports_active }}"
+         onclick="return false">
+        Importy
+        {% if imports_badge > 0 %}
+          <span class="nav-badge">{{ imports_badge }}</span>
+        {% endif %}
+        <span class="nav-caret">▾</span>
+      </a>
+      <ul class="nav-dropdown-menu">
+        <li>
+          <a href="{{ url_for('settings.bank') }}"
+             class="{{ 'active' if request.endpoint == 'settings.bank' }}">
+            Transakcje bankowe
+            {% if bank_pending_count > 0 %}
+              <span class="nav-badge nav-badge-dark">{{ bank_pending_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('settings.fakturownia') }}"
+             class="{{ 'active' if request.endpoint == 'settings.fakturownia' }}">
+            Fakturownia
+            {% if pending_count > 0 %}
+              <span class="nav-badge nav-badge-dark">{{ pending_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('settings.gdrive') }}"
+             class="{{ 'active' if request.endpoint == 'settings.gdrive' }}">
+            Dysk Google
+            {% if gdrive_pending_count > 0 %}
+              <span class="nav-badge nav-badge-dark">{{ gdrive_pending_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+      </ul>
+    </li>
     <li>
       <a href="{{ url_for('settings.index') }}"
-         class="{{ 'active' if request.blueprint in ('settings','users') else '' }}">
+         class="{{ 'active' if request.blueprint in ('settings','users') and request.endpoint not in ('settings.bank','settings.fakturownia','settings.gdrive') else '' }}">
         Ustawienia
-        {% if pending_count > 0 %}
-          <span class="nav-badge">{{ pending_count }}</span>
-        {% endif %}
       </a>
     </li>
   </ul>

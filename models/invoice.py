@@ -69,13 +69,16 @@ def upsert_invoice(data: dict) -> bool:
                 cur.execute(
                     """UPDATE fakturownia_invoices
                        SET vendor_name=%s, vendor_nip=%s, invoice_type=%s,
-                           amount_gross=%s, amount_net=%s, vat_amount=%s, raw_json=%s
+                           amount_gross=%s, amount_net=%s, vat_amount=%s,
+                           payment_to=%s, raw_json=%s
                        WHERE fakturownia_id=%s""",
                     (
                         data.get('vendor_name'), data.get('vendor_nip'),
                         data.get('invoice_type', 'expense'),
                         data.get('amount_gross'), data.get('amount_net'),
-                        data.get('vat_amount'), data.get('raw_json'),
+                        data.get('vat_amount'),
+                        data.get('payment_to') or None,
+                        data.get('raw_json'),
                         data['fakturownia_id'],
                     )
                 )
@@ -84,13 +87,15 @@ def upsert_invoice(data: dict) -> bool:
             cur.execute(
                 """INSERT INTO fakturownia_invoices
                    (fakturownia_id, invoice_number, vendor_name, vendor_nip,
-                    issue_date, amount_gross, amount_net, vat_amount,
+                    issue_date, payment_to, amount_gross, amount_net, vat_amount,
                     ksef_number, invoice_type, raw_json, status)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
                 (
                     data['fakturownia_id'], data['invoice_number'],
                     data.get('vendor_name'), data.get('vendor_nip'),
-                    data.get('issue_date'), data.get('amount_gross'),
+                    data.get('issue_date'),
+                    data.get('payment_to') or None,
+                    data.get('amount_gross'),
                     data.get('amount_net'), data.get('vat_amount'),
                     data.get('ksef_number'),
                     data.get('invoice_type', 'expense'),
