@@ -17,6 +17,7 @@
           <option value="">— wybierz bank —</option>
           <option value="mbank">mBank</option>
           <option value="unicredit">UniCredit</option>
+          <option value="alior">Alior Bank</option>
         </select>
       </div>
       <div class="form-group">
@@ -108,6 +109,10 @@
        class="btn btn-sm {{ 'btn-primary' if bank_filter == 'unicredit' else 'btn-ghost' }}">
       UniCredit
     </a>
+    <a href="{{ url_for('settings.bank', bank_filter='alior') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if bank_filter == 'alior' else 'btn-ghost' }}">
+      Alior
+    </a>
     <span class="filter-sep">|</span>
     <a href="{{ url_for('settings.bank', bank_filter=bank_filter, type_filter='expense') }}#pending"
        class="btn btn-sm {{ 'btn-primary' if type_filter == 'expense' else 'btn-ghost' }}">
@@ -143,6 +148,9 @@
         </div>
         <span class="txn-amount {{ 'txn-expense' if is_expense else 'txn-income' }}">
           {{ '%+.2f'|format(txn.amount|float) | replace('.', ',') }} {{ txn.currency }}
+          {% if txn.orig_currency %}
+          <span class="amount-orig">{{ '%+.2f'|format(txn.orig_amount|float) | replace('.', ',') }} {{ txn.orig_currency }}</span>
+          {% endif %}
         </span>
       </div>
       <div class="invoice-card-body">

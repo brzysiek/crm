@@ -59,9 +59,10 @@ def create_expense(data: dict) -> int:
                 """INSERT INTO expenses
                    (date, responsible_person, contractor_name, contractor_nip,
                     invoice_number, description, amount_gross, vat_rate,
-                    amount_net, payment_percent, invoice_status, invoice_ref,
+                    amount_net, orig_amount, orig_currency,
+                    payment_percent, invoice_status, invoice_ref,
                     paid_by, payment_method, is_recurring, category, notes, source)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['date'], data['responsible_person'],
                     data.get('contractor_name') or None,
@@ -69,6 +70,8 @@ def create_expense(data: dict) -> int:
                     data.get('invoice_number') or None,
                     data['description'],
                     data['amount_gross'], data['vat_rate'], data['amount_net'],
+                    data.get('orig_amount') or None,
+                    data.get('orig_currency') or None,
                     data.get('payment_percent', 0),
                     data.get('invoice_status', 'none'),
                     data.get('invoice_ref') or None,
@@ -96,6 +99,7 @@ def update_expense(expense_id: int, data: dict) -> None:
                    date=%s, responsible_person=%s,
                    contractor_name=%s, contractor_nip=%s, invoice_number=%s,
                    description=%s, amount_gross=%s, vat_rate=%s, amount_net=%s,
+                   orig_amount=%s, orig_currency=%s,
                    payment_percent=%s, invoice_status=%s, invoice_ref=%s,
                    paid_by=%s, payment_method=%s, is_recurring=%s,
                    category=%s, notes=%s, source=%s
@@ -107,6 +111,8 @@ def update_expense(expense_id: int, data: dict) -> None:
                     data.get('invoice_number') or None,
                     data['description'],
                     data['amount_gross'], data['vat_rate'], data['amount_net'],
+                    data.get('orig_amount') or None,
+                    data.get('orig_currency') or None,
                     data.get('payment_percent', 0),
                     data.get('invoice_status', 'none'),
                     data.get('invoice_ref') or None,

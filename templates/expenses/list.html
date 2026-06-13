@@ -114,7 +114,12 @@
           {% if e.is_recurring %}<span class="badge badge-gray" title="Koszt stały">↺</span>{% endif %}
         </td>
         <td><span class="text-muted">{{ e.category or '—' }}</span></td>
-        <td class="text-right nowrap">{{ e.amount_gross|pln }}</td>
+        <td class="text-right nowrap">
+          {{ e.amount_gross|pln }}
+          {% if e.orig_currency %}
+          <br><span class="amount-orig">{{ e.orig_amount|float|abs|round(2) }} {{ e.orig_currency }}</span>
+          {% endif %}
+        </td>
         <td>
           {% set pct = e.payment_percent|float %}
           <span class="badge badge-pct

@@ -213,6 +213,17 @@
     <textarea id="notes" name="notes" rows="2">{{ expense.notes or '' }}</textarea>
   </div>
 
+  {# ── Waluta obca (hidden + podgląd) ─────────────────────────────────────── #}
+  <input type="hidden" id="orig_amount"   name="orig_amount"   value="{{ expense.orig_amount or '' }}">
+  <input type="hidden" id="orig_currency" name="orig_currency" value="{{ expense.orig_currency or '' }}">
+  {% if expense.orig_currency %}
+  <div class="form-group">
+    <div class="orig-currency-info">
+      Kwota oryginalna: <strong>{{ expense.orig_amount|float|abs|round(2) }} {{ expense.orig_currency }}</strong>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── Transakcje bankowe ──────────────────────────────────────────────────── #}
   <div class="form-section-divider">
     <div class="txn-section-header">
@@ -223,6 +234,17 @@
       </div>
     </div>
     <div id="linked-txns-list">
+      <p class="text-muted small" style="padding:.25rem 0">Ładowanie…</p>
+    </div>
+  </div>
+
+  {# ── Faktury ──────────────────────────────────────────────────────────────── #}
+  <div class="form-section-divider">
+    <div class="txn-section-header">
+      <span class="form-section-title">Faktury</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="openInvoiceSearch()">+ Dodaj fakturę</button>
+    </div>
+    <div id="linked-invoices-list">
       <p class="text-muted small" style="padding:.25rem 0">Ładowanie…</p>
     </div>
   </div>
@@ -277,6 +299,30 @@
   </div>
 </div>
 
+{# ── Modal: szukaj faktury ────────────────────────────────────────────────── #}
+<div id="invSearchModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-txn">
+    <div class="modal-header">
+      <h3>Szukaj faktury</h3>
+      <button onclick="document.getElementById('invSearchModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body" style="padding:1rem">
+      <div class="txn-search-bar">
+        <input type="text" id="invSearchQ" placeholder="Numer faktury, dostawca…"
+               class="filter-input" oninput="debounceInvSearch()">
+        <select id="invSource" class="filter-select" onchange="doInvoiceSearch()">
+          <option value="">Wszystkie źródła</option>
+          <option value="fakturownia">Fakturownia</option>
+          <option value="gdrive">Dysk Google</option>
+        </select>
+      </div>
+      <div id="invSearchResults" style="margin-top:1rem">
+        <p class="text-muted">Wyszukiwanie…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -285,6 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
   calcNet();
   toggleInvoiceRef();
   loadLinkedTransactions();
+  loadLinkedInvoices();
   doTxnSearch();
   autoLinkSuggested();
 });
@@ -415,7 +462,7 @@ async function linkTxn(txnId) {
       _updateHiddenInputs();
     }
   }
-  if (txnData) _autofillSource(txnData.bank);
+  if (txnData) { _autofillSource(txnData.bank); _autofillOrig(txnData); }
   loadLinkedTransactions();
   doTxnSearch();
 }
@@ -425,6 +472,26 @@ function _autofillSource(bank) {
   if (src && !src.value.trim()) src.value = bank || '';
   const pm = document.getElementById('payment_method');
   if (pm && !pm.value) pm.value = 'transfer';
+}
+
+function _autofillOrig(txnData) {
+  if (!txnData || !txnData.orig_currency) return;
+  const amtEl = document.getElementById('orig_amount');
+  const curEl = document.getElementById('orig_currency');
+  if (!amtEl || !curEl || curEl.value) return; // już ustawione — nie nadpisuj
+  amtEl.value = Math.abs(parseFloat(txnData.orig_amount || 0));
+  curEl.value = txnData.orig_currency;
+  // Pokaż adnotację
+  let infoEl = document.getElementById('orig-currency-info-dyn');
+  if (!infoEl) {
+    infoEl = document.createElement('div');
+    infoEl.id = 'orig-currency-info-dyn';
+    infoEl.className = 'form-group';
+    amtEl.parentNode.insertBefore(infoEl, amtEl.nextSibling);
+  }
+  infoEl.innerHTML = '<div class="orig-currency-info">Kwota oryginalna: <strong>'
+    + Math.abs(parseFloat(txnData.orig_amount || 0)).toFixed(2) + ' ' + txnData.orig_currency
+    + '</strong></div>';
 }
 
 async function autoLinkSuggested() {
@@ -494,6 +561,132 @@ function _buildTxnTable(rows) {
     html += THEAD + rest.map(_txnRow).join('') + '</tbody></table></div>';
   }
   return html;
+}
+</script>
+<script>
+/* ── Sekcja faktur ────────────────────────────────────────────────────────── */
+let _pendingInvoices = [];
+let _lastInvResults  = [];
+
+async function loadLinkedInvoices() {
+  const el = document.getElementById('linked-invoices-list');
+  let invs;
+  if (IS_EDIT) {
+    const resp = await fetch(API_BASE + '/api/invoices/linked/' + ENTITY_TYPE + '/' + ENTITY_ID);
+    invs = await resp.json();
+  } else {
+    invs = _pendingInvoices;
+  }
+  if (invs.length === 0) {
+    el.innerHTML = '<p class="text-muted small" style="padding:.25rem 0">Brak powiązanych faktur.</p>';
+    return;
+  }
+  let html = '<div class="table-wrapper"><table class="data-table data-table-sm"><thead><tr>'
+    + '<th>Źródło</th><th>Nr faktury</th><th>Dostawca</th><th>Data</th>'
+    + '<th class="text-right">Kwota brutto</th><th></th></tr></thead><tbody>';
+  for (const inv of invs) {
+    html += '<tr>'
+      + '<td><span class="badge ' + _invBadgeClass(inv.source) + '">' + _invLabel(inv.source) + '</span></td>'
+      + '<td>' + esc(inv.invoice_number || '—') + '</td>'
+      + '<td>' + esc(inv.vendor_name || '—') + '</td>'
+      + '<td class="nowrap">' + (inv.issue_date || '—') + '</td>'
+      + '<td class="text-right nowrap">' + fmtPLN(inv.amount_gross) + '</td>'
+      + '<td><button type="button" class="btn btn-ghost btn-sm" onclick="unlinkInvoice(\'' + inv.source + '\',' + inv.id + ')">Odepnij</button></td>'
+      + '</tr>';
+  }
+  el.innerHTML = html + '</tbody></table></div>';
+}
+
+async function unlinkInvoice(source, invId) {
+  if (!confirm('Odpiąć tę fakturę? Wróci do listy oczekujących.')) return;
+  if (IS_EDIT) {
+    await fetch(API_BASE + '/api/invoices/unlink/' + source + '/' + invId, { method: 'DELETE' });
+  } else {
+    _pendingInvoices = _pendingInvoices.filter(i => !(i.source === source && i.id === invId));
+    _updateInvoiceInputs();
+  }
+  loadLinkedInvoices();
+  if (document.getElementById('invSearchModal')?.classList.contains('open')) doInvoiceSearch();
+}
+
+function _updateInvoiceInputs() {
+  document.querySelectorAll('input[name="invoice_links[]"]').forEach(el => el.remove());
+  const form = document.querySelector('form');
+  _pendingInvoices.forEach(inv => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'invoice_links[]'; inp.value = inv.source + ':' + inv.id;
+    form.appendChild(inp);
+  });
+}
+
+function openInvoiceSearch() {
+  document.getElementById('invSearchModal').classList.add('open');
+  doInvoiceSearch();
+}
+
+let _invTimer = null;
+function debounceInvSearch() {
+  clearTimeout(_invTimer);
+  _invTimer = setTimeout(doInvoiceSearch, 350);
+}
+
+async function doInvoiceSearch() {
+  const q      = document.getElementById('invSearchQ')?.value || '';
+  const filter = document.getElementById('invSource')?.value || '';
+  const params = new URLSearchParams({ entity_type: ENTITY_TYPE });
+  if (q) params.set('q', q);
+  const resultsEl = document.getElementById('invSearchResults');
+  const resp = await fetch(API_BASE + '/api/invoices/search?' + params);
+  _lastInvResults = await resp.json();
+  let rows = filter ? _lastInvResults.filter(r => r.source === filter) : _lastInvResults;
+
+  if (rows.length === 0) {
+    resultsEl.innerHTML = '<p class="text-muted">Brak faktur.</p>'; return;
+  }
+  let html = '<div class="table-wrapper"><table class="data-table data-table-sm"><thead><tr>'
+    + '<th>Źródło</th><th>Nr faktury</th><th>Dostawca</th><th>Data</th>'
+    + '<th class="text-right">Kwota</th><th></th></tr></thead><tbody>';
+  for (const inv of rows) {
+    const linked = _pendingInvoices.some(p => p.source === inv.source && p.id === inv.id);
+    html += '<tr' + (linked ? ' class="row-txn-linked"' : '') + '>'
+      + '<td><span class="badge ' + _invBadgeClass(inv.source) + '">' + _invLabel(inv.source) + '</span></td>'
+      + '<td>' + esc(inv.invoice_number || inv.file_name || '—') + '</td>'
+      + '<td>' + esc(inv.vendor_name || '—') + '</td>'
+      + '<td class="nowrap">' + (inv.issue_date || '—') + '</td>'
+      + '<td class="text-right nowrap">' + fmtPLN(inv.amount_gross) + '</td>'
+      + (linked
+          ? '<td><span class="badge badge-green">Powiązana ✓</span></td>'
+          : '<td><button type="button" class="btn btn-primary btn-sm" onclick="linkInvoice(\'' + inv.source + '\',' + inv.id + ')">Powiąż</button></td>')
+      + '</tr>';
+  }
+  resultsEl.innerHTML = html + '</tbody></table></div>';
+}
+
+async function linkInvoice(source, invId) {
+  const invData = _lastInvResults.find(r => r.source === source && r.id === invId);
+  if (IS_EDIT) {
+    const resp = await fetch(API_BASE + '/api/invoices/link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, invoice_id: invId, entity_id: ENTITY_ID }),
+    });
+    const result = await resp.json();
+    if (!result.ok) { alert('Błąd: ' + result.error); return; }
+  } else {
+    if (invData && !_pendingInvoices.find(p => p.source === source && p.id === invId)) {
+      _pendingInvoices.push({ ...invData });
+      _updateInvoiceInputs();
+    }
+  }
+  loadLinkedInvoices();
+  doInvoiceSearch();
+}
+
+function _invBadgeClass(source) {
+  return source === 'fakturownia' ? 'badge-blue' : 'badge-yellow';
+}
+function _invLabel(source) {
+  return source === 'fakturownia' ? 'Fakturownia' : 'Dysk Google';
 }
 </script>
 {% endblock %}

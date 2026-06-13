@@ -938,6 +938,32 @@ a:hover { text-decoration: underline; }
   color: #1b5e20;
 }
 
+/* ── Waluta obca ─────────────────────────────────────────────────────────────── */
+.amount-orig {
+  display: block;
+  font-size: .72rem;
+  font-weight: 400;
+  color: var(--slate-mid);
+  letter-spacing: .01em;
+}
+.txn-amount .amount-orig {
+  display: block;
+  font-size: .72rem;
+  font-weight: 400;
+  opacity: .75;
+}
+.orig-currency-info {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .82rem;
+  color: var(--slate);
+  background: var(--off-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .3rem .65rem;
+}
+
 /* ── Misc ────────────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 .small  { font-size: .8rem; }

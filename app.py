@@ -380,6 +380,159 @@ def api_income_transactions_delete(income_id, bank_txn_id):
     return jsonify(result)
 
 
+@app.route('/api/invoices/linked/<entity_type>/<int:entity_id>')
+def api_invoices_linked(entity_type, entity_id):
+    """All invoices (fakturownia + gdrive) linked to an expense or income record."""
+    from database import get_db as _get_db
+    db = _get_db()
+    result = []
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, invoice_number, vendor_name, issue_date, amount_gross "
+            "FROM fakturownia_invoices WHERE assigned_expense_id=%s AND status='assigned'",
+            (entity_id,)
+        )
+        for row in cur.fetchall():
+            result.append({
+                'source': 'fakturownia',
+                'id': row['id'],
+                'invoice_number': row.get('invoice_number') or '',
+                'vendor_name': row.get('vendor_name') or '',
+                'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
+                'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
+            })
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross "
+            "FROM gdrive_invoices WHERE assigned_record_id=%s AND status='assigned'",
+            (entity_id,)
+        )
+        for row in cur.fetchall():
+            result.append({
+                'source': 'gdrive',
+                'id': row['id'],
+                'invoice_number': row.get('invoice_number') or row.get('file_name') or '',
+                'vendor_name': row.get('vendor_name') or '',
+                'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
+                'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
+                'file_name': row.get('file_name') or '',
+            })
+    return jsonify(result)
+
+
+@app.route('/api/invoices/search')
+def api_invoices_search():
+    """Search pending invoices from both sources for linking."""
+    from database import get_db as _get_db
+    q = request.args.get('q', '').strip()
+    entity_type = request.args.get('entity_type', '')
+    db = _get_db()
+    result = []
+
+    sql = ("SELECT id, invoice_number, vendor_name, issue_date, amount_gross "
+           "FROM fakturownia_invoices WHERE status='pending'")
+    params = []
+    if entity_type in ('expense', 'income'):
+        sql += " AND invoice_type=%s"
+        params.append(entity_type)
+    if q:
+        sql += " AND (invoice_number LIKE %s OR vendor_name LIKE %s)"
+        like = f"%{q}%"
+        params.extend([like, like])
+    sql += " ORDER BY issue_date DESC LIMIT 50"
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        for row in cur.fetchall():
+            result.append({
+                'source': 'fakturownia',
+                'id': row['id'],
+                'invoice_number': row.get('invoice_number') or '',
+                'vendor_name': row.get('vendor_name') or '',
+                'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
+                'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
+            })
+
+    sql = ("SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross "
+           "FROM gdrive_invoices WHERE status='pending'")
+    params = []
+    if entity_type in ('expense', 'income'):
+        sql += " AND invoice_type=%s"
+        params.append(entity_type)
+    if q:
+        sql += " AND (invoice_number LIKE %s OR vendor_name LIKE %s OR file_name LIKE %s)"
+        like = f"%{q}%"
+        params.extend([like, like, like])
+    sql += " ORDER BY issue_date DESC LIMIT 50"
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        for row in cur.fetchall():
+            result.append({
+                'source': 'gdrive',
+                'id': row['id'],
+                'invoice_number': row.get('invoice_number') or row.get('file_name') or '',
+                'vendor_name': row.get('vendor_name') or '',
+                'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
+                'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
+                'file_name': row.get('file_name') or '',
+            })
+
+    return jsonify(result)
+
+
+@app.route('/api/invoices/link', methods=['POST'])
+def api_invoice_link():
+    """Link a pending invoice to an expense or income (AJAX, edit mode)."""
+    data = request.get_json(silent=True) or {}
+    source = data.get('source')
+    invoice_id = data.get('invoice_id')
+    entity_id = data.get('entity_id')
+    if not source or not invoice_id or not entity_id:
+        return jsonify({'ok': False, 'error': 'Brak danych'}), 400
+    try:
+        if source == 'fakturownia':
+            from models.invoice import assign_invoice
+            assign_invoice(int(invoice_id), int(entity_id))
+        elif source == 'gdrive':
+            from models.gdrive_invoice import assign_gdrive_invoice
+            assign_gdrive_invoice(int(invoice_id), int(entity_id))
+        else:
+            return jsonify({'ok': False, 'error': 'Nieznane źródło'}), 400
+        return jsonify({'ok': True})
+    except Exception as e:
+        app.logger.error('invoice link error: %s', e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/invoices/unlink/<source>/<int:invoice_id>', methods=['DELETE'])
+def api_invoice_unlink(source, invoice_id):
+    """Unlink (return to pending) a previously assigned invoice."""
+    from database import get_db as _get_db
+    db = _get_db()
+    try:
+        if source == 'fakturownia':
+            with db.cursor() as cur:
+                cur.execute(
+                    "UPDATE fakturownia_invoices SET status='pending', assigned_expense_id=NULL "
+                    "WHERE id=%s AND status='assigned'",
+                    (invoice_id,)
+                )
+            db.commit()
+        elif source == 'gdrive':
+            with db.cursor() as cur:
+                cur.execute(
+                    "UPDATE gdrive_invoices SET status='pending', assigned_record_id=NULL "
+                    "WHERE id=%s AND status='assigned'",
+                    (invoice_id,)
+                )
+            db.commit()
+        else:
+            return jsonify({'ok': False, 'error': 'Nieznane źródło'}), 400
+        return jsonify({'ok': True})
+    except Exception as e:
+        app.logger.error('invoice unlink error: %s', e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route('/api/disk-preview/<entity_type>/<int:entity_id>')
 def api_disk_preview(entity_type, entity_id):
     """Return OCR data for a GDrive invoice linked to an expense or income."""

@@ -64,6 +64,15 @@ def _parse_form(form):
     except ValueError:
         amount_net_form = amount_net
 
+    try:
+        orig_amount = float(form.get('orig_amount') or 0) or None
+    except (ValueError, TypeError):
+        orig_amount = None
+    orig_currency = form.get('orig_currency', '').strip() or None
+    if orig_currency == 'PLN':
+        orig_currency = None
+        orig_amount   = None
+
     return {
         'date':               form.get('date', date.today().isoformat()),
         'responsible_person': person,
@@ -74,6 +83,8 @@ def _parse_form(form):
         'amount_gross':       amount_gross,
         'vat_rate':           vat_rate,
         'amount_net':         amount_net_form,
+        'orig_amount':        orig_amount,
+        'orig_currency':      orig_currency,
         'payment_percent':    float(form.get('payment_percent', 0) or 0),
         'invoice_status':     form.get('invoice_status', 'none'),
         'invoice_ref':        form.get('invoice_ref', '').strip() or None,
@@ -200,6 +211,19 @@ def new_expense():
                 except Exception:
                     pass
 
+        invoice_links = request.form.getlist('invoice_links[]')
+        for link in invoice_links:
+            try:
+                src, inv_id_str = link.split(':', 1)
+                if src == 'fakturownia':
+                    from models.invoice import assign_invoice
+                    assign_invoice(int(inv_id_str), expense_id)
+                elif src == 'gdrive':
+                    from models.gdrive_invoice import assign_gdrive_invoice
+                    assign_gdrive_invoice(int(inv_id_str), expense_id)
+            except Exception:
+                pass
+
         flash('Wydatek został zapisany.', 'success')
         return redirect(url_for('expenses.list_expenses'))
 
@@ -218,6 +242,8 @@ def new_expense():
                     'description':     '',
                     'invoice_status':  'none',
                     'bank_txn_id':     txn['id'],
+                    'orig_amount':     txn.get('orig_amount') or '',
+                    'orig_currency':   txn.get('orig_currency') or '',
                 }
                 return render_template('expenses/form.html',
                     expense=prefill, users=users, categories=categories,

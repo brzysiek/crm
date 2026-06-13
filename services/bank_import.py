@@ -126,6 +126,108 @@ def parse_mbank(content: str) -> list[dict]:
     return rows
 
 
+def parse_alior(content: str) -> list[dict]:
+    """
+    Format Alior Bank (separator ;, cp1250):
+    Wiersz 1: metadane (Kryteria transakcji…) — pomijamy
+    Wiersz 2: nagłówki kolumn
+    Wiersze 3+: dane
+
+    Kolumny:
+    Data transakcji; Data księgowania; Nazwa nadawcy; Nazwa odbiorcy;
+    Szczegóły transakcji; Kwota operacji; Waluta operacji;
+    Kwota w walucie rachunku; Waluta rachunku;
+    Numer rachunku nadawcy; Numer rachunku odbiorcy
+
+    amount           = Kwota w walucie rachunku (zawsze PLN)
+    orig_amount      = Kwota operacji (jeśli waluta != PLN)
+    orig_currency    = Waluta operacji (jeśli != PLN, else None)
+    """
+    rows = []
+    lines = content.splitlines()
+
+    # Pomiń wiersz z metadanymi i nagłówek — szukamy wiersza z "Data transakcji"
+    data_start = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith('Data transakcji'):
+            data_start = i + 1
+            break
+    if data_start is None:
+        return rows
+
+    def _parse_amount(s: str) -> float:
+        return float(s.strip().replace('\xa0', '').replace(' ', '').replace(',', '.'))
+
+    for raw_line in lines[data_start:]:
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+
+        parts = stripped.split(';')
+        if len(parts) < 9:
+            continue
+
+        date_raw        = parts[0].strip()   # DD-MM-YYYY
+        sender          = parts[2].strip()
+        recipient       = parts[3].strip()
+        details         = parts[4].strip()
+        orig_amount_raw = parts[5].strip()   # kwota w walucie operacji
+        orig_curr       = parts[6].strip()   # waluta operacji
+        pln_amount_raw  = parts[7].strip()   # kwota w PLN
+        sender_acc      = parts[9].strip() if len(parts) > 9 else ''
+        recip_acc       = parts[10].strip() if len(parts) > 10 else ''
+
+        # Konwersja daty DD-MM-YYYY → YYYY-MM-DD
+        try:
+            d, m, y = date_raw.split('-')
+            date_str = f'{y}-{m}-{d}'
+        except Exception:
+            continue
+
+        try:
+            pln_amount = _parse_amount(pln_amount_raw)
+        except ValueError:
+            continue
+
+        try:
+            orig_amount_val = _parse_amount(orig_amount_raw)
+        except ValueError:
+            orig_amount_val = None
+
+        # Waluta oryginalna (None gdy PLN)
+        orig_currency = orig_curr if orig_curr and orig_curr != 'PLN' else None
+        if orig_currency is None:
+            orig_amount_val = None  # nie przechowuj duplikatu
+
+        # Kontrahent: dla debetu — odbiorca, dla kredytu — nadawca
+        counterparty = (recipient or sender or details)[:256]
+
+        # Opis: szczegóły + ewentualnie nazwa kontrahenta
+        description = details or (recipient if pln_amount < 0 else sender)
+
+        # ID transakcji: hash ze stabilnych pól
+        txn_id = 'alior_' + _stable_hash([
+            'alior', date_str, orig_amount_raw, pln_amount_raw, details[:60],
+            sender_acc[:20], recip_acc[:20],
+        ])
+
+        rows.append({
+            'bank':           'alior',
+            'transaction_id': txn_id,
+            'date':           date_str,
+            'description':    description,
+            'counterparty':   counterparty,
+            'amount':         pln_amount,       # zawsze PLN
+            'currency':       'PLN',
+            'orig_amount':    orig_amount_val,
+            'orig_currency':  orig_currency,
+            'category':       '',
+            'balance':        None,
+            'raw_data':       json.dumps(parts, ensure_ascii=False),
+        })
+    return rows
+
+
 def parse_file(bank_type: str, content_bytes: bytes) -> list[dict]:
     """Próbuje UTF-8, przy błędzie cp1250."""
     try:
@@ -137,4 +239,6 @@ def parse_file(bank_type: str, content_bytes: bytes) -> list[dict]:
         return parse_unicredit(content)
     elif bank_type == 'mbank':
         return parse_mbank(content)
+    elif bank_type == 'alior':
+        return parse_alior(content)
     return []

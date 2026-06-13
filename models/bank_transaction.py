@@ -6,7 +6,7 @@ def get_pending_bank_transactions(bank: str = None,
     db = get_db()
     sql = "SELECT * FROM bank_transactions WHERE status='pending'"
     params = []
-    if bank in ('mbank', 'unicredit'):
+    if bank in ('mbank', 'unicredit', 'alior'):
         sql += " AND bank = %s"
         params.append(bank)
     if txn_type == 'expense':
@@ -43,12 +43,14 @@ def upsert_bank_transaction(data: dict) -> bool:
             cur.execute(
                 """INSERT IGNORE INTO bank_transactions
                    (bank, transaction_id, date, description, counterparty,
-                    amount, currency, category, balance, raw_data, status)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
+                    amount, orig_amount, currency, orig_currency,
+                    category, balance, raw_data, status)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
                 (
                     data['bank'], data['transaction_id'], data['date'],
                     data.get('description'), data.get('counterparty'),
-                    data['amount'], data.get('currency', 'PLN'),
+                    data['amount'], data.get('orig_amount'),
+                    data.get('currency', 'PLN'), data.get('orig_currency'),
                     data.get('category', ''), data.get('balance'),
                     data.get('raw_data'),
                 )

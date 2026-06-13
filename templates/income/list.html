@@ -96,7 +96,12 @@
           <span class="desc-cell" title="{{ inc.description }}">{{ inc.description }}</span>
         </td>
         <td><span class="text-muted">{{ inc.category or '—' }}</span></td>
-        <td class="text-right nowrap">{{ inc.amount_gross|pln }}</td>
+        <td class="text-right nowrap">
+          {{ inc.amount_gross|pln }}
+          {% if inc.orig_currency %}
+          <br><span class="amount-orig">{{ inc.orig_amount|float|abs|round(2) }} {{ inc.orig_currency }}</span>
+          {% endif %}
+        </td>
         <td>
           {% if inc.payment_status == 'paid' %}
             <span class="badge badge-green">Opłacone</span>
