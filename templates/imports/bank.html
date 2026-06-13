@@ -1,0 +1,310 @@
+{% extends 'imports/_layout.html' %}
+{% block imports_content %}
+
+<h2>Import z banku</h2>
+
+{# ── A. Import + historia ──────────────────────────────────────────────────── #}
+<div class="settings-section">
+  <div class="section-header-row">
+    <h3>Wczytaj wyciąg bankowy</h3>
+  </div>
+
+  <form id="importForm">
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label for="bank_type">Bank</label>
+        <select id="bank_type" name="bank_type" required>
+          <option value="">— wybierz bank —</option>
+          <option value="mbank">mBank</option>
+          <option value="unicredit">UniCredit</option>
+          <option value="alior">Alior Bank</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="csv_file">Plik CSV</label>
+        <input type="file" id="csv_file" name="csv_file" accept=".csv,.CSV" required>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" id="btnImport">Importuj transakcje</button>
+    </div>
+  </form>
+
+  <div id="importResult" class="api-result" style="display:none"></div>
+
+  {# ── Historia importów ── #}
+  <div style="margin-top:1.5rem">
+    <h4 style="margin-bottom:.75rem; font-size:.9rem; color:var(--slate)">Historia importów</h4>
+  {% if import_log %}
+    <div class="table-wrapper">
+      <table class="data-table data-table-sm">
+        <thead>
+          <tr>
+            <th>Data / godzina</th>
+            <th>Bank</th>
+            <th>Plik</th>
+            <th class="text-right">Znalezione</th>
+            <th class="text-right">Nowe</th>
+            <th>Status</th>
+            <th>Komunikat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in import_log %}
+          <tr>
+            <td class="nowrap">{{ log.imported_at }}</td>
+            <td><span class="bank-badge bank-badge-{{ log.bank }}">{{ log.bank|upper }}</span></td>
+            <td class="text-muted small">{{ log.filename or '—' }}</td>
+            <td class="text-right">{{ log.rows_found }}</td>
+            <td class="text-right">{{ log.rows_new }}</td>
+            <td>
+              <span class="badge {{ 'badge-green' if log.status == 'ok' else 'badge-red' }}">
+                {{ log.status }}
+              </span>
+            </td>
+            <td class="text-muted small">{{ log.message or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-muted">Brak historii importów.</p>
+  {% endif %}
+  </div>
+</div>
+
+{# ── B. Transakcje do akceptacji ──────────────────────────────────────────── #}
+<div class="settings-section" id="pending">
+
+  <div class="pending-header">
+    <h3>
+      Transakcje do akceptacji
+      {% set total_pending = pending_transactions|length %}
+      {% if total_pending %}
+        <span class="badge badge-red">{{ total_pending }}</span>
+      {% endif %}
+    </h3>
+    {% if pending_transactions %}
+    <div class="bulk-actions" id="bulkActions" style="display:none">
+      <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkReject">
+        Odrzuć zaznaczone
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Filtry ── #}
+  <div class="pending-filter-bar">
+    <a href="{{ url_for('imports.bank') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if not bank_filter and not type_filter else 'btn-ghost' }}">
+      Wszystkie
+    </a>
+    <a href="{{ url_for('imports.bank', bank_filter='mbank') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if bank_filter == 'mbank' else 'btn-ghost' }}">
+      mBank
+    </a>
+    <a href="{{ url_for('imports.bank', bank_filter='unicredit') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if bank_filter == 'unicredit' else 'btn-ghost' }}">
+      UniCredit
+    </a>
+    <a href="{{ url_for('imports.bank', bank_filter='alior') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if bank_filter == 'alior' else 'btn-ghost' }}">
+      Alior
+    </a>
+    <span class="filter-sep">|</span>
+    <a href="{{ url_for('imports.bank', bank_filter=bank_filter, type_filter='expense') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if type_filter == 'expense' else 'btn-ghost' }}">
+      Wydatki (−)
+    </a>
+    <a href="{{ url_for('imports.bank', bank_filter=bank_filter, type_filter='income') }}#pending"
+       class="btn btn-sm {{ 'btn-primary' if type_filter == 'income' else 'btn-ghost' }}">
+      Wpływy (+)
+    </a>
+  </div>
+
+  {% if pending_transactions %}
+  <div class="bulk-select-bar">
+    <label class="checkbox-label">
+      <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+      Zaznacz wszystkie
+    </label>
+  </div>
+
+  <div class="invoice-cards">
+    {% for txn in pending_transactions %}
+    {% set is_expense = txn.amount < 0 %}
+    <div class="invoice-card {{ 'invoice-card-expense' if is_expense else 'invoice-card-income' }}">
+      <div class="invoice-card-header">
+        <div class="invoice-card-header-left">
+          <input type="checkbox" class="inv-checkbox" value="{{ txn.id }}"
+                 onchange="updateBulkBar()">
+          <strong class="nowrap">{{ txn.date }}</strong>
+          <span class="invoice-type-badge {{ 'badge-expense' if is_expense else 'badge-income' }}">
+            {{ 'Wydatek' if is_expense else 'Wpływ' }}
+          </span>
+          <span class="bank-badge bank-badge-{{ txn.bank }}">{{ txn.bank|upper }}</span>
+        </div>
+        <span class="txn-amount {{ 'txn-expense' if is_expense else 'txn-income' }}">
+          {{ '%+.2f'|format(txn.amount|float) | replace('.', ',') }} {{ txn.currency }}
+          {% if txn.orig_currency %}
+          <span class="amount-orig">{{ '%+.2f'|format(txn.orig_amount|float) | replace('.', ',') }} {{ txn.orig_currency }}</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="invoice-card-body">
+        <div class="invoice-meta">
+          {% if txn.counterparty %}
+            <span class="inv-party-label">Kontrahent:</span>
+            <span><strong>{{ txn.counterparty }}</strong></span>
+          {% endif %}
+          {% if txn.category %}
+            <span class="badge badge-gray">{{ txn.category }}</span>
+          {% endif %}
+        </div>
+        {% if txn.description %}
+        <div class="txn-description text-muted small">{{ txn.description }}</div>
+        {% endif %}
+        {% if txn.balance is not none %}
+        <div class="text-muted small">Saldo po: {{ txn.balance }} {{ txn.currency }}</div>
+        {% endif %}
+      </div>
+      <div class="invoice-card-footer">
+        {% if is_expense %}
+          <a href="{{ url_for('expenses.new_expense', bank_txn=txn.id) }}"
+             class="btn btn-primary btn-sm">
+            Utwórz wydatek
+          </a>
+          <a href="{{ url_for('income.new_income', bank_txn=txn.id) }}"
+             class="btn btn-outline btn-sm">
+            Utwórz przychód
+          </a>
+        {% else %}
+          <a href="{{ url_for('income.new_income', bank_txn=txn.id) }}"
+             class="btn btn-primary btn-sm">
+            Utwórz przychód
+          </a>
+          <a href="{{ url_for('expenses.new_expense', bank_txn=txn.id) }}"
+             class="btn btn-outline btn-sm">
+            Utwórz wydatek
+          </a>
+        {% endif %}
+        <form method="post"
+              action="{{ url_for('imports.reject_bank_txn_view', txn_id=txn.id) }}"
+              class="inline-form"
+              onsubmit="return confirm('Odrzucić tę transakcję?')">
+          <button type="submit" class="btn btn-outline btn-sm">Odrzuć</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <p class="text-muted">
+    {% if bank_filter or type_filter %}
+      Brak transakcji dla wybranego filtra.
+    {% else %}
+      Brak transakcji oczekujących na akceptację. Wczytaj wyciąg powyżej.
+    {% endif %}
+  </p>
+  {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Import AJAX ──────────────────────────────────────────────────────────────
+document.getElementById('importForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const el  = document.getElementById('importResult');
+  const btn = document.getElementById('btnImport');
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.textContent = 'Importowanie…';
+  btn.disabled = true;
+
+  try {
+    const fd = new FormData(this);
+    const r  = await fetch('{{ url_for("imports.bank_import") }}', {
+      method: 'POST',
+      body: fd,
+    });
+    const d = await r.json();
+    if (d.status === 'ok') {
+      el.className = 'api-result api-ok';
+      el.style.whiteSpace = 'pre-wrap';
+      const msg = `Plik: ${d.filename}\nZnalezione: ${d.rows_found} transakcji, nowych: ${d.rows_new}`;
+      el.innerHTML = msg + (d.rows_new > 0
+        ? `\n→ <a href="#pending" style="color:inherit" onclick="location.reload()">Przejdź do listy transakcji</a>`
+        : '');
+      if (d.rows_new > 0) {
+        setTimeout(() => location.reload(), 2000);
+      }
+    } else {
+      el.className = 'api-result api-error';
+      el.textContent = d.message || 'Błąd importu.';
+    }
+  } catch (err) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd żądania: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Bulk select ─────────────────────────────────────────────────────────────
+function getCheckedIds() {
+  return [...document.querySelectorAll('.inv-checkbox:checked')].map(el => parseInt(el.value));
+}
+
+function updateBulkBar() {
+  const ids  = getCheckedIds();
+  const bar  = document.getElementById('bulkActions');
+  const cnt  = document.getElementById('bulkCount');
+  if (!bar) return;
+  bar.style.display = ids.length > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'a' : 'ych');
+  const all = document.querySelectorAll('.inv-checkbox');
+  const cb  = document.getElementById('selectAll');
+  if (cb) {
+    cb.checked       = all.length > 0 && ids.length === all.length;
+    cb.indeterminate = ids.length > 0 && ids.length < all.length;
+  }
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.inv-checkbox').forEach(el => { el.checked = cb.checked; });
+  updateBulkBar();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const btnReject = document.getElementById('btnBulkReject');
+  if (btnReject) {
+    btnReject.addEventListener('click', async function () {
+      const ids = getCheckedIds();
+      if (!ids.length) return;
+      if (!confirm('Odrzucić ' + ids.length + ' zaznaczonych transakcji?')) return;
+      try {
+        const r = await fetch(API_BASE + '/api/bank/bulk-reject', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const d = await r.json();
+        if (d.status === 'ok') {
+          location.reload();
+        } else {
+          alert('Błąd: ' + (d.message || 'nieznany'));
+        }
+      } catch (e) {
+        alert('Błąd żądania: ' + e.message);
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

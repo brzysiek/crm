@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Importy{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+
+  <aside class="settings-sidebar">
+    <nav class="settings-nav">
+      <a href="{{ url_for('imports.bank') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'bank' }}">
+        Transakcje bankowe
+        {% if bank_pending_count > 0 %}
+          <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ bank_pending_count }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('imports.fakturownia') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'fakturownia' }}">
+        Fakturownia
+        {% if pending_count > 0 %}
+          <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('imports.gdrive') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'gdrive' }}">
+        Dysk Google
+        {% if gdrive_pending_count > 0 %}
+          <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ gdrive_pending_count }}</span>
+        {% endif %}
+      </a>
+    </nav>
+  </aside>
+
+  <section class="settings-content">
+    {% block imports_content %}{% endblock %}
+  </section>
+
+</div>
+{% endblock %}

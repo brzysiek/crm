@@ -1216,6 +1216,7 @@ def api_logs_clear():
 from routes.auth import bp as auth_bp
 from routes.dashboard import bp as dashboard_bp
 from routes.expenses import bp as expenses_bp
+from routes.imports import bp as imports_bp
 from routes.income import bp as income_bp
 from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
@@ -1223,6 +1224,7 @@ from routes.users import bp as users_bp
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(expenses_bp)
+app.register_blueprint(imports_bp)
 app.register_blueprint(income_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(users_bp)

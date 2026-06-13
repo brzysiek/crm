@@ -56,11 +56,11 @@
     <div class="kpi-value" style="font-size:2rem">{{ pending_count + gdrive_pending_count }}</div>
     <div class="kpi-sub">
       {% if pending_count > 0 %}
-        <a href="{{ url_for('settings.fakturownia') }}#pending">Fakturownia: {{ pending_count }}</a>
+        <a href="{{ url_for('imports.fakturownia') }}#pending">Fakturownia: {{ pending_count }}</a>
       {% endif %}
       {% if gdrive_pending_count > 0 %}
         {% if pending_count > 0 %} · {% endif %}
-        <a href="{{ url_for('settings.gdrive') }}#pending">Dysk: {{ gdrive_pending_count }}</a>
+        <a href="{{ url_for('imports.gdrive') }}#pending">Dysk: {{ gdrive_pending_count }}</a>
       {% endif %}
       {% if pending_count == 0 and gdrive_pending_count == 0 %}
         wszystkie przypisane
@@ -73,7 +73,7 @@
     <div class="kpi-value" style="font-size:2rem">{{ bank_pending_count }}</div>
     <div class="kpi-sub">
       {% if bank_pending_count > 0 %}
-        <a href="{{ url_for('settings.bank') }}#pending">do przypisania →</a>
+        <a href="{{ url_for('imports.bank') }}#pending">do przypisania →</a>
       {% else %}
         wszystkie przypisane
       {% endif %}
