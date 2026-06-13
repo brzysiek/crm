@@ -142,3 +142,8 @@ def reject_gdrive_invoice_view(inv_id):
     flash('Faktura została odrzucona.', 'success')
     return redirect(url_for('settings.gdrive') + '#pending')
 
+
+@bp.route('/logs')
+def logs():
+    return render_template('settings/logs.html', active_tab='logs')
+

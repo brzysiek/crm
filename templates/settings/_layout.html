@@ -35,6 +35,10 @@
           <span class="nav-badge">{{ gdrive_pending_count }}</span>
         {% endif %}
       </a>
+      <a href="{{ url_for('settings.logs') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'logs' }}">
+        Logi
+      </a>
     </nav>
   </aside>
 

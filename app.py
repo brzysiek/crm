@@ -3,11 +3,31 @@ from werkzeug.exceptions import HTTPException
 from config import Config
 import database
 import traceback as _tb
+import logging
+import os
+from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY
 database.init_app(app)
+
+# Logowanie do pliku
+_log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(_log_dir, exist_ok=True)
+_file_handler = RotatingFileHandler(
+    os.path.join(_log_dir, 'app.log'),
+    maxBytes=5 * 1024 * 1024,  # 5 MB
+    backupCount=3,
+    encoding='utf-8',
+)
+_file_handler.setFormatter(logging.Formatter(
+    '[%(asctime)s] %(levelname)s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+))
+_file_handler.setLevel(logging.INFO)
+app.logger.addHandler(_file_handler)
+app.logger.setLevel(logging.INFO)
 
 MONTHS_PL = {
     1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
@@ -90,6 +110,7 @@ def require_login():
     if ep in open_endpoints or ep.startswith('static'):
         return
     if not session.get('user_id'):
+        app.logger.warning('Nieautoryzowany dostęp: %s %s', request.method, request.path)
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Unauthorized'}), 401
         return redirect(url_for('auth.login'))
@@ -997,6 +1018,30 @@ def api_gdrive_bulk_reject():
         return jsonify({'status': 'error', 'message': 'Brak ID.'})
     affected = bulk_reject_gdrive(ids)
     return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/logs')
+def api_logs():
+    lines = int(request.args.get('lines', 200))
+    log_path = os.path.join(os.path.dirname(__file__), 'logs', 'app.log')
+    if not os.path.exists(log_path):
+        return jsonify({'lines': []})
+    try:
+        with open(log_path, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+        return jsonify({'lines': [l.rstrip('\n') for l in all_lines[-lines:]]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/logs/clear', methods=['POST'])
+def api_logs_clear():
+    log_path = os.path.join(os.path.dirname(__file__), 'logs', 'app.log')
+    try:
+        open(log_path, 'w').close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 from routes.auth import bp as auth_bp
