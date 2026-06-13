@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, redirect, request, session, url_for
+from werkzeug.exceptions import HTTPException
 from config import Config
 import database
 import traceback as _tb
@@ -67,6 +68,19 @@ def month_pl(value):
         return f"{MONTHS_PL[int(m)]} {y}"
     except Exception:
         return str(value)
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Dla /api/* zawsze zwraca JSON zamiast HTML strony błędu."""
+    if isinstance(e, HTTPException):
+        if request.path.startswith('/api/'):
+            return jsonify({'ok': False, 'message': e.description}), e.code
+        return e
+    app.logger.error(_tb.format_exc())
+    if request.path.startswith('/api/'):
+        return jsonify({'ok': False, 'message': f'Błąd serwera: {str(e)}'}), 500
+    return '<h1>Błąd serwera (500)</h1><pre>' + _tb.format_exc() + '</pre>', 500
 
 
 @app.before_request

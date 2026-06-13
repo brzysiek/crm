@@ -155,52 +155,40 @@ function toggleReveal(inputId, btn) {
   else                         { inp.type = 'password'; btn.textContent = 'Pokaż'; }
 }
 
-document.getElementById('btnTest').addEventListener('click', async function () {
-  const el = document.getElementById('testResult');
+async function apiTest(url, loadingText, elId) {
+  const el = document.getElementById(elId);
   el.style.display = 'block';
   el.className = 'api-result api-loading';
-  el.textContent = 'Testowanie…';
+  el.textContent = loadingText;
   try {
-    const r = await fetch('/api/fakturownia/test');
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (r.status === 401) {
+      el.className = 'api-result api-error';
+      el.textContent = 'Sesja wygasła — odśwież stronę i zaloguj się ponownie.';
+      return;
+    }
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      el.className = 'api-result api-error';
+      el.textContent = `Nieoczekiwana odpowiedź serwera (status ${r.status}). Sprawdź logi.`;
+      return;
+    }
     const d = await r.json();
     el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
-    el.textContent = d.message;
+    el.textContent = d.message || d.error || 'Brak wiadomości';
   } catch (e) {
     el.className = 'api-result api-error';
-    el.textContent = 'Błąd żądania: ' + e.message;
+    el.textContent = 'Błąd sieci: ' + e.message;
   }
-});
+}
 
-document.getElementById('btnTestDrive').addEventListener('click', async function () {
-  const el = document.getElementById('driveTestResult');
-  el.style.display = 'block';
-  el.className = 'api-result api-loading';
-  el.textContent = 'Testowanie połączenia z Google Drive…';
-  try {
-    const r = await fetch('/api/gdrive/test');
-    const d = await r.json();
-    el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
-    el.textContent = d.message;
-  } catch (e) {
-    el.className = 'api-result api-error';
-    el.textContent = 'Błąd żądania: ' + e.message;
-  }
-});
+document.getElementById('btnTest').addEventListener('click', () =>
+  apiTest('/api/fakturownia/test', 'Testowanie…', 'testResult'));
 
-document.getElementById('btnTestGemini').addEventListener('click', async function () {
-  const el = document.getElementById('geminiTestResult');
-  el.style.display = 'block';
-  el.className = 'api-result api-loading';
-  el.textContent = 'Testowanie połączenia z Gemini…';
-  try {
-    const r = await fetch('/api/gemini/test');
-    const d = await r.json();
-    el.className = 'api-result ' + (d.ok ? 'api-ok' : 'api-error');
-    el.textContent = d.message;
-  } catch (e) {
-    el.className = 'api-result api-error';
-    el.textContent = 'Błąd żądania: ' + e.message;
-  }
-});
+document.getElementById('btnTestDrive').addEventListener('click', () =>
+  apiTest('/api/gdrive/test', 'Testowanie połączenia z Google Drive…', 'driveTestResult'));
+
+document.getElementById('btnTestGemini').addEventListener('click', () =>
+  apiTest('/api/gemini/test', 'Testowanie połączenia z Gemini…', 'geminiTestResult'));
 </script>
 {% endblock %}
