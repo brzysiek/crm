@@ -8,7 +8,11 @@
     <nav class="settings-nav">
       <a href="{{ url_for('settings.general') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'general' }}">
-        Ogólne
+        Integracje
+      </a>
+      <a href="{{ url_for('settings.dictionary') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'dictionary' }}">
+        Słownik
       </a>
       <a href="{{ url_for('users.list_users') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'users' }}">

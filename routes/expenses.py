@@ -4,9 +4,9 @@ from dateutil.relativedelta import relativedelta
 from flask import (Blueprint, flash, redirect, render_template,
                    request, url_for)
 
+from models.dictionary import get_expense_categories as get_categories
 from models.expense import (create_expense, delete_expense,
-                             get_all_expenses, get_categories,
-                             get_expense_by_id, update_expense)
+                             get_all_expenses, get_expense_by_id, update_expense)
 from models.user import get_active_users
 
 
@@ -255,6 +255,7 @@ def new_expense():
     # Prefill z faktury Fakturowni
     inv_id = request.args.get('inv')
     prefill = {}
+    prefill_invoice = None
     if inv_id:
         try:
             import json as _json
@@ -281,13 +282,22 @@ def new_expense():
                     'invoice_ref':     ksef,
                     'fakturownia_id':  inv['fakturownia_id'],
                 }
+                prefill_invoice = {
+                    'source':          'fakturownia',
+                    'id':              inv['id'],
+                    'invoice_number':  inv.get('invoice_number') or '',
+                    'vendor_name':     vendor,
+                    'issue_date':      str(inv.get('issue_date') or '')[:10],
+                    'amount_gross':    float(inv.get('amount_gross') or 0) or None,
+                }
         except Exception:
             pass
 
     return render_template('expenses/form.html',
         expense=prefill, users=users, categories=categories,
         action=url_for('expenses.new_expense'),
-        title='Nowy wydatek', today=today)
+        title='Nowy wydatek', today=today,
+        prefill_invoice=prefill_invoice)
 
 
 @bp.route('/<int:expense_id>/edit', methods=['GET', 'POST'])

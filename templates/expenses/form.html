@@ -96,10 +96,10 @@
       <label for="vat_rate">Stawka VAT <span class="req">*</span></label>
       {% set cur_vat = expense.vat_rate|float if expense.vat_rate is defined else 23 %}
       <select id="vat_rate" name="vat_rate" onchange="calcNet()">
-        {% for rate, label in [('23','23%'),('8','8%'),('5','5%'),('0','0%'),('-1','zw.')] %}
-          <option value="{{ rate }}"
-            {{ 'selected' if cur_vat|string == rate or (rate == '-1' and cur_vat < 0) }}>
-            {{ label }}
+        {% for r in vat_rates %}
+          <option value="{{ r.value }}"
+            {{ 'selected' if cur_vat|string == r.value or (r.value == '-1' and cur_vat < 0) }}>
+            {{ r.label }}
           </option>
         {% endfor %}
       </select>
@@ -149,8 +149,9 @@
       {% set cur_pm = expense.payment_method if expense.payment_method is defined else '' %}
       <select id="payment_method" name="payment_method">
         <option value="">— brak —</option>
-        <option value="transfer" {{ 'selected' if cur_pm in ('transfer','mbank','unicredit') }}>Przelew/karta</option>
-        <option value="cash"     {{ 'selected' if cur_pm == 'cash' }}>Gotówka</option>
+        {% for pm in payment_methods %}
+          <option value="{{ pm.value }}" {{ 'selected' if cur_pm == pm.value }}>{{ pm.label }}</option>
+        {% endfor %}
       </select>
     </div>
 
@@ -565,7 +566,8 @@ function _buildTxnTable(rows) {
 </script>
 <script>
 /* ── Sekcja faktur ────────────────────────────────────────────────────────── */
-let _pendingInvoices = [];
+const _PREFILL_INV   = {{ (prefill_invoice | tojson) if prefill_invoice is defined and prefill_invoice else 'null' }};
+let _pendingInvoices = _PREFILL_INV ? [_PREFILL_INV] : [];
 let _lastInvResults  = [];
 
 async function loadLinkedInvoices() {

@@ -149,3 +149,36 @@ def reject_gdrive_invoice_view(inv_id):
 def logs():
     return render_template('settings/logs.html', active_tab='logs')
 
+
+@bp.route('/dictionary', methods=['GET'])
+def dictionary():
+    from models.dictionary import get_dict_items
+    return render_template('settings/dictionary.html',
+        active_tab='dictionary',
+        expense_categories=get_dict_items('expense_category'),
+        income_categories=get_dict_items('income_category'),
+        vat_rates=get_dict_items('vat_rate'),
+        payment_methods=get_dict_items('payment_method'),
+    )
+
+
+@bp.route('/dictionary/add', methods=['POST'])
+def dictionary_add():
+    from models.dictionary import add_dict_item
+    dict_type = request.form.get('dict_type', '').strip()
+    value     = request.form.get('value', '').strip()
+    label     = request.form.get('label', '').strip() or None
+    if dict_type and value:
+        try:
+            add_dict_item(dict_type, value, label)
+        except Exception:
+            flash('Taka pozycja już istnieje.', 'error')
+    return redirect(url_for('settings.dictionary'))
+
+
+@bp.route('/dictionary/<int:item_id>/delete', methods=['POST'])
+def dictionary_delete(item_id):
+    from models.dictionary import delete_dict_item
+    delete_dict_item(item_id)
+    return redirect(url_for('settings.dictionary'))
+

@@ -133,11 +133,27 @@ def inject_globals():
         gdrive_cnt = get_gdrive_pending_count()
     except Exception:
         gdrive_cnt = 0
+    try:
+        from models.dictionary import get_vat_rates, get_payment_methods
+        vat_rates       = get_vat_rates()
+        payment_methods = get_payment_methods()
+    except Exception:
+        vat_rates       = [
+            {'value': '23', 'label': '23%'}, {'value': '8', 'label': '8%'},
+            {'value': '5',  'label': '5%'},  {'value': '0', 'label': '0%'},
+            {'value': '-1', 'label': 'zw.'},
+        ]
+        payment_methods = [
+            {'value': 'transfer', 'label': 'Przelew / karta'},
+            {'value': 'cash',     'label': 'Gotówka'},
+        ]
     return {
-        'pending_count':       cnt,
-        'bank_pending_count':  bank_cnt,
+        'pending_count':        cnt,
+        'bank_pending_count':   bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
-        'app_name':            Config.APP_NAME,
+        'app_name':             Config.APP_NAME,
+        'vat_rates':            vat_rates,
+        'payment_methods':      payment_methods,
         'current_user': {
             'id':        session.get('user_id'),
             'username':  session.get('username', ''),

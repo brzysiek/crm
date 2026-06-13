@@ -4,9 +4,9 @@ from dateutil.relativedelta import relativedelta
 from flask import (Blueprint, flash, redirect, render_template,
                    request, url_for)
 
+from models.dictionary import get_income_categories
 from models.income import (create_income, delete_income, get_all_incomes,
-                           get_income_by_id, get_income_categories,
-                           update_income)
+                           get_income_by_id, update_income)
 
 bp = Blueprint('income', __name__, url_prefix='/income')
 
@@ -234,6 +234,7 @@ def new_income():
 
     inv_id = request.args.get('inv')
     prefill = {}
+    prefill_invoice = None
     if inv_id:
         try:
             from models.invoice import get_invoice_by_id
@@ -259,13 +260,22 @@ def new_income():
                     'invoice_ref':    ksef,
                     'fakturownia_id': inv['fakturownia_id'],
                 }
+                prefill_invoice = {
+                    'source':         'fakturownia',
+                    'id':             inv['id'],
+                    'invoice_number': inv.get('invoice_number') or '',
+                    'vendor_name':    client_name,
+                    'issue_date':     str(inv.get('issue_date') or '')[:10],
+                    'amount_gross':   float(inv.get('amount_gross') or 0) or None,
+                }
         except Exception:
             pass
 
     return render_template('income/form.html',
         income=prefill, categories=categories,
         action=url_for('income.new_income'),
-        title='Nowy przychód', today=today)
+        title='Nowy przychód', today=today,
+        prefill_invoice=prefill_invoice)
 
 
 @bp.route('/<int:income_id>/edit', methods=['GET', 'POST'])

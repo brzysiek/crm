@@ -436,14 +436,14 @@ document.addEventListener('DOMContentLoaded', function () {
   if (btnAccept) {
     btnAccept.addEventListener('click', () => {
       const ids = getCheckedIds();
-      bulkAction('/api/fakturownia/bulk-accept', ids,
+      bulkAction(API_BASE + '/api/fakturownia/bulk-accept', ids,
         `Automatycznie utwórz wydatki/przychody z ${ids.length} faktur?`);
     });
   }
   if (btnReject) {
     btnReject.addEventListener('click', () => {
       const ids = getCheckedIds();
-      bulkAction('/api/fakturownia/bulk-reject', ids,
+      bulkAction(API_BASE + '/api/fakturownia/bulk-reject', ids,
         `Odrzucić ${ids.length} zaznaczonych faktur?`);
     });
   }
