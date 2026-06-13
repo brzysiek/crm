@@ -7,6 +7,7 @@
 <div class="settings-section">
   <h3>Konfiguracja Fakturowni</h3>
   <form method="post" action="{{ url_for('settings.general') }}">
+    <input type="hidden" name="form_section" value="fakturownia">
 
     <div class="form-group">
       <label for="subdomain">Subdomena konta</label>
@@ -58,17 +59,14 @@
   </form>
 </div>
 
-{# ── Konfiguracja Google Drive & Gemini ────────────────────────────────────── #}
+{# ── Konfiguracja Google Drive ─────────────────────────────────────────────── #}
 <div class="settings-section">
-  <h3>Konfiguracja Google Drive &amp; Gemini</h3>
+  <h3>Konfiguracja Google Drive</h3>
   <form method="post" action="{{ url_for('settings.general') }}">
-    {# Preserve Fakturownia fields as hidden so the single POST saves all settings #}
-    <input type="hidden" name="subdomain"      value="{{ cfg.fakturownia_subdomain or '' }}">
-    <input type="hidden" name="api_key"         value="{{ cfg.fakturownia_api_key or '' }}">
-    <input type="hidden" name="sync_schedule"   value="{{ cfg.fakturownia_sync_schedule or 'manual' }}">
+    <input type="hidden" name="form_section" value="gdrive">
 
     <div class="form-group">
-      <label for="google_drive_folder_id">ID folderu głównego Google Drive</label>
+      <label for="google_drive_folder_id">ID folderu głównego</label>
       <input type="text" id="google_drive_folder_id" name="google_drive_folder_id"
              placeholder="np. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
              value="{{ cfg.google_drive_folder_id or '' }}">
@@ -76,7 +74,7 @@
     </div>
 
     <div class="form-group">
-      <label for="google_drive_api_token">Token / klucz API Google Drive</label>
+      <label for="google_drive_api_token">Token / klucz API</label>
       <input type="password" id="google_drive_api_token" name="google_drive_api_token"
              autocomplete="off"
              placeholder="{{ '••••••••' if cfg.google_drive_api_token else 'Wklej token lub JSON konta usługi' }}"
@@ -87,6 +85,20 @@
       <small class="text-muted">Jeśli wartość zaczyna się od <code>{</code> — traktowana jako JSON konta usługi (service account). W przeciwnym razie — prosty klucz API.</small>
       {% endif %}
     </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz konfigurację Google Drive</button>
+      <button type="button" class="btn btn-outline" id="btnTestDrive">Testuj połączenie</button>
+    </div>
+    <div id="driveTestResult" class="api-result" style="display:none"></div>
+  </form>
+</div>
+
+{# ── Konfiguracja Gemini ───────────────────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Konfiguracja Gemini (OCR)</h3>
+  <form method="post" action="{{ url_for('settings.general') }}">
+    <input type="hidden" name="form_section" value="gemini">
 
     <div class="form-group">
       <label for="gemini_api_key">Klucz API Gemini (Google AI)</label>
@@ -102,7 +114,7 @@
     </div>
 
     <div class="form-group">
-      <label for="gemini_model">Model Gemini do OCR</label>
+      <label for="gemini_model">Model do OCR</label>
       <select id="gemini_model" name="gemini_model">
         <optgroup label="Gemini 2.5 — z obsługą PDF (stabilne)">
           <option value="gemini-2.5-flash-lite"
@@ -136,11 +148,9 @@
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Zapisz konfigurację Drive / Gemini</button>
-      <button type="button" class="btn btn-outline" id="btnTestDrive">Testuj Google Drive</button>
-      <button type="button" class="btn btn-outline" id="btnTestGemini">Testuj Gemini</button>
+      <button type="submit" class="btn btn-primary">Zapisz konfigurację Gemini</button>
+      <button type="button" class="btn btn-outline" id="btnTestGemini">Testuj połączenie</button>
     </div>
-    <div id="driveTestResult" class="api-result" style="display:none"></div>
     <div id="geminiTestResult" class="api-result" style="display:none"></div>
   </form>
 </div>
