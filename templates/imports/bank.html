@@ -125,6 +125,26 @@
   </div>
 
   {% if pending_transactions %}
+  <div class="invoice-filter-bar">
+    <div class="invoice-filter-row">
+      <input type="text" id="filterCounterparty" placeholder="Kontrahent…"
+             class="form-control form-control-sm filter-input-wide" oninput="applyTxnFilter()">
+      <input type="text" id="filterDescription" placeholder="Opis…"
+             class="form-control form-control-sm filter-input-wide" oninput="applyTxnFilter()">
+      <span class="filter-label">Kwota:</span>
+      <input type="number" id="filterAmtFrom" placeholder="od" step="0.01"
+             class="form-control form-control-sm filter-input-amt" oninput="applyTxnFilter()">
+      <input type="number" id="filterAmtTo" placeholder="do" step="0.01"
+             class="form-control form-control-sm filter-input-amt" oninput="applyTxnFilter()">
+      <span class="filter-label">Data:</span>
+      <input type="date" id="filterDateFrom"
+             class="form-control form-control-sm filter-input-date" oninput="applyTxnFilter()">
+      <input type="date" id="filterDateTo"
+             class="form-control form-control-sm filter-input-date" oninput="applyTxnFilter()">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="clearTxnFilter()">Wyczyść</button>
+    </div>
+  </div>
+
   <div class="bulk-select-bar">
     <label class="checkbox-label">
       <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
@@ -135,7 +155,11 @@
   <div class="invoice-cards">
     {% for txn in pending_transactions %}
     {% set is_expense = txn.amount < 0 %}
-    <div class="invoice-card {{ 'invoice-card-expense' if is_expense else 'invoice-card-income' }}">
+    <div class="invoice-card {{ 'invoice-card-expense' if is_expense else 'invoice-card-income' }}"
+         data-counterparty="{{ txn.counterparty or '' }}"
+         data-description="{{ txn.description or '' }}"
+         data-amount="{{ txn.amount | abs }}"
+         data-date="{{ txn.date | date_iso }}">
       <div class="invoice-card-header">
         <div class="invoice-card-header-left">
           <input type="checkbox" class="inv-checkbox" value="{{ txn.id }}"
@@ -267,17 +291,57 @@ function updateBulkBar() {
   if (!bar) return;
   bar.style.display = ids.length > 0 ? 'flex' : 'none';
   if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'a' : 'ych');
-  const all = document.querySelectorAll('.inv-checkbox');
-  const cb  = document.getElementById('selectAll');
+  const visibleBoxes = [...document.querySelectorAll('.invoice-card')]
+    .filter(c => c.style.display !== 'none')
+    .map(c => c.querySelector('.inv-checkbox'))
+    .filter(Boolean);
+  const cb = document.getElementById('selectAll');
   if (cb) {
-    cb.checked       = all.length > 0 && ids.length === all.length;
-    cb.indeterminate = ids.length > 0 && ids.length < all.length;
+    cb.checked       = visibleBoxes.length > 0 && visibleBoxes.every(b => b.checked);
+    cb.indeterminate = visibleBoxes.some(b => b.checked) && !visibleBoxes.every(b => b.checked);
   }
 }
 
 function toggleSelectAll(cb) {
-  document.querySelectorAll('.inv-checkbox').forEach(el => { el.checked = cb.checked; });
+  document.querySelectorAll('.invoice-card').forEach(card => {
+    if (card.style.display === 'none') return;
+    const box = card.querySelector('.inv-checkbox');
+    if (box) box.checked = cb.checked;
+  });
   updateBulkBar();
+}
+
+function applyTxnFilter() {
+  const counterparty = (document.getElementById('filterCounterparty')?.value || '').trim().toLowerCase();
+  const description  = (document.getElementById('filterDescription')?.value || '').trim().toLowerCase();
+  const amtFrom      = parseFloat(document.getElementById('filterAmtFrom')?.value);
+  const amtTo        = parseFloat(document.getElementById('filterAmtTo')?.value);
+  const dateFrom     = document.getElementById('filterDateFrom')?.value || '';
+  const dateTo       = document.getElementById('filterDateTo')?.value || '';
+
+  document.querySelectorAll('.invoice-card').forEach(card => {
+    const cardCounterparty = (card.dataset.counterparty || '').toLowerCase();
+    const cardDescription  = (card.dataset.description || '').toLowerCase();
+    const cardAmt          = parseFloat(card.dataset.amount || 0);
+    const cardDate         = card.dataset.date || '';
+
+    let visible = true;
+    if (counterparty && !cardCounterparty.includes(counterparty)) visible = false;
+    if (description  && !cardDescription.includes(description))   visible = false;
+    if (!isNaN(amtFrom) && cardAmt < amtFrom)                     visible = false;
+    if (!isNaN(amtTo)   && cardAmt > amtTo)                       visible = false;
+    if (dateFrom && cardDate && cardDate < dateFrom)               visible = false;
+    if (dateTo   && cardDate && cardDate > dateTo)                 visible = false;
+
+    card.style.display = visible ? '' : 'none';
+  });
+  updateBulkBar();
+}
+
+function clearTxnFilter() {
+  ['filterCounterparty','filterDescription','filterAmtFrom','filterAmtTo','filterDateFrom','filterDateTo']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  applyTxnFilter();
 }
 
 document.addEventListener('DOMContentLoaded', function () {

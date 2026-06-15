@@ -124,17 +124,20 @@ def inject_globals():
     try:
         from models.invoice import get_pending_count
         cnt = get_pending_count()
-    except Exception:
+    except Exception as _e:
+        app.logger.error('inject_globals: get_pending_count failed: %s', _e)
         cnt = 0
     try:
         from models.bank_transaction import get_pending_bank_count
         bank_cnt = get_pending_bank_count()
-    except Exception:
+    except Exception as _e:
+        app.logger.error('inject_globals: get_pending_bank_count failed: %s', _e)
         bank_cnt = 0
     try:
         from models.gdrive_invoice import get_gdrive_pending_count
         gdrive_cnt = get_gdrive_pending_count()
-    except Exception:
+    except Exception as _e:
+        app.logger.error('inject_globals: get_gdrive_pending_count failed: %s', _e)
         gdrive_cnt = 0
     try:
         from models.dictionary import get_vat_rates, get_payment_methods
