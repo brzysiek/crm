@@ -94,6 +94,7 @@ class FakturowniaClient:
         return self._normalize(items)
 
     def _normalize(self, raw: list) -> list[dict]:
+        from services.nbp import convert_to_pln
         result = []
         for inv in raw:
             income_flag = inv.get('income')
@@ -110,18 +111,39 @@ class FakturowniaClient:
             # W obu przypadkach kontrahent to buyer_*.
             counterparty_name = inv.get('buyer_name') or inv.get('seller_name', '')
             counterparty_nip  = inv.get('buyer_tax_no') or inv.get('seller_tax_no', '')
+
+            currency    = (inv.get('currency') or 'PLN').strip().upper()
+            issue_date  = inv.get('sell_date') or inv.get('issue_date', '')
+            raw_gross   = _to_float(inv.get('price_gross') or inv.get('gross_price'))
+            raw_net     = _to_float(inv.get('price_net')   or inv.get('net_price'))
+            raw_vat     = _to_float(inv.get('price_tax')   or inv.get('tax_price'))
+
+            orig_amount   = None
+            exchange_rate = None
+            if currency != 'PLN' and raw_gross is not None:
+                orig_amount = raw_gross
+                pln_gross, exchange_rate = convert_to_pln(raw_gross, currency, issue_date)
+                if exchange_rate and raw_net is not None:
+                    raw_net = round(raw_net * exchange_rate, 2)
+                if exchange_rate and raw_vat is not None:
+                    raw_vat = round(raw_vat * exchange_rate, 2)
+                raw_gross = pln_gross
+
             result.append({
                 'fakturownia_id': str(inv.get('id', '')),
                 'invoice_number': inv.get('number', ''),
                 'vendor_name':    counterparty_name,
                 'vendor_nip':     counterparty_nip,
-                'issue_date':     inv.get('sell_date') or inv.get('issue_date', ''),
+                'issue_date':     issue_date,
                 'payment_to':     inv.get('payment_to') or '',
-                'amount_gross':   _to_float(inv.get('price_gross') or inv.get('gross_price')),
-                'amount_net':     _to_float(inv.get('price_net')   or inv.get('net_price')),
-                'vat_amount':     _to_float(inv.get('price_tax')   or inv.get('tax_price')),
+                'amount_gross':   raw_gross,
+                'amount_net':     raw_net,
+                'vat_amount':     raw_vat,
                 'ksef_number':    inv.get('ksef_number') or inv.get('ksef_id') or '',
                 'invoice_type':   inv_type,
+                'currency':       currency,
+                'orig_amount':    orig_amount,
+                'exchange_rate':  exchange_rate,
                 'raw_json':       json.dumps(inv, ensure_ascii=False),
             })
         return result

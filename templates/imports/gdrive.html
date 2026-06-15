@@ -117,6 +117,26 @@
   <div id="apiResult" class="api-result" style="display:none"></div>
 
   {% if pending_invoices %}
+  <div class="invoice-filter-bar">
+    <div class="invoice-filter-row">
+      <input type="text" id="filterInvNumber" placeholder="Nr faktury…"
+             class="form-control form-control-sm filter-input-wide" oninput="applyInvoiceFilter()">
+      <input type="text" id="filterVendor" placeholder="Kontrahent…"
+             class="form-control form-control-sm filter-input-wide" oninput="applyInvoiceFilter()">
+      <span class="filter-label">Kwota:</span>
+      <input type="number" id="filterAmtFrom" placeholder="od" step="0.01" min="0"
+             class="form-control form-control-sm filter-input-amt" oninput="applyInvoiceFilter()">
+      <input type="number" id="filterAmtTo" placeholder="do" step="0.01" min="0"
+             class="form-control form-control-sm filter-input-amt" oninput="applyInvoiceFilter()">
+      <span class="filter-label">Data:</span>
+      <input type="date" id="filterDateFrom"
+             class="form-control form-control-sm filter-input-date" oninput="applyInvoiceFilter()">
+      <input type="date" id="filterDateTo"
+             class="form-control form-control-sm filter-input-date" oninput="applyInvoiceFilter()">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="clearInvoiceFilter()">Wyczyść</button>
+    </div>
+  </div>
+
   <div class="bulk-select-bar">
     <label class="checkbox-label">
       <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
@@ -131,7 +151,9 @@
          data-inv-id="{{ inv.id }}"
          data-inv-type="{{ inv.invoice_type or 'expense' }}"
          data-amount="{{ inv.amount_gross or 0 }}"
-         data-invoice-number="{{ inv.invoice_number or '' }}">
+         data-invoice-number="{{ inv.invoice_number or '' }}"
+         data-vendor="{{ inv.vendor_name or '' }}"
+         data-date="{{ inv.issue_date | date_iso }}">
       <div class="invoice-card-header">
         <div class="invoice-card-header-left">
           <input type="checkbox" class="inv-checkbox" value="{{ inv.id }}"
@@ -155,7 +177,17 @@
           <span>Brutto: <strong>{{ inv.amount_gross|pln }}</strong></span>
           <span>VAT: {{ inv.vat_amount|pln }}</span>
           <span>Netto: {{ inv.amount_net|pln }}</span>
+          {% if inv.currency and inv.currency != 'PLN' and inv.orig_amount %}
+          <span class="badge badge-yellow" title="Kurs NBP: {{ '%.4f'|format(inv.exchange_rate|float) if inv.exchange_rate else '—' }} PLN/{{ inv.currency }}">
+            {{ '%.2f'|format(inv.orig_amount|float) }} {{ inv.currency }}
+          </span>
+          {% endif %}
         </div>
+        {% if inv.currency and inv.currency != 'PLN' and inv.exchange_rate %}
+        <div class="text-muted small">
+          Kurs NBP: 1 {{ inv.currency }} = {{ '%.4f'|format(inv.exchange_rate|float) }} PLN · data faktury: {{ inv.issue_date }}
+        </div>
+        {% endif %}
         <div class="text-muted small" style="margin-top:.25rem">
           Plik: {{ inv.file_name }}
           {% if inv.gdrive_year and inv.gdrive_month %}
@@ -372,9 +404,7 @@ async function runOcr() {
   }
 
   const ocrEl = document.getElementById('ocrResult');
-  ocrEl.style.display = 'block';
-  ocrEl.className = 'api-result api-loading';
-  ocrEl.textContent = `Przetwarzam ${checked.length} pliki przez Gemini OCR…`;
+  const total  = checked.length;
 
   const selYear  = document.getElementById('selYear');
   const selMonth = document.getElementById('selMonth');
@@ -383,45 +413,49 @@ async function runOcr() {
   const yearNum  = parseInt(yearText) || null;
   const monthNum = _monthNameToNum(monthText);
 
-  const fileList = checked.map(c => ({
-    id:           c.value,
-    name:         c.dataset.name,
-    modifiedTime: c.dataset.modified,
-  }));
+  const allResults = [];
 
-  try {
-    const r = await fetch(API_BASE + '/api/gdrive/ocr', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ file_ids: fileList, year: yearNum, month: monthNum }),
-    });
-    const d = await r.json();
+  for (let i = 0; i < total; i++) {
+    const c    = checked[i];
+    const name = c.dataset.name || c.value;
+    opProgress(ocrEl, `OCR: ${name} (${i + 1} z ${total})`, i + 1, total);
 
-    if (d.error) {
-      ocrEl.className = 'api-result api-error';
-      ocrEl.textContent = 'Błąd: ' + d.error;
-      return;
+    try {
+      const r = await fetch(API_BASE + '/api/gdrive/ocr', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_ids: [{ id: c.value, name, modifiedTime: c.dataset.modified }],
+          year:  yearNum,
+          month: monthNum,
+        }),
+      });
+      const d = await r.json();
+      if (d.error) {
+        allResults.push({ success: false, file_name: name, error: d.error });
+      } else if (d.results && d.results.length) {
+        allResults.push(...d.results);
+      }
+    } catch (e) {
+      allResults.push({ success: false, file_name: name, error: e.message });
     }
+  }
 
-    const ok      = d.results.filter(x => x.success);
-    const failed  = d.results.filter(x => !x.success);
-    const newOnes = ok.filter(x => x.is_new);
+  const ok      = allResults.filter(x => x.success);
+  const failed  = allResults.filter(x => !x.success);
+  const newOnes = ok.filter(x => x.is_new);
 
-    let msg = `OCR zakończony: ${ok.length} sukces, ${failed.length} błędów`;
-    if (newOnes.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
-    if (failed.length) {
-      msg += '\n\nBłędy:\n' + failed.map(x => `${x.file_name}: ${x.error}`).join('\n');
-    }
+  ocrEl.style.whiteSpace = 'pre-wrap';
+  let msg = `OCR zakończony: ${ok.length} sukces, ${failed.length} błędów`;
+  if (newOnes.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
+  if (failed.length) {
+    msg += '\n\nBłędy:\n' + failed.map(x => `${x.file_name}: ${x.error}`).join('\n');
+  }
+  ocrEl.className = failed.length ? 'api-result api-error' : 'api-result api-ok';
+  ocrEl.textContent = msg;
 
-    ocrEl.className = failed.length ? 'api-result api-error' : 'api-result api-ok';
-    ocrEl.textContent = msg;
-
-    if (newOnes.length) {
-      setTimeout(() => location.reload(), 2000);
-    }
-  } catch (e) {
-    ocrEl.className = 'api-result api-error';
-    ocrEl.textContent = 'Błąd żądania: ' + e.message;
+  if (newOnes.length) {
+    setTimeout(() => location.reload(), 2000);
   }
 }
 
@@ -502,59 +536,66 @@ function toggleSelectAll(cb) {
 async function bulkAction(url, ids, confirmMsg) {
   if (!confirm(confirmMsg)) return;
   const el = document.getElementById('apiResult');
-  el.style.display = 'block';
-  el.className = 'api-result api-loading';
-  el.textContent = 'Przetwarzanie…';
-  try {
-    const r = await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ids }),
-    });
-    const d = await r.json();
+  const isReject = url.includes('reject');
+  const total = ids.length;
 
-    if (url.includes('reject')) {
-      if (d.status === 'ok' || d.status === 'partial') {
-        el.className = 'api-result api-ok';
-        el.textContent = `Odrzucono: ${d.affected}`;
-        setTimeout(() => location.reload(), 1200);
+  let totalExpenses = 0, totalIncomes = 0, totalLinked = 0, totalAffected = 0;
+  const allErrors = [];
+
+  for (let i = 0; i < total; i++) {
+    opProgress(el,
+      isReject ? `Odrzucam ${i + 1} z ${total}…` : `Przetwarzam ${i + 1} z ${total}…`,
+      i + 1, total);
+    try {
+      const r = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ ids: [ids[i]] }),
+      });
+      const d = await r.json();
+      if (isReject) {
+        totalAffected += d.affected || 0;
       } else {
-        el.className = 'api-result api-error';
-        el.textContent = d.message || 'Błąd operacji.';
+        totalExpenses += d.created_expenses || 0;
+        totalIncomes  += d.created_incomes  || 0;
+        totalLinked   += d.auto_linked      || 0;
+        if (d.errors && d.errors.length) allErrors.push(...d.errors);
       }
-      return;
+    } catch (e) {
+      allErrors.push(`ID ${ids[i]}: ${e.message}`);
     }
+  }
 
-    const created = (d.created_expenses || 0) + (d.created_incomes || 0);
-    const linked   = d.auto_linked > 0 ? `, dopasowano transakcji: ${d.auto_linked}` : '';
-    const unlinked = d.unlinked > 0 ? ` (${d.unlinked} bez dopasowania)` : '';
+  el.style.whiteSpace = 'pre-wrap';
+  if (isReject) {
+    el.className = 'api-result api-ok';
+    el.textContent = `Odrzucono: ${totalAffected}`;
+    setTimeout(() => location.reload(), 1200);
+    return;
+  }
 
-    if (d.errors && d.errors.length) {
-      el.className = 'api-result api-error';
-      el.style.whiteSpace = 'pre-wrap';
-      el.textContent = `Błędy (${d.errors.length}):\n` + d.errors.join('\n')
-        + (created > 0 ? `\n\nUtworzono mimo błędów: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}` : '');
-    } else {
-      el.className = 'api-result api-ok';
-      el.style.whiteSpace = 'pre-wrap';
-      let msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}${unlinked}`;
-      if (d.created_expenses > 0 && d.created_incomes > 0) {
-        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>  |  <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
-      } else if (d.created_expenses > 0) {
-        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>`;
-        setTimeout(() => { window.location.href = '/expenses/?month='; }, 3000);
-      } else if (d.created_incomes > 0) {
-        msg += `\n→ <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
-        setTimeout(() => { window.location.href = '/income/?month='; }, 3000);
-      } else {
-        msg += `\n(nic nie utworzono — sprawdź konsolę)`;
-        setTimeout(() => location.reload(), 2000);
-      }
-      el.innerHTML = msg;
-    }
-  } catch (e) {
+  const linked  = totalLinked > 0 ? `, dopasowano transakcji: ${totalLinked}` : '';
+  const created = totalExpenses + totalIncomes;
+  if (allErrors.length) {
     el.className = 'api-result api-error';
-    el.textContent = 'Błąd żądania: ' + e.message;
+    el.textContent = `Błędy (${allErrors.length}):\n` + allErrors.join('\n')
+      + (created > 0 ? `\n\nUtworzono mimo błędów: wydatków ${totalExpenses}, przychodów ${totalIncomes}${linked}` : '');
+  } else {
+    el.className = 'api-result api-ok';
+    let msg = `Utworzono: wydatków ${totalExpenses}, przychodów ${totalIncomes}${linked}`;
+    if (totalExpenses > 0 && totalIncomes > 0) {
+      msg += `\n→ <a href="${URL_EXPENSES}" style="color:inherit">Przejdź do wydatków</a>  |  <a href="${URL_INCOME}" style="color:inherit">Przejdź do przychodów</a>`;
+    } else if (totalExpenses > 0) {
+      msg += `\n→ <a href="${URL_EXPENSES}" style="color:inherit">Przejdź do wydatków</a>`;
+      setTimeout(() => { window.location.href = URL_EXPENSES; }, 3000);
+    } else if (totalIncomes > 0) {
+      msg += `\n→ <a href="${URL_INCOME}" style="color:inherit">Przejdź do przychodów</a>`;
+      setTimeout(() => { window.location.href = URL_INCOME; }, 3000);
+    } else {
+      msg += `\n(nic nie utworzono — sprawdź konsolę)`;
+      setTimeout(() => location.reload(), 2000);
+    }
+    el.innerHTML = msg;
   }
 }
 
@@ -628,20 +669,48 @@ async function loadInvoiceSuggestions() {
 
 let _matchedFilterActive = false;
 
+function applyCardVisibility() {
+  const num      = (document.getElementById('filterInvNumber')?.value || '').trim().toLowerCase();
+  const vendor   = (document.getElementById('filterVendor')?.value || '').trim().toLowerCase();
+  const amtFrom  = parseFloat(document.getElementById('filterAmtFrom')?.value);
+  const amtTo    = parseFloat(document.getElementById('filterAmtTo')?.value);
+  const dateFrom = document.getElementById('filterDateFrom')?.value || '';
+  const dateTo   = document.getElementById('filterDateTo')?.value || '';
+  const matchedIds = new Set(Object.keys(_txnSuggestions));
+
+  document.querySelectorAll('.invoice-card[data-inv-id]').forEach(card => {
+    const cardNum    = (card.dataset.invoiceNumber || '').toLowerCase();
+    const cardVendor = (card.dataset.vendor || '').toLowerCase();
+    const cardAmt    = parseFloat(card.dataset.amount || 0);
+    const cardDate   = card.dataset.date || '';
+
+    let visible = true;
+    if (num    && !cardNum.includes(num))              visible = false;
+    if (vendor && !cardVendor.includes(vendor))        visible = false;
+    if (!isNaN(amtFrom) && cardAmt < amtFrom)          visible = false;
+    if (!isNaN(amtTo)   && cardAmt > amtTo)            visible = false;
+    if (dateFrom && cardDate && cardDate < dateFrom)   visible = false;
+    if (dateTo   && cardDate && cardDate > dateTo)     visible = false;
+    if (_matchedFilterActive && !matchedIds.has(card.dataset.invId)) visible = false;
+
+    card.style.display = visible ? '' : 'none';
+  });
+  updateBulkBar();
+}
+
+function applyInvoiceFilter() { applyCardVisibility(); }
+
+function clearInvoiceFilter() {
+  ['filterInvNumber','filterVendor','filterAmtFrom','filterAmtTo','filterDateFrom','filterDateTo']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  applyCardVisibility();
+}
+
 function toggleMatchedFilter(btn) {
   _matchedFilterActive = !_matchedFilterActive;
   btn.classList.toggle('btn-primary', _matchedFilterActive);
   btn.classList.toggle('btn-ghost',   !_matchedFilterActive);
-
-  const matchedIds = new Set(Object.keys(_txnSuggestions));
-  document.querySelectorAll('.invoice-card[data-inv-id]').forEach(card => {
-    if (_matchedFilterActive) {
-      card.style.display = matchedIds.has(card.dataset.invId) ? '' : 'none';
-    } else {
-      card.style.display = '';
-    }
-  });
-  updateBulkBar();
+  applyCardVisibility();
 }
 
 function _esc(s) {

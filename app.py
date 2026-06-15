@@ -6,6 +6,9 @@ import traceback as _tb
 import logging
 import os
 from logging.handlers import RotatingFileHandler
+from datetime import datetime as _dt
+
+_BUILD_ID = _dt.now().strftime('%Y%m%d.%H%M')
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -154,6 +157,7 @@ def inject_globals():
         'app_name':             Config.APP_NAME,
         'vat_rates':            vat_rates,
         'payment_methods':      payment_methods,
+        'build_id':             _BUILD_ID,
         'current_user': {
             'id':        session.get('user_id'),
             'username':  session.get('username', ''),
@@ -821,6 +825,9 @@ def api_bulk_accept():
                 or (raw.get('ksef_id') or '').strip() \
                 or (raw.get('gov_id') or '').strip()
 
+            inv_currency  = (inv.get('currency') or 'PLN').upper()
+            inv_orig      = float(inv['orig_amount']) if inv.get('orig_amount') else None
+
             if inv.get('invoice_type') == 'income':
                 client_name = (raw.get('buyer_name') or inv.get('vendor_name') or '').strip()
                 client_nip  = (raw.get('buyer_tax_no') or inv.get('vendor_nip') or '').strip()
@@ -839,6 +846,8 @@ def api_bulk_accept():
                     'fakturownia_id': inv['fakturownia_id'],
                     'source':         best_bank,
                     'payment_method': 'transfer' if best_bank else None,
+                    'orig_amount':    inv_orig,
+                    'orig_currency':  inv_currency if inv_orig else None,
                 })
                 created_incomes += 1
                 if best:
@@ -868,6 +877,8 @@ def api_bulk_accept():
                     'invoice_ref':        ksef or None,
                     'source':             best_bank,
                     'payment_method':     'transfer' if best_bank else None,
+                    'orig_amount':        inv_orig,
+                    'orig_currency':      inv_currency if inv_orig else None,
                 })
                 created_expenses += 1
                 if best:
@@ -1018,6 +1029,22 @@ def api_gdrive_ocr():
                                  'error': ocr['error']})
                 continue
 
+            from services.nbp import convert_to_pln as _nbp
+            currency    = (ocr.get('currency') or 'PLN').strip().upper()
+            issue_date  = ocr.get('issue_date') or None
+            raw_gross   = ocr.get('amount_gross')
+            raw_net     = ocr.get('amount_net')
+            raw_vat     = ocr.get('vat_amount')
+            orig_amount   = None
+            exchange_rate = None
+            if currency != 'PLN' and raw_gross is not None:
+                orig_amount = raw_gross
+                pln_gross, exchange_rate = _nbp(raw_gross, currency, issue_date or '')
+                if exchange_rate:
+                    raw_net = round(raw_net * exchange_rate, 2) if raw_net else None
+                    raw_vat = round(raw_vat * exchange_rate, 2) if raw_vat else None
+                raw_gross = pln_gross
+
             record = {
                 'gdrive_file_id':   fid,
                 'file_name':        fname,
@@ -1027,11 +1054,14 @@ def api_gdrive_ocr():
                 'invoice_number':   ocr.get('invoice_number') or None,
                 'vendor_name':      ocr.get('vendor_name') or None,
                 'vendor_nip':       ocr.get('vendor_nip') or None,
-                'issue_date':       ocr.get('issue_date') or None,
-                'amount_gross':     ocr.get('amount_gross'),
-                'amount_net':       ocr.get('amount_net'),
-                'vat_amount':       ocr.get('vat_amount'),
+                'issue_date':       issue_date,
+                'amount_gross':     raw_gross,
+                'amount_net':       raw_net,
+                'vat_amount':       raw_vat,
                 'invoice_type':     ocr.get('invoice_type', 'expense'),
+                'currency':         currency,
+                'orig_amount':      orig_amount,
+                'exchange_rate':    exchange_rate,
                 'ocr_raw':          _json.dumps(ocr, ensure_ascii=False),
             }
             is_new = upsert_gdrive_invoice(record)
@@ -1108,7 +1138,9 @@ def api_gdrive_bulk_accept():
             best, _ = _score_best(_all_txns, gross, inv_number)
             best_bank = best['bank'] if best else None
 
-            file_name = (inv.get('file_name') or '').strip()
+            file_name    = (inv.get('file_name') or '').strip()
+            inv_currency = (inv.get('currency') or 'PLN').upper()
+            inv_orig     = float(inv['orig_amount']) if inv.get('orig_amount') else None
 
             if inv.get('invoice_type') == 'income':
                 record_id = create_income({
@@ -1126,6 +1158,8 @@ def api_gdrive_bulk_accept():
                     'fakturownia_id': None,
                     'source':         best_bank,
                     'payment_method': 'transfer' if best_bank else None,
+                    'orig_amount':    inv_orig,
+                    'orig_currency':  inv_currency if inv_orig else None,
                 })
                 created_incomes += 1
                 if best:
@@ -1151,6 +1185,8 @@ def api_gdrive_bulk_accept():
                     'invoice_ref':        file_name or None,
                     'source':             best_bank,
                     'payment_method':     'transfer' if best_bank else None,
+                    'orig_amount':        inv_orig,
+                    'orig_currency':      inv_currency if inv_orig else None,
                 })
                 created_expenses += 1
                 if best:

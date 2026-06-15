@@ -45,7 +45,8 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                            gdrive_year=%s, gdrive_month=%s,
                            invoice_number=%s, vendor_name=%s, vendor_nip=%s,
                            issue_date=%s, payment_to=%s, amount_gross=%s, amount_net=%s,
-                           vat_amount=%s, invoice_type=%s, ocr_raw=%s
+                           vat_amount=%s, invoice_type=%s, ocr_raw=%s,
+                           currency=%s, orig_amount=%s, exchange_rate=%s
                        WHERE gdrive_file_id=%s""",
                     (
                         data.get('file_name'),
@@ -62,6 +63,9 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                         data.get('vat_amount'),
                         data.get('invoice_type', 'expense'),
                         data.get('ocr_raw'),
+                        data.get('currency', 'PLN'),
+                        data.get('orig_amount') or None,
+                        data.get('exchange_rate') or None,
                         data['gdrive_file_id'],
                     )
                 )
@@ -74,8 +78,8 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                     gdrive_year, gdrive_month,
                     invoice_number, vendor_name, vendor_nip,
                     issue_date, payment_to, amount_gross, amount_net, vat_amount,
-                    invoice_type, ocr_raw, status)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
+                    invoice_type, currency, orig_amount, exchange_rate, ocr_raw, status)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
                 (
                     data['gdrive_file_id'],
                     data.get('file_name', ''),
@@ -91,6 +95,9 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                     data.get('amount_net'),
                     data.get('vat_amount'),
                     data.get('invoice_type', 'expense'),
+                    data.get('currency', 'PLN'),
+                    data.get('orig_amount') or None,
+                    data.get('exchange_rate') or None,
                     data.get('ocr_raw'),
                 )
             )

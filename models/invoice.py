@@ -65,12 +65,12 @@ def upsert_invoice(data: dict) -> bool:
             )
             existing = cur.fetchone()
             if existing:
-                # Aktualizuj dane kontrahenta i typ (poprawia błędne starsze rekordy)
                 cur.execute(
                     """UPDATE fakturownia_invoices
                        SET vendor_name=%s, vendor_nip=%s, invoice_type=%s,
                            amount_gross=%s, amount_net=%s, vat_amount=%s,
-                           payment_to=%s, raw_json=%s
+                           payment_to=%s, raw_json=%s,
+                           currency=%s, orig_amount=%s, exchange_rate=%s
                        WHERE fakturownia_id=%s""",
                     (
                         data.get('vendor_name'), data.get('vendor_nip'),
@@ -79,6 +79,9 @@ def upsert_invoice(data: dict) -> bool:
                         data.get('vat_amount'),
                         data.get('payment_to') or None,
                         data.get('raw_json'),
+                        data.get('currency', 'PLN'),
+                        data.get('orig_amount') or None,
+                        data.get('exchange_rate') or None,
                         data['fakturownia_id'],
                     )
                 )
@@ -88,8 +91,9 @@ def upsert_invoice(data: dict) -> bool:
                 """INSERT INTO fakturownia_invoices
                    (fakturownia_id, invoice_number, vendor_name, vendor_nip,
                     issue_date, payment_to, amount_gross, amount_net, vat_amount,
-                    ksef_number, invoice_type, raw_json, status)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
+                    ksef_number, invoice_type, currency, orig_amount, exchange_rate,
+                    raw_json, status)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')""",
                 (
                     data['fakturownia_id'], data['invoice_number'],
                     data.get('vendor_name'), data.get('vendor_nip'),
@@ -99,6 +103,9 @@ def upsert_invoice(data: dict) -> bool:
                     data.get('amount_net'), data.get('vat_amount'),
                     data.get('ksef_number'),
                     data.get('invoice_type', 'expense'),
+                    data.get('currency', 'PLN'),
+                    data.get('orig_amount') or None,
+                    data.get('exchange_rate') or None,
                     data.get('raw_json'),
                 )
             )

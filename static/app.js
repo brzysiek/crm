@@ -461,6 +461,28 @@ function drawDualBarChart(canvas, expData, incData) {
   ctx.stroke();
 }
 
+/* ── Operation progress bar ──────────────────────────────────────────────────── */
+/**
+ * Renders a progress bar inside an api-result element.
+ * current/total = 0/0 → indeterminate (animated slide)
+ * current/total > 0   → determinate with % label
+ */
+function opProgress(el, label, current, total) {
+  const pct = (total > 0) ? Math.round(current / total * 100) : 0;
+  const determinate = total > 0;
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.innerHTML =
+    '<div class="op-progress-header">' +
+      '<span>' + label + '</span>' +
+      (determinate ? '<span class="op-progress-pct">' + pct + '%</span>' : '') +
+    '</div>' +
+    '<div class="op-progress-track">' +
+      '<div class="op-progress-fill' + (determinate ? '' : ' indeterminate') + '"' +
+           (determinate ? ' style="width:' + pct + '%"' : '') + '></div>' +
+    '</div>';
+}
+
 /* ── Auto-submit filter form on select change ─────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
   const filterBar = document.querySelector('.filter-bar');

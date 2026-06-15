@@ -86,9 +86,15 @@
   </div>
 </div>
 
+<footer class="app-footer">
+  <span class="build-id">Build {{ build_id }}</span>
+</footer>
+
 <script>
 /* Prefix dla wszystkich fetch('/api/...) — obsługuje wdrożenie w podkatalogu */
-window.API_BASE = {{ request.script_root | tojson }};
+window.API_BASE     = {{ request.script_root | tojson }};
+window.URL_EXPENSES = {{ url_for('expenses.list_expenses') | tojson }};
+window.URL_INCOME   = {{ url_for('income.list_incomes') | tojson }};
 </script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 {% block scripts %}{% endblock %}

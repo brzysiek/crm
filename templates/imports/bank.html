@@ -222,10 +222,9 @@ document.getElementById('importForm').addEventListener('submit', async function 
   e.preventDefault();
   const el  = document.getElementById('importResult');
   const btn = document.getElementById('btnImport');
-  el.style.display = 'block';
-  el.className = 'api-result api-loading';
-  el.textContent = 'Importowanie…';
   btn.disabled = true;
+
+  opProgress(el, 'Importowanie pliku CSV…', 0, 0);
 
   try {
     const fd = new FormData(this);

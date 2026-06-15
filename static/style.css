@@ -627,6 +627,40 @@ a:hover { text-decoration: underline; }
 .api-ok      { background: #d4edda; color: #155724; }
 .api-error   { background: #f8d7da; color: #721c24; }
 
+/* ── Operation progress bar (inside api-result) ──────────────────────────── */
+.op-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .45rem;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--slate);
+}
+.op-progress-pct { font-weight: 700; color: var(--bottle-green); min-width: 3rem; text-align: right; }
+.op-progress-track {
+  height: 6px;
+  background: rgba(0,0,0,.15);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.op-progress-fill {
+  height: 100%;
+  background: var(--bottle-green);
+  border-radius: 3px;
+  transition: width .2s ease;
+  width: 0%;
+}
+@keyframes op-indeterminate {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(350%); }
+}
+.op-progress-fill.indeterminate {
+  width: 30%;
+  animation: op-indeterminate 1.4s ease-in-out infinite;
+}
+
 /* ── Pending header / bulk ───────────────────────────────────────────────────── */
 .pending-header {
   display: flex;
@@ -976,3 +1010,46 @@ a:hover { text-decoration: underline; }
 .small  { font-size: .8rem; }
 code    { background: var(--off-white); padding: 1px 5px; border-radius: 3px;
           font-size: .85em; color: var(--bottle-dark); }
+
+/* ── Footer ──────────────────────────────────────────────────────────────────── */
+.app-footer {
+  text-align: center;
+  padding: .75rem 2rem;
+  margin-top: 2rem;
+  border-top: 1px solid var(--slate-light);
+}
+.build-id {
+  font-size: .72rem;
+  color: var(--slate-mid);
+  letter-spacing: .03em;
+}
+
+/* ── Invoice filter bar ──────────────────────────────────────────────────────── */
+.invoice-filter-bar {
+  background: #fff;
+  border: 1px solid var(--slate-light);
+  border-radius: var(--radius);
+  padding: .6rem .75rem;
+  margin: .5rem 0 .75rem;
+}
+.invoice-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+.invoice-filter-row .form-control-sm {
+  height: 32px;
+  padding: .2rem .55rem;
+  font-size: .82rem;
+}
+.filter-input-wide  { flex: 1; min-width: 140px; }
+.filter-input-amt   { width: 120px !important; flex-shrink: 0; }
+.filter-input-date  { width: 140px !important; flex-shrink: 0; }
+.filter-label {
+  font-size: .75rem;
+  color: var(--slate-mid);
+  font-weight: 600;
+  white-space: nowrap;
+  align-self: center;
+}

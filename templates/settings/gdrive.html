@@ -545,13 +545,13 @@ async function bulkAction(url, ids, confirmMsg) {
       el.style.whiteSpace = 'pre-wrap';
       let msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}${linked}${unlinked}`;
       if (d.created_expenses > 0 && d.created_incomes > 0) {
-        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>  |  <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
+        msg += `\n→ <a href="${URL_EXPENSES}" style="color:inherit">Przejdź do wydatków</a>  |  <a href="${URL_INCOME}" style="color:inherit">Przejdź do przychodów</a>`;
       } else if (d.created_expenses > 0) {
-        msg += `\n→ <a href="/expenses/?month=" style="color:inherit">Przejdź do wydatków</a>`;
-        setTimeout(() => { window.location.href = '/expenses/?month='; }, 3000);
+        msg += `\n→ <a href="${URL_EXPENSES}" style="color:inherit">Przejdź do wydatków</a>`;
+        setTimeout(() => { window.location.href = URL_EXPENSES; }, 3000);
       } else if (d.created_incomes > 0) {
-        msg += `\n→ <a href="/income/?month=" style="color:inherit">Przejdź do przychodów</a>`;
-        setTimeout(() => { window.location.href = '/income/?month='; }, 3000);
+        msg += `\n→ <a href="${URL_INCOME}" style="color:inherit">Przejdź do przychodów</a>`;
+        setTimeout(() => { window.location.href = URL_INCOME; }, 3000);
       } else {
         msg += `\n(nic nie utworzono — sprawdź konsolę)`;
         setTimeout(() => location.reload(), 2000);
