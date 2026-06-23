@@ -1,0 +1,85 @@
+{% extends 'crm/_layout.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">← Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="first_name">Imię <span class="req">*</span></label>
+      <input type="text" id="first_name" name="first_name" required value="{{ contact.first_name or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="last_name">Nazwisko <span class="req">*</span></label>
+      <input type="text" id="last_name" name="last_name" required value="{{ contact.last_name or '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="position">Stanowisko</label>
+      <input type="text" id="position" name="position" value="{{ contact.position or '' }}">
+    </div>
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="entity-picker" id="company-picker">
+        {% if prefill_company %}
+        <div class="entity-picker-selected" id="company-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_company.short_name or prefill_company.name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('company-picker')">✕</button>
+        </div>
+        {% endif %}
+        <input type="text" id="company-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_company else '' }}"
+               placeholder="Szukaj firmy…" autocomplete="off">
+        <div id="company-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="company-picker-hidden" name="company_id" value="{{ contact.company_id or '' }}">
+      </div>
+      <div style="margin-top:.5rem">
+        <a href="#" id="company-quick-create-toggle" class="small" onclick="toggleQuickCreateCompany(event)">Nie znalazłeś firmy? Utwórz po NIP/KRS…</a>
+        <div id="company-quick-create-fields" class="hidden" style="display:flex;gap:.5rem;margin-top:.5rem;align-items:center;flex-wrap:wrap">
+          <input type="text" id="quick-nip" placeholder="NIP" class="filter-input" style="max-width:160px">
+          <span class="text-muted small">lub</span>
+          <input type="text" id="quick-krs" placeholder="KRS" class="filter-input" style="max-width:160px">
+          <button type="button" class="btn btn-outline btn-sm" onclick="quickCreateCompany()">Pobierz i utwórz firmę</button>
+        </div>
+        <div id="quick-create-status" class="small" style="margin-top:.3rem"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ contact.email or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="phone">Telefon</label>
+      <input type="text" id="phone" name="phone" value="{{ contact.phone or '' }}">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="3">{{ contact.description or '' }}</textarea>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz kontakt</button>
+    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initEntityPicker('company-picker', '/api/crm/companies/search');
+</script>
+{% endblock %}

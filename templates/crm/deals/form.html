@@ -1,0 +1,108 @@
+{% extends 'crm/_layout.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">← Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-group">
+    <label for="name">Nazwa <span class="req">*</span></label>
+    <input type="text" id="name" name="name" required value="{{ deal.name or '' }}">
+  </div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="3">{{ deal.description or '' }}</textarea>
+  </div>
+
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="amount">Kwota (zł)</label>
+      <input type="number" id="amount" name="amount" step="0.01" min="0" value="{{ deal.amount or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="stage">Etap</label>
+      {% set cur_stage = deal.stage if deal.stage is defined else 'new' %}
+      <select id="stage" name="stage">
+        {% for val, label in stage_labels.items() %}
+          <option value="{{ val }}" {{ 'selected' if cur_stage == val }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="owner_user_id">Opiekun</label>
+      {% set cur_owner = deal.owner_user_id|int if deal.owner_user_id else None %}
+      <select id="owner_user_id" name="owner_user_id">
+        <option value="">— brak —</option>
+        {% for u in owners %}
+          <option value="{{ u.id }}" {{ 'selected' if cur_owner == u.id }}>{{ u.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="start_date">Data rozpoczęcia</label>
+      <input type="date" id="start_date" name="start_date" value="{{ deal.start_date|date_iso if deal.start_date else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="end_date">Data zakończenia</label>
+      <input type="date" id="end_date" name="end_date" value="{{ deal.end_date|date_iso if deal.end_date else '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="entity-picker" id="company-picker">
+        {% if prefill_company %}
+        <div class="entity-picker-selected" id="company-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_company.short_name or prefill_company.name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('company-picker')">✕</button>
+        </div>
+        {% endif %}
+        <input type="text" id="company-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_company else '' }}"
+               placeholder="Szukaj firmy…" autocomplete="off">
+        <div id="company-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="company-picker-hidden" name="company_id" value="{{ deal.company_id or '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Kontakt</label>
+      <div class="entity-picker" id="contact-picker">
+        {% if prefill_contact %}
+        <div class="entity-picker-selected" id="contact-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_contact.first_name }} {{ prefill_contact.last_name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('contact-picker')">✕</button>
+        </div>
+        {% endif %}
+        <input type="text" id="contact-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_contact else '' }}"
+               placeholder="Szukaj kontaktu…" autocomplete="off">
+        <div id="contact-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="contact-picker-hidden" name="contact_id" value="{{ deal.contact_id or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz interes</button>
+    <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initEntityPicker('company-picker', '/api/crm/companies/search');
+initEntityPicker('contact-picker', '/api/crm/contacts/search');
+</script>
+{% endblock %}

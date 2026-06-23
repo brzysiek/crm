@@ -1,0 +1,114 @@
+{% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% block title %}Firmy{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>Firmy</h1>
+  <div class="header-actions">
+    {{ m.col_toggle('companies-col-btn', 'companies-col-menu', [
+      ('name', 'Nazwa'), ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
+      ('email', 'Email'), ('phone', 'Telefon'), ('nip', 'NIP'), ('source', 'Źródło'),
+      ('tags', 'Tagi'), ('industries', 'Branże'),
+    ]) }}
+    <a href="{{ url_for('crm_companies.new_company') }}" class="btn btn-primary">+ Dodaj firmę</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('crm_companies.list_companies') }}">
+  <input type="text" name="search" placeholder="Szukaj nazwy, email, NIP, miasta…"
+         value="{{ filters.search }}" class="filter-input">
+
+  <select name="relation_type" class="filter-select">
+    <option value="">Wszystkie relacje</option>
+    {% for val, label in relation_labels.items() %}
+      <option value="{{ val }}" {{ 'selected' if filters.relation_type == val }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <input type="text" name="tag" placeholder="Tag" value="{{ filters.tag }}" class="filter-input" style="min-width:100px">
+  <input type="text" name="industry" placeholder="Branża" value="{{ filters.industry }}" class="filter-input" style="min-width:100px">
+
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{% if companies %}
+<div class="table-wrapper">
+  <table class="data-table" id="companies-table">
+    <thead>
+      <tr>
+        {{ m.sort_th('Nazwa', 'name', sort, direction, 'crm_companies.list_companies', 'name') }}
+        {{ m.sort_th('Nazwa skrócona', 'short_name', sort, direction, 'crm_companies.list_companies', 'short_name') }}
+        {{ m.sort_th('Relacja', 'relation_type', sort, direction, 'crm_companies.list_companies', 'relation_type') }}
+        {{ m.sort_th('Miasto', 'city', sort, direction, 'crm_companies.list_companies', 'city') }}
+        {{ m.sort_th('Email', 'email', sort, direction, 'crm_companies.list_companies', 'email') }}
+        {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_companies.list_companies', 'phone') }}
+        {{ m.sort_th('NIP', 'nip', sort, direction, 'crm_companies.list_companies', 'nip') }}
+        {{ m.sort_th('Źródło', 'source', sort, direction, 'crm_companies.list_companies', 'source') }}
+        <th data-col="tags">Tagi</th>
+        <th data-col="industries">Branże</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in companies %}
+      <tr>
+        <td data-col="name"><a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.name }}</a></td>
+        <td data-col="short_name">
+          <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or '—' }}</a>
+        </td>
+        <td data-col="relation_type">
+          <a href="{{ url_for('crm_companies.list_companies', relation_type=c.relation_type) }}"
+             class="badge badge-btn {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue'}[c.relation_type] }}"
+             title="Filtruj po relacji: {{ relation_labels[c.relation_type] }}">
+            {{ relation_labels[c.relation_type] }}
+          </a>
+        </td>
+        <td data-col="city">{{ c.city or '—' }}</td>
+        <td data-col="email">{{ c.email or '—' }}</td>
+        <td data-col="phone">{{ c.phone or '—' }}</td>
+        <td data-col="nip">{{ c.nip or '—' }}</td>
+        <td data-col="source">{{ c.source or '—' }}</td>
+        <td data-col="tags">
+          {% if c.tags_list %}
+            {% for t in c.tags_list.split(', ') %}
+              <a href="{{ url_for('crm_companies.list_companies', tag=t) }}" class="badge badge-outline badge-btn"
+                 title="Filtruj po tagu: {{ t }}">{{ t }}</a>
+            {% endfor %}
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td data-col="industries">
+          {% if c.industries_list %}
+            {% for i in c.industries_list.split(', ') %}
+              <a href="{{ url_for('crm_companies.list_companies', industry=i) }}" class="badge badge-outline badge-btn"
+                 title="Filtruj po branży: {{ i }}">{{ i }}</a>
+            {% endfor %}
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+          <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=c.id) }}"
+                class="inline-form" onsubmit="return confirm('Usunąć tę firmę?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="table-count">{{ companies|length }} firm</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak firm spełniających kryteria.</p>
+  <a href="{{ url_for('crm_companies.new_company') }}" class="btn btn-primary">Dodaj pierwszą firmę</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu');
+</script>
+{% endblock %}

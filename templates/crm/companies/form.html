@@ -1,0 +1,169 @@
+{% extends 'crm/_layout.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline">← Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="name">Nazwa <span class="req">*</span></label>
+      <input type="text" id="name" name="name" required value="{{ company.name or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="short_name">Nazwa skrócona</label>
+      <input type="text" id="short_name" name="short_name"
+             placeholder="Zostanie wygenerowana automatycznie, jeśli pozostawisz puste"
+             value="{{ company.short_name or '' }}">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="website">Strona WWW</label>
+    <div class="input-reveal-wrap">
+      <input type="text" id="website" name="website" placeholder="np. firma.pl" value="{{ company.website or '' }}">
+      <button type="button" class="btn-reveal" onclick="crmScrapeWebsite()">Pobierz informacje z WWW</button>
+    </div>
+    <div id="website-status" class="small" style="margin-top:.3rem"></div>
+  </div>
+
+  <div class="form-group">
+    <label>Relacja</label>
+    <div class="radio-group">
+      {% set cur_rel = company.relation_type if company.relation_type is defined else 'lead' %}
+      {% for val, label in relation_labels.items() %}
+        <label class="radio-label">
+          <input type="radio" name="relation_type" value="{{ val }}" {{ 'checked' if cur_rel == val }}>
+          {{ label }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-section-divider">
+    <span class="form-section-title">Adres</span>
+  </div>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="country">Kraj</label>
+      <input type="text" id="country" name="country" value="{{ company.country or 'Polska' }}">
+    </div>
+    <div class="form-group">
+      <label for="city">Miasto</label>
+      <input type="text" id="city" name="city" value="{{ company.city or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="postal_code">Kod pocztowy</label>
+      <input type="text" id="postal_code" name="postal_code" placeholder="00-000" value="{{ company.postal_code or '' }}">
+    </div>
+  </div>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="street">Ulica</label>
+      <input type="text" id="street" name="street" value="{{ company.street or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="house_number">Nr domu</label>
+      <input type="text" id="house_number" name="house_number" value="{{ company.house_number or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="flat_number">Nr lokalu</label>
+      <input type="text" id="flat_number" name="flat_number" value="{{ company.flat_number or '' }}">
+    </div>
+  </div>
+
+  <div class="form-section-divider">
+    <span class="form-section-title">Dane kontaktowe i rejestrowe</span>
+  </div>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="email">Email firmowy</label>
+      <input type="email" id="email" name="email" value="{{ company.email or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="phone">Telefon firmowy</label>
+      <input type="text" id="phone" name="phone" value="{{ company.phone or '' }}">
+    </div>
+  </div>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="nip">NIP</label>
+      <div class="input-reveal-wrap">
+        <input type="text" id="nip" name="nip" value="{{ company.nip or '' }}">
+        <button type="button" class="btn-reveal" onclick="crmLookupCompany('nip')">Pobierz dane</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="krs">KRS</label>
+      <div class="input-reveal-wrap">
+        <input type="text" id="krs" name="krs" value="{{ company.krs or '' }}">
+        <button type="button" class="btn-reveal" onclick="crmLookupCompany('krs')">Pobierz dane</button>
+      </div>
+    </div>
+  </div>
+  <div id="lookup-status" class="small" style="margin:-.5rem 0 1rem"></div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="3">{{ company.description or '' }}</textarea>
+  </div>
+
+  <div class="form-section-divider">
+    <span class="form-section-title">Klasyfikacja</span>
+  </div>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label>Tagi</label>
+      <div class="tag-input-wrap" id="tags-wrap">
+        <input type="text" id="tags-input" class="tag-input-field" placeholder="Dodaj tag…" autocomplete="off">
+        <div id="tags-suggestions" class="tag-suggestions"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Branże</label>
+      <div class="tag-input-wrap" id="industries-wrap">
+        <input type="text" id="industries-input" class="tag-input-field" placeholder="Dodaj branżę…" autocomplete="off">
+        <div id="industries-suggestions" class="tag-suggestions"></div>
+      </div>
+    </div>
+  </div>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="source">Źródło</label>
+      <div class="suggest-wrap">
+        <input type="text" id="source" name="source" autocomplete="off" value="{{ company.source or '' }}">
+        <div id="source-suggestions" class="tag-suggestions"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="owner_user_id">Opiekun</label>
+      {% set cur_owner = company.owner_user_id|int if company.owner_user_id else None %}
+      <select id="owner_user_id" name="owner_user_id">
+        <option value="">— brak —</option>
+        {% for u in owners %}
+          <option value="{{ u.id }}" {{ 'selected' if cur_owner == u.id }}>{{ u.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz firmę</button>
+    <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
+initTagInput('industries-wrap', 'industries-input', 'industries-suggestions', 'industry', {{ industries | tojson }});
+initSingleSuggest('source', 'source-suggestions', 'source');
+</script>
+{% endblock %}

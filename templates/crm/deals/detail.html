@@ -1,0 +1,97 @@
+{% extends 'crm/_layout.html' %}
+{% block title %}{{ deal.name }}{% endblock %}
+
+{% block crm_content %}
+<div class="detail-header">
+  <div>
+    <h1>{{ deal.name }}
+      <span class="badge {{ stage_badge_classes[deal.stage] }}">
+        {{ stage_labels[deal.stage] }}
+      </span>
+    </h1>
+    {% if deal.amount is not none %}<div class="detail-subtitle">{{ deal.amount|pln }}</div>{% endif %}
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('crm_deals.edit_deal', deal_id=deal.id) }}" class="btn btn-outline">✎ Edytuj</a>
+    <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=deal.id) }}"
+          class="inline-form" onsubmit="return confirm('Usunąć ten interes?')">
+      <button type="submit" class="btn btn-outline">✕ Usuń</button>
+    </form>
+    <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">← Lista</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+
+    <div class="inv-section">
+      <h4>Dane interesu</h4>
+      <dl class="inv-dl">
+        <dt>Etap</dt>
+        <dd><span class="badge {{ stage_badge_classes[deal.stage] }}">{{ stage_labels[deal.stage] }}</span></dd>
+        <dt>Firma</dt>
+        <dd>{% if deal.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=deal.company_id) }}">{{ deal.company_short_name or deal.company_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Kontakt</dt>
+        <dd>{% if deal.contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=deal.contact_id) }}">{{ deal.contact_first_name }} {{ deal.contact_last_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Kwota</dt><dd>{{ deal.amount|pln if deal.amount is not none else '—' }}</dd>
+        <dt>Data rozpoczęcia</dt><dd>{{ deal.start_date|ddmmyyyy if deal.start_date else '—' }}</dd>
+        <dt>Data zakończenia</dt><dd>{{ deal.end_date|ddmmyyyy if deal.end_date else '—' }}</dd>
+        <dt>Opis</dt><dd>{{ deal.description or '—' }}</dd>
+      </dl>
+    </div>
+
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>Płatności (netto)</h4>
+      <div style="padding:.85rem">
+        <form method="post" action="{{ url_for('crm_deals.add_payment_view', deal_id=deal.id) }}"
+              class="form-grid form-grid-3" style="margin-bottom:1rem; align-items:end">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="pay_month">Miesiąc</label>
+            <input type="month" id="pay_month" name="pay_month" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label for="amount_net">Kwota netto (zł)</label>
+            <input type="number" id="amount_net" name="amount_net" step="0.01" min="0.01" required>
+          </div>
+          <button type="submit" class="btn btn-outline">+ Dodaj płatność</button>
+        </form>
+
+        {% if payments %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Miesiąc</th><th class="text-right">Kwota netto</th><th></th></tr></thead>
+            <tbody>
+              {% for p in payments %}
+              <tr>
+                <td>{{ p.pay_month|month_pl }}</td>
+                <td class="text-right">{{ p.amount_net|pln }}</td>
+                <td class="col-actions">
+                  <form method="post"
+                        action="{{ url_for('crm_deals.delete_payment_view', deal_id=deal.id, payment_id=p.id) }}"
+                        class="inline-form" onsubmit="return confirm('Usunąć tę płatność?')">
+                    <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr class="table-sum-row">
+                <td>Suma</td><td class="text-right">{{ payments_total|pln }}</td><td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Brak zaplanowanych płatności.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <div>
+    {% include 'crm/_notes_history.html' %}
+  </div>
+</div>
+{% endblock %}

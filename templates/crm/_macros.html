@@ -1,0 +1,22 @@
+{% macro sort_th(label, col, sort, direction, endpoint, col_attr=None) %}
+  {% set next_dir = 'desc' if sort == col and direction == 'asc' else 'asc' %}
+  {% set args = request.args.to_dict() %}
+  {% set _ = args.update({'sort': col, 'dir': next_dir}) %}
+  <th{% if col_attr %} data-col="{{ col_attr }}"{% endif %}>
+    <a class="sort-link" href="{{ url_for(endpoint, **args) }}">
+      {{ label }}
+      {% if sort == col %}<span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}
+    </a>
+  </th>
+{% endmacro %}
+
+{% macro col_toggle(btn_id, menu_id, columns) %}
+  <div class="col-toggle">
+    <button type="button" id="{{ btn_id }}" class="btn btn-outline btn-sm">Kolumny ▾</button>
+    <div id="{{ menu_id }}" class="col-toggle-menu">
+      {% for col, label in columns %}
+      <label><input type="checkbox" data-col="{{ col }}"> {{ label }}</label>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}

@@ -1,0 +1,149 @@
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+
+from models.crm_company import get_company_by_id, get_company_tags
+from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
+                                  get_contact_by_id, update_contact)
+from models.crm_notes import add_note, delete_note, get_history, get_notes
+
+bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
+
+
+def _parse_form(form):
+    return {
+        'first_name': form.get('first_name', '').strip(),
+        'last_name': form.get('last_name', '').strip(),
+        'position': form.get('position', '').strip(),
+        'email': form.get('email', '').strip(),
+        'phone': form.get('phone', '').strip(),
+        'description': form.get('description', '').strip(),
+        'company_id': form.get('company_id', type=int),
+    }
+
+
+def _validate(data):
+    errors = []
+    if not data.get('first_name'):
+        errors.append('Imię jest wymagane.')
+    if not data.get('last_name'):
+        errors.append('Nazwisko jest wymagane.')
+    return errors
+
+
+@bp.route('/')
+def list_contacts():
+    sort = request.args.get('sort', 'last_name')
+    direction = request.args.get('dir', 'asc')
+    search = request.args.get('search', '')
+
+    contacts = get_all_contacts(sort=sort, direction=direction, search=search or None)
+    return render_template('crm/contacts/list.html',
+        active_tab='contacts', contacts=contacts,
+        sort=sort, direction=direction, filters={'search': search},
+    )
+
+
+@bp.route('/new', methods=['GET', 'POST'])
+def new_contact():
+    prefill_company = None
+    company_id = request.args.get('company_id', type=int)
+    if company_id:
+        prefill_company = get_company_by_id(company_id)
+
+    if request.method == 'POST':
+        data = _parse_form(request.form)
+        errors = _validate(data)
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('crm/contacts/form.html',
+                active_tab='contacts', contact=request.form, prefill_company=None,
+                action=url_for('crm_contacts.new_contact'), title='Nowy kontakt')
+
+        contact_id = create_contact(data, session.get('user_id'))
+        flash('Kontakt został zapisany.', 'success')
+        return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
+
+    return render_template('crm/contacts/form.html',
+        active_tab='contacts', contact={'company_id': company_id} if company_id else {},
+        prefill_company=prefill_company,
+        action=url_for('crm_contacts.new_contact'), title='Nowy kontakt')
+
+
+@bp.route('/<int:contact_id>/edit', methods=['GET', 'POST'])
+def edit_contact(contact_id):
+    contact = get_contact_by_id(contact_id)
+    if not contact:
+        flash('Kontakt nie istnieje.', 'error')
+        return redirect(url_for('crm_contacts.list_contacts'))
+
+    if request.method == 'POST':
+        data = _parse_form(request.form)
+        errors = _validate(data)
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('crm/contacts/form.html',
+                active_tab='contacts', contact=request.form, prefill_company=None,
+                action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
+                title='Edytuj kontakt')
+
+        update_contact(contact_id, data, session.get('user_id'))
+        flash('Kontakt został zaktualizowany.', 'success')
+        return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
+
+    prefill_company = get_company_by_id(contact['company_id']) if contact.get('company_id') else None
+    return render_template('crm/contacts/form.html',
+        active_tab='contacts', contact=contact, prefill_company=prefill_company,
+        action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
+        title='Edytuj kontakt')
+
+
+@bp.route('/<int:contact_id>')
+def view_contact(contact_id):
+    contact = get_contact_by_id(contact_id)
+    if not contact:
+        flash('Kontakt nie istnieje.', 'error')
+        return redirect(url_for('crm_contacts.list_contacts'))
+
+    from models.crm_deal import get_all_deals, STAGE_BADGE_CLASSES, STAGE_LABELS
+
+    company_tags = []
+    company_industries = []
+    if contact.get('company_id'):
+        company_tags = get_company_tags(contact['company_id'], 'tag')
+        company_industries = get_company_tags(contact['company_id'], 'industry')
+
+    notes = get_notes('contact', contact_id)
+    for n in notes:
+        n['delete_url'] = url_for('crm_contacts.delete_note_view', contact_id=contact_id, note_id=n['id'])
+
+    return render_template('crm/contacts/detail.html',
+        active_tab='contacts', contact=contact, company_tags=company_tags, company_industries=company_industries,
+        deals=get_all_deals(contact_id=contact_id), stage_labels=STAGE_LABELS,
+        stage_badge_classes=STAGE_BADGE_CLASSES,
+        notes=notes,
+        history=get_history('contact', contact_id),
+        add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),
+    )
+
+
+@bp.route('/<int:contact_id>/delete', methods=['POST'])
+def delete_contact_view(contact_id):
+    delete_contact(contact_id, session.get('user_id'))
+    flash('Kontakt został usunięty.', 'success')
+    return redirect(url_for('crm_contacts.list_contacts'))
+
+
+@bp.route('/<int:contact_id>/notes', methods=['POST'])
+def add_note_view(contact_id):
+    body = request.form.get('body', '').strip()
+    if body:
+        add_note('contact', contact_id, session.get('user_id'), body)
+        flash('Notatka została dodana.', 'success')
+    return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
+
+
+@bp.route('/<int:contact_id>/notes/<int:note_id>/delete', methods=['POST'])
+def delete_note_view(contact_id, note_id):
+    delete_note(note_id)
+    return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))

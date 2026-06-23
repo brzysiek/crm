@@ -1,0 +1,89 @@
+{% extends 'crm/_layout.html' %}
+{% block title %}{{ contact.first_name }} {{ contact.last_name }}{% endblock %}
+
+{% block crm_content %}
+<div class="detail-header">
+  <div>
+    <h1>{{ contact.first_name }} {{ contact.last_name }}</h1>
+    {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}</div>{% endif %}
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">✎ Edytuj</a>
+    <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
+          class="inline-form" onsubmit="return confirm('Usunąć ten kontakt?')">
+      <button type="submit" class="btn btn-outline">✕ Usuń</button>
+    </form>
+    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">← Lista</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+
+    <div class="inv-section">
+      <h4>Dane kontaktu</h4>
+      <dl class="inv-dl">
+        <dt>Firma</dt>
+        <dd>
+          {% if contact.company_id %}
+            <a href="{{ url_for('crm_companies.view_company', company_id=contact.company_id) }}">{{ contact.company_short_name or contact.company_name }}</a>
+          {% else %}—{% endif %}
+        </dd>
+        <dt>Email</dt><dd>{{ contact.email or '—' }}</dd>
+        <dt>Telefon</dt><dd>{{ contact.phone or '—' }}</dd>
+        <dt>Opis</dt><dd>{{ contact.description or '—' }}</dd>
+      </dl>
+    </div>
+
+    {% if company_tags or company_industries %}
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>Tagi i branże firmy</h4>
+      <div style="padding:.85rem">
+        {% if company_tags %}
+        <div class="detail-tags">
+          {% for t in company_tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+        </div>
+        {% endif %}
+        {% if company_industries %}
+        <div class="detail-tags" style="margin-top:.5rem">
+          {% for i in company_industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="txn-section-header" style="padding:.6rem .85rem 0">
+        <h4 style="background:none;color:var(--bottle-dark);padding:0;text-transform:none;font-size:1rem;letter-spacing:0">Interesy</h4>
+        <a href="{{ url_for('crm_deals.new_deal', contact_id=contact.id) }}" class="btn btn-outline btn-sm">+ Dodaj interes</a>
+      </div>
+      <div style="padding:.85rem">
+        {% if deals %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Nazwa</th><th>Etap</th><th class="text-right">Kwota</th></tr></thead>
+            <tbody>
+              {% for d in deals %}
+              <tr>
+                <td><a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}">{{ d.name }}</a></td>
+                <td><span class="badge {{ stage_badge_classes[d.stage] }}">{{ stage_labels[d.stage] }}</span></td>
+                <td class="text-right">{{ d.amount|pln if d.amount is not none else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Brak interesów przypisanych do tego kontaktu.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <div>
+    {% include 'crm/_notes_history.html' %}
+  </div>
+</div>
+{% endblock %}

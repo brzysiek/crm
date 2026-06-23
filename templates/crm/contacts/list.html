@@ -1,0 +1,75 @@
+{% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% block title %}Kontakty{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>Kontakty</h1>
+  <div class="header-actions">
+    {{ m.col_toggle('contacts-col-btn', 'contacts-col-menu', [
+      ('position', 'Stanowisko'), ('company_name', 'Firma'), ('email', 'Email'), ('phone', 'Telefon'),
+    ]) }}
+    <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">+ Dodaj kontakt</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('crm_contacts.list_contacts') }}">
+  <input type="text" name="search" placeholder="Szukaj imienia, email, firmy…"
+         value="{{ filters.search }}" class="filter-input">
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{% if contacts %}
+<div class="table-wrapper">
+  <table class="data-table" id="contacts-table">
+    <thead>
+      <tr>
+        {{ m.sort_th('Nazwisko', 'last_name', sort, direction, 'crm_contacts.list_contacts') }}
+        {{ m.sort_th('Imię', 'first_name', sort, direction, 'crm_contacts.list_contacts') }}
+        {{ m.sort_th('Stanowisko', 'position', sort, direction, 'crm_contacts.list_contacts', 'position') }}
+        {{ m.sort_th('Firma', 'company_name', sort, direction, 'crm_contacts.list_contacts', 'company_name') }}
+        {{ m.sort_th('Email', 'email', sort, direction, 'crm_contacts.list_contacts', 'email') }}
+        {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_contacts.list_contacts', 'phone') }}
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in contacts %}
+      <tr>
+        <td><a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }}</a></td>
+        <td>{{ c.first_name }}</td>
+        <td data-col="position">{{ c.position or '—' }}</td>
+        <td data-col="company_name">
+          {% if c.company_id %}
+            <a href="{{ url_for('crm_companies.view_company', company_id=c.company_id) }}">{{ c.company_short_name or c.company_name }}</a>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td data-col="email">{{ c.email or '—' }}</td>
+        <td data-col="phone">{{ c.phone or '—' }}</td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+          <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
+                class="inline-form" onsubmit="return confirm('Usunąć ten kontakt?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="table-count">{{ contacts|length }} kontaktów</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak kontaktów spełniających kryteria.</p>
+  <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">Dodaj pierwszy kontakt</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu');
+</script>
+{% endblock %}

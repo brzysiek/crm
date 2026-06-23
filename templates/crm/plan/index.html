@@ -1,0 +1,57 @@
+{% extends 'crm/_layout.html' %}
+{% block title %}Plan{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>Plan przychodów</h1>
+</div>
+
+<div class="chart-card" style="margin-bottom:1.5rem">
+  <div class="chart-header">
+    <h2>Prognoza przychodów netto — {{ months[0].label_short }} – {{ months[-1].label_short }}</h2>
+  </div>
+  <canvas id="planChart" style="width:100%; display:block"></canvas>
+</div>
+
+<div class="kanban-board">
+  {% for m in months %}
+  <div class="kanban-column {{ 'kanban-column-current' if m.is_current }}">
+    <div class="kanban-column-header">
+      <div class="kanban-column-header-top">
+        <span class="kanban-column-name">{{ m.label_short }}</span>
+      </div>
+      <span class="kanban-column-total">{{ m.total|pln }}</span>
+    </div>
+    <div class="kanban-column-body">
+      {% if m.payments %}
+        {% for p in m.payments %}
+        <a href="{{ url_for('crm_deals.view_deal', deal_id=p.deal_id) }}" class="kanban-card">
+          <div class="kanban-card-title">{{ p.deal_name }}</div>
+          {% if p.company_short_name or p.company_name %}
+          <div class="kanban-card-sub">{{ p.company_short_name or p.company_name }}</div>
+          {% endif %}
+          <div class="kanban-card-amount">{{ p.amount_net|pln }}</div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small" style="padding:.4rem .2rem">Brak płatności.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="table-count">Suma w oknie 7 miesięcy: {{ grand_total|pln }}</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  drawMonthlyBarChart(
+    document.getElementById('planChart'),
+    {{ chart_labels|tojson }},
+    {{ chart_data|tojson }},
+    {{ current_index|tojson }}
+  );
+});
+</script>
+{% endblock %}

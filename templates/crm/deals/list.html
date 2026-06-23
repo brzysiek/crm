@@ -1,0 +1,128 @@
+{% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% block title %}Interesy{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>Interesy</h1>
+  <div class="header-actions">
+    <div class="view-toggle">
+      <button type="button" class="btn btn-outline" id="deals-view-list">☰ Lista</button>
+      <button type="button" class="btn btn-outline" id="deals-view-kanban">▦ Kanban</button>
+    </div>
+    {{ m.col_toggle('deals-col-btn', 'deals-col-menu', [
+      ('stage', 'Etap'), ('amount', 'Kwota'), ('company_name', 'Firma'),
+      ('contact_name', 'Kontakt'), ('start_date', 'Rozpoczęcie'), ('end_date', 'Zakończenie'),
+    ]) }}
+    <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">+ Dodaj interes</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('crm_deals.list_deals') }}">
+  <input type="text" name="search" placeholder="Szukaj nazwy, opisu, firmy…"
+         value="{{ filters.search }}" class="filter-input">
+  <select name="stage" class="filter-select">
+    <option value="">Wszystkie etapy</option>
+    {% for val, label in stage_labels.items() %}
+      <option value="{{ val }}" {{ 'selected' if filters.stage == val }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{% if deals %}
+<div id="deals-list-view">
+<div class="table-wrapper">
+  <table class="data-table" id="deals-table">
+    <thead>
+      <tr>
+        {{ m.sort_th('Nazwa', 'name', sort, direction, 'crm_deals.list_deals') }}
+        {{ m.sort_th('Etap', 'stage', sort, direction, 'crm_deals.list_deals', 'stage') }}
+        {{ m.sort_th('Kwota', 'amount', sort, direction, 'crm_deals.list_deals', 'amount') }}
+        <th data-col="company_name">Firma</th>
+        <th data-col="contact_name">Kontakt</th>
+        {{ m.sort_th('Rozpoczęcie', 'start_date', sort, direction, 'crm_deals.list_deals', 'start_date') }}
+        {{ m.sort_th('Zakończenie', 'end_date', sort, direction, 'crm_deals.list_deals', 'end_date') }}
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in deals %}
+      <tr>
+        <td><a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}">{{ d.name }}</a></td>
+        <td data-col="stage">
+          <span class="badge {{ stage_badge_classes[d.stage] }}">
+            {{ stage_labels[d.stage] }}
+          </span>
+        </td>
+        <td data-col="amount" class="text-right nowrap">{{ d.amount|pln if d.amount is not none else '—' }}</td>
+        <td data-col="company_name">
+          {% if d.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=d.company_id) }}">{{ d.company_short_name or d.company_name }}</a>{% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td data-col="contact_name">
+          {% if d.contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=d.contact_id) }}">{{ d.contact_first_name }} {{ d.contact_last_name }}</a>{% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td data-col="start_date" class="nowrap">{{ d.start_date|ddmmyyyy if d.start_date else '—' }}</td>
+        <td data-col="end_date" class="nowrap">{{ d.end_date|ddmmyyyy if d.end_date else '—' }}</td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">✎</a>
+          <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
+                class="inline-form" onsubmit="return confirm('Usunąć ten interes?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="table-count">{{ deals|length }} interesów</div>
+</div>
+
+<div id="deals-kanban-view" style="display:none">
+  <div class="kanban-board">
+    {% for stage_val, stage_label in stage_labels.items() %}
+    {% set stage_deals = deals|selectattr('stage', 'equalto', stage_val)|list %}
+    <div class="kanban-column">
+      <div class="kanban-column-header">
+        <div class="kanban-column-header-top">
+          <span class="kanban-column-name">
+            <span class="badge {{ stage_badge_classes[stage_val] }}">{{ stage_label }}</span>
+          </span>
+        </div>
+        <span class="kanban-column-total">{{ stage_deals|selectattr('amount', 'ne', none)|sum(attribute='amount')|pln }}</span>
+      </div>
+      <div class="kanban-column-body">
+        {% if stage_deals %}
+          {% for d in stage_deals %}
+          <a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}" class="kanban-card">
+            <div class="kanban-card-title">{{ d.name }}</div>
+            {% if d.company_id %}
+            <div class="kanban-card-sub">{{ d.company_short_name or d.company_name }}</div>
+            {% endif %}
+            <div class="kanban-card-amount">{{ d.amount|pln if d.amount is not none else '—' }}</div>
+          </a>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted small" style="padding:.4rem .2rem">Brak interesów.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak interesów spełniających kryteria.</p>
+  <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">Dodaj pierwszy interes</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+initColumnToggle('deals-table', 'crm_deals_columns', 'deals-col-btn', 'deals-col-menu');
+initDealsViewToggle();
+</script>
+{% endblock %}
