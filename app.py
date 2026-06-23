@@ -5,6 +5,7 @@ import database
 import traceback as _tb
 import logging
 import os
+import re
 from logging.handlers import RotatingFileHandler
 from datetime import datetime as _dt
 
@@ -85,9 +86,10 @@ def vat_label(value):
 
 @app.template_filter('month_pl')
 def month_pl(value):
-    """'2025-06' → 'czerwiec 2025'"""
+    """'2025-06' (lub date '2025-06-01') → 'czerwiec 2025'"""
     try:
-        y, m = str(value).split('-')
+        parts = str(value).split('-')
+        y, m = parts[0], parts[1]
         return f"{MONTHS_PL[int(m)]} {y}"
     except Exception:
         return str(value)
@@ -1252,7 +1254,113 @@ def api_logs_clear():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route('/api/crm/suggest')
+def api_crm_suggest():
+    kind = request.args.get('type', '')
+    q = request.args.get('q', '').strip()
+    if kind in ('tag', 'industry'):
+        from models.crm_tags import suggest_tags
+        return jsonify(suggest_tags(kind, q))
+    if kind == 'source':
+        from models.crm_tags import suggest_sources
+        return jsonify(suggest_sources(q))
+    return jsonify([])
+
+
+@app.route('/api/crm/companies/search')
+def api_crm_companies_search():
+    from models.crm_company import search_companies
+    q = request.args.get('q', '').strip()
+    return jsonify(search_companies(q))
+
+
+@app.route('/api/crm/contacts/search')
+def api_crm_contacts_search():
+    from models.crm_contact import search_contacts
+    q = request.args.get('q', '').strip()
+    company_id = request.args.get('company_id', type=int)
+    return jsonify(search_contacts(q, company_id=company_id))
+
+
+@app.route('/api/crm/company-lookup')
+def api_crm_company_lookup():
+    from services.company_lookup import lookup_by_krs, lookup_by_nip
+    nip = request.args.get('nip', '').strip()
+    krs = request.args.get('krs', '').strip()
+    if nip:
+        return jsonify(lookup_by_nip(nip))
+    if krs:
+        return jsonify(lookup_by_krs(krs))
+    return jsonify({'ok': False, 'error': 'Podaj NIP lub KRS.'})
+
+
+@app.route('/api/crm/companies/scrape-website', methods=['POST'])
+def api_crm_companies_scrape_website():
+    from models.settings import get_setting
+    from services.company_profile import build_company_profile
+
+    data = request.get_json(silent=True) or {}
+    url = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'ok': False, 'error': 'Podaj adres strony WWW.'})
+
+    api_key = get_setting('gemini_api_key', '')
+    model = get_setting('gemini_model', 'gemini-2.5-flash')
+    return jsonify(build_company_profile(url, api_key, model))
+
+
+@app.route('/api/crm/companies/quick-create', methods=['POST'])
+def api_crm_companies_quick_create():
+    from services.company_lookup import lookup_by_krs, lookup_by_nip
+    from models.crm_company import create_company, derive_short_name, get_company_by_nip
+
+    data = request.get_json(silent=True) or {}
+    nip = (data.get('nip') or '').strip()
+    krs = (data.get('krs') or '').strip()
+    if not nip and not krs:
+        return jsonify({'ok': False, 'error': 'Podaj NIP lub KRS.'})
+
+    if nip:
+        existing = get_company_by_nip(re.sub(r'\D', '', nip))
+        if existing:
+            return jsonify({'ok': True, 'id': existing['id'],
+                             'name': existing['short_name'] or existing['name'], 'created': False})
+        result = lookup_by_nip(nip)
+    else:
+        result = lookup_by_krs(krs)
+
+    if not result.get('ok'):
+        return jsonify(result)
+
+    company_data = result['data']
+    if company_data.get('nip'):
+        existing = get_company_by_nip(company_data['nip'])
+        if existing:
+            return jsonify({'ok': True, 'id': existing['id'],
+                             'name': existing['short_name'] or existing['name'], 'created': False})
+
+    company_id = create_company({
+        'name': company_data['name'],
+        'short_name': derive_short_name(company_data['name']),
+        'relation_type': 'lead',
+        'country': company_data.get('country') or 'Polska',
+        'city': company_data.get('city') or '',
+        'street': company_data.get('street') or '',
+        'house_number': company_data.get('house_number') or '',
+        'flat_number': company_data.get('flat_number') or '',
+        'postal_code': company_data.get('postal_code') or '',
+        'nip': company_data.get('nip') or '',
+        'krs': company_data.get('krs') or '',
+    }, session.get('user_id'), tags=[], industries=[])
+
+    return jsonify({'ok': True, 'id': company_id, 'name': company_data['name'], 'created': True})
+
+
 from routes.auth import bp as auth_bp
+from routes.crm_companies import bp as crm_companies_bp
+from routes.crm_contacts import bp as crm_contacts_bp
+from routes.crm_deals import bp as crm_deals_bp
+from routes.crm_plan import bp as crm_plan_bp
 from routes.dashboard import bp as dashboard_bp
 from routes.expenses import bp as expenses_bp
 from routes.imports import bp as imports_bp
@@ -1261,6 +1369,10 @@ from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
 
 app.register_blueprint(auth_bp)
+app.register_blueprint(crm_companies_bp)
+app.register_blueprint(crm_contacts_bp)
+app.register_blueprint(crm_deals_bp)
+app.register_blueprint(crm_plan_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(imports_bp)

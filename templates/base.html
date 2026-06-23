@@ -23,6 +23,12 @@
       </a>
     </li>
     <li>
+      <a href="{{ url_for('crm_companies.list_companies') }}"
+         class="{{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan') else '' }}">
+        CRM
+      </a>
+    </li>
+    <li>
       <a href="{{ url_for('expenses.list_expenses') }}"
          class="{{ 'active' if request.blueprint == 'expenses' else '' }}">
         Wydatki
