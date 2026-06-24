@@ -1,9 +1,13 @@
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+import unicodedata
+from urllib.parse import quote
+
+from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 
 from models.crm_company import get_company_by_id, get_company_tags
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, update_contact)
 from models.crm_notes import add_note, delete_note, get_history, get_notes
+from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
 
@@ -125,6 +129,25 @@ def view_contact(contact_id):
         history=get_history('contact', contact_id),
         add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),
     )
+
+
+@bp.route('/<int:contact_id>/vcard')
+def download_vcard(contact_id):
+    contact = get_contact_by_id(contact_id)
+    if not contact:
+        flash('Kontakt nie istnieje.', 'error')
+        return redirect(url_for('crm_contacts.list_contacts'))
+
+    vcard = build_vcard(contact)
+    display_name = f"{contact['first_name']} {contact['last_name']}".strip().replace(' ', '_') or 'kontakt'
+    ascii_name = unicodedata.normalize('NFKD', display_name).encode('ascii', 'ignore').decode('ascii') or 'kontakt'
+
+    return Response(vcard, mimetype='text/vcard', headers={
+        'Content-Disposition': (
+            f'attachment; filename="{ascii_name}.vcf"; '
+            f"filename*=UTF-8''{quote(display_name)}.vcf"
+        )
+    })
 
 
 @bp.route('/<int:contact_id>/delete', methods=['POST'])

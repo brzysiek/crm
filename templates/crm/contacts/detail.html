@@ -8,6 +8,7 @@
     {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}</div>{% endif %}
   </div>
   <div class="header-actions">
+    <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">📇 Wizytówka</a>
     <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">✎ Edytuj</a>
     <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
           class="inline-form" onsubmit="return confirm('Usunąć ten kontakt?')">

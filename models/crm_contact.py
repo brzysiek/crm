@@ -39,7 +39,8 @@ def get_contact_by_id(contact_id: int) -> dict | None:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            """SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name
+            """SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name,
+                      co.website AS company_website
                FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id
                WHERE ct.id=%s""",
             (contact_id,)
