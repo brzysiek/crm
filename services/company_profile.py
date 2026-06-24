@@ -117,6 +117,44 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Nie udało się sparsować JSON z odpowiedzi modelu: {text[:300]!r}")
 
 
+FAVICON_TIMEOUT = 6
+_ICON_RELS = ('icon', 'shortcut icon', 'apple-touch-icon', 'apple-touch-icon-precomposed')
+
+
+class _FaviconLinkExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.icon_href = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag != 'link' or self.icon_href:
+            return
+        attrs_dict = {k.lower(): v for k, v in attrs}
+        if (attrs_dict.get('rel') or '').lower() in _ICON_RELS and attrs_dict.get('href'):
+            self.icon_href = attrs_dict['href']
+
+
+def get_favicon_url(url: str) -> str | None:
+    """Zwraca adres URL favicony strony (z <link rel="icon">, albo domyślny /favicon.ico).
+    Nigdy nie zgłasza wyjątku — gdy strona jest nieosiągalna, zwraca None."""
+    normalized = _normalize_url(url)
+    if not normalized:
+        return None
+    try:
+        resp = requests.get(normalized, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT})
+        resp.raise_for_status()
+    except Exception:
+        return None
+    try:
+        parser = _FaviconLinkExtractor()
+        parser.feed(resp.text)
+        if parser.icon_href:
+            return urljoin(normalized, parser.icon_href)
+    except Exception:
+        pass
+    return urljoin(normalized, '/favicon.ico')
+
+
 def scrape_company_site(url: str) -> dict:
     """Pobiera tekst strony głównej i — jeśli znaleziono link — strony kontaktowej."""
     normalized = _normalize_url(url)

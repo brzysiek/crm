@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_id     INT NOT NULL,
+    `key`       VARCHAR(128) NOT NULL,
+    value       TEXT,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, `key`),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

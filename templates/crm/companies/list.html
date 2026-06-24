@@ -38,6 +38,7 @@
   <table class="data-table" id="companies-table">
     <thead>
       <tr>
+        <th class="favicon-cell"></th>
         {{ m.sort_th('Nazwa', 'name', sort, direction, 'crm_companies.list_companies', 'name') }}
         {{ m.sort_th('Nazwa skrócona', 'short_name', sort, direction, 'crm_companies.list_companies', 'short_name') }}
         {{ m.sort_th('Relacja', 'relation_type', sort, direction, 'crm_companies.list_companies', 'relation_type') }}
@@ -54,6 +55,13 @@
     <tbody>
       {% for c in companies %}
       <tr>
+        <td class="favicon-cell">
+          {% if c.favicon_url %}
+            <img src="{{ c.favicon_url }}" class="favicon-img" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'favicon-placeholder',textContent:'—'}))">
+          {% else %}
+            <div class="favicon-placeholder">—</div>
+          {% endif %}
+        </td>
         <td data-col="name"><a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.name }}</a></td>
         <td data-col="short_name">
           <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or '—' }}</a>

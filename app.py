@@ -1356,6 +1356,20 @@ def api_crm_companies_quick_create():
     return jsonify({'ok': True, 'id': company_id, 'name': company_data['name'], 'created': True})
 
 
+@app.route('/api/user-settings/<key>')
+def api_get_user_setting(key):
+    from models.user_settings import get_user_setting
+    return jsonify({'value': get_user_setting(session['user_id'], key)})
+
+
+@app.route('/api/user-settings/<key>', methods=['POST'])
+def api_set_user_setting(key):
+    from models.user_settings import set_user_setting
+    data = request.get_json(silent=True) or {}
+    set_user_setting(session['user_id'], key, data.get('value'))
+    return jsonify({'ok': True})
+
+
 from routes.auth import bp as auth_bp
 from routes.crm_companies import bp as crm_companies_bp
 from routes.crm_contacts import bp as crm_contacts_bp

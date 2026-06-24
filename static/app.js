@@ -1,3 +1,24 @@
+/* ── Górne menu: hamburger na urządzeniach mobilnych ──────────────────────────── */
+function initNavbarToggle() {
+  const navbar = document.querySelector('.navbar');
+  const toggle = document.getElementById('navbar-toggle');
+  if (!navbar || !toggle) return;
+
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = navbar.classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  document.addEventListener('click', e => {
+    if (navbar.classList.contains('nav-open') && !navbar.contains(e.target)) {
+      navbar.classList.remove('nav-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', initNavbarToggle);
+
 /* ── VAT calculator ──────────────────────────────────────────────────────────── */
 function calcNet() {
   const grossEl = document.getElementById('amount_gross');
@@ -952,11 +973,20 @@ function initColumnToggle(tableId, storageKey, btnId, menuId) {
     });
   }
 
+  function persist() {
+    localStorage.setItem(storageKey, JSON.stringify(hidden));
+    fetch(window.API_BASE + '/api/user-settings/' + storageKey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: JSON.stringify(hidden) }),
+    }).catch(() => {});
+  }
+
   checkboxes.forEach(cb => {
     cb.addEventListener('change', () => {
       const col = cb.dataset.col;
       hidden = cb.checked ? hidden.filter(c => c !== col) : [...hidden, col];
-      localStorage.setItem(storageKey, JSON.stringify(hidden));
+      persist();
       apply();
     });
   });
@@ -970,6 +1000,21 @@ function initColumnToggle(tableId, storageKey, btnId, menuId) {
   });
 
   apply();
+
+  /* Serwer jest źródłem prawdy między urządzeniami — localStorage to tylko
+     natychmiastowy cache na czas wczytywania strony. */
+  fetch(window.API_BASE + '/api/user-settings/' + storageKey)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.value) {
+        try {
+          hidden = JSON.parse(data.value);
+          localStorage.setItem(storageKey, data.value);
+          apply();
+        } catch (_) {}
+      }
+    })
+    .catch(() => {});
 }
 
 /* ── CRM: przełącznik widoku Lista/Kanban na liście interesów (zapamiętany w localStorage) ── */

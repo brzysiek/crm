@@ -3,6 +3,7 @@ import re
 from database import get_db
 from models.crm_notes import log_history, build_diff_summary
 from models.crm_tags import get_or_create_tag_ids
+from services.company_profile import get_favicon_url
 from services.text_utils import format_phone
 
 RELATION_LABELS = {'lead': 'Lead', 'client': 'Klient', 'partner': 'Partner'}
@@ -158,14 +159,16 @@ def _insert(data: dict) -> int:
         cur.execute(
             """INSERT INTO crm_companies
                (name, short_name, relation_type, country, city, street, house_number,
-                flat_number, postal_code, email, phone, nip, krs, website, description, source, owner_user_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                flat_number, postal_code, email, phone, nip, krs, website, favicon_url,
+                description, source, owner_user_id)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (
                 data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
                 data.get('country') or 'Polska', data.get('city') or None, data.get('street') or None,
                 data.get('house_number') or None, data.get('flat_number') or None,
                 data.get('postal_code') or None, data.get('email') or None, data.get('phone') or None,
                 data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
+                data.get('favicon_url') or None,
                 data.get('description') or None, data.get('source') or None, data.get('owner_user_id') or None,
             )
         )
@@ -175,6 +178,7 @@ def _insert(data: dict) -> int:
 def create_company(data: dict, user_id: int | None,
                     tags: list[str] = None, industries: list[str] = None) -> int:
     data['phone'] = format_phone(data.get('phone'))
+    data['favicon_url'] = get_favicon_url(data['website']) if data.get('website') else None
     db = get_db()
     try:
         company_id = _insert(data)
@@ -194,6 +198,7 @@ def create_company(data: dict, user_id: int | None,
 def update_company(company_id: int, data: dict, user_id: int | None,
                     tags: list[str] = None, industries: list[str] = None) -> None:
     data['phone'] = format_phone(data.get('phone'))
+    data['favicon_url'] = get_favicon_url(data['website']) if data.get('website') else None
     old = get_company_by_id(company_id)
     db = get_db()
     try:
@@ -202,7 +207,7 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                 """UPDATE crm_companies SET
                    name=%s, short_name=%s, relation_type=%s, country=%s, city=%s, street=%s,
                    house_number=%s, flat_number=%s, postal_code=%s, email=%s, phone=%s,
-                   nip=%s, krs=%s, website=%s, description=%s, source=%s, owner_user_id=%s
+                   nip=%s, krs=%s, website=%s, favicon_url=%s, description=%s, source=%s, owner_user_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
@@ -210,6 +215,7 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                     data.get('house_number') or None, data.get('flat_number') or None,
                     data.get('postal_code') or None, data.get('email') or None, data.get('phone') or None,
                     data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
+                    data.get('favicon_url') or None,
                     data.get('description') or None, data.get('source') or None, data.get('owner_user_id') or None,
                     company_id,
                 )

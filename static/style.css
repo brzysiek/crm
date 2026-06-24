@@ -121,6 +121,61 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 
+.navbar-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.navbar-toggle span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+@media (max-width: 880px) {
+  .navbar {
+    grid-template-columns: 1fr auto;
+    padding: 0 1rem;
+  }
+  .navbar-toggle { display: flex; }
+  .navbar-nav,
+  .nav-user {
+    display: none;
+  }
+  .navbar.nav-open .navbar-nav,
+  .navbar.nav-open .nav-user {
+    display: flex;
+  }
+  .navbar-nav {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0;
+    padding: .5rem 0;
+  }
+  .navbar-nav a {
+    width: 100%;
+    padding: .65rem .75rem;
+  }
+  .nav-user {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+    justify-content: space-between;
+    padding: .65rem 0 .75rem;
+    border-top: 1px solid rgba(255,255,255,.15);
+  }
+}
+
 /* ── Page wrapper ───────────────────────────────────────────────────────────── */
 .page-wrapper {
   min-width: 90%;
@@ -1265,6 +1320,27 @@ code    { background: var(--off-white); padding: 1px 5px; border-radius: 3px;
 .history-action-create { background: #d4edda; color: #155724; }
 .history-action-update { background: #cce5ff; color: #004085; }
 .history-action-delete { background: #f8d7da; color: #721c24; }
+
+/* ── CRM: favicon firmy ───────────────────────────────────────────────────────── */
+.favicon-cell { width: 40px; min-width: 40px; max-width: 40px; }
+.favicon-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  border-radius: var(--radius);
+}
+.favicon-placeholder {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--off-white);
+  border-radius: var(--radius);
+  color: var(--slate-light);
+  font-size: 1rem;
+}
 
 /* ── CRM: sortowalne nagłówki tabel ───────────────────────────────────────────── */
 .sort-link { color: inherit; display: inline-flex; align-items: center; gap: .25rem; }
