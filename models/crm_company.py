@@ -79,7 +79,11 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
            WHERE ct.company_id=c.id AND t.kind='tag') AS tags_list,
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
            FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
-           WHERE ct.company_id=c.id AND t.kind='industry') AS industries_list
+           WHERE ct.company_id=c.id AND t.kind='industry') AS industries_list,
+        (SELECT ct2.id FROM crm_contacts ct2 WHERE ct2.company_id=c.id
+           ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_id,
+        (SELECT CONCAT(ct2.first_name, ' ', ct2.last_name) FROM crm_contacts ct2
+           WHERE ct2.company_id=c.id ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_name
         FROM crm_companies c {' '.join(joins)} WHERE {' AND '.join(where)}"""
     sql += f" ORDER BY c.{sort} {direction}, c.id DESC"
 

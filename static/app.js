@@ -948,11 +948,13 @@ function clearEntityPicker(pickerId) {
   input.focus();
 }
 
-/* ── CRM: widoczność kolumn listy (zapamiętana w localStorage) ─────────────────
+/* ── CRM: widoczność kolumn listy (zapamiętana w localStorage + per użytkownik) ──
  * Checkboxy w menu muszą mieć data-col="<nazwa>" odpowiadającą atrybutom
- * data-col="<nazwa>" na <th>/<td> w tabeli.
+ * data-col="<nazwa>" na <th>/<td> w tabeli. `defaultHidden` to kolumny domyślnie
+ * schowane, zanim użytkownik cokolwiek wybierze (brak zapisanego ustawienia —
+ * odróżniane od "zapisano puste [] / wszystko widoczne" przez null z localStorage).
  */
-function initColumnToggle(tableId, storageKey, btnId, menuId) {
+function initColumnToggle(tableId, storageKey, btnId, menuId, defaultHidden) {
   const table = document.getElementById(tableId);
   const menu = document.getElementById(menuId);
   const btn = document.getElementById(btnId);
@@ -960,7 +962,12 @@ function initColumnToggle(tableId, storageKey, btnId, menuId) {
 
   const checkboxes = menu.querySelectorAll('input[type=checkbox][data-col]');
   let hidden = [];
-  try { hidden = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (_) { hidden = []; }
+  const raw = localStorage.getItem(storageKey);
+  if (raw === null) {
+    hidden = defaultHidden ? defaultHidden.slice() : [];
+  } else {
+    try { hidden = JSON.parse(raw); } catch (_) { hidden = []; }
+  }
 
   function apply() {
     checkboxes.forEach(cb => {

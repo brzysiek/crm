@@ -6,6 +6,15 @@
   <h1>Plan przychodów</h1>
 </div>
 
+<form class="filter-bar" method="get" action="{{ url_for('crm_plan.index') }}" style="margin-bottom:1rem">
+  <span class="filter-label">Od</span>
+  <input type="month" name="start" value="{{ range_start }}" class="filter-input" style="min-width:140px">
+  <span class="filter-label">Do</span>
+  <input type="month" name="end" value="{{ range_end }}" class="filter-input" style="min-width:140px">
+  <button type="submit" class="btn btn-outline">Pokaż</button>
+  <a href="{{ url_for('crm_plan.index', start=default_start, end=default_end) }}" class="btn btn-ghost">Domyślny zakres</a>
+</form>
+
 <div class="chart-card" style="margin-bottom:1.5rem">
   <div class="chart-header">
     <h2>Prognoza przychodów netto — {{ months[0].label_short }} – {{ months[-1].label_short }}</h2>
@@ -40,7 +49,7 @@
   </div>
   {% endfor %}
 </div>
-<div class="table-count">Suma w oknie 7 miesięcy: {{ grand_total|pln }}</div>
+<div class="table-count">Suma w oknie {{ months|length }} {{ months_word }}: {{ grand_total|pln }}</div>
 {% endblock %}
 
 {% block scripts %}

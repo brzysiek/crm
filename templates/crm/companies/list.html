@@ -9,7 +9,7 @@
     {{ m.col_toggle('companies-col-btn', 'companies-col-menu', [
       ('name', 'Nazwa'), ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
       ('email', 'Email'), ('phone', 'Telefon'), ('nip', 'NIP'), ('source', 'Źródło'),
-      ('tags', 'Tagi'), ('industries', 'Branże'),
+      ('primary_contact', 'Kontakt'), ('tags', 'Tagi'), ('industries', 'Branże'),
     ]) }}
     <a href="{{ url_for('crm_companies.new_company') }}" class="btn btn-primary">+ Dodaj firmę</a>
   </div>
@@ -47,6 +47,7 @@
         {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_companies.list_companies', 'phone') }}
         {{ m.sort_th('NIP', 'nip', sort, direction, 'crm_companies.list_companies', 'nip') }}
         {{ m.sort_th('Źródło', 'source', sort, direction, 'crm_companies.list_companies', 'source') }}
+        <th data-col="primary_contact">Kontakt</th>
         <th data-col="tags">Tagi</th>
         <th data-col="industries">Branże</th>
         <th class="col-actions"></th>
@@ -78,6 +79,11 @@
         <td data-col="phone">{{ c.phone or '—' }}</td>
         <td data-col="nip">{{ c.nip or '—' }}</td>
         <td data-col="source">{{ c.source or '—' }}</td>
+        <td data-col="primary_contact">
+          {% if c.primary_contact_id %}
+            <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.primary_contact_id) }}">{{ c.primary_contact_name }}</a>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
         <td data-col="tags">
           {% if c.tags_list %}
             {% for t in c.tags_list.split(', ') %}
@@ -117,6 +123,7 @@
 
 {% block scripts %}
 <script>
-initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu');
+initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu',
+  ['name', 'city', 'email', 'phone', 'nip', 'source']);
 </script>
 {% endblock %}

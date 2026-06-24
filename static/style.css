@@ -1322,7 +1322,8 @@ code    { background: var(--off-white); padding: 1px 5px; border-radius: 3px;
 .history-action-delete { background: #f8d7da; color: #721c24; }
 
 /* ── CRM: favicon firmy ───────────────────────────────────────────────────────── */
-.favicon-cell { width: 40px; min-width: 40px; max-width: 40px; }
+.favicon-cell { width: 60px; min-width: 60px; max-width: 60px; }
+.data-table td.favicon-cell { padding-left: 10px; padding-right: 10px; }
 .favicon-img {
   width: 40px;
   height: 40px;
