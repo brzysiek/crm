@@ -95,6 +95,20 @@ function toggleReveal(inputId, btn) {
 }
 
 /* ── Bar chart (Canvas API) ──────────────────────────────────────────────────── */
+function fillRoundedTopRect(ctx, x, y, w, h, r) {
+  if (h <= 0) return;
+  r = Math.min(r, w / 2, h);
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawBarChart(canvas, data) {
   if (!canvas || !data || data.length === 0) return;
 
@@ -118,7 +132,7 @@ function drawBarChart(canvas, data) {
   const step   = W / data.length;
 
   // Grid lines
-  ctx.strokeStyle = '#e8e8e6';
+  ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
   for (let i = 0; i <= 4; i++) {
@@ -131,8 +145,8 @@ function drawBarChart(canvas, data) {
   ctx.setLineDash([]);
 
   // Y-axis labels
-  ctx.fillStyle = '#878782';
-  ctx.font = '11px Work Sans, system-ui, sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '11px Inter, system-ui, sans-serif';
   ctx.textAlign = 'right';
   for (let i = 0; i <= 4; i++) {
     const val = maxVal * i / 4;
@@ -141,22 +155,21 @@ function drawBarChart(canvas, data) {
   }
 
   // Bars
-  const lime        = '#B5E619';
-  const bottleGreen = '#1C4B40';
+  const primary = '#3b82f6';
 
   data.forEach((val, i) => {
     const barH = (val / maxVal) * H;
     const x    = padL + i * step + (step - barW) / 2;
     const y    = padT + H - barH;
 
-    ctx.fillStyle = val > 0 ? bottleGreen : '#e0e0de';
-    ctx.fillRect(x, y, barW, barH);
+    ctx.fillStyle = val > 0 ? primary : '#eaecf0';
+    fillRoundedTopRect(ctx, x, y, barW, barH, 3);
   });
 
   // X-axis day labels (every 5th)
-  ctx.fillStyle = '#878782';
+  ctx.fillStyle = '#9ca3af';
   ctx.textAlign = 'center';
-  ctx.font = '10px Work Sans, system-ui, sans-serif';
+  ctx.font = '10px Inter, system-ui, sans-serif';
   data.forEach((_, i) => {
     if ((i + 1) % 5 === 0 || i === 0) {
       const x = padL + i * step + step / 2;
@@ -165,7 +178,7 @@ function drawBarChart(canvas, data) {
   });
 
   // X-axis baseline
-  ctx.strokeStyle = '#cdcdc8';
+  ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(padL, padT + H);
@@ -201,7 +214,7 @@ function drawMonthlyBarChart(canvas, labels, data, currentIndex) {
   const step   = W / data.length;
   const barW   = Math.max(8, step * 0.55);
 
-  ctx.strokeStyle = '#e8e8e6';
+  ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
   for (let i = 0; i <= 4; i++) {
@@ -213,8 +226,8 @@ function drawMonthlyBarChart(canvas, labels, data, currentIndex) {
   }
   ctx.setLineDash([]);
 
-  ctx.fillStyle = '#878782';
-  ctx.font = '11px Work Sans, system-ui, sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '11px Inter, system-ui, sans-serif';
   ctx.textAlign = 'right';
   for (let i = 0; i <= 4; i++) {
     const val = maxVal * i / 4;
@@ -222,24 +235,24 @@ function drawMonthlyBarChart(canvas, labels, data, currentIndex) {
     ctx.fillText(formatK(val), padL - 8, y + 4);
   }
 
-  const lime        = '#B5E619';
-  const bottleGreen = '#1C4B40';
+  const indigo    = '#4f46e5';
+  const lightBlue = '#93c5fd';
 
   data.forEach((val, i) => {
     const barH = (val / maxVal) * H;
     const x    = padL + i * step + (step - barW) / 2;
     const y    = padT + H - barH;
 
-    ctx.fillStyle = i === currentIndex ? lime : bottleGreen;
-    ctx.fillRect(x, y, barW, barH);
+    ctx.fillStyle = i === currentIndex ? indigo : lightBlue;
+    fillRoundedTopRect(ctx, x, y, barW, barH, 4);
 
-    ctx.fillStyle = i === currentIndex ? '#0D2820' : '#484845';
-    ctx.font = (i === currentIndex ? '700 ' : '500 ') + '11px Work Sans, system-ui, sans-serif';
+    ctx.fillStyle = i === currentIndex ? '#1f2937' : '#6b7280';
+    ctx.font = (i === currentIndex ? '700 ' : '500 ') + '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(labels[i] || '', x + barW / 2, padT + H + 18);
   });
 
-  ctx.strokeStyle = '#cdcdc8';
+  ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(padL, padT + H);
@@ -253,7 +266,7 @@ async function showKsefPreview(entityType, entityId) {
   if (!modal) return;
   const body = document.getElementById('ksefPreviewBody');
   modal.classList.add('open');
-  if (body) body.innerHTML = '<div style="padding:1rem;color:#666">Ładowanie…</div>';
+  if (body) body.innerHTML = '<div style="padding:1rem;color:#6b7280">Ładowanie…</div>';
 
   try {
     const r = await fetch('/api/ksef-preview/' + entityType + '/' + entityId);
@@ -266,11 +279,11 @@ async function showKsefPreview(entityType, entityId) {
       const num = resp.ksef_number || '—';
       body.innerHTML = '<div class="inv-details">' +
         section('Numer KSeF', [['Numer', num]]) +
-        '<p style="margin:1rem;color:#666;font-size:.9rem">Brak szczegółowych danych faktury — numer KSeF zapisany ręcznie.</p>' +
+        '<p style="margin:1rem;color:#6b7280;font-size:.9rem">Brak szczegółowych danych faktury — numer KSeF zapisany ręcznie.</p>' +
         '</div>';
     }
   } catch (e) {
-    if (body) body.innerHTML = '<div style="padding:1rem;color:#c00">Błąd ładowania: ' + e.message + '</div>';
+    if (body) body.innerHTML = '<div style="padding:1rem;color:#b91c1c">Błąd ładowania: ' + e.message + '</div>';
   }
 }
 
@@ -282,7 +295,7 @@ async function showDiskPreview(entityType, entityId) {
   const body  = document.getElementById('ksefPreviewBody');
   if (title) title.textContent = 'Podgląd faktury z Dysku Google';
   modal.classList.add('open');
-  if (body) body.innerHTML = '<div style="padding:1rem;color:#666">Ładowanie…</div>';
+  if (body) body.innerHTML = '<div style="padding:1rem;color:#6b7280">Ładowanie…</div>';
 
   try {
     const r = await fetch('/api/disk-preview/' + entityType + '/' + entityId);
@@ -323,7 +336,7 @@ async function showDiskPreview(entityType, entityId) {
       '<table class="data-table data-table-sm"><tbody>' + tableRows + '</tbody></table>' +
       '</div>';
   } catch (e) {
-    if (body) body.innerHTML = '<div style="padding:1rem;color:#c00">Błąd ładowania: ' + e.message + '</div>';
+    if (body) body.innerHTML = '<div style="padding:1rem;color:#b91c1c">Błąd ładowania: ' + e.message + '</div>';
   }
 }
 
@@ -492,7 +505,7 @@ function drawDualBarChart(canvas, expData, incData) {
   const barW   = Math.max(2, Math.floor(slotW * 0.38));
 
   // Grid lines
-  ctx.strokeStyle = '#e8e8e6';
+  ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
   for (let i = 0; i <= 4; i++) {
@@ -505,8 +518,8 @@ function drawDualBarChart(canvas, expData, incData) {
   ctx.setLineDash([]);
 
   // Y-axis labels
-  ctx.fillStyle = '#878782';
-  ctx.font = '11px Work Sans, system-ui, sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '11px Inter, system-ui, sans-serif';
   ctx.textAlign = 'right';
   for (let i = 0; i <= 4; i++) {
     const val = maxVal * i / 4;
@@ -514,7 +527,7 @@ function drawDualBarChart(canvas, expData, incData) {
     ctx.fillText(formatK(val), padL - 6, y + 4);
   }
 
-  // Grouped bars: income (lime) left, expense (bottle-green) right
+  // Grouped bars: income (green) left, expense (red) right
   expData.forEach((exp, i) => {
     const inc = incData[i] || 0;
     const cx  = padL + i * slotW + slotW / 2;
@@ -522,20 +535,20 @@ function drawDualBarChart(canvas, expData, incData) {
 
     if (inc > 0) {
       const h = (inc / maxVal) * H;
-      ctx.fillStyle = '#B5E619';
-      ctx.fillRect(cx - barW - gap, padT + H - h, barW, h);
+      ctx.fillStyle = '#22c55e';
+      fillRoundedTopRect(ctx, cx - barW - gap, padT + H - h, barW, h, 3);
     }
     if (exp > 0) {
       const h = (exp / maxVal) * H;
-      ctx.fillStyle = '#1C4B40';
-      ctx.fillRect(cx + gap, padT + H - h, barW, h);
+      ctx.fillStyle = '#f87171';
+      fillRoundedTopRect(ctx, cx + gap, padT + H - h, barW, h, 3);
     }
   });
 
   // X-axis day labels (1, every 5th)
-  ctx.fillStyle = '#878782';
+  ctx.fillStyle = '#9ca3af';
   ctx.textAlign = 'center';
-  ctx.font = '10px Work Sans, system-ui, sans-serif';
+  ctx.font = '10px Inter, system-ui, sans-serif';
   expData.forEach((_, i) => {
     if ((i + 1) % 5 === 0 || i === 0) {
       ctx.fillText(i + 1, padL + i * slotW + slotW / 2, padT + H + 18);
@@ -543,7 +556,7 @@ function drawDualBarChart(canvas, expData, incData) {
   });
 
   // Baseline
-  ctx.strokeStyle = '#cdcdc8';
+  ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(padL, padT + H);

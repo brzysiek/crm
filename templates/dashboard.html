@@ -7,14 +7,14 @@
 @media (max-width: 960px) { .db-row2 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px)  { .db-row2 { grid-template-columns: 1fr; } }
 
-.db-table-wrap { background: #fff; border: 1px solid var(--slate-light); border-radius: 6px; margin-bottom: 1.25rem; overflow: hidden; }
-.db-table-head { display: flex; align-items: center; justify-content: space-between; padding: .7rem 1.25rem; background: #fafaf8; border-bottom: 1px solid var(--slate-light); }
-.db-table-head h3 { margin: 0; font-size: .9rem; font-weight: 700; color: var(--bottle-dark); }
-.db-table-empty { padding: 1.25rem; color: var(--slate-mid); font-size: .875rem; }
+.db-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 1.25rem; overflow: hidden; box-shadow: var(--shadow-card); }
+.db-table-head { display: flex; align-items: center; justify-content: space-between; padding: .7rem 1.25rem; background: var(--surface-secondary); border-bottom: 1px solid var(--border); }
+.db-table-head h3 { margin: 0; font-size: .9rem; font-weight: 700; color: var(--text-primary); }
+.db-table-empty { padding: 1.25rem; color: var(--text-muted); font-size: .875rem; }
 
-.chart-legend-inline { display: flex; align-items: center; gap: 1rem; font-size: .8rem; color: var(--slate-mid); }
-.leg-sw { display: inline-block; width: 12px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }
-.kpi-value-pos { color: #217a50; }
+.chart-legend-inline { display: flex; align-items: center; gap: 1rem; font-size: .8rem; color: var(--text-muted); }
+.leg-sw { display: inline-block; width: 12px; height: 10px; border-radius: 3px; vertical-align: middle; margin-right: 3px; }
+.kpi-value-pos { color: var(--success-text); }
 .kpi-value-neg { color: var(--danger); }
 </style>
 
@@ -98,8 +98,8 @@
   <div class="chart-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
     <h2>Przychody vs Koszty — {{ month_label }}</h2>
     <div class="chart-legend-inline">
-      <span><span class="leg-sw" style="background:#B5E619"></span>Przychody</span>
-      <span><span class="leg-sw" style="background:#1C4B40"></span>Koszty</span>
+      <span><span class="leg-sw" style="background:#22c55e"></span>Przychody</span>
+      <span><span class="leg-sw" style="background:#f87171"></span>Koszty</span>
     </div>
   </div>
   <canvas id="dualChart" height="200"

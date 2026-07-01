@@ -4,12 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RosliNarnia – Logowanie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #f0f4f8;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f5f7fa;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -17,9 +19,9 @@
     }
 
     .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 4px 20px rgba(31, 41, 55, .07), 0 1px 3px rgba(31, 41, 55, .04);
       padding: 2.5rem 2.5rem 2rem;
       width: 100%;
       max-width: 400px;
@@ -31,8 +33,11 @@
     }
 
     .logo h1 {
-      font-size: 1.7rem;
-      color: #2d6a4f;
+      font-size: 24px;
+      background: linear-gradient(to right, #3b82f6, #4f46e5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
       font-weight: 700;
       letter-spacing: 0.5px;
     }
@@ -46,8 +51,8 @@
     label {
       display: block;
       font-size: 0.85rem;
-      font-weight: 600;
-      color: #374151;
+      font-weight: 500;
+      color: #1f2937;
       margin-bottom: 0.35rem;
     }
 
@@ -61,7 +66,7 @@
     .remember input[type="checkbox"] {
       width: 1rem;
       height: 1rem;
-      accent-color: #2d6a4f;
+      accent-color: #3b82f6;
       cursor: pointer;
       flex-shrink: 0;
     }
@@ -77,17 +82,21 @@
     input[type="password"] {
       width: 100%;
       padding: 0.65rem 0.85rem;
-      border: 1.5px solid #d1d5db;
-      border-radius: 8px;
+      border: 1.5px solid #eaecf0;
+      border-radius: 16px;
       font-size: 1rem;
-      color: #111827;
-      transition: border-color 0.2s;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #1f2937;
+      background: #f5f7fa;
+      transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
       outline: none;
     }
 
     input[type="text"]:focus,
     input[type="password"]:focus {
-      border-color: #2d6a4f;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+      background: #ffffff;
     }
 
     .field {
@@ -98,7 +107,7 @@
       background: #fef2f2;
       border: 1px solid #fca5a5;
       color: #b91c1c;
-      border-radius: 8px;
+      border-radius: 16px;
       padding: 0.6rem 0.9rem;
       font-size: 0.875rem;
       margin-bottom: 1rem;
@@ -107,19 +116,22 @@
     button[type="submit"] {
       width: 100%;
       padding: 0.75rem;
-      background: #2d6a4f;
+      background: linear-gradient(to right, #3b82f6, #4f46e5);
       color: #fff;
       font-size: 1rem;
       font-weight: 600;
+      font-family: 'Inter', system-ui, sans-serif;
       border: none;
-      border-radius: 8px;
+      border-radius: 999px;
       cursor: pointer;
-      transition: background 0.2s;
+      box-shadow: 0 12px 32px rgba(59, 130, 246, .18);
+      transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
       margin-top: 0.5rem;
     }
 
     button[type="submit"]:hover {
-      background: #1b4332;
+      transform: translateY(-1px);
+      filter: brightness(1.04);
     }
   </style>
 </head>
