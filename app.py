@@ -230,6 +230,30 @@ def api_expense_transactions_delete(expense_id, bank_txn_id):
     return jsonify(result)
 
 
+@app.route('/api/expenses/bulk-category', methods=['POST'])
+def api_expenses_bulk_category():
+    from models.expense import bulk_set_category
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    category = (data.get('category') or '').strip() or None
+    affected = bulk_set_category(ids, category)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/expenses/bulk-person', methods=['POST'])
+def api_expenses_bulk_person():
+    from models.expense import bulk_set_responsible_person
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    person = (data.get('person') or '').strip() or None
+    affected = bulk_set_responsible_person(ids, person)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/bank/suggest-for-invoice')
 def api_bank_suggest_for_invoice():
     """Zwraca najlepiej pasującą transakcję bankową dla faktury (bez encji)."""
@@ -403,6 +427,30 @@ def api_income_transactions_delete(income_id, bank_txn_id):
     from models.income import unlink_income_transaction
     result = unlink_income_transaction(income_id, bank_txn_id)
     return jsonify(result)
+
+
+@app.route('/api/incomes/bulk-category', methods=['POST'])
+def api_incomes_bulk_category():
+    from models.income import bulk_set_category
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    category = (data.get('category') or '').strip() or None
+    affected = bulk_set_category(ids, category)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/incomes/bulk-person', methods=['POST'])
+def api_incomes_bulk_person():
+    from models.income import bulk_set_paid_by
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    person = (data.get('person') or '').strip() or None
+    affected = bulk_set_paid_by(ids, person)
+    return jsonify({'status': 'ok', 'affected': affected})
 
 
 @app.route('/api/invoices/linked/<entity_type>/<int:entity_id>')

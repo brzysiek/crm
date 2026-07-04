@@ -1,13 +1,39 @@
+import json
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
 from flask import (Blueprint, flash, redirect, render_template,
-                   request, url_for)
+                   request, session, url_for)
 
 from models.dictionary import get_expense_categories as get_categories
 from models.expense import (create_expense, delete_expense,
                              get_all_expenses, get_expense_by_id, update_expense)
 from models.user import get_active_users
+from models.user_settings import get_user_setting
+
+EXPENSE_COLUMNS = [
+    {'key': 'contractor',       'label': 'Kontrahent'},
+    {'key': 'description',      'label': 'Opis'},
+    {'key': 'category',         'label': 'Kategoria'},
+    {'key': 'paid_pct',         'label': 'Opłacone'},
+    {'key': 'invoice',          'label': 'Faktura'},
+    {'key': 'payment_method',   'label': 'Forma'},
+    {'key': 'source',           'label': 'Skąd'},
+    {'key': 'responsible',      'label': 'Odpowiedzialny'},
+]
+EXPENSE_COLUMNS_SETTING_KEY = 'expenses_columns'
+
+
+def _visible_expense_columns():
+    all_keys = [c['key'] for c in EXPENSE_COLUMNS]
+    saved = get_user_setting(session['user_id'], EXPENSE_COLUMNS_SETTING_KEY)
+    if not saved:
+        return all_keys
+    try:
+        cols = [c for c in json.loads(saved) if c in all_keys]
+        return cols or all_keys
+    except (ValueError, TypeError):
+        return all_keys
 
 
 def _fix_vendor_from_raw(raw: dict) -> str:
@@ -127,13 +153,17 @@ def list_expenses():
         search=search or None,
     )
     categories = get_categories()
+    users = get_active_users()
 
     from models.expense import get_monthly_kpi
     kpi = get_monthly_kpi(month) if month else None
 
+    visible_columns = _visible_expense_columns()
+
     return render_template('expenses/list.html',
         expenses=expenses,
         categories=categories,
+        users=users,
         months=_last_months(),
         kpi=kpi,
         filters={
@@ -141,6 +171,9 @@ def list_expenses():
             'invoice_status': invoice_status,
             'payment_filter': payment_filter, 'search': search,
         },
+        columns=EXPENSE_COLUMNS,
+        visible_columns=visible_columns,
+        columns_setting_key=EXPENSE_COLUMNS_SETTING_KEY,
     )
 
 

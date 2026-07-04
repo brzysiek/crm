@@ -4,7 +4,12 @@
 {% block content %}
 <div class="page-header">
   <h1>Przychody</h1>
-  <a href="{{ url_for('income.new_income') }}" class="btn btn-primary">+ Dodaj przychód</a>
+  <div class="header-actions">
+    <a href="{{ url_for('income.new_income') }}" class="btn btn-primary">+ Dodaj przychód</a>
+    <button class="btn btn-outline" onclick="document.getElementById('columnsModal').classList.add('open')">
+      ⚙ Kolumny
+    </button>
+  </div>
 </div>
 
 {# ── KPI ─────────────────────────────────────────────────────────────────────── #}
@@ -63,45 +68,83 @@
   <a href="{{ url_for('income.list_incomes') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
 
-{# ── Tabela ─────────────────────────────────────────────────────────────────── #}
+{# ── Zaznaczanie i akcje zbiorcze ──────────────────────────────────────────── #}
 {% if incomes %}
+{% set cols_before = columns[:3] %}
+{% set cols_after = columns[3:] %}
+{% set visible_before = cols_before | selectattr('key', 'in', visible_columns) | list %}
+{% set visible_after = cols_after | selectattr('key', 'in', visible_columns) | list %}
+
+<div class="bulk-select-bar">
+  <label class="checkbox-label">
+    <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+    Zaznacz wszystkie
+  </label>
+  <div class="bulk-actions" id="bulkActions" style="display:none">
+    <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+
+    <select id="bulkCategorySelect" class="filter-select">
+      <option value="">— kategoria —</option>
+      {% for cat in categories %}
+      <option value="{{ cat }}">{{ cat }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetCategory">Nadaj kategorię</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkClearCategory">Usuń kategorię</button>
+
+    <input type="text" id="bulkPersonInput" class="filter-input" placeholder="Osoba odpowiedzialna">
+    <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPerson">Przypisz osobę</button>
+  </div>
+</div>
+
 <div class="table-wrapper">
   <table class="data-table">
     <thead>
       <tr>
+        <th class="col-checkbox"></th>
         <th>Data</th>
-        <th>Klient</th>
-        <th>Opis</th>
-        <th>Kategoria</th>
+        {% if 'client' in visible_columns %}<th>Klient</th>{% endif %}
+        {% if 'description' in visible_columns %}<th>Opis</th>{% endif %}
+        {% if 'category' in visible_columns %}<th>Kategoria</th>{% endif %}
         <th class="text-right">Brutto</th>
-        <th>Status płatności</th>
-        <th>Faktura</th>
-        <th>Forma</th>
-        <th>Skąd</th>
-        <th>Odpowiedzialny</th>
+        {% if 'payment_status' in visible_columns %}<th>Status płatności</th>{% endif %}
+        {% if 'invoice' in visible_columns %}<th>Faktura</th>{% endif %}
+        {% if 'payment_method' in visible_columns %}<th>Forma</th>{% endif %}
+        {% if 'source' in visible_columns %}<th>Skąd</th>{% endif %}
+        {% if 'responsible' in visible_columns %}<th>Odpowiedzialny</th>{% endif %}
         <th class="col-actions"></th>
       </tr>
     </thead>
     <tbody>
       {% for inc in incomes %}
       <tr class="{% if inc.payment_status == 'paid' %}row-paid{% elif inc.payment_status == 'partial' %}row-partial{% else %}row-unpaid{% endif %}">
+        <td class="col-checkbox">
+          <input type="checkbox" class="row-checkbox" value="{{ inc.id }}" onchange="updateBulkBar()">
+        </td>
         <td class="nowrap">{{ inc.date|ddmmyyyy }}</td>
+        {% if 'client' in visible_columns %}
         <td>
           <span class="desc-cell" title="{{ inc.client_name or '' }}">{{ inc.client_name or '—' }}</span>
           {% if inc.client_nip %}
             <span class="text-muted small"> NIP: {{ inc.client_nip }}</span>
           {% endif %}
         </td>
+        {% endif %}
+        {% if 'description' in visible_columns %}
         <td>
           <span class="desc-cell" title="{{ inc.description }}">{{ inc.description }}</span>
         </td>
+        {% endif %}
+        {% if 'category' in visible_columns %}
         <td><span class="text-muted">{{ inc.category or '—' }}</span></td>
+        {% endif %}
         <td class="text-right nowrap">
           {{ inc.amount_gross|pln }}
           {% if inc.orig_currency %}
           <br><span class="amount-orig">{{ inc.orig_amount|float|abs|round(2) }} {{ inc.orig_currency }}</span>
           {% endif %}
         </td>
+        {% if 'payment_status' in visible_columns %}
         <td>
           {% if inc.payment_status == 'paid' %}
             <span class="badge badge-green">Opłacone</span>
@@ -111,6 +154,8 @@
             <span class="badge badge-red">Nieopłacone</span>
           {% endif %}
         </td>
+        {% endif %}
+        {% if 'invoice' in visible_columns %}
         <td>
           {% if inc.invoice_status == 'ksef' %}
             <button class="badge badge-green badge-btn" title="{{ inc.invoice_ref }}"
@@ -122,6 +167,8 @@
             <span class="badge badge-gray">Brak</span>
           {% endif %}
         </td>
+        {% endif %}
+        {% if 'payment_method' in visible_columns %}
         <td>
           {% if inc.payment_method in ('transfer','mbank','unicredit') %}
             <span class="badge badge-outline">przelew/karta</span>
@@ -129,8 +176,13 @@
             <span class="badge badge-outline">gotówka</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
+        {% endif %}
+        {% if 'source' in visible_columns %}
         <td>{{ inc.source or '—' }}</td>
+        {% endif %}
+        {% if 'responsible' in visible_columns %}
         <td class="nowrap">{{ inc.paid_by or '—' }}</td>
+        {% endif %}
         <td class="col-actions nowrap">
           <a href="{{ url_for('income.edit_income', income_id=inc.id) }}"
              class="action-btn" title="Edytuj">✎</a>
@@ -146,9 +198,9 @@
     </tbody>
     <tfoot>
       <tr class="table-sum-row">
-        <td colspan="4">Suma ({{ incomes|length }} rekordów)</td>
+        <td colspan="{{ 2 + visible_before|length }}">Suma ({{ incomes|length }} rekordów)</td>
         <td class="text-right nowrap">{{ incomes|sum(attribute='amount_gross')|pln }}</td>
-        <td colspan="6"></td>
+        <td colspan="{{ 1 + visible_after|length }}"></td>
       </tr>
     </tfoot>
   </table>
@@ -159,4 +211,118 @@
   <a href="{{ url_for('income.new_income') }}" class="btn btn-primary">Dodaj pierwszy przychód</a>
 </div>
 {% endif %}
+
+{# ── Modal Kolumny ──────────────────────────────────────────────────────────── #}
+<div id="columnsModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Widoczne kolumny</h3>
+      <button onclick="document.getElementById('columnsModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    {% for col in columns %}
+    <label class="checkbox-label" style="display:flex;margin-bottom:.6rem">
+      <input type="checkbox" class="col-toggle" value="{{ col.key }}"
+             {{ 'checked' if col.key in visible_columns }}>
+      {{ col.label }}
+    </label>
+    {% endfor %}
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" id="btnSaveColumns">Zapisz</button>
+      <button type="button" class="btn btn-outline"
+              onclick="document.getElementById('columnsModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCheckedIds() {
+  return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
+}
+
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  const bar = document.getElementById('bulkActions');
+  const cnt = document.getElementById('bulkCount');
+  if (!bar) return;
+  bar.style.display = ids.length > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'y' : 'ych');
+  const boxes = [...document.querySelectorAll('.row-checkbox')];
+  const cb = document.getElementById('selectAll');
+  if (cb) {
+    cb.checked = boxes.length > 0 && boxes.every(b => b.checked);
+    cb.indeterminate = boxes.some(b => b.checked) && !boxes.every(b => b.checked);
+  }
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-checkbox').forEach(box => { box.checked = cb.checked; });
+  updateBulkBar();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  async function bulkUpdate(url, payload) {
+    const ids = getCheckedIds();
+    if (!ids.length) return;
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, ...payload }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        location.reload();
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  }
+
+  const btnSetCat = document.getElementById('btnBulkSetCategory');
+  const btnClearCat = document.getElementById('btnBulkClearCategory');
+  const btnSetPerson = document.getElementById('btnBulkSetPerson');
+
+  if (btnSetCat) {
+    btnSetCat.addEventListener('click', () => {
+      const cat = document.getElementById('bulkCategorySelect').value;
+      if (!cat) { alert('Wybierz kategorię.'); return; }
+      bulkUpdate(API_BASE + '/api/incomes/bulk-category', { category: cat });
+    });
+  }
+  if (btnClearCat) {
+    btnClearCat.addEventListener('click', () => {
+      if (!confirm('Usunąć kategorię z zaznaczonych przychodów?')) return;
+      bulkUpdate(API_BASE + '/api/incomes/bulk-category', { category: '' });
+    });
+  }
+  if (btnSetPerson) {
+    btnSetPerson.addEventListener('click', () => {
+      const person = (document.getElementById('bulkPersonInput').value || '').trim();
+      if (!person) { alert('Wpisz osobę.'); return; }
+      bulkUpdate(API_BASE + '/api/incomes/bulk-person', { person });
+    });
+  }
+
+  const btnSaveColumns = document.getElementById('btnSaveColumns');
+  if (btnSaveColumns) {
+    btnSaveColumns.addEventListener('click', async function () {
+      const cols = [...document.querySelectorAll('.col-toggle:checked')].map(el => el.value);
+      try {
+        await fetch(API_BASE + '/api/user-settings/{{ columns_setting_key }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: JSON.stringify(cols) }),
+        });
+        location.reload();
+      } catch (e) {
+        alert('Błąd zapisu: ' + e.message);
+      }
+    });
+  }
+});
+</script>
 {% endblock %}

@@ -423,6 +423,7 @@ a:hover { text-decoration: underline; }
 
 .data-table .row-inactive td { opacity: .5; }
 .data-table .col-actions { width: 80px; text-align: right; }
+.data-table .col-checkbox { width: 32px; text-align: center; }
 .text-right { text-align: right !important; }
 .nowrap { white-space: nowrap; }
 .desc-cell { display: inline-block; max-width: 240px; overflow: hidden;

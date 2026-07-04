@@ -135,6 +135,44 @@ def update_expense(expense_id: int, data: dict) -> None:
         raise
 
 
+def bulk_set_category(ids: list[int], category: str | None) -> int:
+    if not ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE expenses SET category=%s WHERE id IN ({placeholders})",
+                [category or None] + ids,
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected
+    except Exception:
+        db.rollback()
+        raise
+
+
+def bulk_set_responsible_person(ids: list[int], person: str | None) -> int:
+    if not ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE expenses SET responsible_person=%s WHERE id IN ({placeholders})",
+                [person or None] + ids,
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected
+    except Exception:
+        db.rollback()
+        raise
+
+
 def delete_expense(expense_id: int) -> None:
     db = get_db()
     try:

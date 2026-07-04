@@ -1,14 +1,40 @@
+import json
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
 from flask import (Blueprint, flash, redirect, render_template,
-                   request, url_for)
+                   request, session, url_for)
 
 from models.dictionary import get_income_categories
 from models.income import (create_income, delete_income, get_all_incomes,
                            get_income_by_id, update_income)
+from models.user_settings import get_user_setting
 
 bp = Blueprint('income', __name__, url_prefix='/income')
+
+INCOME_COLUMNS = [
+    {'key': 'client',           'label': 'Klient'},
+    {'key': 'description',      'label': 'Opis'},
+    {'key': 'category',         'label': 'Kategoria'},
+    {'key': 'payment_status',   'label': 'Status płatności'},
+    {'key': 'invoice',          'label': 'Faktura'},
+    {'key': 'payment_method',   'label': 'Forma'},
+    {'key': 'source',           'label': 'Skąd'},
+    {'key': 'responsible',      'label': 'Odpowiedzialny'},
+]
+INCOME_COLUMNS_SETTING_KEY = 'income_columns'
+
+
+def _visible_income_columns():
+    all_keys = [c['key'] for c in INCOME_COLUMNS]
+    saved = get_user_setting(session['user_id'], INCOME_COLUMNS_SETTING_KEY)
+    if not saved:
+        return all_keys
+    try:
+        cols = [c for c in json.loads(saved) if c in all_keys]
+        return cols or all_keys
+    except (ValueError, TypeError):
+        return all_keys
 
 MONTHS_PL = {
     1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
@@ -113,6 +139,7 @@ def list_incomes():
     )
     kpi = get_monthly_income_kpi(month) if month else None
     categories = get_income_categories()
+    visible_columns = _visible_income_columns()
 
     return render_template('income/list.html',
         incomes=incomes,
@@ -123,6 +150,9 @@ def list_incomes():
             'month': month, 'category': category,
             'payment_status': payment_status, 'search': search,
         },
+        columns=INCOME_COLUMNS,
+        visible_columns=visible_columns,
+        columns_setting_key=INCOME_COLUMNS_SETTING_KEY,
     )
 
 
