@@ -181,6 +181,18 @@ def get_bank_import_log(limit: int = 15) -> list[dict]:
         return cur.fetchall()
 
 
+def get_bank_transactions_by_ids(ids: list[int]) -> list[dict]:
+    if not ids:
+        return []
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT * FROM bank_transactions WHERE id IN ({placeholders})", ids
+        )
+        return cur.fetchall()
+
+
 def bulk_reject_bank(ids: list[int]) -> int:
     if not ids:
         return 0

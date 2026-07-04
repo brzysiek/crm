@@ -769,6 +769,85 @@ def api_bank_bulk_reject():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/bank/bulk-accept', methods=['POST'])
+def api_bank_bulk_accept():
+    """Automatycznie tworzy wydatki/przychody z zaznaczonych transakcji bankowych.
+
+    Typ (wydatek/przychód) wynika ze znaku kwoty transakcji — tak samo jak
+    przyciski 'Utwórz wydatek/przychód' na karcie pojedynczej transakcji.
+    """
+    from models.bank_transaction import get_bank_transactions_by_ids
+    from models.expense import create_expense, link_transaction
+    from models.income import create_income, link_income_transaction
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+
+    txns = get_bank_transactions_by_ids(ids)
+    created_expenses = 0
+    created_incomes = 0
+    errors = []
+
+    for txn in txns:
+        if txn['status'] != 'pending':
+            continue
+        try:
+            amount = abs(float(txn['amount'] or 0))
+            vat_rate = 23.0
+            amount_net = round(amount / (1 + vat_rate / 100), 2)
+            description = (txn.get('description') or txn.get('counterparty')
+                           or 'Transakcja bankowa')
+            orig_amount = float(txn['orig_amount']) if txn.get('orig_amount') else None
+            orig_currency = txn.get('orig_currency') if orig_amount else None
+
+            if float(txn['amount'] or 0) < 0:
+                record_id = create_expense({
+                    'date':               txn['date'],
+                    'responsible_person': 'Auto-import',
+                    'contractor_name':    txn.get('counterparty') or None,
+                    'description':        description,
+                    'amount_gross':       amount,
+                    'vat_rate':           vat_rate,
+                    'amount_net':         amount_net,
+                    'orig_amount':        orig_amount,
+                    'orig_currency':      orig_currency,
+                    'invoice_status':     'none',
+                    'paid_by':            'Auto-import',
+                    'payment_method':     'transfer',
+                    'source':             txn.get('bank'),
+                })
+                link_transaction(record_id, txn['id'])
+                created_expenses += 1
+            else:
+                record_id = create_income({
+                    'date':            txn['date'],
+                    'client_name':     txn.get('counterparty') or None,
+                    'description':     description,
+                    'amount_gross':    amount,
+                    'vat_rate':        vat_rate,
+                    'amount_net':      amount_net,
+                    'orig_amount':     orig_amount,
+                    'orig_currency':   orig_currency,
+                    'invoice_status':  'none',
+                    'payment_method':  'transfer',
+                    'payment_status':  'paid',
+                    'source':          txn.get('bank'),
+                })
+                link_income_transaction(record_id, txn['id'])
+                created_incomes += 1
+        except Exception as exc:
+            errors.append(f"ID {txn['id']}: {exc}")
+
+    return jsonify({
+        'status':           'ok' if not errors else 'partial',
+        'created_expenses':  created_expenses,
+        'created_incomes':   created_incomes,
+        'errors':            errors,
+    })
+
+
 @app.route('/api/fakturownia/bulk-reject', methods=['POST'])
 def api_bulk_reject():
     from models.invoice import bulk_reject

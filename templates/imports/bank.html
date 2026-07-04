@@ -88,12 +88,17 @@
     {% if pending_transactions %}
     <div class="bulk-actions" id="bulkActions" style="display:none">
       <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+      <button type="button" class="btn btn-primary btn-sm" id="btnBulkAccept">
+        Akceptuj zaznaczone
+      </button>
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkReject">
         Odrzuć zaznaczone
       </button>
     </div>
     {% endif %}
   </div>
+
+  <div id="bulkResult" class="api-result" style="display:none"></div>
 
   {# ── Filtry ── #}
   <div class="pending-filter-bar">
@@ -345,6 +350,43 @@ function clearTxnFilter() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  const btnAccept = document.getElementById('btnBulkAccept');
+  if (btnAccept) {
+    btnAccept.addEventListener('click', async function () {
+      const ids = getCheckedIds();
+      if (!ids.length) return;
+      if (!confirm('Automatycznie utworzyć wydatki/przychody z ' + ids.length + ' zaznaczonych transakcji?')) return;
+      const el = document.getElementById('bulkResult');
+      opProgress(el, 'Przetwarzanie transakcji…', 0, 0);
+      try {
+        const r = await fetch(API_BASE + '/api/bank/bulk-accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const d = await r.json();
+        el.style.whiteSpace = 'pre-wrap';
+        if (d.status === 'error') {
+          el.className = 'api-result api-error';
+          el.textContent = d.message || 'Błąd przetwarzania.';
+          return;
+        }
+        const msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}`;
+        if (d.errors && d.errors.length) {
+          el.className = 'api-result api-error';
+          el.textContent = msg + `\nBłędy (${d.errors.length}):\n` + d.errors.join('\n');
+        } else {
+          el.className = 'api-result api-ok';
+          el.textContent = msg;
+          setTimeout(() => location.reload(), 1500);
+        }
+      } catch (e) {
+        el.className = 'api-result api-error';
+        el.textContent = 'Błąd żądania: ' + e.message;
+      }
+    });
+  }
+
   const btnReject = document.getElementById('btnBulkReject');
   if (btnReject) {
     btnReject.addEventListener('click', async function () {
