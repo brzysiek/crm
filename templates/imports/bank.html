@@ -366,9 +366,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         const d = await r.json();
         el.style.whiteSpace = 'pre-wrap';
-        if (d.status === 'error') {
+        if (!r.ok || (d.status !== 'ok' && d.status !== 'partial')) {
           el.className = 'api-result api-error';
-          el.textContent = d.message || 'Błąd przetwarzania.';
+          el.textContent = d.message || (d.errors && d.errors.join('\n')) || 'Błąd przetwarzania.';
           return;
         }
         const msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}`;
