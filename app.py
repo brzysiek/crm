@@ -748,8 +748,11 @@ def api_fakturownia_sync():
         from services.fakturownia import FakturowniaClient
         from database import get_db
         from datetime import datetime
+        data = request.get_json(silent=True) or {}
+        month = (data.get('month') or '').strip() or None
         filter_cat = get_setting('fakturownia_filter_category', 'all')
-        result = FakturowniaClient(subdomain, api_key).sync_to_db(get_db(), filter_category=filter_cat)
+        result = FakturowniaClient(subdomain, api_key).sync_to_db(
+            get_db(), filter_category=filter_cat, month=month)
         set_setting('fakturownia_last_sync', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         return jsonify(result)
     except Exception as e:

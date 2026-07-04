@@ -1,3 +1,4 @@
+import calendar
 import json
 from datetime import date, timedelta
 
@@ -149,14 +150,21 @@ class FakturowniaClient:
         return result
 
     def sync_to_db(self, db_conn, period_days: int = 365,
-                   filter_category: str = 'expense') -> dict:
+                   filter_category: str = 'expense', month: str = None) -> dict:
         """
-        Synchronizuje faktury z ostatnich period_days dni.
+        Synchronizuje faktury z ostatnich period_days dni, albo — jeśli podano
+        month (format 'YYYY-MM') — z konkretnego miesiąca.
         filter_category: 'expense' | 'income' | 'all'
         """
-        today = date.today()
-        period_start = (today - timedelta(days=period_days)).isoformat()
-        period_end = today.isoformat()
+        if month:
+            year, mon = (int(part) for part in month.split('-'))
+            period_start = date(year, mon, 1).isoformat()
+            last_day = calendar.monthrange(year, mon)[1]
+            period_end = date(year, mon, last_day).isoformat()
+        else:
+            today = date.today()
+            period_start = (today - timedelta(days=period_days)).isoformat()
+            period_end = today.isoformat()
 
         try:
             invoices = self.fetch_invoices(period_start, period_end, filter_category)

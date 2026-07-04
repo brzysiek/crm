@@ -7,7 +7,15 @@
 <div class="settings-section">
   <div class="section-header-row">
     <h3>Historia synchronizacji</h3>
-    <button type="button" class="btn btn-outline btn-sm" id="btnSync">Synchronizuj teraz</button>
+    <div class="sync-controls" style="display:flex; align-items:center; gap:.5rem">
+      <select id="syncMonth" class="form-control form-control-sm">
+        <option value="">Ostatnie 365 dni</option>
+        {% for m in months %}
+        <option value="{{ m.value }}">{{ m.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline btn-sm" id="btnSync">Synchronizuj teraz</button>
+    </div>
   </div>
   <div id="apiResult" class="api-result" style="display:none"></div>
   {% if cfg.fakturownia_last_sync %}
@@ -510,9 +518,14 @@ document.addEventListener('DOMContentLoaded', function () {
 // ── Fakturownia sync button ─────────────────────────────────────────────────
 document.getElementById('btnSync').addEventListener('click', async function () {
   const el = document.getElementById('apiResult');
+  const month = document.getElementById('syncMonth')?.value || '';
   opProgress(el, 'Synchronizacja z Fakturownią…', 0, 0);
   try {
-    const r = await fetch(API_BASE + '/api/fakturownia/sync', { method: 'POST' });
+    const r = await fetch(API_BASE + '/api/fakturownia/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month }),
+    });
     const d = await r.json();
     if (d.status === 'ok') {
       el.className = 'api-result api-ok';

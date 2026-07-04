@@ -1,6 +1,27 @@
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 bp = Blueprint('imports', __name__, url_prefix='/importy')
+
+MONTHS_PL = {
+    1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
+    5: 'maj', 6: 'czerwiec', 7: 'lipiec', 8: 'sierpień',
+    9: 'wrzesień', 10: 'październik', 11: 'listopad', 12: 'grudzień',
+}
+
+
+def _last_months(n=18):
+    months = []
+    today = date.today()
+    for i in range(n):
+        d = today - relativedelta(months=i)
+        months.append({
+            'value': d.strftime('%Y-%m'),
+            'label': f"{MONTHS_PL[d.month]} {d.year}",
+        })
+    return months
 
 
 @bp.route('/')
@@ -86,6 +107,7 @@ def fakturownia():
         pending_invoices=pending,
         type_filter=type_filter,
         sync_log=sync_log,
+        months=_last_months(),
     )
 
 
