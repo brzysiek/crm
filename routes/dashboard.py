@@ -2,7 +2,8 @@ import calendar
 import json
 from datetime import date
 
-from flask import Blueprint, render_template
+from dateutil.relativedelta import relativedelta
+from flask import Blueprint, render_template, request
 
 from models.expense import get_daily_totals, get_monthly_kpi, get_unpaid_expenses
 from models.income import (get_income_daily_totals, get_monthly_income_kpi,
@@ -17,16 +18,34 @@ MONTHS_PL = {
 }
 
 
+def _last_months(n=18):
+    months = []
+    today = date.today()
+    for i in range(n):
+        d = today - relativedelta(months=i)
+        months.append({
+            'value': d.strftime('%Y-%m'),
+            'label': f"{MONTHS_PL[d.month]} {d.year}",
+        })
+    return months
+
+
 @bp.route('/')
 def index():
     today = date.today()
-    month = today.strftime('%Y-%m')
+    month = request.args.get('month', '').strip() or today.strftime('%Y-%m')
+    try:
+        year, mon = (int(p) for p in month.split('-'))
+        date(year, mon, 1)
+    except (ValueError, TypeError):
+        month = today.strftime('%Y-%m')
+        year, mon = today.year, today.month
 
     expense_kpi = get_monthly_kpi(month)
     income_kpi  = get_monthly_income_kpi(month)
     balance = float(income_kpi['total_gross'] or 0) - float(expense_kpi['total_gross'] or 0)
 
-    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_in_month = calendar.monthrange(year, mon)[1]
 
     exp_map  = {int(r['day']): float(r['total']) for r in get_daily_totals(month)}
     inc_map  = {int(r['day']): float(r['total']) for r in get_income_daily_totals(month)}
@@ -41,7 +60,8 @@ def index():
 
     return render_template('dashboard.html',
         month=month,
-        month_label=f"{MONTHS_PL[today.month]} {today.year}",
+        month_label=f"{MONTHS_PL[mon]} {year}",
+        months=_last_months(),
         today=today,
         expense_kpi=expense_kpi,
         income_kpi=income_kpi,

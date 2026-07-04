@@ -20,6 +20,13 @@
 
 <div class="page-header" style="margin-bottom:1.25rem">
   <h1>Dashboard <span class="text-muted" style="font-size:.9rem;font-weight:400">{{ today|ddmmyyyy }} · {{ month_label }}</span></h1>
+  <form class="filter-bar" method="get" action="{{ url_for('dashboard.index') }}" style="margin-bottom:0">
+    <select name="month" class="filter-select">
+      {% for m in months %}
+        <option value="{{ m.value }}" {{ 'selected' if month == m.value }}>{{ m.label }}</option>
+      {% endfor %}
+    </select>
+  </form>
 </div>
 
 {# ── Bilans bieżącego miesiąca (3 karty) ────────────────────────────────── #}

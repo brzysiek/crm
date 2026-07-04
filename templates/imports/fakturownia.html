@@ -8,7 +8,7 @@
   <div class="section-header-row">
     <h3>Historia synchronizacji</h3>
     <div class="sync-controls" style="display:flex; align-items:center; gap:.5rem">
-      <select id="syncMonth" class="form-control form-control-sm">
+      <select id="syncMonth" class="filter-select">
         <option value="">Ostatnie 365 dni</option>
         {% for m in months %}
         <option value="{{ m.value }}">{{ m.label }}</option>
