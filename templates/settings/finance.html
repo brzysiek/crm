@@ -1,12 +1,12 @@
 {% extends 'settings/_layout.html' %}
 {% block settings_content %}
 
-<h2 class="settings-section-title">Słownik</h2>
+<h2 class="settings-section-title">Finanse</h2>
 <p class="text-muted" style="margin-bottom:1.5rem">
-  Zdefiniuj dostępne opcje w formularzach wydatków i przychodów.
+  Kategorie dostępne w formularzach wydatków i przychodów.
 </p>
 
-{% macro dict_section(title, dict_type, items, value_label, label_label=None) %}
+{% macro dict_section(title, dict_type, items, value_label) %}
 <div class="settings-card" style="margin-bottom:1.5rem">
   <h3 style="margin:0 0 1rem">{{ title }}</h3>
 
@@ -15,7 +15,6 @@
     <thead>
       <tr>
         <th>{{ value_label }}</th>
-        {% if label_label %}<th>{{ label_label }}</th>{% endif %}
         <th></th>
       </tr>
     </thead>
@@ -23,7 +22,6 @@
       {% for item in items %}
       <tr>
         <td>{{ item.value }}</td>
-        {% if label_label %}<td>{{ item.label or '' }}</td>{% endif %}
         <td style="text-align:right">
           <form method="post"
                 action="{{ url_for('settings.dictionary_delete', item_id=item.id) }}"
@@ -43,22 +41,15 @@
   <form method="post" action="{{ url_for('settings.dictionary_add') }}"
         class="dict-add-form">
     <input type="hidden" name="dict_type" value="{{ dict_type }}">
-    {% if label_label %}
-    <input type="text" name="value" placeholder="{{ value_label }}" required
-           class="filter-input" style="max-width:120px">
-    <input type="text" name="label" placeholder="{{ label_label }}"
-           class="filter-input" style="max-width:200px">
-    {% else %}
     <input type="text" name="value" placeholder="Nazwa" required
            class="filter-input" style="max-width:280px">
-    {% endif %}
     <button type="submit" class="btn btn-outline btn-sm">+ Dodaj</button>
   </form>
 </div>
 {% endmacro %}
 
-{{ dict_section('Stawki VAT', 'vat_rate', vat_rates, 'Wartość (np. 23)', 'Etykieta (np. 23%)') }}
-{{ dict_section('Formy płatności', 'payment_method', payment_methods, 'Klucz (np. transfer)', 'Nazwa wyświetlana') }}
+{{ dict_section('Kategorie wydatków', 'expense_category', expense_categories, 'Kategoria') }}
+{{ dict_section('Kategorie przychodów', 'income_category', income_categories, 'Kategoria') }}
 
 <style>
 .dict-add-form { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }

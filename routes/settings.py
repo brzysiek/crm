@@ -43,16 +43,27 @@ def logs():
     return render_template('settings/logs.html', active_tab='logs')
 
 
+@bp.route('/finance', methods=['GET'])
+def finance():
+    from models.dictionary import get_dict_items
+    return render_template('settings/finance.html',
+        active_tab='finance',
+        expense_categories=get_dict_items('expense_category'),
+        income_categories=get_dict_items('income_category'),
+    )
+
+
 @bp.route('/dictionary', methods=['GET'])
 def dictionary():
     from models.dictionary import get_dict_items
     return render_template('settings/dictionary.html',
         active_tab='dictionary',
-        expense_categories=get_dict_items('expense_category'),
-        income_categories=get_dict_items('income_category'),
         vat_rates=get_dict_items('vat_rate'),
         payment_methods=get_dict_items('payment_method'),
     )
+
+
+_FINANCE_DICT_TYPES = ('expense_category', 'income_category')
 
 
 @bp.route('/dictionary/add', methods=['POST'])
@@ -66,12 +77,46 @@ def dictionary_add():
             add_dict_item(dict_type, value, label)
         except Exception:
             flash('Taka pozycja już istnieje.', 'error')
-    return redirect(url_for('settings.dictionary'))
+    target = 'settings.finance' if dict_type in _FINANCE_DICT_TYPES else 'settings.dictionary'
+    return redirect(url_for(target))
 
 
 @bp.route('/dictionary/<int:item_id>/delete', methods=['POST'])
 def dictionary_delete(item_id):
-    from models.dictionary import delete_dict_item
+    from models.dictionary import delete_dict_item, get_dict_item_type
+    dict_type = get_dict_item_type(item_id)
     delete_dict_item(item_id)
-    return redirect(url_for('settings.dictionary'))
+    target = 'settings.finance' if dict_type in _FINANCE_DICT_TYPES else 'settings.dictionary'
+    return redirect(url_for(target))
+
+
+@bp.route('/crm', methods=['GET'])
+def crm_settings():
+    from models.crm_tags import get_tags
+    return render_template('settings/crm.html',
+        active_tab='crm',
+        tags=get_tags('tag'),
+        industries=get_tags('industry'),
+        sources=get_tags('source'),
+    )
+
+
+@bp.route('/crm/add', methods=['POST'])
+def crm_tag_add():
+    from models.crm_tags import add_tag
+    kind = request.form.get('kind', '').strip()
+    name = request.form.get('name', '').strip()
+    if kind in ('tag', 'industry', 'source') and name:
+        try:
+            add_tag(kind, name)
+        except Exception:
+            flash('Taka pozycja już istnieje.', 'error')
+    return redirect(url_for('settings.crm_settings'))
+
+
+@bp.route('/crm/<int:tag_id>/delete', methods=['POST'])
+def crm_tag_delete(tag_id):
+    from models.crm_tags import delete_tag
+    delete_tag(tag_id)
+    return redirect(url_for('settings.crm_settings'))
 

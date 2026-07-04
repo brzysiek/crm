@@ -10,6 +10,14 @@
          class="settings-nav-item {{ 'active' if active_tab == 'general' }}">
         Integracje
       </a>
+      <a href="{{ url_for('settings.finance') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'finance' }}">
+        Finanse
+      </a>
+      <a href="{{ url_for('settings.crm_settings') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'crm' }}">
+        CRM
+      </a>
       <a href="{{ url_for('settings.dictionary') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'dictionary' }}">
         Słownik

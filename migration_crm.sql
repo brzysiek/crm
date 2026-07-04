@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS crm_deals (
 -- (crm_companies.source) z podpowiedziami z istniejących wartości, bez tabeli słownikowej.
 CREATE TABLE IF NOT EXISTS crm_tags (
     id    INT AUTO_INCREMENT PRIMARY KEY,
-    kind  ENUM('tag','industry') NOT NULL,
+    kind  ENUM('tag','industry','source') NOT NULL,
     name  VARCHAR(128) NOT NULL,
     UNIQUE KEY uq_kind_name (kind, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

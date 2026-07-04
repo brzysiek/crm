@@ -37,6 +37,14 @@ def add_dict_item(dict_type: str, value: str, label: str | None = None) -> int:
         raise
 
 
+def get_dict_item_type(item_id: int) -> str | None:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT dict_type FROM dictionary_items WHERE id=%s", (item_id,))
+        row = cur.fetchone()
+        return row['dict_type'] if row else None
+
+
 def delete_dict_item(item_id: int) -> None:
     db = get_db()
     try:
