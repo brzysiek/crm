@@ -71,8 +71,12 @@ class FakturowniaClient:
         dlatego jawnie ustawiamy parametr.
         """
         params = {
-            'date_from': period_start,
-            'date_to':   period_end,
+            'period':          'more',
+            'date_from':       period_start,
+            'date_to':         period_end,
+            # sell_date (transaction_date) ma priorytet w _normalize() przy zapisie
+            # do naszej bazy, więc filtrujemy po tym samym polu co API Fakturowni.
+            'search_date_type': 'transaction_date',
         }
 
         if filter_category == 'expense':
