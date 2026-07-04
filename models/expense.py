@@ -173,12 +173,63 @@ def bulk_set_responsible_person(ids: list[int], person: str | None) -> int:
         raise
 
 
+def _revert_expense_links(cur, expense_id: int) -> None:
+    """Odpina transakcje bankowe i faktury powiązane z wydatkiem, przywracając
+    je do stanu oczekującego (pending), zanim wydatek zostanie usunięty."""
+    cur.execute(
+        "SELECT bank_txn_id FROM expense_transactions WHERE expense_id=%s",
+        (expense_id,)
+    )
+    txn_ids = [r['bank_txn_id'] for r in cur.fetchall()]
+    cur.execute("DELETE FROM expense_transactions WHERE expense_id=%s", (expense_id,))
+    for txn_id in txn_ids:
+        cur.execute(
+            "SELECT (SELECT COUNT(*) FROM expense_transactions WHERE bank_txn_id=%s) "
+            "+ (SELECT COUNT(*) FROM income_transactions WHERE bank_txn_id=%s) AS cnt",
+            (txn_id, txn_id)
+        )
+        if cur.fetchone()['cnt'] == 0:
+            cur.execute(
+                "UPDATE bank_transactions SET status='pending' WHERE id=%s AND status='accepted'",
+                (txn_id,)
+            )
+    cur.execute(
+        "UPDATE fakturownia_invoices SET status='pending', assigned_expense_id=NULL "
+        "WHERE assigned_expense_id=%s AND status='assigned' AND invoice_type='expense'",
+        (expense_id,)
+    )
+    cur.execute(
+        "UPDATE gdrive_invoices SET status='pending', assigned_record_id=NULL "
+        "WHERE assigned_record_id=%s AND status='assigned' AND invoice_type='expense'",
+        (expense_id,)
+    )
+
+
 def delete_expense(expense_id: int) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
+            _revert_expense_links(cur, expense_id)
             cur.execute("DELETE FROM expenses WHERE id = %s", (expense_id,))
         db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def bulk_delete_expenses(ids: list[int]) -> int:
+    if not ids:
+        return 0
+    db = get_db()
+    affected = 0
+    try:
+        with db.cursor() as cur:
+            for expense_id in ids:
+                _revert_expense_links(cur, expense_id)
+                cur.execute("DELETE FROM expenses WHERE id=%s", (expense_id,))
+                affected += cur.rowcount
+        db.commit()
+        return affected
     except Exception:
         db.rollback()
         raise

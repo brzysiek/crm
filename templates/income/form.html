@@ -239,6 +239,11 @@
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz przychód</button>
     <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">Anuluj</a>
+    {% if income_id is defined %}
+    <button type="button" class="btn btn-outline" id="btnRevertAcceptance" style="margin-left:auto">
+      ↩ Cofnij akceptację
+    </button>
+    {% endif %}
   </div>
 </form>
 </div>
@@ -308,6 +313,29 @@ const ENTITY_ID   = {{ (income_id if income_id is defined else none)|tojson }};
 const IS_EDIT     = ENTITY_ID !== null;
 let _pendingTxns       = [];
 let _lastSearchResults = [];
+
+const btnRevertAcceptance = document.getElementById('btnRevertAcceptance');
+if (btnRevertAcceptance) {
+  btnRevertAcceptance.addEventListener('click', async () => {
+    if (!confirm('Cofnąć akceptację tego przychodu? Zostanie usunięty, a powiązana '
+      + 'transakcja bankowa i faktura wrócą na listę oczekujących.')) return;
+    try {
+      const r = await fetch(API_BASE + '/api/' + ENTITY_TYPE + 's/bulk-revert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [ENTITY_ID] }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        window.location.href = "{{ url_for('income.list_incomes') }}";
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  });
+}
 
 async function loadLinkedTransactions() {
   const el = document.getElementById('linked-txns-list');

@@ -94,6 +94,8 @@
 
     <input type="text" id="bulkPersonInput" class="filter-input" placeholder="Osoba odpowiedzialna">
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPerson">Przypisz osobę</button>
+
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">↩ Cofnij akceptację</button>
   </div>
 </div>
 
@@ -304,6 +306,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const person = (document.getElementById('bulkPersonInput').value || '').trim();
       if (!person) { alert('Wpisz osobę.'); return; }
       bulkUpdate(API_BASE + '/api/incomes/bulk-person', { person });
+    });
+  }
+
+  const btnRevert = document.getElementById('btnBulkRevert');
+  if (btnRevert) {
+    btnRevert.addEventListener('click', () => {
+      const ids = getCheckedIds();
+      if (!confirm(`Cofnąć akceptację ${ids.length} zaznaczonych przychodów? `
+        + `Przychody zostaną usunięte, a powiązane transakcje bankowe i faktury `
+        + `wrócą na listę oczekujących.`)) return;
+      bulkUpdate(API_BASE + '/api/incomes/bulk-revert', {});
     });
   }
 

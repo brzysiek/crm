@@ -453,6 +453,30 @@ def api_incomes_bulk_person():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/expenses/bulk-revert', methods=['POST'])
+def api_expenses_bulk_revert():
+    """Cofnij akceptację: usuwa wydatki i przywraca powiązane transakcje/faktury do pending."""
+    from models.expense import bulk_delete_expenses
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    affected = bulk_delete_expenses(ids)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/incomes/bulk-revert', methods=['POST'])
+def api_incomes_bulk_revert():
+    """Cofnij akceptację: usuwa przychody i przywraca powiązane transakcje/faktury do pending."""
+    from models.income import bulk_delete_incomes
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    affected = bulk_delete_incomes(ids)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/invoices/linked/<entity_type>/<int:entity_id>')
 def api_invoices_linked(entity_type, entity_id):
     """All invoices (fakturownia + gdrive) linked to an expense or income record."""
@@ -462,8 +486,9 @@ def api_invoices_linked(entity_type, entity_id):
     with db.cursor() as cur:
         cur.execute(
             "SELECT id, invoice_number, vendor_name, issue_date, amount_gross "
-            "FROM fakturownia_invoices WHERE assigned_expense_id=%s AND status='assigned'",
-            (entity_id,)
+            "FROM fakturownia_invoices WHERE assigned_expense_id=%s AND status='assigned' "
+            "AND invoice_type=%s",
+            (entity_id, entity_type)
         )
         for row in cur.fetchall():
             result.append({
@@ -477,8 +502,9 @@ def api_invoices_linked(entity_type, entity_id):
     with db.cursor() as cur:
         cur.execute(
             "SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross "
-            "FROM gdrive_invoices WHERE assigned_record_id=%s AND status='assigned'",
-            (entity_id,)
+            "FROM gdrive_invoices WHERE assigned_record_id=%s AND status='assigned' "
+            "AND invoice_type=%s",
+            (entity_id, entity_type)
         )
         for row in cur.fetchall():
             result.append({

@@ -109,6 +109,8 @@
       {% endfor %}
     </select>
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPerson">Przypisz osobę</button>
+
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">↩ Cofnij akceptację</button>
   </div>
 </div>
 
@@ -345,6 +347,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const person = document.getElementById('bulkPersonSelect').value;
       if (!person) { alert('Wybierz osobę.'); return; }
       bulkUpdate(API_BASE + '/api/expenses/bulk-person', { person });
+    });
+  }
+
+  const btnRevert = document.getElementById('btnBulkRevert');
+  if (btnRevert) {
+    btnRevert.addEventListener('click', () => {
+      const ids = getCheckedIds();
+      if (!confirm(`Cofnąć akceptację ${ids.length} zaznaczonych wydatków? `
+        + `Wydatki zostaną usunięte, a powiązane transakcje bankowe i faktury `
+        + `wrócą na listę oczekujących.`)) return;
+      bulkUpdate(API_BASE + '/api/expenses/bulk-revert', {});
     });
   }
 

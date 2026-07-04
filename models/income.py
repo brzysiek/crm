@@ -164,12 +164,63 @@ def bulk_set_paid_by(ids: list[int], person: str | None) -> int:
         raise
 
 
+def _revert_income_links(cur, income_id: int) -> None:
+    """Odpina transakcje bankowe i faktury powiązane z przychodem, przywracając
+    je do stanu oczekującego (pending), zanim przychód zostanie usunięty."""
+    cur.execute(
+        "SELECT bank_txn_id FROM income_transactions WHERE income_id=%s",
+        (income_id,)
+    )
+    txn_ids = [r['bank_txn_id'] for r in cur.fetchall()]
+    cur.execute("DELETE FROM income_transactions WHERE income_id=%s", (income_id,))
+    for txn_id in txn_ids:
+        cur.execute(
+            "SELECT (SELECT COUNT(*) FROM expense_transactions WHERE bank_txn_id=%s) "
+            "+ (SELECT COUNT(*) FROM income_transactions WHERE bank_txn_id=%s) AS cnt",
+            (txn_id, txn_id)
+        )
+        if cur.fetchone()['cnt'] == 0:
+            cur.execute(
+                "UPDATE bank_transactions SET status='pending' WHERE id=%s AND status='accepted'",
+                (txn_id,)
+            )
+    cur.execute(
+        "UPDATE fakturownia_invoices SET status='pending', assigned_expense_id=NULL "
+        "WHERE assigned_expense_id=%s AND status='assigned' AND invoice_type='income'",
+        (income_id,)
+    )
+    cur.execute(
+        "UPDATE gdrive_invoices SET status='pending', assigned_record_id=NULL "
+        "WHERE assigned_record_id=%s AND status='assigned' AND invoice_type='income'",
+        (income_id,)
+    )
+
+
 def delete_income(income_id: int) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
+            _revert_income_links(cur, income_id)
             cur.execute("DELETE FROM incomes WHERE id = %s", (income_id,))
         db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def bulk_delete_incomes(ids: list[int]) -> int:
+    if not ids:
+        return 0
+    db = get_db()
+    affected = 0
+    try:
+        with db.cursor() as cur:
+            for income_id in ids:
+                _revert_income_links(cur, income_id)
+                cur.execute("DELETE FROM incomes WHERE id=%s", (income_id,))
+                affected += cur.rowcount
+        db.commit()
+        return affected
     except Exception:
         db.rollback()
         raise

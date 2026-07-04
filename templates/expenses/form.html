@@ -275,6 +275,11 @@
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz wydatek</button>
     <a href="{{ url_for('expenses.list_expenses') }}" class="btn btn-outline">Anuluj</a>
+    {% if expense_id is defined %}
+    <button type="button" class="btn btn-outline" id="btnRevertAcceptance" style="margin-left:auto">
+      ↩ Cofnij akceptację
+    </button>
+    {% endif %}
   </div>
 </form>
 </div>
@@ -350,6 +355,29 @@ const ENTITY_ID   = {{ (expense_id if expense_id is defined else none)|tojson }}
 const IS_EDIT     = ENTITY_ID !== null;
 let _pendingTxns       = [];   // tryb nowy: lokalnie zaznaczone
 let _lastSearchResults = [];   // cache wyników wyszukiwania
+
+const btnRevertAcceptance = document.getElementById('btnRevertAcceptance');
+if (btnRevertAcceptance) {
+  btnRevertAcceptance.addEventListener('click', async () => {
+    if (!confirm('Cofnąć akceptację tego wydatku? Zostanie usunięty, a powiązana '
+      + 'transakcja bankowa i faktura wrócą na listę oczekujących.')) return;
+    try {
+      const r = await fetch(API_BASE + '/api/' + ENTITY_TYPE + 's/bulk-revert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [ENTITY_ID] }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        window.location.href = "{{ url_for('expenses.list_expenses') }}";
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  });
+}
 
 /* ── Lista przypiętych transakcji ─────────────────────────────────────── */
 async function loadLinkedTransactions() {
