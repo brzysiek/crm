@@ -301,6 +301,36 @@ a:hover { text-decoration: underline; }
 .btn-ghost:hover { background: var(--surface-secondary); color: var(--text-primary); }
 .btn-sm { padding: .35rem .8rem; font-size: .8rem; }
 
+/* ── File inputs ────────────────────────────────────────────────────────────── */
+input[type="file"] {
+  font-family: var(--font);
+  font-size: .875rem;
+  color: var(--text-secondary);
+  max-width: 100%;
+}
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem 1.1rem;
+  margin-right: .75rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  font-family: var(--font);
+  font-size: .875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--speed) var(--curve), border-color var(--speed) var(--curve);
+}
+input[type="file"]:hover::file-selector-button,
+input[type="file"]:hover::-webkit-file-upload-button {
+  border-color: var(--primary);
+  background: var(--info-bg);
+}
+
 /* ── Dashboard KPI grid ─────────────────────────────────────────────────────── */
 .kpi-grid {
   display: grid;
