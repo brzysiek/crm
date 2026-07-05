@@ -68,6 +68,12 @@
       </button>
     </div>
     <div id="ocrResult" class="api-result" style="display:none;margin-top:.75rem;white-space:pre-wrap"></div>
+    <div class="form-actions" style="margin-top:.5rem">
+      <button type="button" class="btn btn-outline btn-sm" id="btnRefreshOcrResults"
+              style="display:none" onclick="location.reload()">
+        Odśwież wyniki
+      </button>
+    </div>
   </div>
 </div>
 
@@ -483,8 +489,7 @@ async function runOcr() {
 
   ocrEl.style.whiteSpace = 'pre-wrap';
   let msg = `OCR zakończony: ${ok.length} sukces, ${skipped.length} pominiętych (już istnieją), ${failed.length} błędów`;
-  if (newOnes.length && !failed.length && !skipped.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
-  else if (newOnes.length) msg += `, ${newOnes.length} nowych faktur — odśwież stronę, aby zobaczyć je na liście poniżej`;
+  if (newOnes.length) msg += `, ${newOnes.length} nowych faktur — kliknij „Odśwież wyniki”, aby zobaczyć je na liście poniżej`;
   if (skipped.length) {
     msg += '\n\nPominięte (już istnieją w systemie):\n'
       + skipped.map(x => `${x.file_name}${x.duplicate_reason ? ': ' + x.duplicate_reason : ''}`).join('\n');
@@ -495,9 +500,8 @@ async function runOcr() {
   ocrEl.className = (failed.length || skipped.length) ? 'api-result api-error' : 'api-result api-ok';
   ocrEl.textContent = msg;
 
-  if (newOnes.length && !failed.length && !skipped.length) {
-    setTimeout(() => location.reload(), 2000);
-  }
+  const btnRefresh = document.getElementById('btnRefreshOcrResults');
+  if (btnRefresh) btnRefresh.style.display = newOnes.length ? 'inline-flex' : 'none';
 }
 
 function _monthNameToNum(name) {
