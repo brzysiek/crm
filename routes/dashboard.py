@@ -44,6 +44,8 @@ def index():
     expense_kpi = get_monthly_kpi(month)
     income_kpi  = get_monthly_income_kpi(month)
     balance = float(income_kpi['total_gross'] or 0) - float(expense_kpi['total_gross'] or 0)
+    net_balance = float(income_kpi['total_net'] or 0) - float(expense_kpi['total_net'] or 0)
+    vat_balance = float(income_kpi['total_vat'] or 0) - float(expense_kpi['total_vat'] or 0)
 
     days_in_month = calendar.monthrange(year, mon)[1]
 
@@ -66,6 +68,8 @@ def index():
         expense_kpi=expense_kpi,
         income_kpi=income_kpi,
         balance=balance,
+        net_balance=net_balance,
+        vat_balance=vat_balance,
         expense_chart=expense_chart,
         income_chart=income_chart,
         unpaid_expenses=unpaid_expenses,

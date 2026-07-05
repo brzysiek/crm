@@ -22,6 +22,11 @@
     <div class="kpi-label">Wydatki brutto</div>
     <div class="kpi-value">{{ kpi.total_gross|pln }}</div>
   </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Wydatki netto</div>
+    <div class="kpi-value">{{ kpi.total_net|pln }}</div>
+    <div class="kpi-sub">VAT naliczony {{ kpi.total_vat|pln }}</div>
+  </div>
   <div class="kpi-card kpi-green">
     <div class="kpi-label">Opłacone</div>
     <div class="kpi-value">{{ kpi.paid|pln }}</div>
@@ -166,6 +171,7 @@
           {% if e.orig_currency %}
           <br><span class="amount-orig">{{ e.orig_amount|float|abs|round(2) }} {{ e.orig_currency }}</span>
           {% endif %}
+          <br><span class="text-muted small">netto {{ e.amount_net|pln }} · VAT {{ (e.amount_gross - e.amount_net)|pln }}</span>
         </td>
         {% if 'paid_pct' in visible_columns %}
         <td>
@@ -220,7 +226,10 @@
     <tfoot>
       <tr class="table-sum-row">
         <td colspan="{{ 2 + visible_before|length }}">Suma ({{ expenses|length }} rekordów)</td>
-        <td class="text-right nowrap">{{ expenses|sum(attribute='amount_gross')|pln }}</td>
+        <td class="text-right nowrap">
+          {{ expenses|sum(attribute='amount_gross')|pln }}
+          <br><span class="text-muted small">netto {{ expenses|sum(attribute='amount_net')|pln }}</span>
+        </td>
         <td colspan="{{ 1 + visible_after|length }}"></td>
       </tr>
     </tfoot>

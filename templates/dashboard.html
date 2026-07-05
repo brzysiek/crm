@@ -56,6 +56,37 @@
   </div>
 </div>
 
+{# ── Bilans netto / VAT ──────────────────────────────────────────────────── #}
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-label">↑ Przychody netto</div>
+    <div class="kpi-value">{{ income_kpi.total_net|pln }}</div>
+    <div class="kpi-sub">VAT należny {{ income_kpi.total_vat|pln }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">↓ Koszty netto</div>
+    <div class="kpi-value">{{ expense_kpi.total_net|pln }}</div>
+    <div class="kpi-sub">VAT naliczony {{ expense_kpi.total_vat|pln }}</div>
+  </div>
+  <div class="kpi-card {% if net_balance >= 0 %}kpi-green{% else %}kpi-alert{% endif %}">
+    <div class="kpi-label">= Bilans netto</div>
+    <div class="kpi-value {% if net_balance >= 0 %}kpi-value-pos{% else %}kpi-value-neg{% endif %}">
+      {% if net_balance > 0 %}+{% endif %}{{ net_balance|pln }}
+    </div>
+    <div class="kpi-sub">przychody netto − koszty netto</div>
+  </div>
+  <div class="kpi-card {% if vat_balance >= 0 %}kpi-yellow{% else %}kpi-blue{% endif %}">
+    <div class="kpi-label">Bilans VAT</div>
+    <div class="kpi-value">
+      {% if vat_balance > 0 %}+{% endif %}{{ vat_balance|pln }}
+    </div>
+    <div class="kpi-sub">
+      {% if vat_balance >= 0 %}do zapłaty do US{% else %}nadpłata / zwrot{% endif %}
+      · VAT należny − naliczony
+    </div>
+  </div>
+</div>
+
 {# ── Wskaźniki działania (4 karty) ───────────────────────────────────────── #}
 <div class="db-row2">
   <div class="kpi-card {% if (pending_count + gdrive_pending_count) > 0 %}kpi-alert{% endif %}">

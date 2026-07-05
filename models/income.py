@@ -328,6 +328,8 @@ def get_monthly_income_kpi(month: str) -> dict:
         cur.execute(
             """SELECT
                COALESCE(SUM(amount_gross), 0) AS total_gross,
+               COALESCE(SUM(amount_net), 0) AS total_net,
+               COALESCE(SUM(amount_gross - amount_net), 0) AS total_vat,
                COALESCE(SUM(CASE WHEN payment_status='paid'    THEN amount_gross ELSE 0 END), 0) AS paid,
                COALESCE(SUM(CASE WHEN payment_status='unpaid'  THEN amount_gross ELSE 0 END), 0) AS unpaid,
                COALESCE(SUM(CASE WHEN payment_status='partial' THEN amount_gross ELSE 0 END), 0) AS partial
