@@ -39,21 +39,35 @@
       </dl>
     </div>
 
-    {% if company_tags or company_industries %}
+    {% if company_tags or company_industries or company_source %}
     <div class="inv-section" style="margin-top:1rem">
-      <h4>Tagi i branże firmy</h4>
-      <div style="padding:.85rem">
-        {% if company_tags %}
-        <div class="detail-tags">
-          {% for t in company_tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
-        </div>
-        {% endif %}
-        {% if company_industries %}
-        <div class="detail-tags" style="margin-top:.5rem">
-          {% for i in company_industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
-        </div>
-        {% endif %}
-      </div>
+      <h4>Klasyfikacja firmy</h4>
+      <dl class="inv-dl">
+        <dt>Tagi</dt>
+        <dd>
+          {% if company_tags %}
+          <div class="detail-tags">
+            {% for t in company_tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
+        <dt>Branże</dt>
+        <dd>
+          {% if company_industries %}
+          <div class="detail-tags">
+            {% for i in company_industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
+        <dt>Źródła</dt>
+        <dd>
+          {% if company_source %}
+          <div class="detail-tags">
+            {% for s in company_source %}<span class="badge badge-outline">{{ s }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
+      </dl>
     </div>
     {% endif %}
 

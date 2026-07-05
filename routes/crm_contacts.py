@@ -114,9 +114,11 @@ def view_contact(contact_id):
 
     company_tags = []
     company_industries = []
+    company_source = []
     if contact.get('company_id'):
         company_tags = get_company_tags(contact['company_id'], 'tag')
         company_industries = get_company_tags(contact['company_id'], 'industry')
+        company_source = get_company_tags(contact['company_id'], 'source')
 
     notes = get_notes('contact', contact_id)
     for n in notes:
@@ -124,6 +126,7 @@ def view_contact(contact_id):
 
     return render_template('crm/contacts/detail.html',
         active_tab='contacts', contact=contact, company_tags=company_tags, company_industries=company_industries,
+        company_source=company_source,
         deals=get_all_deals(contact_id=contact_id), stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,
         notes=notes,
