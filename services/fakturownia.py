@@ -65,10 +65,11 @@ class FakturowniaClient:
         filter_category:
           'expense'  – faktury kosztowe  (income=0)
           'income'   – faktury przychodowe (income=1)
-          'all'      – wszystkie faktury (bez filtra income)
+          'all'      – wszystkie faktury (income=1 i income=0, pobrane osobno i połączone)
 
-        Fakturownia domyślnie zwraca tylko przychodowe gdy nie podano income,
-        dlatego jawnie ustawiamy parametr.
+        Fakturownia zwraca tylko jeden rodzaj dokumentów, gdy parametr income
+        nie jest podany (w praktyce tylko kosztowe) — dlatego dla 'all' odpytujemy
+        jawnie oba warianty zamiast polegać na nieudokumentowanym zachowaniu domyślnym.
         """
         params = {
             'period':          'more',
@@ -79,23 +80,25 @@ class FakturowniaClient:
             'search_date_type': 'transaction_date',
         }
 
-        if filter_category == 'expense':
-            params['income'] = '0'
-        elif filter_category == 'income':
-            params['income'] = '1'
-        # 'all' → bez parametru income
+        if filter_category == 'all':
+            items = []
+            for income_value in ('1', '0'):
+                items.extend(self._fetch_all_pages({**params, 'income': income_value}))
+        else:
+            params['income'] = '1' if filter_category == 'income' else '0'
+            items = self._fetch_all_pages(params)
 
-        items = self._fetch_all_pages(params)
         return self._normalize(items)
 
     def fetch_all_invoices(self, filter_category: str = 'expense') -> list[dict]:
         """Pobiera WSZYSTKIE faktury bez filtra dat."""
-        params = {}
-        if filter_category == 'expense':
-            params['income'] = '0'
-        elif filter_category == 'income':
-            params['income'] = '1'
-        items = self._fetch_all_pages(params)
+        if filter_category == 'all':
+            items = []
+            for income_value in ('1', '0'):
+                items.extend(self._fetch_all_pages({'income': income_value}))
+        else:
+            income_value = '1' if filter_category == 'income' else '0'
+            items = self._fetch_all_pages({'income': income_value})
         return self._normalize(items)
 
     def _normalize(self, raw: list) -> list[dict]:
