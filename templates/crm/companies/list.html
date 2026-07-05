@@ -104,7 +104,12 @@
         <td data-col="email">{{ c.email or '—' }}</td>
         <td data-col="phone">{{ c.phone or '—' }}</td>
         <td data-col="nip">{{ c.nip or '—' }}</td>
-        <td data-col="source">{{ c.source or '—' }}</td>
+        <td data-col="source">
+          {% if c.source %}
+            <a href="{{ url_for('crm_companies.list_companies', source=c.source) }}" class="badge badge-outline badge-btn"
+               title="Filtruj po źródle: {{ c.source }}">{{ c.source }}</a>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
         <td data-col="primary_contact">
           {% if c.primary_contact_id %}
             <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.primary_contact_id) }}">{{ c.primary_contact_name }}</a>
