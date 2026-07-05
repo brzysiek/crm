@@ -101,6 +101,17 @@
   </div>
 
   <div>
+    {% if contact.business_card_url %}
+    <div class="inv-section" style="margin-bottom:1rem">
+      <h4>Wizytówka</h4>
+      <div style="padding:.85rem">
+        <a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">
+          <img src="{{ contact.business_card_url|drive_image_url }}" alt="Wizytówka"
+               style="max-width:100%;border-radius:8px;display:block">
+        </a>
+      </div>
+    </div>
+    {% endif %}
     {% include 'crm/_notes_history.html' %}
   </div>
 </div>

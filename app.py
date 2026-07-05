@@ -95,6 +95,17 @@ def month_pl(value):
         return str(value)
 
 
+@app.template_filter('drive_image_url')
+def drive_image_url(value):
+    """Konwertuje link do udostępnionego pliku Google Drive na bezpośredni URL obrazka."""
+    if not value:
+        return value
+    m = re.search(r'/d/([\w-]+)', value) or re.search(r'[?&]id=([\w-]+)', value)
+    if m:
+        return f"https://drive.google.com/thumbnail?id={m.group(1)}&sz=w1000"
+    return value
+
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     """Dla /api/* zawsze zwraca JSON zamiast HTML strony błędu."""

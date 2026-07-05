@@ -1474,6 +1474,25 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   font-size: 1rem;
 }
 
+/* ── CRM: wizytówka kontaktu (ikona w kółku) ──────────────────────────────────── */
+.card-cell { width: 50px; min-width: 50px; max-width: 50px; }
+.data-table td.card-cell { padding-left: 10px; padding-right: 10px; }
+.card-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1rem;
+  border: none;
+  padding: 0;
+}
+.card-circle-has { cursor: pointer; background: var(--info-bg); }
+.card-circle-has:hover { filter: brightness(.95); }
+
 /* ── CRM: sortowalne nagłówki tabel ───────────────────────────────────────────── */
 .sort-link { color: inherit; display: inline-flex; align-items: center; gap: .25rem; }
 .sort-link:hover { color: var(--primary); text-decoration: none; }

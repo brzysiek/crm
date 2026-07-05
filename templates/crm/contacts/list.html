@@ -26,6 +26,7 @@
   <table class="data-table" id="contacts-table">
     <thead>
       <tr>
+        <th class="card-cell"></th>
         {{ m.sort_th('Nazwisko', 'last_name', sort, direction, 'crm_contacts.list_contacts') }}
         {{ m.sort_th('Imię', 'first_name', sort, direction, 'crm_contacts.list_contacts') }}
         {{ m.sort_th('Stanowisko', 'position', sort, direction, 'crm_contacts.list_contacts', 'position') }}
@@ -40,6 +41,14 @@
     <tbody>
       {% for c in contacts %}
       <tr>
+        <td class="card-cell">
+          {% if c.business_card_url %}
+          <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
+                  onclick="openBusinessCardModal('{{ c.business_card_url|drive_image_url }}')">🪪</button>
+          {% else %}
+          <span class="card-circle"></span>
+          {% endif %}
+        </td>
         <td><a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }}</a></td>
         <td>{{ c.first_name }}</td>
         <td data-col="position">{{ c.position or '—' }}</td>
@@ -86,10 +95,27 @@
   <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">Dodaj pierwszy kontakt</a>
 </div>
 {% endif %}
+
+<div id="businessCardModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:500px;padding:0">
+    <div class="modal-header" style="padding:1rem 1.25rem">
+      <h3>Wizytówka</h3>
+      <button class="modal-close" onclick="document.getElementById('businessCardModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0 1.25rem 1.25rem">
+      <img id="businessCardModalImg" src="" alt="Wizytówka" style="max-width:100%;display:block;border-radius:8px">
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+function openBusinessCardModal(url) {
+  document.getElementById('businessCardModalImg').src = url;
+  document.getElementById('businessCardModal').classList.add('open');
+}
+
 initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu',
   ['company_tags', 'company_industries']);
 </script>
