@@ -16,28 +16,6 @@ def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
         return [r['name'] for r in cur.fetchall()]
 
 
-def suggest_sources(q: str = '', limit: int = 20) -> list[str]:
-    """Podpowiedzi 'źródła': ze słownika (crm_tags kind='source') oraz z już
-    użytych wartości w crm_companies.source (dla wpisów sprzed dodania słownika)."""
-    db = get_db()
-    parts = ["SELECT name AS source FROM crm_tags WHERE kind='source'"]
-    params = []
-    if q:
-        parts[0] += " AND name LIKE %s"
-        params.append(f"%{q}%")
-    parts.append(
-        "SELECT DISTINCT source FROM crm_companies WHERE source IS NOT NULL AND source != ''"
-    )
-    if q:
-        parts[1] += " AND source LIKE %s"
-        params.append(f"%{q}%")
-    sql = " UNION ".join(parts) + " ORDER BY source LIMIT %s"
-    params.append(limit)
-    with db.cursor() as cur:
-        cur.execute(sql, params)
-        return [r['source'] for r in cur.fetchall()]
-
-
 def get_tags(kind: str) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:

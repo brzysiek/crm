@@ -1489,13 +1489,40 @@ def api_logs_clear():
 def api_crm_suggest():
     kind = request.args.get('type', '')
     q = request.args.get('q', '').strip()
-    if kind in ('tag', 'industry'):
+    if kind in ('tag', 'industry', 'source'):
         from models.crm_tags import suggest_tags
         return jsonify(suggest_tags(kind, q))
-    if kind == 'source':
-        from models.crm_tags import suggest_sources
-        return jsonify(suggest_sources(q))
     return jsonify([])
+
+
+@app.route('/api/crm/companies/bulk', methods=['POST'])
+def api_crm_companies_bulk():
+    from models.crm_company import (bulk_add_tag, bulk_remove_tag,
+                                      bulk_set_description, bulk_set_source)
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    field = data.get('field', '')
+    action = data.get('action', '')
+    value = (data.get('value') or '').strip()
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych firm.'})
+    if field not in ('tag', 'industry', 'source', 'description'):
+        return jsonify({'status': 'error', 'message': 'Nieznane pole.'})
+    if action not in ('add', 'remove'):
+        return jsonify({'status': 'error', 'message': 'Nieznana akcja.'})
+    if action == 'add' and not value:
+        return jsonify({'status': 'error', 'message': 'Podaj wartość.'})
+
+    user_id = session.get('user_id')
+    if field in ('tag', 'industry'):
+        affected = (bulk_add_tag(ids, field, value, user_id) if action == 'add'
+                    else bulk_remove_tag(ids, field, value, user_id))
+    elif field == 'source':
+        affected = bulk_set_source(ids, value if action == 'add' else None, user_id)
+    else:
+        affected = bulk_set_description(ids, value if action == 'add' else None, user_id)
+    return jsonify({'status': 'ok', 'affected': affected})
 
 
 @app.route('/api/crm/companies/search')

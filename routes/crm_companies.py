@@ -2,7 +2,8 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from models.crm_company import (RELATION_LABELS, create_company, delete_company,
                                   derive_short_name, get_all_companies,
-                                  get_company_by_id, get_company_tags, update_company)
+                                  get_company_by_id, get_company_source, get_company_tags,
+                                  update_company)
 from models.crm_notes import add_note, delete_note, get_history, get_notes
 from models.user import get_active_users
 
@@ -30,7 +31,6 @@ def _parse_form(form):
         'website': form.get('website', '').strip(),
         'linkedin_url': form.get('linkedin_url', '').strip(),
         'description': form.get('description', '').strip(),
-        'source': form.get('source', '').strip(),
         'owner_user_id': form.get('owner_user_id', type=int),
     }
 
@@ -50,15 +50,17 @@ def list_companies():
     relation_type = request.args.get('relation_type', '')
     tag = request.args.get('tag', '')
     industry = request.args.get('industry', '')
+    source = request.args.get('source', '')
 
     companies = get_all_companies(
         sort=sort, direction=direction, search=search or None,
         relation_type=relation_type or None, tag=tag or None, industry=industry or None,
+        source=source or None,
     )
     return render_template('crm/companies/list.html',
         active_tab='companies', companies=companies, relation_labels=RELATION_LABELS,
         sort=sort, direction=direction,
-        filters={'search': search, 'relation_type': relation_type, 'tag': tag, 'industry': industry},
+        filters={'search': search, 'relation_type': relation_type, 'tag': tag, 'industry': industry, 'source': source},
     )
 
 
@@ -70,6 +72,8 @@ def new_company():
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         industries = [t.strip() for t in request.form.getlist('industries[]') if t.strip()]
+        source_val = request.form.get('source', '').strip()
+        source = [source_val] if source_val else []
         if errors:
             for e in errors:
                 flash(e, 'error')
@@ -78,7 +82,7 @@ def new_company():
                 action=url_for('crm_companies.new_company'),
                 title='Nowa firma', relation_labels=RELATION_LABELS)
 
-        company_id = create_company(data, session.get('user_id'), tags=tags, industries=industries)
+        company_id = create_company(data, session.get('user_id'), tags=tags, industries=industries, source=source)
         flash('Firma została zapisana.', 'success')
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
@@ -102,6 +106,8 @@ def edit_company(company_id):
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         industries = [t.strip() for t in request.form.getlist('industries[]') if t.strip()]
+        source_val = request.form.get('source', '').strip()
+        source = [source_val] if source_val else []
         if errors:
             for e in errors:
                 flash(e, 'error')
@@ -110,10 +116,11 @@ def edit_company(company_id):
                 action=url_for('crm_companies.edit_company', company_id=company_id),
                 title='Edytuj firmę', relation_labels=RELATION_LABELS)
 
-        update_company(company_id, data, session.get('user_id'), tags=tags, industries=industries)
+        update_company(company_id, data, session.get('user_id'), tags=tags, industries=industries, source=source)
         flash('Firma została zaktualizowana.', 'success')
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
+    company['source'] = get_company_source(company_id)
     return render_template('crm/companies/form.html',
         active_tab='companies', company=company, owners=owners,
         tags=get_company_tags(company_id, 'tag'),
@@ -135,6 +142,8 @@ def view_company(company_id):
     notes = get_notes('company', company_id)
     for n in notes:
         n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=company_id, note_id=n['id'])
+
+    company['source'] = get_company_source(company_id)
 
     street_line = ' '.join(filter(None, [company.get('street'), company.get('house_number')]))
     if company.get('flat_number'):

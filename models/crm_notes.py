@@ -60,13 +60,27 @@ def log_history(entity_type: str, entity_id: int, user_id: int | None,
     db = get_db()
     try:
         with db.cursor() as cur:
+            # Chroni przed zdublowanym wpisem, gdy ten sam zapis trafi do bazy
+            # dwa razy (np. podwójny submit formularza) — identyczna
+            # akcja/treść w ciągu kilku sekund jest traktowana jako duplikat.
+            cur.execute(
+                """SELECT id FROM crm_history
+                   WHERE entity_type=%s AND entity_id=%s AND action=%s AND summary=%s
+                     AND created_at >= NOW() - INTERVAL 10 SECOND
+                   ORDER BY id DESC LIMIT 1""",
+                (entity_type, entity_id, action, summary)
+            )
+            existing = cur.fetchone()
+            if existing:
+                return existing['id']
             cur.execute(
                 "INSERT INTO crm_history (entity_type, entity_id, user_id, action, summary) "
                 "VALUES (%s, %s, %s, %s, %s)",
                 (entity_type, entity_id, _valid_user_id(user_id), action, summary)
             )
+            new_id = cur.lastrowid
         db.commit()
-        return cur.lastrowid
+        return new_id
     except Exception:
         db.rollback()
         raise

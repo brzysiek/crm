@@ -11,12 +11,14 @@ RELATION_LABELS = {
     'inne': 'Inne', 'dostawca': 'Dostawca',
 }
 
+TAG_KIND_LABELS = {'tag': 'Tag', 'industry': 'Branża', 'source': 'Źródło'}
+
 FIELD_LABELS = {
     'name': 'Nazwa', 'short_name': 'Nazwa skrócona', 'relation_type': 'Relacja',
     'country': 'Kraj', 'city': 'Miasto', 'voivodeship': 'Województwo', 'street': 'Ulica',
     'house_number': 'Nr domu', 'flat_number': 'Nr lokalu', 'postal_code': 'Kod pocztowy',
     'email': 'Email', 'phone': 'Telefon', 'nip': 'NIP', 'krs': 'KRS', 'website': 'Strona WWW',
-    'linkedin_url': 'LinkedIn', 'description': 'Opis', 'source': 'Źródło',
+    'linkedin_url': 'LinkedIn', 'description': 'Opis',
 }
 
 # Sufiksy odmian nazw spółek, usuwane przy automatycznym tworzeniu nazwy skróconej
@@ -43,7 +45,7 @@ def derive_short_name(name: str) -> str:
 
 def get_all_companies(sort: str = 'name', direction: str = 'asc',
                        search: str = None, relation_type: str = None,
-                       tag: str = None, industry: str = None) -> list[dict]:
+                       tag: str = None, industry: str = None, source: str = None) -> list[dict]:
     allowed_sort = {
         'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
         'nip', 'source', 'created_at',
@@ -51,6 +53,7 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
     if sort not in allowed_sort:
         sort = 'name'
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
+    order_col = sort if sort == 'source' else f'c.{sort}'
 
     db = get_db()
     params = []
@@ -67,6 +70,11 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
                      "JOIN crm_tags i ON i.id=ci.tag_id AND i.kind='industry'")
         where.append("i.name = %s")
         params.append(industry)
+    if source:
+        joins.append("JOIN crm_company_tags cs ON cs.company_id=c.id "
+                     "JOIN crm_tags s ON s.id=cs.tag_id AND s.kind='source'")
+        where.append("s.name = %s")
+        params.append(source)
     if relation_type:
         where.append("c.relation_type = %s")
         params.append(relation_type)
@@ -83,12 +91,14 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
            FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
            WHERE ct.company_id=c.id AND t.kind='industry') AS industries_list,
+        (SELECT t.name FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
+           WHERE ct.company_id=c.id AND t.kind='source' LIMIT 1) AS source,
         (SELECT ct2.id FROM crm_contacts ct2 WHERE ct2.company_id=c.id
            ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_id,
         (SELECT CONCAT(ct2.first_name, ' ', ct2.last_name) FROM crm_contacts ct2
            WHERE ct2.company_id=c.id ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_name
         FROM crm_companies c {' '.join(joins)} WHERE {' AND '.join(where)}"""
-    sql += f" ORDER BY c.{sort} {direction}, c.id DESC"
+    sql += f" ORDER BY {order_col} {direction}, c.id DESC"
 
     with db.cursor() as cur:
         cur.execute(sql, params)
@@ -138,6 +148,11 @@ def get_company_tags(company_id: int, kind: str) -> list[str]:
         return [r['name'] for r in cur.fetchall()]
 
 
+def get_company_source(company_id: int) -> str | None:
+    names = get_company_tags(company_id, 'source')
+    return names[0] if names else None
+
+
 def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:
     tag_ids = get_or_create_tag_ids(kind, names)
     db = get_db()
@@ -160,6 +175,66 @@ def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:
         raise
 
 
+def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:
+    label = TAG_KIND_LABELS.get(kind, kind)
+    affected = 0
+    for company_id in company_ids:
+        current = get_company_tags(company_id, kind)
+        if name in current:
+            continue
+        set_company_tags(company_id, kind, current + [name])
+        log_history('company', company_id, user_id, 'update', f'Dodano {label.lower()} „{name}”.')
+        affected += 1
+    return affected
+
+
+def bulk_remove_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:
+    label = TAG_KIND_LABELS.get(kind, kind)
+    affected = 0
+    for company_id in company_ids:
+        current = get_company_tags(company_id, kind)
+        if name not in current:
+            continue
+        set_company_tags(company_id, kind, [t for t in current if t != name])
+        log_history('company', company_id, user_id, 'update', f'Usunięto {label.lower()} „{name}”.')
+        affected += 1
+    return affected
+
+
+def bulk_set_source(company_ids: list[int], value: str | None, user_id: int | None) -> int:
+    affected = 0
+    for company_id in company_ids:
+        current = get_company_source(company_id)
+        if (current or None) == (value or None):
+            continue
+        set_company_tags(company_id, 'source', [value] if value else [])
+        summary = f'Ustawiono źródło „{value}”.' if value else 'Usunięto źródło.'
+        log_history('company', company_id, user_id, 'update', summary)
+        affected += 1
+    return affected
+
+
+def bulk_set_description(company_ids: list[int], value: str | None, user_id: int | None) -> int:
+    if not company_ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(company_ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE crm_companies SET description=%s WHERE id IN ({placeholders})",
+                [value or None] + company_ids,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    summary = 'Ustawiono opis.' if value else 'Usunięto opis.'
+    for company_id in company_ids:
+        log_history('company', company_id, user_id, 'update', summary)
+    return len(company_ids)
+
+
 def _insert(data: dict) -> int:
     db = get_db()
     with db.cursor() as cur:
@@ -167,8 +242,8 @@ def _insert(data: dict) -> int:
             """INSERT INTO crm_companies
                (name, short_name, relation_type, country, city, voivodeship, street, house_number,
                 flat_number, postal_code, email, phone, nip, krs, website, linkedin_url, favicon_url,
-                description, source, owner_user_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                description, owner_user_id)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (
                 data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
                 data.get('country') or 'Polska', data.get('city') or None, data.get('voivodeship') or None,
@@ -177,14 +252,15 @@ def _insert(data: dict) -> int:
                 data.get('postal_code') or None, data.get('email') or None, data.get('phone') or None,
                 data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
                 data.get('linkedin_url') or None, data.get('favicon_url') or None,
-                data.get('description') or None, data.get('source') or None, data.get('owner_user_id') or None,
+                data.get('description') or None, data.get('owner_user_id') or None,
             )
         )
         return cur.lastrowid
 
 
 def create_company(data: dict, user_id: int | None,
-                    tags: list[str] = None, industries: list[str] = None) -> int:
+                    tags: list[str] = None, industries: list[str] = None,
+                    source: list[str] = None) -> int:
     data['phone'] = format_phone(data.get('phone'))
     data['favicon_url'] = get_favicon_url(data['website']) if data.get('website') else None
     db = get_db()
@@ -198,13 +274,16 @@ def create_company(data: dict, user_id: int | None,
         set_company_tags(company_id, 'tag', tags)
     if industries is not None:
         set_company_tags(company_id, 'industry', industries)
+    if source is not None:
+        set_company_tags(company_id, 'source', source)
     log_history('company', company_id, user_id, 'create',
                 f"Utworzono firmę „{data['name']}”.")
     return company_id
 
 
 def update_company(company_id: int, data: dict, user_id: int | None,
-                    tags: list[str] = None, industries: list[str] = None) -> None:
+                    tags: list[str] = None, industries: list[str] = None,
+                    source: list[str] = None) -> None:
     data['phone'] = format_phone(data.get('phone'))
     data['favicon_url'] = get_favicon_url(data['website']) if data.get('website') else None
     old = get_company_by_id(company_id)
@@ -215,7 +294,7 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                 """UPDATE crm_companies SET
                    name=%s, short_name=%s, relation_type=%s, country=%s, city=%s, voivodeship=%s, street=%s,
                    house_number=%s, flat_number=%s, postal_code=%s, email=%s, phone=%s,
-                   nip=%s, krs=%s, website=%s, linkedin_url=%s, favicon_url=%s, description=%s, source=%s, owner_user_id=%s
+                   nip=%s, krs=%s, website=%s, linkedin_url=%s, favicon_url=%s, description=%s, owner_user_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
@@ -225,7 +304,7 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                     data.get('postal_code') or None, data.get('email') or None, data.get('phone') or None,
                     data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
                     data.get('linkedin_url') or None, data.get('favicon_url') or None,
-                    data.get('description') or None, data.get('source') or None, data.get('owner_user_id') or None,
+                    data.get('description') or None, data.get('owner_user_id') or None,
                     company_id,
                 )
             )
@@ -237,6 +316,8 @@ def update_company(company_id: int, data: dict, user_id: int | None,
         set_company_tags(company_id, 'tag', tags)
     if industries is not None:
         set_company_tags(company_id, 'industry', industries)
+    if source is not None:
+        set_company_tags(company_id, 'source', source)
     if old:
         old_disp = dict(old)
         new_disp = dict(data)
