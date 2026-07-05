@@ -38,7 +38,7 @@
         <dd>{{ address or '—' }}</dd>
         <dt>Województwo</dt><dd>{{ company.voivodeship or '—' }}</dd>
         <dt>Email</dt><dd>{{ company.email or '—' }}</dd>
-        <dt>Telefon</dt><dd>{{ company.phone or '—' }}</dd>
+        <dt>Telefon</dt><dd>{{ company.phone|phone_link }}</dd>
         <dt>Strona WWW</dt>
         <dd>{% if company.website %}<a href="{{ company.website if company.website.startswith('http') else 'https://' ~ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a>{% else %}—{% endif %}</dd>
         <dt>LinkedIn</dt>
@@ -97,7 +97,7 @@
                 <td><a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.first_name }} {{ c.last_name }}</a></td>
                 <td>{{ c.position or '—' }}</td>
                 <td>{{ c.email or '—' }}</td>
-                <td>{{ c.phone or '—' }}</td>
+                <td>{{ c.phone|phone_link }}</td>
               </tr>
               {% endfor %}
             </tbody>

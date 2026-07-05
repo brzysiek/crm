@@ -107,7 +107,7 @@
         </td>
         <td data-col="city">{{ c.city or '—' }}</td>
         <td data-col="email">{{ c.email or '—' }}</td>
-        <td data-col="phone">{{ c.phone or '—' }}</td>
+        <td data-col="phone">{{ c.phone|phone_link }}</td>
         <td data-col="nip">{{ c.nip or '—' }}</td>
         <td data-col="source">
           {% if c.sources_list %}

@@ -1,4 +1,5 @@
 from flask import Flask, Response, jsonify, redirect, request, session, url_for
+from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException
 from config import Config
 import database
@@ -93,6 +94,17 @@ def month_pl(value):
         return f"{MONTHS_PL[int(m)]} {y}"
     except Exception:
         return str(value)
+
+
+@app.template_filter('phone_link')
+def phone_link(value):
+    """Wyświetla numer telefonu jako klikalny link tel:, bez zmiany zapisu w bazie."""
+    if not value:
+        return '—'
+    digits = re.sub(r'[^\d+]', '', value)
+    if not digits:
+        return escape(value)
+    return Markup(f'<a href="tel:{escape(digits)}">{escape(value)}</a>')
 
 
 @app.template_filter('drive_image_url')

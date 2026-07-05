@@ -63,7 +63,7 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td data-col="email">{{ c.email or '—' }}</td>
-        <td data-col="phone">{{ c.phone or '—' }}</td>
+        <td data-col="phone">{{ c.phone|phone_link }}</td>
         <td data-col="company_tags">
           {% if c.company_tags_list %}
             {% for t in c.company_tags_list.split(', ') %}
