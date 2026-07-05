@@ -277,6 +277,21 @@ def api_expenses_bulk_person():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/expenses/bulk-payment-status', methods=['POST'])
+def api_expenses_bulk_payment_status():
+    from models.expense import bulk_set_payment_percent
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    status = data.get('payment_status')
+    pct_map = {'paid': 100, 'partial': 50, 'unpaid': 0}
+    if status not in pct_map:
+        return jsonify({'status': 'error', 'message': 'Nieznany status.'})
+    affected = bulk_set_payment_percent(ids, pct_map[status])
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/bank/suggest-for-invoice')
 def api_bank_suggest_for_invoice():
     """Zwraca najlepiej pasującą transakcję bankową dla faktury (bez encji)."""
@@ -473,6 +488,20 @@ def api_incomes_bulk_person():
         return jsonify({'status': 'error', 'message': 'Brak ID.'})
     person = (data.get('person') or '').strip() or None
     affected = bulk_set_paid_by(ids, person)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/incomes/bulk-payment-status', methods=['POST'])
+def api_incomes_bulk_payment_status():
+    from models.income import bulk_set_payment_status
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    status = data.get('payment_status')
+    if status not in ('paid', 'partial', 'unpaid'):
+        return jsonify({'status': 'error', 'message': 'Nieznany status.'})
+    affected = bulk_set_payment_status(ids, status)
     return jsonify({'status': 'ok', 'affected': affected})
 
 

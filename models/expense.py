@@ -186,6 +186,30 @@ def bulk_set_responsible_person(ids: list[int], person: str | None) -> int:
         raise
 
 
+def bulk_set_payment_percent(ids: list[int], pct: int) -> int:
+    """Ręcznie nadpisuje procent opłacenia (100=opłacone, 50=częściowo, 0=nieopłacone).
+
+    Wartość zostanie ponownie przeliczona automatycznie, jeśli później zostanie
+    dopięta/odpięta transakcja bankowa (patrz _recalc_payment_percent).
+    """
+    if not ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE expenses SET payment_percent=%s WHERE id IN ({placeholders})",
+                [pct] + ids,
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected
+    except Exception:
+        db.rollback()
+        raise
+
+
 def _revert_expense_links(cur, expense_id: int) -> None:
     """Odpina transakcje bankowe i faktury powiązane z wydatkiem, przywracając
     je do stanu oczekującego (pending), zanim wydatek zostanie usunięty."""

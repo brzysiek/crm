@@ -100,6 +100,14 @@
     <input type="text" id="bulkPersonInput" class="filter-input" placeholder="Osoba odpowiedzialna">
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPerson">Przypisz osobę</button>
 
+    <select id="bulkPaymentStatusSelect" class="filter-select">
+      <option value="">— status płatności —</option>
+      <option value="paid">Opłacone</option>
+      <option value="partial">Częściowo opłacone</option>
+      <option value="unpaid">Nieopłacone</option>
+    </select>
+    <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPaymentStatus">Ustaw status</button>
+
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">↩ Cofnij akceptację</button>
   </div>
 </div>
@@ -319,6 +327,15 @@ document.addEventListener('DOMContentLoaded', function () {
       const person = (document.getElementById('bulkPersonInput').value || '').trim();
       if (!person) { alert('Wpisz osobę.'); return; }
       bulkUpdate(API_BASE + '/api/incomes/bulk-person', { person });
+    });
+  }
+
+  const btnSetPaymentStatus = document.getElementById('btnBulkSetPaymentStatus');
+  if (btnSetPaymentStatus) {
+    btnSetPaymentStatus.addEventListener('click', () => {
+      const status = document.getElementById('bulkPaymentStatusSelect').value;
+      if (!status) { alert('Wybierz status płatności.'); return; }
+      bulkUpdate(API_BASE + '/api/incomes/bulk-payment-status', { payment_status: status });
     });
   }
 

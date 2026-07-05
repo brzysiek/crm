@@ -177,6 +177,27 @@ def bulk_set_paid_by(ids: list[int], person: str | None) -> int:
         raise
 
 
+def bulk_set_payment_status(ids: list[int], status: str) -> int:
+    if status not in ('paid', 'partial', 'unpaid'):
+        return 0
+    if not ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE incomes SET payment_status=%s WHERE id IN ({placeholders})",
+                [status] + ids,
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected
+    except Exception:
+        db.rollback()
+        raise
+
+
 def _revert_income_links(cur, income_id: int) -> None:
     """Odpina transakcje bankowe i faktury powiązane z przychodem, przywracając
     je do stanu oczekującego (pending), zanim przychód zostanie usunięty."""
