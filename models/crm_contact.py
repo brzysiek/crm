@@ -18,6 +18,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
 
     db = get_db()
     sql = ("SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name, "
+           "co.favicon_url AS company_favicon_url, "
            "(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') "
            "   FROM crm_company_tags cct JOIN crm_tags t ON t.id=cct.tag_id "
            "   WHERE cct.company_id=co.id AND t.kind='tag') AS company_tags_list, "
