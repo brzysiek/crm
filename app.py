@@ -574,13 +574,15 @@ def api_invoices_linked(entity_type, entity_id):
 @app.route('/api/invoices/search')
 def api_invoices_search():
     """Search pending invoices from both sources for linking."""
+    import json as _json
     from database import get_db as _get_db
     q = request.args.get('q', '').strip()
     entity_type = request.args.get('entity_type', '')
     db = _get_db()
     result = []
 
-    sql = ("SELECT id, invoice_number, vendor_name, issue_date, amount_gross "
+    sql = ("SELECT id, invoice_number, vendor_name, issue_date, amount_gross, "
+           "ksef_number, raw_json "
            "FROM fakturownia_invoices WHERE status='pending'")
     params = []
     if entity_type in ('expense', 'income'):
@@ -594,6 +596,14 @@ def api_invoices_search():
     with db.cursor() as cur:
         cur.execute(sql, params)
         for row in cur.fetchall():
+            try:
+                raw = _json.loads(row['raw_json']) if row.get('raw_json') else {}
+            except Exception:
+                raw = {}
+            ksef = (row.get('ksef_number') or '').strip() \
+                or (raw.get('ksef_number') or '').strip() \
+                or (raw.get('ksef_id') or '').strip() \
+                or (raw.get('gov_id') or '').strip()
             result.append({
                 'source': 'fakturownia',
                 'id': row['id'],
@@ -601,6 +611,7 @@ def api_invoices_search():
                 'vendor_name': row.get('vendor_name') or '',
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
+                'ksef_number': ksef,
             })
 
     sql = ("SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross "

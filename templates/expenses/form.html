@@ -731,8 +731,19 @@ async function linkInvoice(source, invId) {
       _updateInvoiceInputs();
     }
   }
+  if (invData) _applyInvoiceRefFromSource(source, invData);
   loadLinkedInvoices();
   doInvoiceSearch();
+}
+
+function _applyInvoiceRefFromSource(source, invData) {
+  const statusVal = source === 'fakturownia' ? 'ksef' : 'disk';
+  const radio = document.querySelector('input[name="invoice_status"][value="' + statusVal + '"]');
+  if (radio) radio.checked = true;
+  const ref = source === 'fakturownia' ? (invData.ksef_number || '') : (invData.file_name || '');
+  const refInput = document.getElementById('invoice_ref');
+  if (refInput && ref) refInput.value = ref;
+  toggleInvoiceRef();
 }
 
 function _invBadgeClass(source) {
