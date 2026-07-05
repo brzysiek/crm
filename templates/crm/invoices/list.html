@@ -1,0 +1,79 @@
+{% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% block title %}Faktury{% endblock %}
+
+{% block crm_content %}
+<div class="page-header">
+  <h1>Faktury przychodowe</h1>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('crm_invoices.list_invoices') }}">
+  <input type="text" name="search" placeholder="Szukaj numeru, klienta, NIP…"
+         value="{{ filters.search }}" class="filter-input">
+  <select name="status" class="filter-select">
+    <option value="">Wszystkie statusy</option>
+    <option value="pending" {{ 'selected' if filters.status == 'pending' }}>Oczekujące</option>
+    <option value="assigned" {{ 'selected' if filters.status == 'assigned' }}>Przypisane</option>
+    <option value="rejected" {{ 'selected' if filters.status == 'rejected' }}>Odrzucone</option>
+  </select>
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('crm_invoices.list_invoices') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{% if invoices %}
+<div class="table-wrapper">
+  <table class="data-table" id="invoices-table">
+    <thead>
+      <tr>
+        {{ m.sort_th('Numer', 'invoice_number', sort, direction, 'crm_invoices.list_invoices') }}
+        {{ m.sort_th('Klient', 'vendor_name', sort, direction, 'crm_invoices.list_invoices') }}
+        <th>NIP</th>
+        {{ m.sort_th('Data wystawienia', 'issue_date', sort, direction, 'crm_invoices.list_invoices') }}
+        {{ m.sort_th('Termin płatności', 'payment_to', sort, direction, 'crm_invoices.list_invoices') }}
+        {{ m.sort_th('Brutto', 'amount_gross', sort, direction, 'crm_invoices.list_invoices') }}
+        <th>Netto</th>
+        <th>VAT</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td>{{ inv.invoice_number or '—' }}</td>
+        <td>
+          <strong>{{ inv.vendor_name or '— brak nazwy —' }}</strong>
+        </td>
+        <td>{{ inv.vendor_nip or '—' }}</td>
+        <td class="nowrap">{{ inv.issue_date|ddmmyyyy if inv.issue_date else '—' }}</td>
+        <td class="nowrap">{{ inv.payment_to|ddmmyyyy if inv.payment_to else '—' }}</td>
+        <td class="text-right nowrap">
+          {{ inv.amount_gross|pln }}
+          {% if inv.currency and inv.currency != 'PLN' and inv.orig_amount %}
+            <span class="badge badge-yellow" title="Kurs NBP: {{ '%.4f'|format(inv.exchange_rate|float) if inv.exchange_rate else '—' }} PLN/{{ inv.currency }}">
+              {{ '%.2f'|format(inv.orig_amount|float) }} {{ inv.currency }}
+            </span>
+          {% endif %}
+        </td>
+        <td class="text-right nowrap">{{ inv.amount_net|pln }}</td>
+        <td class="text-right nowrap">{{ inv.vat_amount|pln }}</td>
+        <td>
+          {% if inv.status == 'assigned' %}
+            <span class="badge badge-green">Przypisana</span>
+          {% elif inv.status == 'rejected' %}
+            <span class="badge badge-red">Odrzucona</span>
+          {% else %}
+            <span class="badge badge-gray">Oczekująca</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="table-count">{{ invoices|length }} faktur</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak faktur przychodowych spełniających kryteria.</p>
+</div>
+{% endif %}
+{% endblock %}

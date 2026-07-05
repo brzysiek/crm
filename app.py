@@ -1606,6 +1606,7 @@ from routes.crm_companies import bp as crm_companies_bp
 from routes.crm_contacts import bp as crm_contacts_bp
 from routes.crm_deals import bp as crm_deals_bp
 from routes.crm_plan import bp as crm_plan_bp
+from routes.crm_invoices import bp as crm_invoices_bp
 from routes.dashboard import bp as dashboard_bp
 from routes.expenses import bp as expenses_bp
 from routes.imports import bp as imports_bp
@@ -1618,6 +1619,7 @@ app.register_blueprint(crm_companies_bp)
 app.register_blueprint(crm_contacts_bp)
 app.register_blueprint(crm_deals_bp)
 app.register_blueprint(crm_plan_bp)
+app.register_blueprint(crm_invoices_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(imports_bp)

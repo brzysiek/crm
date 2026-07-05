@@ -24,6 +24,11 @@
         <span class="crm-sidebar-icon">💼</span>
         <span class="crm-sidebar-label">Interesy</span>
       </a>
+      <a href="{{ url_for('crm_invoices.list_invoices') }}"
+         class="crm-sidebar-link {{ 'active' if active_tab == 'invoices' }}" title="Faktury">
+        <span class="crm-sidebar-icon">🧾</span>
+        <span class="crm-sidebar-label">Faktury</span>
+      </a>
       <a href="{{ url_for('crm_plan.index') }}"
          class="crm-sidebar-link {{ 'active' if active_tab == 'plan' }}" title="Plan">
         <span class="crm-sidebar-icon">📊</span>

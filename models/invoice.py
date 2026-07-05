@@ -35,6 +35,40 @@ def get_pending_invoices(invoice_type: str = None) -> list[dict]:
         return [_fix_counterparty(row) for row in cur.fetchall()]
 
 
+def get_all_invoices(invoice_type: str = None, search: str = None, status: str = None,
+                      sort: str = 'issue_date', direction: str = 'desc') -> list[dict]:
+    """Pełna lista faktur z Fakturowni (nie tylko oczekujące) — do przeglądu/rejestru.
+
+    Domyślnie pomija odrzucone (status='rejected'), żeby rejestr nie zaśmiecał się
+    duplikatami/błędami odrzuconymi podczas importu; można to nadpisać przez `status`.
+    """
+    allowed_sort = {'issue_date', 'invoice_number', 'vendor_name', 'amount_gross', 'payment_to'}
+    if sort not in allowed_sort:
+        sort = 'issue_date'
+    direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
+
+    db = get_db()
+    sql = "SELECT * FROM fakturownia_invoices WHERE 1=1"
+    params = []
+    if invoice_type in ('income', 'expense'):
+        sql += " AND invoice_type = %s"
+        params.append(invoice_type)
+    if status in ('pending', 'assigned', 'rejected'):
+        sql += " AND status = %s"
+        params.append(status)
+    else:
+        sql += " AND status != 'rejected'"
+    if search:
+        sql += " AND (invoice_number LIKE %s OR vendor_name LIKE %s OR vendor_nip LIKE %s)"
+        like = f"%{search}%"
+        params.extend([like, like, like])
+    sql += f" ORDER BY {sort} {direction}, id DESC"
+
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        return [_fix_counterparty(row) for row in cur.fetchall()]
+
+
 def get_pending_count() -> int:
     db = get_db()
     with db.cursor() as cur:
