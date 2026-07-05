@@ -208,11 +208,21 @@ def _is_reachable(url: str) -> bool:
         return False
 
 
+def _google_favicon_fallback(normalized: str) -> str:
+    """Serwis Google pobiera ikonę ze swoich serwerów, więc omija ewentualne blokady
+    (np. WAF/Wordfence blokujący zakresy IP hostingu współdzielonego) które mogą
+    uniemożliwiać bezpośrednie pobranie strony z naszego serwera."""
+    domain = urlparse(normalized).netloc
+    return f'https://www.google.com/s2/favicons?sz=64&domain={domain}'
+
+
 def get_favicon_url(url: str) -> str | None:
     """Zwraca adres URL favicony strony (z <link rel="icon">, albo domyślny /favicon.ico).
     Próbuje kilku wariantów adresu (www/bez www, http/https) i weryfikuje, że znaleziona
-    ikona faktycznie się ładuje, zanim ją zwróci. Nigdy nie zgłasza wyjątku — gdy strona
-    jest nieosiągalna, zwraca None."""
+    ikona faktycznie się ładuje, zanim ją zwróci. Gdy bezpośrednie pobranie strony się nie
+    powiedzie (np. hosting jest blokowany przez WAF docelowej strony) albo żadna znaleziona
+    ikona się nie ładuje, spada na serwis Google, który pobiera ikonę z własnych serwerów.
+    Nigdy nie zgłasza wyjątku."""
     normalized = _normalize_url(url)
     if not normalized:
         return None
@@ -227,7 +237,7 @@ def get_favicon_url(url: str) -> str | None:
         except Exception:
             continue
     if resp is None:
-        return None
+        return _google_favicon_fallback(normalized)
 
     candidates = []
     try:
@@ -243,7 +253,7 @@ def get_favicon_url(url: str) -> str | None:
     for candidate_url in candidates:
         if _is_reachable(candidate_url):
             return candidate_url
-    return None
+    return _google_favicon_fallback(normalized)
 
 
 def scrape_company_site(url: str) -> dict:
