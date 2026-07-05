@@ -113,46 +113,137 @@ def _extract_json(text: str) -> dict:
         pass
     match = re.search(r'\{.*\}', text, re.DOTALL)
     if match:
-        return json.loads(match.group())
-    raise ValueError(f"Nie udało się sparsować JSON z odpowiedzi modelu: {text[:300]!r}")
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+    raise ValueError(f"Nie udało się sparsować JSON z odpowiedzi modelu (długość {len(text)} znaków): {text!r}")
 
 
-FAVICON_TIMEOUT = 6
-_ICON_RELS = ('icon', 'shortcut icon', 'apple-touch-icon', 'apple-touch-icon-precomposed')
+FAVICON_TIMEOUT = 10
+_ICON_RELS = ('icon', 'apple-touch-icon', 'apple-touch-icon-precomposed', 'mask-icon')
+
+
+def _icon_area(sizes_attr: str) -> int:
+    """Szacuje 'jakość' ikony na podstawie atrybutu sizes (np. '32x32', '16x16 180x180', 'any')."""
+    sizes_attr = (sizes_attr or '').strip().lower()
+    if not sizes_attr:
+        return 16 * 16
+    if sizes_attr == 'any':
+        return 1_000_000
+    best = 0
+    for part in sizes_attr.split():
+        match = re.match(r'(\d+)x(\d+)', part)
+        if match:
+            best = max(best, int(match.group(1)) * int(match.group(2)))
+    return best or 16 * 16
 
 
 class _FaviconLinkExtractor(HTMLParser):
+    """Zbiera wszystkie <link rel="icon"/apple-touch-icon/...>, dopuszczając rel
+    złożony z kilku tokenów (np. rel="shortcut icon")."""
+
     def __init__(self):
         super().__init__()
-        self.icon_href = None
+        self.icons = []  # [(href, area), ...]
 
     def handle_starttag(self, tag, attrs):
-        if tag != 'link' or self.icon_href:
+        if tag != 'link':
             return
-        attrs_dict = {k.lower(): v for k, v in attrs}
-        if (attrs_dict.get('rel') or '').lower() in _ICON_RELS and attrs_dict.get('href'):
-            self.icon_href = attrs_dict['href']
+        attrs_dict = {k.lower(): (v or '') for k, v in attrs}
+        rel_tokens = attrs_dict.get('rel', '').lower().split()
+        href = attrs_dict.get('href')
+        if not href or not any(t in _ICON_RELS for t in rel_tokens):
+            return
+        self.icons.append((href, _icon_area(attrs_dict.get('sizes', ''))))
+
+    def best_icon(self) -> str | None:
+        if not self.icons:
+            return None
+        return max(self.icons, key=lambda pair: pair[1])[0]
+
+
+def _url_variants(normalized: str) -> list[str]:
+    """Zwraca warianty adresu do wypróbowania: oryginalny, z/bez 'www.' i alternatywny schemat,
+    na wypadek gdyby strona blokowała/przekierowywała jeden z wariantów."""
+    variants = [normalized]
+    parsed = urlparse(normalized)
+    host = parsed.netloc
+    alt_host = host[4:] if host.startswith('www.') else 'www.' + host
+    variants.append(parsed._replace(netloc=alt_host).geturl())
+    for v in list(variants):
+        alt_scheme = 'http' if parsed.scheme == 'https' else 'https'
+        variants.append(urlparse(v)._replace(scheme=alt_scheme).geturl())
+    seen = set()
+    ordered = []
+    for v in variants:
+        if v not in seen:
+            seen.add(v)
+            ordered.append(v)
+    return ordered
+
+
+def _get_with_retry(url: str, attempts: int = 2):
+    last_exc = None
+    for _ in range(attempts):
+        try:
+            resp = requests.get(url, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT})
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            last_exc = e
+    raise last_exc
+
+
+def _is_reachable(url: str) -> bool:
+    try:
+        resp = requests.head(url, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT}, allow_redirects=True)
+        if resp.status_code < 400:
+            return True
+        # Niektóre serwery nie obsługują HEAD poprawnie (405/501) — spróbuj GET.
+        resp = requests.get(url, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT}, stream=True)
+        resp.close()
+        return resp.status_code < 400
+    except Exception:
+        return False
 
 
 def get_favicon_url(url: str) -> str | None:
     """Zwraca adres URL favicony strony (z <link rel="icon">, albo domyślny /favicon.ico).
-    Nigdy nie zgłasza wyjątku — gdy strona jest nieosiągalna, zwraca None."""
+    Próbuje kilku wariantów adresu (www/bez www, http/https) i weryfikuje, że znaleziona
+    ikona faktycznie się ładuje, zanim ją zwróci. Nigdy nie zgłasza wyjątku — gdy strona
+    jest nieosiągalna, zwraca None."""
     normalized = _normalize_url(url)
     if not normalized:
         return None
-    try:
-        resp = requests.get(normalized, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT})
-        resp.raise_for_status()
-    except Exception:
+
+    resp = None
+    base_url = normalized
+    for candidate in _url_variants(normalized):
+        try:
+            resp = _get_with_retry(candidate)
+            base_url = candidate
+            break
+        except Exception:
+            continue
+    if resp is None:
         return None
+
+    candidates = []
     try:
         parser = _FaviconLinkExtractor()
         parser.feed(resp.text)
-        if parser.icon_href:
-            return urljoin(normalized, parser.icon_href)
+        best = parser.best_icon()
+        if best:
+            candidates.append(urljoin(resp.url or base_url, best))
     except Exception:
         pass
-    return urljoin(normalized, '/favicon.ico')
+    candidates.append(urljoin(resp.url or base_url, '/favicon.ico'))
+
+    for candidate_url in candidates:
+        if _is_reachable(candidate_url):
+            return candidate_url
+    return None
 
 
 def scrape_company_site(url: str) -> dict:
@@ -186,7 +277,7 @@ def extract_company_profile(homepage_text: str, contact_text: str,
         'contents': [{'parts': [{'text': combined + '\n\n' + PROFILE_PROMPT}]}],
         'generationConfig': {
             'temperature': 0.2,
-            'maxOutputTokens': 1024,
+            'maxOutputTokens': 2048,
             'responseMimeType': 'application/json',
         },
     }
