@@ -14,6 +14,11 @@
         <option value="{{ m.value }}">{{ m.label }}</option>
         {% endfor %}
       </select>
+      <select id="syncCategory" class="filter-select">
+        <option value="all" {{ 'selected' if cfg.fakturownia_filter_category == 'all' or not cfg.fakturownia_filter_category }}>Wszystkie</option>
+        <option value="income" {{ 'selected' if cfg.fakturownia_filter_category == 'income' }}>Przychodowe</option>
+        <option value="expense" {{ 'selected' if cfg.fakturownia_filter_category == 'expense' }}>Kosztowe</option>
+      </select>
       <button type="button" class="btn btn-outline btn-sm" id="btnSync">Synchronizuj teraz</button>
     </div>
   </div>
@@ -519,12 +524,13 @@ document.addEventListener('DOMContentLoaded', function () {
 document.getElementById('btnSync').addEventListener('click', async function () {
   const el = document.getElementById('apiResult');
   const month = document.getElementById('syncMonth')?.value || '';
+  const category = document.getElementById('syncCategory')?.value || 'all';
   opProgress(el, 'Synchronizacja z Fakturownią…', 0, 0);
   try {
     const r = await fetch(API_BASE + '/api/fakturownia/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month }),
+      body: JSON.stringify({ month, category }),
     });
     const d = await r.json();
     if (d.status === 'ok') {

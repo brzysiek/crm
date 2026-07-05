@@ -847,7 +847,11 @@ def api_fakturownia_sync():
         from datetime import datetime
         data = request.get_json(silent=True) or {}
         month = (data.get('month') or '').strip() or None
-        filter_cat = get_setting('fakturownia_filter_category', 'all')
+        filter_cat = (data.get('category') or '').strip()
+        if filter_cat not in ('all', 'income', 'expense'):
+            filter_cat = get_setting('fakturownia_filter_category', 'all')
+        else:
+            set_setting('fakturownia_filter_category', filter_cat)
         result = FakturowniaClient(subdomain, api_key).sync_to_db(
             get_db(), filter_category=filter_cat, month=month)
         set_setting('fakturownia_last_sync', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
