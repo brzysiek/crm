@@ -285,6 +285,7 @@ def new_expense():
                     'bank_txn_id':     txn['id'],
                     'orig_amount':     txn.get('orig_amount') or '',
                     'orig_currency':   txn.get('orig_currency') or '',
+                    'responsible_person': session.get('full_name', ''),
                 }
                 return render_template('expenses/form.html',
                     expense=prefill, users=users, categories=categories,
@@ -295,7 +296,7 @@ def new_expense():
 
     # Prefill z faktury Fakturowni
     inv_id = request.args.get('inv')
-    prefill = {}
+    prefill = {'responsible_person': session.get('full_name', '')}
     prefill_invoice = None
     if inv_id:
         try:
@@ -330,6 +331,7 @@ def new_expense():
                     'invoice_status':   'ksef' if ksef else 'none',
                     'invoice_ref':      ksef,
                     'fakturownia_id':   inv['fakturownia_id'],
+                    'responsible_person': session.get('full_name', ''),
                 }
                 prefill_invoice = {
                     'source':          'fakturownia',

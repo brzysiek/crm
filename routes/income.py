@@ -262,6 +262,7 @@ def new_income():
                     'bank_txn_id':   txn['id'],
                     'orig_amount':   txn.get('orig_amount') or '',
                     'orig_currency': txn.get('orig_currency') or '',
+                    'paid_by':       session.get('full_name', ''),
                 }
                 return render_template('income/form.html',
                     income=prefill, categories=categories,
@@ -271,7 +272,7 @@ def new_income():
             pass
 
     inv_id = request.args.get('inv')
-    prefill = {}
+    prefill = {'paid_by': session.get('full_name', '')}
     prefill_invoice = None
     if inv_id:
         try:
@@ -305,6 +306,7 @@ def new_income():
                     'invoice_status':   'ksef' if ksef else 'none',
                     'invoice_ref':      ksef,
                     'fakturownia_id':   inv['fakturownia_id'],
+                    'paid_by':          session.get('full_name', ''),
                 }
                 prefill_invoice = {
                     'source':         'fakturownia',
