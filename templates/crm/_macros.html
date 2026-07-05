@@ -14,8 +14,12 @@
   <div class="col-toggle">
     <button type="button" id="{{ btn_id }}" class="btn btn-outline btn-sm">Kolumny ▾</button>
     <div id="{{ menu_id }}" class="col-toggle-menu">
+      <p class="col-toggle-hint">Przeciągnij, aby zmienić kolejność</p>
       {% for col, label in columns %}
-      <label><input type="checkbox" data-col="{{ col }}"> {{ label }}</label>
+      <div class="col-toggle-item" draggable="true" data-col="{{ col }}">
+        <span class="col-toggle-handle" title="Przeciągnij, aby zmienić kolejność">⠿</span>
+        <label><input type="checkbox" data-col="{{ col }}"> {{ label }}</label>
+      </div>
       {% endfor %}
     </div>
   </div>

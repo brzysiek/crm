@@ -973,18 +973,73 @@ function initColumnToggle(tableId, storageKey, btnId, menuId, defaultHidden) {
   const btn = document.getElementById(btnId);
   if (!table || !menu || !btn) return;
 
-  const checkboxes = menu.querySelectorAll('input[type=checkbox][data-col]');
+  const items = Array.from(menu.querySelectorAll('.col-toggle-item[data-col]'));
+  const defaultOrder = items.map(it => it.dataset.col);
   let hidden = [];
-  const raw = localStorage.getItem(storageKey);
-  if (raw === null) {
-    hidden = defaultHidden ? defaultHidden.slice() : [];
-  } else {
-    try { hidden = JSON.parse(raw); } catch (_) { hidden = []; }
+  let order = defaultOrder.slice();
+
+  /* Format zapisany w localStorage/serwerze to { hidden: [...], order: [...] }.
+     Stary format (sama tablica) oznaczał tylko `hidden` — zachowujemy wsteczną
+     kompatybilność, żeby nie zgubić ustawień zapisanych przed dodaniem reorderu. */
+  function parseStored(raw) {
+    if (raw == null) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return { hidden: parsed, order: null };
+      if (parsed && typeof parsed === 'object') return { hidden: parsed.hidden || [], order: parsed.order || null };
+    } catch (_) {}
+    return null;
   }
 
-  function apply() {
-    checkboxes.forEach(cb => {
-      const col = cb.dataset.col;
+  const localParsed = parseStored(localStorage.getItem(storageKey));
+  if (localParsed) {
+    hidden = localParsed.hidden;
+    if (localParsed.order) order = reconcileOrder(localParsed.order);
+  } else {
+    hidden = defaultHidden ? defaultHidden.slice() : [];
+  }
+
+  function reconcileOrder(savedOrder) {
+    const known = new Set(defaultOrder);
+    const cleaned = savedOrder.filter(c => known.has(c));
+    defaultOrder.forEach(c => { if (!cleaned.includes(c)) cleaned.push(c); });
+    return cleaned;
+  }
+
+  function applyOrder() {
+    // Kolumny data-col są w markupie ciągłym blokiem (między kolumnami stałymi
+    // typu favicon/akcje) — usuwamy je i wstawiamy z powrotem w zadanej kolejności
+    // w miejscu, gdzie zaczynał się ten blok.
+    table.querySelectorAll('tr').forEach(row => {
+      const cells = {};
+      let anchor = null;
+      let anchorIndex = -1;
+      Array.from(row.children).forEach((cell, idx) => {
+        const col = cell.dataset.col;
+        if (col && order.includes(col)) {
+          cells[col] = cell;
+          if (anchorIndex === -1) anchorIndex = idx;
+        }
+      });
+      if (anchorIndex === -1) return;
+      anchor = row.children[anchorIndex] || null;
+      order.forEach(col => {
+        const cell = cells[col];
+        if (cell) row.insertBefore(cell, anchor);
+      });
+    });
+
+    // Ta sama kolejność w menu (żeby drag handle odzwierciedlał aktualny stan).
+    order.forEach(col => {
+      const item = items.find(it => it.dataset.col === col);
+      if (item) menu.appendChild(item);
+    });
+  }
+
+  function applyVisibility() {
+    items.forEach(item => {
+      const col = item.dataset.col;
+      const cb = item.querySelector('input[type=checkbox]');
       const isHidden = hidden.includes(col);
       cb.checked = !isHidden;
       table.querySelectorAll('[data-col="' + col + '"]').forEach(el => {
@@ -994,20 +1049,49 @@ function initColumnToggle(tableId, storageKey, btnId, menuId, defaultHidden) {
   }
 
   function persist() {
-    localStorage.setItem(storageKey, JSON.stringify(hidden));
+    const value = JSON.stringify({ hidden, order });
+    localStorage.setItem(storageKey, value);
     fetch(window.API_BASE + '/api/user-settings/' + storageKey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value: JSON.stringify(hidden) }),
+      body: JSON.stringify({ value }),
     }).catch(() => {});
   }
 
-  checkboxes.forEach(cb => {
+  items.forEach(item => {
+    const cb = item.querySelector('input[type=checkbox]');
     cb.addEventListener('change', () => {
-      const col = cb.dataset.col;
+      const col = item.dataset.col;
       hidden = cb.checked ? hidden.filter(c => c !== col) : [...hidden, col];
       persist();
-      apply();
+      applyVisibility();
+    });
+  });
+
+  let dragged = null;
+  items.forEach(item => {
+    item.addEventListener('dragstart', () => {
+      dragged = item;
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      items.forEach(it => it.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (item !== dragged) item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (!dragged || dragged === item) return;
+      const before = Array.from(menu.children).indexOf(item) < Array.from(menu.children).indexOf(dragged);
+      menu.insertBefore(dragged, before ? item : item.nextSibling);
+      order = Array.from(menu.querySelectorAll('.col-toggle-item[data-col]')).map(it => it.dataset.col);
+      applyOrder();
+      persist();
     });
   });
 
@@ -1019,7 +1103,8 @@ function initColumnToggle(tableId, storageKey, btnId, menuId, defaultHidden) {
     if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
   });
 
-  apply();
+  applyOrder();
+  applyVisibility();
 
   /* Serwer jest źródłem prawdy między urządzeniami — localStorage to tylko
      natychmiastowy cache na czas wczytywania strony. */
@@ -1027,11 +1112,14 @@ function initColumnToggle(tableId, storageKey, btnId, menuId, defaultHidden) {
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (data && data.value) {
-        try {
-          hidden = JSON.parse(data.value);
+        const parsed = parseStored(data.value);
+        if (parsed) {
+          hidden = parsed.hidden;
+          if (parsed.order) order = reconcileOrder(parsed.order);
           localStorage.setItem(storageKey, data.value);
-          apply();
-        } catch (_) {}
+          applyOrder();
+          applyVisibility();
+        }
       }
     })
     .catch(() => {});
