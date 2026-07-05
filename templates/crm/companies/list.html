@@ -50,7 +50,10 @@
       <option value="source">Źródło</option>
       <option value="description">Opis</option>
     </select>
-    <input type="text" id="bulkValue" class="filter-input" placeholder="Wartość" style="min-width:140px">
+    <div class="suggest-wrap" style="min-width:140px">
+      <input type="text" id="bulkValue" class="filter-input" placeholder="Wartość" autocomplete="off" style="width:100%">
+      <div id="bulkValueSuggestions" class="tag-suggestions"></div>
+    </div>
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkAdd">Dodaj</button>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkRemove">Usuń</button>
   </div>
@@ -198,6 +201,10 @@ function toggleSelectAll(cb) {
 
 document.addEventListener('DOMContentLoaded', function () {
   const FIELD_LABELS = {tag: 'tag', industry: 'branżę', source: 'źródło', description: 'opis'};
+
+  initSuggestInput('bulkValue', 'bulkValueSuggestions', () => document.getElementById('bulkField').value);
+  const bulkField = document.getElementById('bulkField');
+  if (bulkField) bulkField.addEventListener('change', () => { document.getElementById('bulkValue').value = ''; });
 
   async function bulkEdit(action) {
     const ids = getCheckedIds();

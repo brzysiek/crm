@@ -830,6 +830,48 @@ function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
   render();
 }
 
+/* ── CRM: podpowiedzi dla pojedynczego pola tekstowego (np. wartość w edycji
+ * zbiorczej firm) — te same podpowiedzi co w initTagInput, ale bez chipów,
+ * kliknięcie podpowiedzi po prostu wpisuje wartość do pola. `kindFn` zwraca
+ * aktualny rodzaj ('tag'/'industry'/'source'); dla innych wartości podpowiedzi
+ * są wyłączone. */
+function initSuggestInput(inputId, suggestId, kindFn) {
+  const input = document.getElementById(inputId);
+  const suggestBox = document.getElementById(suggestId);
+  if (!input || !suggestBox) return;
+
+  function closeSuggestions() {
+    suggestBox.classList.remove('open');
+    suggestBox.innerHTML = '';
+  }
+
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const kind = kindFn();
+    if (!['tag', 'industry', 'source'].includes(kind)) { closeSuggestions(); return; }
+    const q = input.value.trim();
+    timer = setTimeout(async () => {
+      try {
+        const resp = await fetch(window.API_BASE + '/api/crm/suggest?type=' + kind + '&q=' + encodeURIComponent(q));
+        const items = await resp.json();
+        if (items.length === 0) { closeSuggestions(); return; }
+        suggestBox.innerHTML = items.map(it =>
+          '<div class="tag-suggestion-item">' + crmEsc(it) + '</div>'
+        ).join('');
+        suggestBox.classList.add('open');
+        suggestBox.querySelectorAll('.tag-suggestion-item').forEach((el, i) => {
+          el.onclick = () => { input.value = items[i]; closeSuggestions(); input.focus(); };
+        });
+      } catch (_) { closeSuggestions(); }
+    }, 250);
+  });
+
+  document.addEventListener('click', e => {
+    if (!input.contains(e.target) && !suggestBox.contains(e.target)) closeSuggestions();
+  });
+}
+
 /* ── CRM: szybkie utworzenie firmy po NIP/KRS (formularz Kontaktu) ─────────────
  * Wymaga elementów o id: company-quick-create-fields, quick-nip, quick-krs,
  * quick-create-status, oraz entity-pickera 'company-picker' do podpięcia wyniku.
