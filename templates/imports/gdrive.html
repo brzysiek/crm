@@ -390,7 +390,7 @@ function renderFileTable(files) {
     tr.innerHTML = `
       <td><input type="checkbox" class="file-checkbox" value="${_esc(f.id)}"
           data-name="${_esc(f.name)}" data-modified="${_esc(f.modifiedTime||'')}"></td>
-      <td>${_esc(f.name)}</td>
+      <td><a href="https://drive.google.com/file/d/${_esc(f.id)}/view" target="_blank" rel="noopener noreferrer">${_esc(f.name)}</a></td>
       <td class="nowrap text-muted">${_esc((f.modifiedTime||'').substring(0,10))}</td>
       <td class="file-status-cell">${processed
            ? '<span class="badge badge-green">Przetworzony</span>'

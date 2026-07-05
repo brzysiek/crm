@@ -84,7 +84,7 @@ def ocr_invoice_pdf(pdf_bytes: bytes, api_key: str,
             ],
             'generationConfig': {
                 'temperature':      0.1,
-                'maxOutputTokens':  2048,
+                'maxOutputTokens':  8192,
                 'responseMimeType': 'application/json',
             },
         }
