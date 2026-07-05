@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, redirect, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, request, session, url_for
 from werkzeug.exceptions import HTTPException
 from config import Config
 import database
@@ -1256,6 +1256,71 @@ def api_gdrive_invoice_details(inv_id):
     except Exception:
         raw = {}
     return jsonify(raw)
+
+
+@app.route('/api/gdrive/invoices/<int:inv_id>/pdf')
+def api_gdrive_invoice_pdf(inv_id):
+    """Strumieniuje oryginalny plik PDF faktury z Google Drive (podgląd w popupie)."""
+    from models.settings import get_setting
+    from models.gdrive_invoice import get_gdrive_invoice_by_id
+    from services.gdrive import GoogleDriveClient
+
+    inv = get_gdrive_invoice_by_id(inv_id)
+    if not inv:
+        return jsonify({'error': 'Nie znaleziono faktury'}), 404
+
+    api_token = get_setting('google_drive_api_token', '')
+    root_folder_id = get_setting('google_drive_folder_id', '')
+    if not api_token or not root_folder_id:
+        return jsonify({'error': 'Brak konfiguracji Google Drive.'}), 400
+
+    try:
+        client = GoogleDriveClient(api_token, root_folder_id)
+        pdf_bytes = client.download_file(inv['gdrive_file_id'])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    return Response(pdf_bytes, mimetype='application/pdf', headers={
+        'Content-Disposition': f'inline; filename="{inv.get("file_name") or "faktura.pdf"}"'
+    })
+
+
+@app.route('/api/gdrive/invoices/<int:inv_id>', methods=['GET'])
+def api_gdrive_invoice_get(inv_id):
+    """Zwraca edytowalne pola faktury (do formularza korekty w popupie)."""
+    from models.gdrive_invoice import get_gdrive_invoice_by_id
+    inv = get_gdrive_invoice_by_id(inv_id)
+    if not inv:
+        return jsonify({'error': 'Nie znaleziono faktury'}), 404
+    return jsonify({
+        'id': inv['id'],
+        'status': inv['status'],
+        'file_name': inv.get('file_name'),
+        'invoice_number': inv.get('invoice_number'),
+        'vendor_name': inv.get('vendor_name'),
+        'vendor_nip': inv.get('vendor_nip'),
+        'issue_date': inv['issue_date'].isoformat() if inv.get('issue_date') else None,
+        'amount_gross': float(inv['amount_gross']) if inv.get('amount_gross') is not None else None,
+        'amount_net': float(inv['amount_net']) if inv.get('amount_net') is not None else None,
+        'vat_amount': float(inv['vat_amount']) if inv.get('vat_amount') is not None else None,
+        'invoice_type': inv.get('invoice_type', 'expense'),
+        'currency': inv.get('currency'),
+    })
+
+
+@app.route('/api/gdrive/invoices/<int:inv_id>/update', methods=['POST'])
+def api_gdrive_invoice_update(inv_id):
+    """Zapisuje ręczną korektę danych faktury (w tym typu koszt/przychód) przed akceptacją."""
+    from models.gdrive_invoice import update_gdrive_invoice_fields
+    data = request.get_json(silent=True) or {}
+    try:
+        updated = update_gdrive_invoice_fields(inv_id, data)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    if not updated:
+        return jsonify({'status': 'error',
+                         'message': 'Faktura nie istnieje lub nie jest już oczekująca.'}), 400
+    return jsonify({'status': 'ok'})
 
 
 @app.route('/api/gdrive/bulk-accept', methods=['POST'])

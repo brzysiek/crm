@@ -108,6 +108,45 @@ def upsert_gdrive_invoice(data: dict) -> bool:
         raise
 
 
+def update_gdrive_invoice_fields(inv_id: int, data: dict) -> bool:
+    """Ręczna korekta danych faktury (np. błąd OCR) przed akceptacją.
+
+    Edycja jest dozwolona tylko dopóki faktura jest 'pending' — po przypisaniu
+    do wydatku/przychodu dane powinny być zmieniane przez edycję tego rekordu,
+    a nie tutaj. Zwraca True jeśli zaktualizowano wiersz.
+    """
+    invoice_type = data.get('invoice_type')
+    if invoice_type not in ('expense', 'income'):
+        invoice_type = 'expense'
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """UPDATE gdrive_invoices SET
+                   invoice_number=%s, vendor_name=%s, vendor_nip=%s,
+                   issue_date=%s, amount_gross=%s, amount_net=%s, vat_amount=%s,
+                   invoice_type=%s
+                   WHERE id=%s AND status='pending'""",
+                (
+                    data.get('invoice_number') or None,
+                    data.get('vendor_name') or None,
+                    data.get('vendor_nip') or None,
+                    data.get('issue_date') or None,
+                    data.get('amount_gross') or None,
+                    data.get('amount_net') or None,
+                    data.get('vat_amount') or None,
+                    invoice_type,
+                    inv_id,
+                )
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected > 0
+    except Exception:
+        db.rollback()
+        raise
+
+
 def get_gdrive_pending_count() -> int:
     db = get_db()
     with db.cursor() as cur:

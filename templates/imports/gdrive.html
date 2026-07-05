@@ -237,9 +237,9 @@
 {# ── Modal szczegółów dokumentu ──────────────────────────────────────────── #}
 <div id="invoiceDetailsModal" class="modal-overlay"
      onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal modal-wide">
+  <div class="modal modal-txn">
     <div class="modal-header">
-      <h3 id="detailsModalTitle">Szczegóły dokumentu OCR</h3>
+      <h3 id="detailsModalTitle">Szczegóły dokumentu</h3>
       <button onclick="document.getElementById('invoiceDetailsModal').classList.remove('open')"
               class="modal-close">&#x2715;</button>
     </div>
@@ -477,22 +477,117 @@ async function showInvoiceDetails(invId, label) {
   const body  = document.getElementById('detailsModalBody');
   const title = document.getElementById('detailsModalTitle');
 
-  title.textContent = 'Szczegóły OCR: ' + label;
+  title.textContent = 'Szczegóły dokumentu: ' + label;
   body.innerHTML = '<div class="details-loading">Ładowanie…</div>';
   modal.classList.add('open');
 
   try {
-    const r = await fetch(API_BASE + '/api/gdrive/invoices/' + invId + '/details');
+    const r = await fetch(API_BASE + '/api/gdrive/invoices/' + invId);
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
+    const inv = await r.json();
+    if (inv.error) throw new Error(inv.error);
 
-    const rows = Object.entries(d).map(([k, v]) =>
-      `<tr><th style="width:180px">${_esc(k)}</th><td>${_esc(String(v === null ? '—' : v))}</td></tr>`
-    ).join('');
+    const readonly = inv.status !== 'pending';
 
-    body.innerHTML = rows
-      ? `<table class="data-table data-table-sm"><tbody>${rows}</tbody></table>`
-      : '<p class="text-muted">Brak danych OCR.</p>';
+    body.innerHTML = `
+      <div class="invoice-detail-grid">
+        <div class="invoice-detail-pdf">
+          <iframe src="${API_BASE}/api/gdrive/invoices/${invId}/pdf" title="Podgląd PDF"></iframe>
+        </div>
+        <div class="invoice-detail-form">
+          ${readonly ? '<p class="text-muted small" style="margin-bottom:.75rem">Faktura jest już przypisana — edycja niedostępna.</p>' : ''}
+          <form id="invoiceEditForm">
+            <div class="form-group">
+              <label>Typ faktury</label>
+              <select name="invoice_type" ${readonly ? 'disabled' : ''}>
+                <option value="expense">Kosztowa</option>
+                <option value="income">Przychodowa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Numer faktury</label>
+              <input type="text" name="invoice_number" ${readonly ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Kontrahent</label>
+              <input type="text" name="vendor_name" ${readonly ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>NIP</label>
+              <input type="text" name="vendor_nip" ${readonly ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Data wystawienia</label>
+              <input type="date" name="issue_date" ${readonly ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Kwota brutto (PLN)</label>
+              <input type="number" step="0.01" name="amount_gross" ${readonly ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Kwota netto (PLN)</label>
+              <input type="number" step="0.01" name="amount_net" ${readonly ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>VAT (PLN)</label>
+              <input type="number" step="0.01" name="vat_amount" ${readonly ? 'disabled' : ''}>
+            </div>
+            ${readonly ? '' : `
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-sm">Zapisz zmiany</button>
+            </div>`}
+          </form>
+          <div id="detailsSaveResult" class="api-result" style="display:none;margin-top:.5rem"></div>
+        </div>
+      </div>`;
+
+    const form = body.querySelector('#invoiceEditForm');
+    form.elements['invoice_type'].value   = inv.invoice_type || 'expense';
+    form.elements['invoice_number'].value = inv.invoice_number || '';
+    form.elements['vendor_name'].value    = inv.vendor_name || '';
+    form.elements['vendor_nip'].value     = inv.vendor_nip || '';
+    form.elements['issue_date'].value     = inv.issue_date || '';
+    form.elements['amount_gross'].value   = inv.amount_gross ?? '';
+    form.elements['amount_net'].value     = inv.amount_net ?? '';
+    form.elements['vat_amount'].value     = inv.vat_amount ?? '';
+
+    if (!readonly) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const resultEl = document.getElementById('detailsSaveResult');
+        resultEl.style.display = 'block';
+        resultEl.className = 'api-result api-loading';
+        resultEl.textContent = 'Zapisywanie…';
+        try {
+          const r2 = await fetch(API_BASE + '/api/gdrive/invoices/' + invId + '/update', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              invoice_type:   form.elements['invoice_type'].value,
+              invoice_number: form.elements['invoice_number'].value,
+              vendor_name:    form.elements['vendor_name'].value,
+              vendor_nip:     form.elements['vendor_nip'].value,
+              issue_date:     form.elements['issue_date'].value,
+              amount_gross:   form.elements['amount_gross'].value,
+              amount_net:     form.elements['amount_net'].value,
+              vat_amount:     form.elements['vat_amount'].value,
+            }),
+          });
+          const d2 = await r2.json();
+          if (d2.status === 'ok') {
+            resultEl.className = 'api-result api-ok';
+            resultEl.textContent = 'Zapisano. Odświeżam listę…';
+            setTimeout(() => location.reload(), 900);
+          } else {
+            resultEl.className = 'api-result api-error';
+            resultEl.textContent = 'Błąd: ' + (d2.message || 'nieznany');
+          }
+        } catch (err) {
+          resultEl.className = 'api-result api-error';
+          resultEl.textContent = 'Błąd żądania: ' + err.message;
+        }
+      });
+    }
   } catch (e) {
     body.innerHTML = '<div class="api-error" style="padding:1rem">Błąd ładowania: ' + e.message + '</div>';
   }
