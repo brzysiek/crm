@@ -63,13 +63,14 @@ class FakturowniaClient:
         Pobiera faktury z podanego okresu.
 
         filter_category:
-          'expense'  – faktury kosztowe  (income=0)
-          'income'   – faktury przychodowe (income=1)
-          'all'      – wszystkie faktury (income=1 i income=0, pobrane osobno i połączone)
+          'expense'  – faktury kosztowe  (income=no)
+          'income'   – faktury przychodowe (income=yes)
+          'all'      – wszystkie faktury (income=yes i income=no, pobrane osobno i połączone)
 
-        Fakturownia zwraca tylko jeden rodzaj dokumentów, gdy parametr income
-        nie jest podany (w praktyce tylko kosztowe) — dlatego dla 'all' odpytujemy
-        jawnie oba warianty zamiast polegać na nieudokumentowanym zachowaniu domyślnym.
+        Fakturownia dokumentuje wyłącznie wartości tekstowe 'yes'/'no' dla tego
+        parametru (nie 1/0) — patrz https://github.com/fakturownia/API. Dla 'all'
+        odpytujemy jawnie oba warianty zamiast polegać na zachowaniu domyślnym,
+        gdy parametr income nie jest podany wcale.
         """
         params = {
             'period':          'more',
@@ -82,10 +83,10 @@ class FakturowniaClient:
 
         if filter_category == 'all':
             items = []
-            for income_value in ('1', '0'):
+            for income_value in ('yes', 'no'):
                 items.extend(self._fetch_all_pages({**params, 'income': income_value}))
         else:
-            params['income'] = '1' if filter_category == 'income' else '0'
+            params['income'] = 'yes' if filter_category == 'income' else 'no'
             items = self._fetch_all_pages(params)
 
         return self._normalize(items)
@@ -94,10 +95,10 @@ class FakturowniaClient:
         """Pobiera WSZYSTKIE faktury bez filtra dat."""
         if filter_category == 'all':
             items = []
-            for income_value in ('1', '0'):
+            for income_value in ('yes', 'no'):
                 items.extend(self._fetch_all_pages({'income': income_value}))
         else:
-            income_value = '1' if filter_category == 'income' else '0'
+            income_value = 'yes' if filter_category == 'income' else 'no'
             items = self._fetch_all_pages({'income': income_value})
         return self._normalize(items)
 
@@ -106,7 +107,11 @@ class FakturowniaClient:
         result = []
         for inv in raw:
             income_flag = inv.get('income')
-            if income_flag in (True, 1, '1', 'true'):
+            if isinstance(income_flag, str):
+                is_income = income_flag.strip().lower() in ('1', 'true', 'yes')
+            else:
+                is_income = bool(income_flag)
+            if is_income:
                 inv_type = 'income'
             else:
                 inv_type = 'expense'
