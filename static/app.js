@@ -269,7 +269,7 @@ async function showKsefPreview(entityType, entityId) {
   if (body) body.innerHTML = '<div style="padding:1rem;color:#6b7280">Ładowanie…</div>';
 
   try {
-    const r = await fetch('/api/ksef-preview/' + entityType + '/' + entityId);
+    const r = await fetch(window.API_BASE + '/api/ksef-preview/' + entityType + '/' + entityId);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const resp = await r.json();
     if (resp.has_fakturownia_data) {
@@ -298,7 +298,7 @@ async function showDiskPreview(entityType, entityId) {
   if (body) body.innerHTML = '<div style="padding:1rem;color:#6b7280">Ładowanie…</div>';
 
   try {
-    const r = await fetch('/api/disk-preview/' + entityType + '/' + entityId);
+    const r = await fetch(window.API_BASE + '/api/disk-preview/' + entityType + '/' + entityId);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d.error) throw new Error(d.error);
