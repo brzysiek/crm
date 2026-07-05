@@ -127,7 +127,7 @@
     </thead>
     <tbody>
       {% for inc in incomes %}
-      <tr class="{% if inc.payment_status == 'paid' %}row-paid{% elif inc.payment_status == 'partial' %}row-partial{% else %}row-unpaid{% endif %}">
+      <tr class="{% if inc.category == 'wewnętrzne' %}row-internal{% elif inc.payment_status == 'paid' %}row-paid{% elif inc.payment_status == 'partial' %}row-partial{% else %}row-unpaid{% endif %}">
         <td class="col-checkbox">
           <input type="checkbox" class="row-checkbox" value="{{ inc.id }}" onchange="updateBulkBar()">
         </td>

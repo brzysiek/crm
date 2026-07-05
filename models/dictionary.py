@@ -60,14 +60,15 @@ def get_expense_categories() -> list[str]:
     """Returns expense categories from dictionary, merged with any existing in DB."""
     from database import get_db as _get_db
     items = [r['label'] or r['value'] for r in get_dict_items('expense_category')]
-    if not items:
-        db = _get_db()
-        with db.cursor() as cur:
-            cur.execute(
-                "SELECT DISTINCT category FROM expenses "
-                "WHERE category IS NOT NULL AND category != '' ORDER BY category"
-            )
-            items = [r['category'] for r in cur.fetchall()]
+    db = _get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT category FROM expenses "
+            "WHERE category IS NOT NULL AND category != '' ORDER BY category"
+        )
+        for r in cur.fetchall():
+            if r['category'] not in items:
+                items.append(r['category'])
     return items
 
 
@@ -75,14 +76,15 @@ def get_income_categories() -> list[str]:
     """Returns income categories from dictionary, merged with any existing in DB."""
     from database import get_db as _get_db
     items = [r['label'] or r['value'] for r in get_dict_items('income_category')]
-    if not items:
-        db = _get_db()
-        with db.cursor() as cur:
-            cur.execute(
-                "SELECT DISTINCT category FROM incomes "
-                "WHERE category IS NOT NULL AND category != '' ORDER BY category"
-            )
-            items = [r['category'] for r in cur.fetchall()]
+    db = _get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT category FROM incomes "
+            "WHERE category IS NOT NULL AND category != '' ORDER BY category"
+        )
+        for r in cur.fetchall():
+            if r['category'] not in items:
+                items.append(r['category'])
     return items
 
 

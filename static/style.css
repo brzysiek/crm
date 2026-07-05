@@ -1125,9 +1125,10 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .table-sum-row { background: var(--surface-secondary); font-weight: 600; border-top: 2px solid var(--border); }
 .table-sum-row td { padding-top: .6rem; padding-bottom: .6rem; }
 
-.row-paid    { background: var(--success-bg); }
-.row-partial { background: var(--warning-bg); }
-.row-unpaid  { background: var(--error-bg); }
+.row-paid     { background: var(--success-bg); }
+.row-partial  { background: var(--warning-bg); }
+.row-unpaid   { background: var(--error-bg); }
+.row-internal { background: var(--surface-secondary); }
 
 .row-txn-linked     { background: var(--success-bg); }
 .row-txn-linked td  { opacity: .75; }
