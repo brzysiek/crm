@@ -129,6 +129,8 @@
         {% if 'description' in visible_columns %}<th>Opis</th>{% endif %}
         {% if 'category' in visible_columns %}<th>Kategoria</th>{% endif %}
         <th class="text-right">Brutto</th>
+        <th class="text-right">Netto</th>
+        <th class="text-right">VAT</th>
         {% if 'paid_pct' in visible_columns %}<th>Opłacone</th>{% endif %}
         {% if 'invoice' in visible_columns %}<th>Faktura</th>{% endif %}
         {% if 'payment_method' in visible_columns %}<th>Forma</th>{% endif %}
@@ -171,8 +173,9 @@
           {% if e.orig_currency %}
           <br><span class="amount-orig">{{ e.orig_amount|float|abs|round(2) }} {{ e.orig_currency }}</span>
           {% endif %}
-          <br><span class="text-muted small">netto {{ e.amount_net|pln }} · VAT {{ (e.amount_gross - e.amount_net)|pln }}</span>
         </td>
+        <td class="text-right nowrap">{{ e.amount_net|pln }}</td>
+        <td class="text-right nowrap">{{ (e.amount_gross - e.amount_net)|pln }}</td>
         {% if 'paid_pct' in visible_columns %}
         <td>
           {% set pct = e.payment_percent|float %}
@@ -226,10 +229,9 @@
     <tfoot>
       <tr class="table-sum-row">
         <td colspan="{{ 2 + visible_before|length }}">Suma ({{ expenses|length }} rekordów)</td>
-        <td class="text-right nowrap">
-          {{ expenses|sum(attribute='amount_gross')|pln }}
-          <br><span class="text-muted small">netto {{ expenses|sum(attribute='amount_net')|pln }}</span>
-        </td>
+        <td class="text-right nowrap">{{ expenses|sum(attribute='amount_gross')|pln }}</td>
+        <td class="text-right nowrap">{{ expenses|sum(attribute='amount_net')|pln }}</td>
+        <td class="text-right nowrap">{{ (expenses|sum(attribute='amount_gross') - expenses|sum(attribute='amount_net'))|pln }}</td>
         <td colspan="{{ 1 + visible_after|length }}"></td>
       </tr>
     </tfoot>
