@@ -491,8 +491,8 @@ async function showInvoiceDetails(invId, label) {
 
     body.innerHTML = `
       <div class="invoice-detail-grid">
-        <div class="invoice-detail-pdf">
-          <iframe src="${API_BASE}/api/gdrive/invoices/${invId}/pdf" title="Podgląd PDF"></iframe>
+        <div class="invoice-detail-pdf" id="invoiceDetailPdfBox">
+          <div class="details-loading">Ładowanie PDF…</div>
         </div>
         <div class="invoice-detail-form">
           ${readonly ? '<p class="text-muted small" style="margin-bottom:.75rem">Faktura jest już przypisana — edycja niedostępna.</p>' : ''}
@@ -550,6 +550,24 @@ async function showInvoiceDetails(invId, label) {
     form.elements['amount_gross'].value   = inv.amount_gross ?? '';
     form.elements['amount_net'].value     = inv.amount_net ?? '';
     form.elements['vat_amount'].value     = inv.vat_amount ?? '';
+
+    const pdfBox = document.getElementById('invoiceDetailPdfBox');
+    fetch(API_BASE + '/api/gdrive/invoices/' + invId + '/pdf')
+      .then(async (r) => {
+        if (!r.ok) {
+          let msg = 'HTTP ' + r.status;
+          try { msg = (await r.json()).error || msg; } catch (_e) {}
+          throw new Error(msg);
+        }
+        return r.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        pdfBox.innerHTML = `<iframe src="${_esc(url)}" title="Podgląd PDF"></iframe>`;
+      })
+      .catch((e) => {
+        pdfBox.innerHTML = '<div class="api-error" style="padding:1rem">Nie udało się załadować PDF: ' + _esc(e.message) + '</div>';
+      });
 
     if (!readonly) {
       form.addEventListener('submit', async (e) => {
