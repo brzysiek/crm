@@ -450,14 +450,15 @@ async function runOcr() {
 
   ocrEl.style.whiteSpace = 'pre-wrap';
   let msg = `OCR zakończony: ${ok.length} sukces, ${failed.length} błędów`;
-  if (newOnes.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
+  if (newOnes.length && !failed.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
+  else if (newOnes.length) msg += `, ${newOnes.length} nowych faktur — odśwież stronę, aby zobaczyć je na liście poniżej`;
   if (failed.length) {
     msg += '\n\nBłędy:\n' + failed.map(x => `${x.file_name}: ${x.error}`).join('\n');
   }
   ocrEl.className = failed.length ? 'api-result api-error' : 'api-result api-ok';
   ocrEl.textContent = msg;
 
-  if (newOnes.length) {
+  if (newOnes.length && !failed.length) {
     setTimeout(() => location.reload(), 2000);
   }
 }
