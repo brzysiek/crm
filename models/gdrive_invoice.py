@@ -24,19 +24,31 @@ def get_gdrive_invoice_by_id(inv_id: int) -> dict | None:
         return cur.fetchone()
 
 
-def upsert_gdrive_invoice(data: dict) -> bool:
-    """INSERT or UPDATE a gdrive invoice record.
+def upsert_gdrive_invoice(data: dict, force: bool = False) -> dict:
+    """INSERT or UPDATE a gdrive invoice record po (ponownym) OCR pliku.
 
-    Returns True if a new record was created (status set to 'pending').
+    Zwraca {'outcome': 'inserted'|'updated'|'duplicate', 'existing': dict|None}.
+
+    - 'inserted'  — plik widziany po raz pierwszy, utworzono nową fakturę 'pending'.
+    - 'updated'   — plik miał już wpis 'pending'/'rejected' — dane odświeżone,
+                    status przywrócony do 'pending' (re-OCR poprawia błędny odczyt).
+    - 'duplicate' — plik ma już wpis 'assigned' (faktura została zaakceptowana
+                    jako wydatek/przychód) i force=False — nic nie zmieniono w
+                    bazie, wywołujący powinien zapytać użytkownika i ewentualnie
+                    wywołać ponownie z force=True.
     """
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                "SELECT id, status FROM gdrive_invoices WHERE gdrive_file_id = %s",
+                "SELECT id, status, invoice_type, assigned_record_id "
+                "FROM gdrive_invoices WHERE gdrive_file_id = %s",
                 (data['gdrive_file_id'],)
             )
             existing = cur.fetchone()
+
+            if existing and existing['status'] == 'assigned' and not force:
+                return {'outcome': 'duplicate', 'existing': existing}
 
             if existing:
                 cur.execute(
@@ -46,7 +58,8 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                            invoice_number=%s, vendor_name=%s, vendor_nip=%s,
                            issue_date=%s, payment_to=%s, amount_gross=%s, amount_net=%s,
                            vat_amount=%s, invoice_type=%s, ocr_raw=%s,
-                           currency=%s, orig_amount=%s, exchange_rate=%s
+                           currency=%s, orig_amount=%s, exchange_rate=%s,
+                           status='pending', assigned_record_id=NULL
                        WHERE gdrive_file_id=%s""",
                     (
                         data.get('file_name'),
@@ -70,7 +83,7 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                     )
                 )
                 db.commit()
-                return False
+                return {'outcome': 'updated', 'existing': None}
 
             cur.execute(
                 """INSERT INTO gdrive_invoices
@@ -102,7 +115,7 @@ def upsert_gdrive_invoice(data: dict) -> bool:
                 )
             )
         db.commit()
-        return True
+        return {'outcome': 'inserted', 'existing': None}
     except Exception:
         db.rollback()
         raise

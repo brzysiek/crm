@@ -379,24 +379,34 @@ function renderFileTable(files) {
   tbody.innerHTML = '';
   files.forEach(f => {
     const tr = document.createElement('tr');
+    tr.dataset.fileId = f.id;
     const processed = f.already_processed;
     tr.innerHTML = `
       <td><input type="checkbox" class="file-checkbox" value="${_esc(f.id)}"
-          data-name="${_esc(f.name)}" data-modified="${_esc(f.modifiedTime||'')}"
-          ${processed ? 'disabled title="Już przetworzona"' : ''}></td>
+          data-name="${_esc(f.name)}" data-modified="${_esc(f.modifiedTime||'')}"></td>
       <td>${_esc(f.name)}</td>
       <td class="nowrap text-muted">${_esc((f.modifiedTime||'').substring(0,10))}</td>
-      <td>${processed
-           ? '<span class="badge badge-green">Przetworzona</span>'
-           : '<span class="badge badge-yellow">Nowa</span>'}</td>`;
+      <td class="file-status-cell">${processed
+           ? '<span class="badge badge-green">Przetworzony</span>'
+           : '<span class="badge badge-yellow">Nowy</span>'}</td>`;
     tbody.appendChild(tr);
   });
 }
 
 function toggleSelectAllFiles(cb) {
-  document.querySelectorAll('.file-checkbox:not(:disabled)').forEach(c => {
+  document.querySelectorAll('.file-checkbox').forEach(c => {
     c.checked = cb.checked;
   });
+}
+
+function _setFileRowStatus(fileId, result) {
+  const tr = document.querySelector('tr[data-file-id="' + CSS.escape(String(fileId)) + '"]');
+  if (!tr) return;
+  const cell = tr.querySelector('.file-status-cell');
+  if (!cell) return;
+  cell.innerHTML = result.success
+    ? '<span class="badge badge-green">Przetworzony</span>'
+    : '<span class="badge badge-red">Błąd</span>';
 }
 
 async function runOcr() {
@@ -407,8 +417,6 @@ async function runOcr() {
   }
 
   const ocrEl = document.getElementById('ocrResult');
-  const total  = checked.length;
-
   const selYear  = document.getElementById('selYear');
   const selMonth = document.getElementById('selMonth');
   const yearText  = selYear.options[selYear.selectedIndex]?.text || '';
@@ -416,49 +424,78 @@ async function runOcr() {
   const yearNum  = parseInt(yearText) || null;
   const monthNum = _monthNameToNum(monthText);
 
-  const allResults = [];
+  const fileMeta = {};
+  checked.forEach(c => {
+    fileMeta[c.value] = { name: c.dataset.name || c.value, modifiedTime: c.dataset.modified };
+  });
 
-  for (let i = 0; i < total; i++) {
-    const c    = checked[i];
-    const name = c.dataset.name || c.value;
-    opProgress(ocrEl, `OCR: ${name} (${i + 1} z ${total})`, i + 1, total);
+  async function ocrBatch(fileIds, force) {
+    const out = [];
+    for (let i = 0; i < fileIds.length; i++) {
+      const fid  = fileIds[i];
+      const meta = fileMeta[fid] || { name: fid };
+      opProgress(ocrEl, `OCR: ${meta.name} (${i + 1} z ${fileIds.length})`, i + 1, fileIds.length);
 
-    try {
-      const r = await fetch(API_BASE + '/api/gdrive/ocr', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_ids: [{ id: c.value, name, modifiedTime: c.dataset.modified }],
-          year:  yearNum,
-          month: monthNum,
-        }),
-      });
-      const d = await r.json();
-      if (d.error) {
-        allResults.push({ success: false, file_name: name, error: d.error });
-      } else if (d.results && d.results.length) {
-        allResults.push(...d.results);
+      let entry;
+      try {
+        const r = await fetch(API_BASE + '/api/gdrive/ocr', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file_ids: [{ id: fid, name: meta.name, modifiedTime: meta.modifiedTime }],
+            year:  yearNum,
+            month: monthNum,
+            force_import: force,
+          }),
+        });
+        const d = await r.json();
+        if (d.error) {
+          entry = { success: false, file_id: fid, file_name: meta.name, error: d.error };
+        } else {
+          entry = (d.results && d.results[0]) || { success: false, file_id: fid, file_name: meta.name, error: 'Brak odpowiedzi.' };
+        }
+      } catch (e) {
+        entry = { success: false, file_id: fid, file_name: meta.name, error: e.message };
       }
-    } catch (e) {
-      allResults.push({ success: false, file_name: name, error: e.message });
+      out.push(entry);
+      _setFileRowStatus(fid, entry);
+    }
+    return out;
+  }
+
+  let allResults = await ocrBatch(checked.map(c => c.value), false);
+
+  const firstPassDuplicates = allResults.filter(x => x.duplicate);
+  if (firstPassDuplicates.length) {
+    const names = firstPassDuplicates
+      .map(d => `- ${d.file_name}${d.duplicate_reason ? ' — ' + d.duplicate_reason : ''}`)
+      .join('\n');
+    if (confirm(`${firstPassDuplicates.length} plik(ów) zawiera faktury, które już istnieją w systemie:\n\n${names}\n\nZaimportować je mimo to jako nowe faktury do akceptacji?`)) {
+      const retryResults = await ocrBatch(firstPassDuplicates.map(d => d.file_id), true);
+      allResults = allResults.filter(x => !x.duplicate).concat(retryResults);
     }
   }
 
-  const ok      = allResults.filter(x => x.success);
-  const failed  = allResults.filter(x => !x.success);
-  const newOnes = ok.filter(x => x.is_new);
+  const ok       = allResults.filter(x => x.success && !x.duplicate);
+  const skipped  = allResults.filter(x => x.duplicate);
+  const failed   = allResults.filter(x => !x.success);
+  const newOnes  = ok.filter(x => x.is_new);
 
   ocrEl.style.whiteSpace = 'pre-wrap';
-  let msg = `OCR zakończony: ${ok.length} sukces, ${failed.length} błędów`;
-  if (newOnes.length && !failed.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
+  let msg = `OCR zakończony: ${ok.length} sukces, ${skipped.length} pominiętych (już istnieją), ${failed.length} błędów`;
+  if (newOnes.length && !failed.length && !skipped.length) msg += `, ${newOnes.length} nowych faktur dodano do listy poniżej`;
   else if (newOnes.length) msg += `, ${newOnes.length} nowych faktur — odśwież stronę, aby zobaczyć je na liście poniżej`;
+  if (skipped.length) {
+    msg += '\n\nPominięte (już istnieją w systemie):\n'
+      + skipped.map(x => `${x.file_name}${x.duplicate_reason ? ': ' + x.duplicate_reason : ''}`).join('\n');
+  }
   if (failed.length) {
     msg += '\n\nBłędy:\n' + failed.map(x => `${x.file_name}: ${x.error}`).join('\n');
   }
-  ocrEl.className = failed.length ? 'api-result api-error' : 'api-result api-ok';
+  ocrEl.className = (failed.length || skipped.length) ? 'api-result api-error' : 'api-result api-ok';
   ocrEl.textContent = msg;
 
-  if (newOnes.length && !failed.length) {
+  if (newOnes.length && !failed.length && !skipped.length) {
     setTimeout(() => location.reload(), 2000);
   }
 }

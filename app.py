@@ -1234,6 +1234,7 @@ def api_gdrive_ocr():
     file_ids = data.get('file_ids', [])
     gdrive_year  = data.get('year')
     gdrive_month = data.get('month')
+    default_force = bool(data.get('force_import'))
 
     if not file_ids:
         return jsonify({'error': 'Brak file_ids.'}), 400
@@ -1242,15 +1243,17 @@ def api_gdrive_ocr():
     results = []
 
     for file_entry in file_ids:
-        # file_entry may be a dict {id, name, modifiedTime} or a plain string id
+        # file_entry may be a dict {id, name, modifiedTime, force_import} or a plain string id
         if isinstance(file_entry, dict):
-            fid  = file_entry.get('id', '')
+            fid   = file_entry.get('id', '')
             fname = file_entry.get('name', fid)
             fmod  = file_entry.get('modifiedTime')
+            force = bool(file_entry.get('force_import', default_force))
         else:
-            fid  = str(file_entry)
+            fid   = str(file_entry)
             fname = fid
             fmod  = None
+            force = default_force
 
         try:
             pdf_bytes = client.download_file(fid)
@@ -1296,12 +1299,33 @@ def api_gdrive_ocr():
                 'exchange_rate':    exchange_rate,
                 'ocr_raw':          _json.dumps(ocr, ensure_ascii=False),
             }
-            is_new = upsert_gdrive_invoice(record)
+            upsert_result = upsert_gdrive_invoice(record, force=force)
+            if upsert_result['outcome'] == 'duplicate':
+                existing = upsert_result['existing']
+                kind = 'przychód' if existing.get('invoice_type') == 'income' else 'wydatek'
+                results.append({
+                    'file_id':   fid,
+                    'file_name': fname,
+                    'success':   True,
+                    'duplicate': True,
+                    'is_new':    False,
+                    'duplicate_reason': (
+                        f"faktura już zaimportowana jako {kind} (ID {existing.get('assigned_record_id')})"
+                    ),
+                    **{k: ocr.get(k) for k in (
+                        'invoice_number', 'vendor_name', 'vendor_nip',
+                        'issue_date', 'amount_gross', 'amount_net',
+                        'vat_amount', 'invoice_type', 'confidence_note'
+                    )},
+                })
+                continue
+
             results.append({
                 'file_id':        fid,
                 'file_name':      fname,
                 'success':        True,
-                'is_new':         is_new,
+                'duplicate':      False,
+                'is_new':         upsert_result['outcome'] == 'inserted',
                 **{k: ocr.get(k) for k in (
                     'invoice_number', 'vendor_name', 'vendor_nip',
                     'issue_date', 'amount_gross', 'amount_net',
