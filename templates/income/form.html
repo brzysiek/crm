@@ -19,7 +19,15 @@
     <div class="form-group">
       <label for="date">Data <span class="req">*</span></label>
       <input type="date" id="date" name="date" required
+             onchange="_syncAccountingMonth(this.value)"
              value="{{ income.date|date_iso if income.date else today }}">
+    </div>
+
+    {# ── Miesiąc księgowy ── #}
+    <div class="form-group">
+      <label for="accounting_month">Miesiąc księgowy</label>
+      <input type="month" id="accounting_month" name="accounting_month"
+             value="{{ income.accounting_month if income.accounting_month else (income.date|date_iso)[:7] if income.date else today[:7] }}">
     </div>
 
     {# ── Termin płatności ── #}
@@ -298,6 +306,12 @@
 
 {% block scripts %}
 <script>
+let _accountingMonthTouched = false;
+function _syncAccountingMonth(dateValue) {
+  if (_accountingMonthTouched || !dateValue) return;
+  const el = document.getElementById('accounting_month');
+  if (el) el.value = dateValue.slice(0, 7);
+}
 document.addEventListener('DOMContentLoaded', function () {
   calcNet();
   toggleInvoiceRef();
@@ -305,6 +319,8 @@ document.addEventListener('DOMContentLoaded', function () {
   loadLinkedInvoices();
   doTxnSearch();
   autoLinkSuggested();
+  const amEl = document.getElementById('accounting_month');
+  if (amEl) amEl.addEventListener('input', function () { _accountingMonthTouched = true; });
 });
 </script>
 <script>

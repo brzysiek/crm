@@ -110,6 +110,7 @@
       <tr>
         <th class="col-checkbox"></th>
         <th>Data</th>
+        <th>Miesiąc księgowy</th>
         {% if 'client' in visible_columns %}<th>Klient</th>{% endif %}
         {% if 'description' in visible_columns %}<th>Opis</th>{% endif %}
         {% if 'category' in visible_columns %}<th>Kategoria</th>{% endif %}
@@ -131,6 +132,7 @@
           <input type="checkbox" class="row-checkbox" value="{{ inc.id }}" onchange="updateBulkBar()">
         </td>
         <td class="nowrap">{{ inc.date|ddmmyyyy }}</td>
+        <td class="nowrap">{{ inc.accounting_month|month_pl }}</td>
         {% if 'client' in visible_columns %}
         <td>
           <span class="desc-cell" title="{{ inc.client_name or '' }}">{{ inc.client_name or '—' }}</span>
@@ -209,7 +211,7 @@
     </tbody>
     <tfoot>
       <tr class="table-sum-row">
-        <td colspan="{{ 2 + visible_before|length }}">Suma ({{ incomes|length }} rekordów)</td>
+        <td colspan="{{ 3 + visible_before|length }}">Suma ({{ incomes|length }} rekordów)</td>
         <td class="text-right nowrap">{{ incomes|sum(attribute='amount_gross')|pln }}</td>
         <td class="text-right nowrap">{{ incomes|sum(attribute='amount_net')|pln }}</td>
         <td class="text-right nowrap">{{ (incomes|sum(attribute='amount_gross') - incomes|sum(attribute='amount_net'))|pln }}</td>

@@ -1,6 +1,17 @@
 from database import get_db
 
 
+def _default_accounting_month(data: dict) -> str:
+    """Miesiąc księgowy domyślnie zgodny z miesiącem pola `date`, jeśli nie podano jawnie."""
+    given = (data.get('accounting_month') or '').strip()
+    if given:
+        return given[:7]
+    d = data.get('date')
+    if hasattr(d, 'strftime'):
+        return d.strftime('%Y-%m')
+    return str(d or '')[:7]
+
+
 def get_all_incomes(month: str = None, category: str = None,
                     payment_status: str = None, search: str = None) -> list[dict]:
     db = get_db()
@@ -8,7 +19,7 @@ def get_all_incomes(month: str = None, category: str = None,
     params = []
 
     if month:
-        sql += " AND DATE_FORMAT(date, '%%Y-%%m') = %s"
+        sql += " AND accounting_month = %s"
         params.append(month)
     if category:
         sql += " AND category = %s"
@@ -50,13 +61,14 @@ def create_income(data: dict) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO incomes
-                   (date, payment_due_date, client_name, client_nip, description, invoice_number,
+                   (date, accounting_month, payment_due_date, client_name, client_nip, description, invoice_number,
                     amount_gross, vat_rate, amount_net, orig_amount, orig_currency,
                     invoice_status, invoice_ref, payment_method, payment_status,
                     category, fakturownia_id, notes, paid_by, source)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['date'],
+                    _default_accounting_month(data),
                     data.get('payment_due_date') or None,
                     data.get('client_name') or None,
                     data.get('client_nip') or None,
@@ -91,7 +103,7 @@ def update_income(income_id: int, data: dict) -> None:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE incomes SET
-                   date=%s, payment_due_date=%s, client_name=%s, client_nip=%s, description=%s,
+                   date=%s, accounting_month=%s, payment_due_date=%s, client_name=%s, client_nip=%s, description=%s,
                    invoice_number=%s, amount_gross=%s, vat_rate=%s, amount_net=%s,
                    orig_amount=%s, orig_currency=%s,
                    invoice_status=%s, invoice_ref=%s, payment_method=%s,
@@ -99,6 +111,7 @@ def update_income(income_id: int, data: dict) -> None:
                    WHERE id = %s""",
                 (
                     data['date'],
+                    _default_accounting_month(data),
                     data.get('payment_due_date') or None,
                     data.get('client_name') or None,
                     data.get('client_nip') or None,
@@ -313,7 +326,7 @@ def get_unpaid_incomes(limit: int = 20) -> list[dict]:
 def get_income_daily_totals(month: str, exclude_categories: list[str] = None) -> list[dict]:
     db = get_db()
     sql = """SELECT DAY(date) AS day, SUM(amount_gross) AS total
-               FROM incomes WHERE DATE_FORMAT(date, '%%Y-%%m') = %s"""
+               FROM incomes WHERE accounting_month = %s"""
     params = [month]
     if exclude_categories:
         placeholders = ','.join(['%s'] * len(exclude_categories))
@@ -334,7 +347,7 @@ def get_monthly_income_kpi(month: str, exclude_categories: list[str] = None) -> 
                COALESCE(SUM(CASE WHEN payment_status='paid'    THEN amount_gross ELSE 0 END), 0) AS paid,
                COALESCE(SUM(CASE WHEN payment_status='unpaid'  THEN amount_gross ELSE 0 END), 0) AS unpaid,
                COALESCE(SUM(CASE WHEN payment_status='partial' THEN amount_gross ELSE 0 END), 0) AS partial
-               FROM incomes WHERE DATE_FORMAT(date, '%%Y-%%m') = %s"""
+               FROM incomes WHERE accounting_month = %s"""
     params = [month]
     if exclude_categories:
         placeholders = ','.join(['%s'] * len(exclude_categories))

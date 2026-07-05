@@ -99,9 +99,13 @@ def _parse_form(form):
         orig_currency = None
         orig_amount   = None
 
+    expense_date = form.get('date', date.today().isoformat())
+    accounting_month = form.get('accounting_month', '').strip() or expense_date[:7]
+
     return {
         'payment_due_date':   form.get('payment_due_date', '').strip() or None,
-        'date':               form.get('date', date.today().isoformat()),
+        'date':               expense_date,
+        'accounting_month':   accounting_month,
         'responsible_person': person,
         'contractor_name':    form.get('contractor_name', '').strip() or None,
         'contractor_nip':     form.get('contractor_nip', '').strip() or None,
@@ -309,8 +313,10 @@ def new_expense():
                     import json as _json2
                     _raw = _json.loads(inv['raw_json']) if isinstance(inv['raw_json'], str) else {}
                     raw_payment_to = _raw.get('payment_to') or ''
+                inv_date = str(inv.get('issue_date') or '')[:10] or today
                 prefill = {
-                    'date':             str(inv.get('issue_date') or '')[:10] or today,
+                    'date':             inv_date,
+                    'accounting_month': inv_date[:7],
                     'payment_due_date': str(raw_payment_to)[:10] if raw_payment_to else '',
                     'amount_gross':     inv.get('amount_gross', ''),
                     'vat_rate':         '23',
