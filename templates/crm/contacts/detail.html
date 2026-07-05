@@ -11,7 +11,8 @@
     <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">📇 Wizytówka</a>
     <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">✎ Edytuj</a>
     <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
-          class="inline-form" onsubmit="return confirm('Usunąć ten kontakt?')">
+          class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if contact.company_id else 'false' }})">
+      <input type="hidden" name="archive_company" value="0">
       <button type="submit" class="btn btn-outline">✕ Usuń</button>
     </form>
     <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">← Lista</a>

@@ -24,7 +24,8 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') "
            "   FROM crm_company_tags cct JOIN crm_tags t ON t.id=cct.tag_id "
            "   WHERE cct.company_id=co.id AND t.kind='industry') AS company_industries_list "
-           "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id WHERE 1=1")
+           "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
+           "WHERE ct.archived_at IS NULL")
     params = []
     if company_id:
         sql += " AND ct.company_id = %s"
@@ -48,7 +49,7 @@ def get_contact_by_id(contact_id: int) -> dict | None:
             """SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name,
                       co.website AS company_website
                FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id
-               WHERE ct.id=%s""",
+               WHERE ct.id=%s AND ct.archived_at IS NULL""",
             (contact_id,)
         )
         return cur.fetchone()
@@ -57,7 +58,8 @@ def get_contact_by_id(contact_id: int) -> dict | None:
 def search_contacts(q: str, company_id: int = None, limit: int = 20) -> list[dict]:
     db = get_db()
     sql = ("SELECT ct.id, ct.first_name, ct.last_name, ct.email, co.name AS company_name "
-           "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id WHERE 1=1")
+           "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
+           "WHERE ct.archived_at IS NULL")
     params = []
     if company_id:
         sql += " AND ct.company_id = %s"
@@ -128,16 +130,29 @@ def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
             log_history('contact', contact_id, user_id, 'update', summary)
 
 
-def delete_contact(contact_id: int, user_id: int | None) -> None:
+def delete_contact(contact_id: int, user_id: int | None, archive_company: bool = False) -> None:
     contact = get_contact_by_id(contact_id)
     db = get_db()
+    company_archived = False
     try:
         with db.cursor() as cur:
-            cur.execute("DELETE FROM crm_contacts WHERE id=%s", (contact_id,))
+            cur.execute("UPDATE crm_contacts SET archived_at=NOW() WHERE id=%s", (contact_id,))
+            if archive_company and contact and contact.get('company_id'):
+                cur.execute(
+                    "UPDATE crm_companies SET archived_at=NOW() WHERE id=%s AND archived_at IS NULL",
+                    (contact['company_id'],)
+                )
+                company_archived = cur.rowcount > 0
         db.commit()
     except Exception:
         db.rollback()
         raise
     if contact:
-        log_history('contact', contact_id, user_id, 'delete',
-                     f"Usunięto kontakt „{contact['first_name']} {contact['last_name']}”.")
+        summary = f"Zarchiwizowano kontakt „{contact['first_name']} {contact['last_name']}”."
+        if company_archived:
+            summary += f" Zarchiwizowano też firmę „{contact.get('company_name')}”."
+        log_history('contact', contact_id, user_id, 'delete', summary)
+        if company_archived:
+            log_history('company', contact['company_id'], user_id, 'delete',
+                         f"Zarchiwizowano firmę „{contact.get('company_name')}” (usunięto kontakt "
+                         f"„{contact['first_name']} {contact['last_name']}”).")

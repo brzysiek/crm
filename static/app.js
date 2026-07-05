@@ -633,6 +633,30 @@ function crmSetStatus(el, text, color) {
   el.style.color = color || '';
 }
 
+/* ── CRM: usuwanie (archiwizacja) firmy z pytaniem o powiązane kontakty ────────── */
+function crmConfirmDeleteCompany(form, contactsCount) {
+  if (!confirm('Usunąć tę firmę?')) return false;
+  if (contactsCount > 0) {
+    const wantsContacts = confirm(
+      `Ta firma ma ${contactsCount} powiązanych kontaktów. Czy usunąć (zarchiwizować) je również?`
+    );
+    const hidden = form.querySelector('input[name="archive_contacts"]');
+    if (hidden) hidden.value = wantsContacts ? '1' : '0';
+  }
+  return true;
+}
+
+/* ── CRM: usuwanie (archiwizacja) kontaktu z pytaniem o powiązaną firmę ────────── */
+function crmConfirmDeleteContact(form, hasCompany) {
+  if (!confirm('Usunąć ten kontakt?')) return false;
+  if (hasCompany) {
+    const wantsCompany = confirm('Czy usunąć (zarchiwizować) też powiązaną firmę?');
+    const hidden = form.querySelector('input[name="archive_company"]');
+    if (hidden) hidden.value = wantsCompany ? '1' : '0';
+  }
+  return true;
+}
+
 /* ── CRM: pobieranie danych firmy po NIP/KRS (formularz Firmy) ────────────────── */
 async function crmLookupCompany(kind) {
   const input = document.getElementById(kind);

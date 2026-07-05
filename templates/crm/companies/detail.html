@@ -20,7 +20,8 @@
   <div class="header-actions">
     <a href="{{ url_for('crm_companies.edit_company', company_id=company.id) }}" class="btn btn-outline">✎ Edytuj</a>
     <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=company.id) }}"
-          class="inline-form" onsubmit="return confirm('Usunąć tę firmę?')">
+          class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ contacts|length }})">
+      <input type="hidden" name="archive_contacts" value="0">
       <button type="submit" class="btn btn-outline">✕ Usuń</button>
     </form>
     <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline">← Lista</a>

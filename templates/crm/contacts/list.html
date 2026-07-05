@@ -69,7 +69,8 @@
         <td class="col-actions nowrap">
           <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
           <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
-                class="inline-form" onsubmit="return confirm('Usunąć ten kontakt?')">
+                class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if c.company_id else 'false' }})">
+            <input type="hidden" name="archive_company" value="0">
             <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
           </form>
         </td>

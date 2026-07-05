@@ -167,8 +167,9 @@ def view_company(company_id):
 
 @bp.route('/<int:company_id>/delete', methods=['POST'])
 def delete_company_view(company_id):
-    delete_company(company_id, session.get('user_id'))
-    flash('Firma została usunięta.', 'success')
+    archive_contacts = request.form.get('archive_contacts') == '1'
+    delete_company(company_id, session.get('user_id'), archive_contacts=archive_contacts)
+    flash('Firma została zarchiwizowana.', 'success')
     return redirect(url_for('crm_companies.list_companies'))
 
 

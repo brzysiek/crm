@@ -58,7 +58,7 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
     db = get_db()
     params = []
     joins = []
-    where = ["1=1"]
+    where = ["c.archived_at IS NULL"]
 
     if tag:
         joins.append("JOIN crm_company_tags ct ON ct.company_id=c.id "
@@ -94,10 +94,12 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
            FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
            WHERE ct.company_id=c.id AND t.kind='source') AS sources_list,
-        (SELECT ct2.id FROM crm_contacts ct2 WHERE ct2.company_id=c.id
+        (SELECT ct2.id FROM crm_contacts ct2 WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL
            ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_id,
         (SELECT CONCAT(ct2.first_name, ' ', ct2.last_name) FROM crm_contacts ct2
-           WHERE ct2.company_id=c.id ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_name
+           WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_name,
+        (SELECT COUNT(*) FROM crm_contacts ct2
+           WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL) AS contacts_count
         FROM crm_companies c {' '.join(joins)} WHERE {' AND '.join(where)}"""
     sql += f" ORDER BY {order_col} {direction}, c.id DESC"
 
@@ -109,7 +111,7 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
 def get_company_by_id(company_id: int) -> dict | None:
     db = get_db()
     with db.cursor() as cur:
-        cur.execute("SELECT * FROM crm_companies WHERE id=%s", (company_id,))
+        cur.execute("SELECT * FROM crm_companies WHERE id=%s AND archived_at IS NULL", (company_id,))
         return cur.fetchone()
 
 
@@ -124,7 +126,7 @@ def get_company_by_nip(nip: str) -> dict | None:
 
 def search_companies(q: str, limit: int = 20) -> list[dict]:
     db = get_db()
-    sql = "SELECT id, name, short_name, city, nip FROM crm_companies WHERE 1=1"
+    sql = "SELECT id, name, short_name, city, nip FROM crm_companies WHERE archived_at IS NULL"
     params = []
     if q:
         sql += " AND (name LIKE %s OR short_name LIKE %s OR nip LIKE %s)"
@@ -314,16 +316,25 @@ def update_company(company_id: int, data: dict, user_id: int | None,
             log_history('company', company_id, user_id, 'update', summary)
 
 
-def delete_company(company_id: int, user_id: int | None) -> None:
+def delete_company(company_id: int, user_id: int | None, archive_contacts: bool = False) -> None:
     company = get_company_by_id(company_id)
     db = get_db()
+    archived_contacts = 0
     try:
         with db.cursor() as cur:
-            cur.execute("DELETE FROM crm_companies WHERE id=%s", (company_id,))
+            cur.execute("UPDATE crm_companies SET archived_at=NOW() WHERE id=%s", (company_id,))
+            if archive_contacts:
+                cur.execute(
+                    "UPDATE crm_contacts SET archived_at=NOW() WHERE company_id=%s AND archived_at IS NULL",
+                    (company_id,)
+                )
+                archived_contacts = cur.rowcount
         db.commit()
     except Exception:
         db.rollback()
         raise
     if company:
-        log_history('company', company_id, user_id, 'delete',
-                     f"Usunięto firmę „{company['name']}”.")
+        summary = f"Zarchiwizowano firmę „{company['name']}”."
+        if archived_contacts:
+            summary += f" Zarchiwizowano też {archived_contacts} powiązanych kontaktów."
+        log_history('company', company_id, user_id, 'delete', summary)

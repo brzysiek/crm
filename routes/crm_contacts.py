@@ -153,8 +153,9 @@ def download_vcard(contact_id):
 
 @bp.route('/<int:contact_id>/delete', methods=['POST'])
 def delete_contact_view(contact_id):
-    delete_contact(contact_id, session.get('user_id'))
-    flash('Kontakt został usunięty.', 'success')
+    archive_company = request.form.get('archive_company') == '1'
+    delete_contact(contact_id, session.get('user_id'), archive_company=archive_company)
+    flash('Kontakt został zarchiwizowany.', 'success')
     return redirect(url_for('crm_contacts.list_contacts'))
 
 
