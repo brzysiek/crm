@@ -50,24 +50,33 @@
 
     {% if tags or industries or source %}
     <div class="inv-section" style="margin-top:1rem">
-      <h4>Tagi, branże i źródła</h4>
-      <div style="padding:.85rem">
-        {% if tags %}
-        <div class="detail-tags">
-          {% for t in tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
-        </div>
-        {% endif %}
-        {% if industries %}
-        <div class="detail-tags" style="margin-top:.5rem">
-          {% for i in industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
-        </div>
-        {% endif %}
-        {% if source %}
-        <div class="detail-tags" style="margin-top:.5rem">
-          {% for s in source %}<span class="badge badge-outline">{{ s }}</span>{% endfor %}
-        </div>
-        {% endif %}
-      </div>
+      <h4>Klasyfikacja</h4>
+      <dl class="inv-dl">
+        <dt>Tagi</dt>
+        <dd>
+          {% if tags %}
+          <div class="detail-tags">
+            {% for t in tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
+        <dt>Branże</dt>
+        <dd>
+          {% if industries %}
+          <div class="detail-tags">
+            {% for i in industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
+        <dt>Źródła</dt>
+        <dd>
+          {% if source %}
+          <div class="detail-tags">
+            {% for s in source %}<span class="badge badge-outline">{{ s }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
+      </dl>
     </div>
     {% endif %}
 

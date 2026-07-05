@@ -18,7 +18,7 @@ FIELD_LABELS = {
     'country': 'Kraj', 'city': 'Miasto', 'voivodeship': 'Województwo', 'street': 'Ulica',
     'house_number': 'Nr domu', 'flat_number': 'Nr lokalu', 'postal_code': 'Kod pocztowy',
     'email': 'Email', 'phone': 'Telefon', 'nip': 'NIP', 'krs': 'KRS', 'website': 'Strona WWW',
-    'linkedin_url': 'LinkedIn', 'description': 'Opis',
+    'linkedin_url': 'LinkedIn', 'description': 'Opis', 'short_description': 'Krótki opis',
 }
 
 # Sufiksy odmian nazw spółek, usuwane przy automatycznym tworzeniu nazwy skróconej
@@ -225,8 +225,8 @@ def _insert(data: dict) -> int:
             """INSERT INTO crm_companies
                (name, short_name, relation_type, country, city, voivodeship, street, house_number,
                 flat_number, postal_code, email, phone, nip, krs, website, linkedin_url, favicon_url,
-                description, owner_user_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                description, short_description, owner_user_id)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (
                 data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
                 data.get('country') or 'Polska', data.get('city') or None, data.get('voivodeship') or None,
@@ -235,7 +235,8 @@ def _insert(data: dict) -> int:
                 data.get('postal_code') or None, data.get('email') or None, data.get('phone') or None,
                 data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
                 data.get('linkedin_url') or None, data.get('favicon_url') or None,
-                data.get('description') or None, data.get('owner_user_id') or None,
+                data.get('description') or None, data.get('short_description') or None,
+                data.get('owner_user_id') or None,
             )
         )
         return cur.lastrowid
@@ -277,7 +278,8 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                 """UPDATE crm_companies SET
                    name=%s, short_name=%s, relation_type=%s, country=%s, city=%s, voivodeship=%s, street=%s,
                    house_number=%s, flat_number=%s, postal_code=%s, email=%s, phone=%s,
-                   nip=%s, krs=%s, website=%s, linkedin_url=%s, favicon_url=%s, description=%s, owner_user_id=%s
+                   nip=%s, krs=%s, website=%s, linkedin_url=%s, favicon_url=%s, description=%s,
+                   short_description=%s, owner_user_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
@@ -287,7 +289,8 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                     data.get('postal_code') or None, data.get('email') or None, data.get('phone') or None,
                     data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
                     data.get('linkedin_url') or None, data.get('favicon_url') or None,
-                    data.get('description') or None, data.get('owner_user_id') or None,
+                    data.get('description') or None, data.get('short_description') or None,
+                    data.get('owner_user_id') or None,
                     company_id,
                 )
             )

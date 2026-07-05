@@ -9,7 +9,8 @@
     {{ m.col_toggle('companies-col-btn', 'companies-col-menu', [
       ('name', 'Nazwa'), ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
       ('email', 'Email'), ('phone', 'Telefon'), ('nip', 'NIP'), ('source', 'Źródło'),
-      ('primary_contact', 'Kontakt'), ('tags', 'Tagi'), ('industries', 'Branże'), ('description', 'Opis'),
+      ('primary_contact', 'Kontakt'), ('tags', 'Tagi'), ('industries', 'Branże'),
+      ('short_description', 'Krótki opis'), ('description', 'Opis'),
     ]) }}
     <a href="{{ url_for('crm_companies.new_company') }}" class="btn btn-primary">+ Dodaj firmę</a>
   </div>
@@ -72,6 +73,7 @@
         <th data-col="primary_contact">Kontakt</th>
         <th data-col="tags">Tagi</th>
         <th data-col="industries">Branże</th>
+        <th data-col="short_description">Krótki opis</th>
         <th data-col="description">Opis</th>
         <th class="col-actions"></th>
       </tr>
@@ -131,6 +133,11 @@
               <a href="{{ url_for('crm_companies.list_companies', industry=i) }}" class="badge badge-outline badge-btn"
                  title="Filtruj po branży: {{ i }}">{{ i }}</a>
             {% endfor %}
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td data-col="short_description">
+          {% if c.short_description %}
+            <span class="desc-cell" title="{{ c.short_description }}">{{ c.short_description }}</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td data-col="description">

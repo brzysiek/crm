@@ -31,6 +31,7 @@ def _parse_form(form):
         'website': form.get('website', '').strip(),
         'linkedin_url': form.get('linkedin_url', '').strip(),
         'description': form.get('description', '').strip(),
+        'short_description': form.get('short_description', '').strip(),
         'owner_user_id': form.get('owner_user_id', type=int),
     }
 
