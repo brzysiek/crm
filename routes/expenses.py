@@ -273,7 +273,10 @@ def new_expense():
             txn = get_bank_transaction_by_id(int(bank_txn_id))
             if txn:
                 amount = abs(float(txn['amount'] or 0))
+                txn_date = str(txn['date'])[:10] if txn.get('date') else today
                 prefill = {
+                    'date':            txn_date,
+                    'accounting_month': txn_date[:7],
                     'amount_gross':    amount,
                     'vat_rate':        '23',
                     'contractor_name': txn.get('counterparty') or '',
