@@ -7,7 +7,7 @@
   <h1>Firmy</h1>
   <div class="header-actions">
     {{ m.col_toggle('companies-col-btn', 'companies-col-menu', [
-      ('name', 'Nazwa'), ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
+      ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
       ('email', 'Email'), ('phone', 'Telefon'), ('nip', 'NIP'), ('source', 'Źródło'),
       ('primary_contact', 'Kontakt'), ('tags', 'Tagi'), ('industries', 'Branże'),
       ('short_description', 'Krótki opis'), ('description', 'Opis'),
@@ -65,7 +65,6 @@
       <tr>
         <th class="col-checkbox"></th>
         <th class="favicon-cell"></th>
-        {{ m.sort_th('Nazwa', 'name', sort, direction, 'crm_companies.list_companies', 'name') }}
         {{ m.sort_th('Nazwa skrócona', 'short_name', sort, direction, 'crm_companies.list_companies', 'short_name') }}
         {{ m.sort_th('Relacja', 'relation_type', sort, direction, 'crm_companies.list_companies', 'relation_type') }}
         {{ m.sort_th('Miasto', 'city', sort, direction, 'crm_companies.list_companies', 'city') }}
@@ -94,9 +93,8 @@
             <div class="favicon-placeholder">—</div>
           {% endif %}
         </td>
-        <td data-col="name"><a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.name }}</a></td>
         <td data-col="short_name">
-          <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or '—' }}</a>
+          <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or c.name }}</a>
         </td>
         <td data-col="relation_type">
           <a href="{{ url_for('crm_companies.list_companies', relation_type=c.relation_type) }}"
@@ -173,7 +171,7 @@
 {% block scripts %}
 <script>
 initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu',
-  ['name', 'city', 'email', 'phone', 'nip', 'source']);
+  ['city', 'email', 'phone', 'nip', 'source']);
 
 function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
