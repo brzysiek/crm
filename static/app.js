@@ -728,7 +728,8 @@ function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
   const suggestBox = document.getElementById(suggestId);
   if (!wrap || !input || !suggestBox) return;
 
-  const fieldName = kind === 'industry' ? 'industries[]' : 'tags[]';
+  const TAG_FIELD_NAMES = { tag: 'tags[]', industry: 'industries[]', source: 'sources[]' };
+  const fieldName = TAG_FIELD_NAMES[kind] || 'tags[]';
   let values = Array.isArray(initialValues) ? [...initialValues] : [];
 
   function render() {
@@ -803,40 +804,6 @@ function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
 
   wrap.tagInputAdd = addValue;
   render();
-}
-
-/* ── CRM: podpowiedzi dla pola jednowartościowego (np. "źródło") ───────────────
- * Wymaga: <input id="{inputId}"> + <div id="{suggestId}" class="tag-suggestions">
- * w kontenerze z position:relative (np. .suggest-wrap).
- */
-function initSingleSuggest(inputId, suggestId, type) {
-  const input = document.getElementById(inputId);
-  const box = document.getElementById(suggestId);
-  if (!input || !box) return;
-
-  function close() { box.classList.remove('open'); box.innerHTML = ''; }
-
-  let timer = null;
-  input.addEventListener('input', () => {
-    clearTimeout(timer);
-    const q = input.value.trim();
-    timer = setTimeout(async () => {
-      try {
-        const resp = await fetch(window.API_BASE + '/api/crm/suggest?type=' + type + '&q=' + encodeURIComponent(q));
-        const items = await resp.json();
-        if (items.length === 0) { close(); return; }
-        box.innerHTML = items.map(it => '<div class="tag-suggestion-item">' + crmEsc(it) + '</div>').join('');
-        box.classList.add('open');
-        box.querySelectorAll('.tag-suggestion-item').forEach((el, i) => {
-          el.onclick = () => { input.value = items[i]; close(); };
-        });
-      } catch (_) { close(); }
-    }, 250);
-  });
-
-  document.addEventListener('click', e => {
-    if (e.target !== input && !box.contains(e.target)) close();
-  });
 }
 
 /* ── CRM: szybkie utworzenie firmy po NIP/KRS (formularz Kontaktu) ─────────────

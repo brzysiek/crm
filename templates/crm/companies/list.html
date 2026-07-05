@@ -68,7 +68,7 @@
         {{ m.sort_th('Email', 'email', sort, direction, 'crm_companies.list_companies', 'email') }}
         {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_companies.list_companies', 'phone') }}
         {{ m.sort_th('NIP', 'nip', sort, direction, 'crm_companies.list_companies', 'nip') }}
-        {{ m.sort_th('Źródło', 'source', sort, direction, 'crm_companies.list_companies', 'source') }}
+        <th data-col="source">Źródło</th>
         <th data-col="primary_contact">Kontakt</th>
         <th data-col="tags">Tagi</th>
         <th data-col="industries">Branże</th>
@@ -105,9 +105,11 @@
         <td data-col="phone">{{ c.phone or '—' }}</td>
         <td data-col="nip">{{ c.nip or '—' }}</td>
         <td data-col="source">
-          {% if c.source %}
-            <a href="{{ url_for('crm_companies.list_companies', source=c.source) }}" class="badge badge-outline badge-btn"
-               title="Filtruj po źródle: {{ c.source }}">{{ c.source }}</a>
+          {% if c.sources_list %}
+            {% for s in c.sources_list.split(', ') %}
+              <a href="{{ url_for('crm_companies.list_companies', source=s) }}" class="badge badge-outline badge-btn"
+                 title="Filtruj po źródle: {{ s }}">{{ s }}</a>
+            {% endfor %}
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td data-col="primary_contact">
@@ -194,8 +196,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!ids.length) return;
     const field = document.getElementById('bulkField').value;
     const value = document.getElementById('bulkValue').value.trim();
-    if (action === 'add' && !value) { alert('Podaj wartość.'); return; }
-    if (action === 'remove' && !confirm(`Usunąć ${FIELD_LABELS[field]} z ${ids.length} zaznaczonych firm?`)) return;
+    if (!value && !(field === 'description' && action === 'remove')) { alert('Podaj wartość.'); return; }
+    if (action === 'remove' && !confirm(`Usunąć ${FIELD_LABELS[field]}${value ? ' „' + value + '”' : ''} z ${ids.length} zaznaczonych firm?`)) return;
     try {
       const r = await fetch(API_BASE + '/api/crm/companies/bulk', {
         method: 'POST',

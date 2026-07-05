@@ -147,9 +147,9 @@
   </div>
   <div class="form-grid form-grid-2">
     <div class="form-group">
-      <label for="source">Źródło</label>
-      <div class="suggest-wrap">
-        <input type="text" id="source" name="source" autocomplete="off" value="{{ company.source or '' }}">
+      <label>Źródło</label>
+      <div class="tag-input-wrap" id="source-wrap">
+        <input type="text" id="source-input" class="tag-input-field" placeholder="Dodaj źródło…" autocomplete="off">
         <div id="source-suggestions" class="tag-suggestions"></div>
       </div>
     </div>
@@ -177,6 +177,6 @@
 <script>
 initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
 initTagInput('industries-wrap', 'industries-input', 'industries-suggestions', 'industry', {{ industries | tojson }});
-initSingleSuggest('source', 'source-suggestions', 'source');
+initTagInput('source-wrap', 'source-input', 'source-suggestions', 'source', {{ source | tojson }});
 </script>
 {% endblock %}

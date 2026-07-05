@@ -44,14 +44,13 @@
         <dd>{% if company.linkedin_url %}<a href="{{ company.linkedin_url if company.linkedin_url.startswith('http') else 'https://' ~ company.linkedin_url }}" target="_blank" rel="noopener">{{ company.linkedin_url }}</a>{% else %}—{% endif %}</dd>
         <dt>NIP</dt><dd>{{ company.nip or '—' }}</dd>
         <dt>KRS</dt><dd>{{ company.krs or '—' }}</dd>
-        <dt>Źródło</dt><dd>{{ company.source or '—' }}</dd>
         <dt>Opis</dt><dd>{{ company.description or '—' }}</dd>
       </dl>
     </div>
 
-    {% if tags or industries %}
+    {% if tags or industries or source %}
     <div class="inv-section" style="margin-top:1rem">
-      <h4>Tagi i branże</h4>
+      <h4>Tagi, branże i źródła</h4>
       <div style="padding:.85rem">
         {% if tags %}
         <div class="detail-tags">
@@ -61,6 +60,11 @@
         {% if industries %}
         <div class="detail-tags" style="margin-top:.5rem">
           {% for i in industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
+        </div>
+        {% endif %}
+        {% if source %}
+        <div class="detail-tags" style="margin-top:.5rem">
+          {% for s in source %}<span class="badge badge-outline">{{ s }}</span>{% endfor %}
         </div>
         {% endif %}
       </div>

@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from models.crm_company import (RELATION_LABELS, create_company, delete_company,
                                   derive_short_name, get_all_companies,
-                                  get_company_by_id, get_company_source, get_company_tags,
+                                  get_company_by_id, get_company_tags,
                                   update_company)
 from models.crm_notes import add_note, delete_note, get_history, get_notes
 from models.user import get_active_users
@@ -72,13 +72,13 @@ def new_company():
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         industries = [t.strip() for t in request.form.getlist('industries[]') if t.strip()]
-        source_val = request.form.get('source', '').strip()
-        source = [source_val] if source_val else []
+        source = [t.strip() for t in request.form.getlist('sources[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/companies/form.html',
                 active_tab='companies', company=request.form, owners=owners, tags=tags, industries=industries,
+                source=source,
                 action=url_for('crm_companies.new_company'),
                 title='Nowa firma', relation_labels=RELATION_LABELS)
 
@@ -87,7 +87,7 @@ def new_company():
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
     return render_template('crm/companies/form.html',
-        active_tab='companies', company={}, owners=owners, tags=[], industries=[],
+        active_tab='companies', company={}, owners=owners, tags=[], industries=[], source=[],
         action=url_for('crm_companies.new_company'),
         title='Nowa firma', relation_labels=RELATION_LABELS)
 
@@ -106,13 +106,13 @@ def edit_company(company_id):
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         industries = [t.strip() for t in request.form.getlist('industries[]') if t.strip()]
-        source_val = request.form.get('source', '').strip()
-        source = [source_val] if source_val else []
+        source = [t.strip() for t in request.form.getlist('sources[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/companies/form.html',
                 active_tab='companies', company=request.form, owners=owners, tags=tags, industries=industries,
+                source=source,
                 action=url_for('crm_companies.edit_company', company_id=company_id),
                 title='Edytuj firmę', relation_labels=RELATION_LABELS)
 
@@ -120,11 +120,11 @@ def edit_company(company_id):
         flash('Firma została zaktualizowana.', 'success')
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
-    company['source'] = get_company_source(company_id)
     return render_template('crm/companies/form.html',
         active_tab='companies', company=company, owners=owners,
         tags=get_company_tags(company_id, 'tag'),
         industries=get_company_tags(company_id, 'industry'),
+        source=get_company_tags(company_id, 'source'),
         action=url_for('crm_companies.edit_company', company_id=company_id),
         title='Edytuj firmę', relation_labels=RELATION_LABELS)
 
@@ -143,8 +143,6 @@ def view_company(company_id):
     for n in notes:
         n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=company_id, note_id=n['id'])
 
-    company['source'] = get_company_source(company_id)
-
     street_line = ' '.join(filter(None, [company.get('street'), company.get('house_number')]))
     if company.get('flat_number'):
         street_line += f" lok. {company['flat_number']}"
@@ -156,6 +154,7 @@ def view_company(company_id):
         active_tab='companies', company=company, relation_labels=RELATION_LABELS, address=address,
         tags=get_company_tags(company_id, 'tag'),
         industries=get_company_tags(company_id, 'industry'),
+        source=get_company_tags(company_id, 'source'),
         contacts=get_all_contacts(company_id=company_id),
         deals=get_all_deals(company_id=company_id), stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,

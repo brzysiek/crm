@@ -48,12 +48,12 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
                        tag: str = None, industry: str = None, source: str = None) -> list[dict]:
     allowed_sort = {
         'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
-        'nip', 'source', 'created_at',
+        'nip', 'created_at',
     }
     if sort not in allowed_sort:
         sort = 'name'
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
-    order_col = sort if sort == 'source' else f'c.{sort}'
+    order_col = f'c.{sort}'
 
     db = get_db()
     params = []
@@ -91,8 +91,9 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
            FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
            WHERE ct.company_id=c.id AND t.kind='industry') AS industries_list,
-        (SELECT t.name FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
-           WHERE ct.company_id=c.id AND t.kind='source' LIMIT 1) AS source,
+        (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
+           FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
+           WHERE ct.company_id=c.id AND t.kind='source') AS sources_list,
         (SELECT ct2.id FROM crm_contacts ct2 WHERE ct2.company_id=c.id
            ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_id,
         (SELECT CONCAT(ct2.first_name, ' ', ct2.last_name) FROM crm_contacts ct2
@@ -148,11 +149,6 @@ def get_company_tags(company_id: int, kind: str) -> list[str]:
         return [r['name'] for r in cur.fetchall()]
 
 
-def get_company_source(company_id: int) -> str | None:
-    names = get_company_tags(company_id, 'source')
-    return names[0] if names else None
-
-
 def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:
     tag_ids = get_or_create_tag_ids(kind, names)
     db = get_db()
@@ -197,19 +193,6 @@ def bulk_remove_tag(company_ids: list[int], kind: str, name: str, user_id: int |
             continue
         set_company_tags(company_id, kind, [t for t in current if t != name])
         log_history('company', company_id, user_id, 'update', f'Usunięto {label.lower()} „{name}”.')
-        affected += 1
-    return affected
-
-
-def bulk_set_source(company_ids: list[int], value: str | None, user_id: int | None) -> int:
-    affected = 0
-    for company_id in company_ids:
-        current = get_company_source(company_id)
-        if (current or None) == (value or None):
-            continue
-        set_company_tags(company_id, 'source', [value] if value else [])
-        summary = f'Ustawiono źródło „{value}”.' if value else 'Usunięto źródło.'
-        log_history('company', company_id, user_id, 'update', summary)
         affected += 1
     return affected
 
