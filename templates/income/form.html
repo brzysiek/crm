@@ -650,6 +650,13 @@ function _applyInvoiceRefFromSource(source, invData) {
   const refInput = document.getElementById('invoice_ref');
   if (refInput && ref) refInput.value = ref;
   toggleInvoiceRef();
+
+  const numInput = document.getElementById('invoice_number');
+  if (numInput && invData.invoice_number) numInput.value = invData.invoice_number;
+  const nameInput = document.getElementById('client_name');
+  if (nameInput && invData.vendor_name) nameInput.value = invData.vendor_name;
+  const nipInput = document.getElementById('client_nip');
+  if (nipInput && invData.vendor_nip) nipInput.value = invData.vendor_nip;
 }
 
 function _invBadgeClass(source) {

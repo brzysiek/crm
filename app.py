@@ -581,7 +581,7 @@ def api_invoices_search():
     db = _get_db()
     result = []
 
-    sql = ("SELECT id, invoice_number, vendor_name, issue_date, amount_gross, "
+    sql = ("SELECT id, invoice_number, vendor_name, vendor_nip, issue_date, amount_gross, "
            "ksef_number, raw_json "
            "FROM fakturownia_invoices WHERE status='pending'")
     params = []
@@ -604,17 +604,20 @@ def api_invoices_search():
                 or (raw.get('ksef_number') or '').strip() \
                 or (raw.get('ksef_id') or '').strip() \
                 or (raw.get('gov_id') or '').strip()
+            vendor_name = (raw.get('buyer_name') or row.get('vendor_name') or '').strip()
+            vendor_nip  = (raw.get('buyer_tax_no') or row.get('vendor_nip') or '').strip()
             result.append({
                 'source': 'fakturownia',
                 'id': row['id'],
                 'invoice_number': row.get('invoice_number') or '',
-                'vendor_name': row.get('vendor_name') or '',
+                'vendor_name': vendor_name,
+                'vendor_nip': vendor_nip,
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
                 'ksef_number': ksef,
             })
 
-    sql = ("SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross "
+    sql = ("SELECT id, file_name, invoice_number, vendor_name, vendor_nip, issue_date, amount_gross "
            "FROM gdrive_invoices WHERE status='pending'")
     params = []
     if entity_type in ('expense', 'income'):
@@ -633,6 +636,7 @@ def api_invoices_search():
                 'id': row['id'],
                 'invoice_number': row.get('invoice_number') or row.get('file_name') or '',
                 'vendor_name': row.get('vendor_name') or '',
+                'vendor_nip': row.get('vendor_nip') or '',
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
                 'file_name': row.get('file_name') or '',
