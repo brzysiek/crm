@@ -17,7 +17,13 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
 
     db = get_db()
-    sql = ("SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name "
+    sql = ("SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name, "
+           "(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') "
+           "   FROM crm_company_tags cct JOIN crm_tags t ON t.id=cct.tag_id "
+           "   WHERE cct.company_id=co.id AND t.kind='tag') AS company_tags_list, "
+           "(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') "
+           "   FROM crm_company_tags cct JOIN crm_tags t ON t.id=cct.tag_id "
+           "   WHERE cct.company_id=co.id AND t.kind='industry') AS company_industries_list "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id WHERE 1=1")
     params = []
     if company_id:

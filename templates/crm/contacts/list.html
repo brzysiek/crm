@@ -8,6 +8,7 @@
   <div class="header-actions">
     {{ m.col_toggle('contacts-col-btn', 'contacts-col-menu', [
       ('position', 'Stanowisko'), ('company_name', 'Firma'), ('email', 'Email'), ('phone', 'Telefon'),
+      ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
     ]) }}
     <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">+ Dodaj kontakt</a>
   </div>
@@ -31,6 +32,8 @@
         {{ m.sort_th('Firma', 'company_name', sort, direction, 'crm_contacts.list_contacts', 'company_name') }}
         {{ m.sort_th('Email', 'email', sort, direction, 'crm_contacts.list_contacts', 'email') }}
         {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_contacts.list_contacts', 'phone') }}
+        <th data-col="company_tags" title="Tagi przypisane do firmy kontaktu">Tagi <span class="text-muted">(firma)</span></th>
+        <th data-col="company_industries" title="Branże przypisane do firmy kontaktu">Branże <span class="text-muted">(firma)</span></th>
         <th class="col-actions"></th>
       </tr>
     </thead>
@@ -47,6 +50,22 @@
         </td>
         <td data-col="email">{{ c.email or '—' }}</td>
         <td data-col="phone">{{ c.phone or '—' }}</td>
+        <td data-col="company_tags">
+          {% if c.company_tags_list %}
+            {% for t in c.company_tags_list.split(', ') %}
+              <a href="{{ url_for('crm_companies.list_companies', tag=t) }}" class="badge badge-outline badge-btn"
+                 title="Filtruj firmy po tagu: {{ t }}">{{ t }}</a>
+            {% endfor %}
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td data-col="company_industries">
+          {% if c.company_industries_list %}
+            {% for i in c.company_industries_list.split(', ') %}
+              <a href="{{ url_for('crm_companies.list_companies', industry=i) }}" class="badge badge-outline badge-btn"
+                 title="Filtruj firmy po branży: {{ i }}">{{ i }}</a>
+            {% endfor %}
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
         <td class="col-actions nowrap">
           <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
           <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
@@ -70,6 +89,7 @@
 
 {% block scripts %}
 <script>
-initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu');
+initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu',
+  ['company_tags', 'company_industries']);
 </script>
 {% endblock %}
