@@ -10,7 +10,7 @@
     {% endif %}
     <div>
     <h1>{{ company.name }}
-      <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue'}[company.relation_type] }}">
+      <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-outline', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
         {{ relation_labels[company.relation_type] }}
       </span>
     </h1>
@@ -35,10 +35,13 @@
       <dl class="inv-dl">
         <dt>Adres</dt>
         <dd>{{ address or '—' }}</dd>
+        <dt>Województwo</dt><dd>{{ company.voivodeship or '—' }}</dd>
         <dt>Email</dt><dd>{{ company.email or '—' }}</dd>
         <dt>Telefon</dt><dd>{{ company.phone or '—' }}</dd>
         <dt>Strona WWW</dt>
         <dd>{% if company.website %}<a href="{{ company.website if company.website.startswith('http') else 'https://' ~ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a>{% else %}—{% endif %}</dd>
+        <dt>LinkedIn</dt>
+        <dd>{% if company.linkedin_url %}<a href="{{ company.linkedin_url if company.linkedin_url.startswith('http') else 'https://' ~ company.linkedin_url }}" target="_blank" rel="noopener">{{ company.linkedin_url }}</a>{% else %}—{% endif %}</dd>
         <dt>NIP</dt><dd>{{ company.nip or '—' }}</dd>
         <dt>KRS</dt><dd>{{ company.krs or '—' }}</dd>
         <dt>Źródło</dt><dd>{{ company.source or '—' }}</dd>

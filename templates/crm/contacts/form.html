@@ -66,6 +66,12 @@
   </div>
 
   <div class="form-group">
+    <label for="business_card_url">Wizytówka (link)</label>
+    <input type="text" id="business_card_url" name="business_card_url" placeholder="np. link do skanu wizytówki"
+           value="{{ contact.business_card_url or '' }}">
+  </div>
+
+  <div class="form-group">
     <label for="description">Opis</label>
     <textarea id="description" name="description" rows="3">{{ contact.description or '' }}</textarea>
   </div>

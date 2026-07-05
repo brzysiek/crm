@@ -32,6 +32,8 @@
         </dd>
         <dt>Email</dt><dd>{{ contact.email or '—' }}</dd>
         <dt>Telefon</dt><dd>{{ contact.phone or '—' }}</dd>
+        <dt>Wizytówka</dt>
+        <dd>{% if contact.business_card_url %}<a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">Zobacz skan</a>{% else %}—{% endif %}</dd>
         <dt>Opis</dt><dd>{{ contact.description or '—' }}</dd>
       </dl>
     </div>

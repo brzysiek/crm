@@ -23,13 +23,20 @@
     </div>
   </div>
 
-  <div class="form-group">
-    <label for="website">Strona WWW</label>
-    <div class="input-reveal-wrap">
-      <input type="text" id="website" name="website" placeholder="np. firma.pl" value="{{ company.website or '' }}">
-      <button type="button" class="btn-reveal" onclick="crmScrapeWebsite()">Pobierz informacje z WWW</button>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="website">Strona WWW</label>
+      <div class="input-reveal-wrap">
+        <input type="text" id="website" name="website" placeholder="np. firma.pl" value="{{ company.website or '' }}">
+        <button type="button" class="btn-reveal" onclick="crmScrapeWebsite()">Pobierz informacje z WWW</button>
+      </div>
+      <div id="website-status" class="small" style="margin-top:.3rem"></div>
     </div>
-    <div id="website-status" class="small" style="margin-top:.3rem"></div>
+    <div class="form-group">
+      <label for="linkedin_url">LinkedIn</label>
+      <input type="text" id="linkedin_url" name="linkedin_url" placeholder="np. linkedin.com/company/…"
+             value="{{ company.linkedin_url or '' }}">
+    </div>
   </div>
 
   <div class="form-group">
@@ -60,6 +67,12 @@
     <div class="form-group">
       <label for="postal_code">Kod pocztowy</label>
       <input type="text" id="postal_code" name="postal_code" placeholder="00-000" value="{{ company.postal_code or '' }}">
+    </div>
+  </div>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="voivodeship">Województwo</label>
+      <input type="text" id="voivodeship" name="voivodeship" value="{{ company.voivodeship or '' }}">
     </div>
   </div>
   <div class="form-grid form-grid-3">
