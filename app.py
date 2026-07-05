@@ -1261,6 +1261,8 @@ def api_gdrive_invoice_details(inv_id):
 @app.route('/api/gdrive/invoices/<int:inv_id>/pdf')
 def api_gdrive_invoice_pdf(inv_id):
     """Strumieniuje oryginalny plik PDF faktury z Google Drive (podgląd w popupie)."""
+    import unicodedata
+    from urllib.parse import quote
     from models.settings import get_setting
     from models.gdrive_invoice import get_gdrive_invoice_by_id
     from services.gdrive import GoogleDriveClient
@@ -1280,8 +1282,16 @@ def api_gdrive_invoice_pdf(inv_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+    # Content-Disposition musi być latin-1-kodowalny — polskie znaki (ą, ć, ż…)
+    # w nazwie pliku z Dysku Google wywalały cały response (pusty iframe w popupie).
+    display_name = inv.get('file_name') or 'faktura.pdf'
+    ascii_name = unicodedata.normalize('NFKD', display_name).encode('ascii', 'ignore').decode('ascii') or 'faktura.pdf'
+
     return Response(pdf_bytes, mimetype='application/pdf', headers={
-        'Content-Disposition': f'inline; filename="{inv.get("file_name") or "faktura.pdf"}"'
+        'Content-Disposition': (
+            f'inline; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(display_name)}"
+        )
     })
 
 
