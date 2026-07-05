@@ -84,7 +84,25 @@ def new_company():
                 title='Nowa firma', relation_labels=RELATION_LABELS)
 
         company_id = create_company(data, session.get('user_id'), tags=tags, industries=industries, source=source)
-        flash('Firma została zapisana.', 'success')
+
+        contact_first_name = request.form.get('contact_first_name', '').strip()
+        contact_last_name = request.form.get('contact_last_name', '').strip()
+        if contact_first_name and contact_last_name:
+            from models.crm_contact import create_contact
+            create_contact({
+                'company_id': company_id,
+                'first_name': contact_first_name,
+                'last_name': contact_last_name,
+                'position': request.form.get('contact_position', '').strip() or None,
+                'email': request.form.get('contact_email', '').strip() or None,
+                'phone': request.form.get('contact_phone', '').strip() or None,
+            }, session.get('user_id'))
+            flash('Firma i kontakt zostały zapisane.', 'success')
+        elif contact_first_name or contact_last_name:
+            flash('Firma została zapisana, ale kontakt nie został utworzony — podaj imię i nazwisko.', 'error')
+        else:
+            flash('Firma została zapisana.', 'success')
+
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
     return render_template('crm/companies/form.html',

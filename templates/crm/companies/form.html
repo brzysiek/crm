@@ -170,6 +170,39 @@
     </div>
   </div>
 
+  {% if not company.id %}
+  <div class="form-section-divider">
+    <span class="form-section-title">Kontakt</span>
+  </div>
+  <div class="flash flash-info">
+    Kontakt zostanie utworzony jako osobny rekord (kontakt), tylko przypisany do tej firmy.
+  </div>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="contact_first_name">Imię</label>
+      <input type="text" id="contact_first_name" name="contact_first_name" value="{{ company.contact_first_name or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="contact_last_name">Nazwisko</label>
+      <input type="text" id="contact_last_name" name="contact_last_name" value="{{ company.contact_last_name or '' }}">
+    </div>
+  </div>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="contact_position">Stanowisko</label>
+      <input type="text" id="contact_position" name="contact_position" value="{{ company.contact_position or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="contact_email">Email</label>
+      <input type="email" id="contact_email" name="contact_email" value="{{ company.contact_email or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="contact_phone">Telefon</label>
+      <input type="text" id="contact_phone" name="contact_phone" value="{{ company.contact_phone or '' }}">
+    </div>
+  </div>
+  {% endif %}
+
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz firmę</button>
     <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline">Anuluj</a>
