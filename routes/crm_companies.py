@@ -45,8 +45,8 @@ def _validate(data):
 
 @bp.route('/')
 def list_companies():
-    sort = request.args.get('sort', 'name')
-    direction = request.args.get('dir', 'asc')
+    sort = request.args.get('sort', 'created_at')
+    direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
     relation_type = request.args.get('relation_type', '')
     tag = request.args.get('tag', '')
