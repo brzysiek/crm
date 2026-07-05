@@ -235,11 +235,9 @@ def bulk_delete_expenses(ids: list[int]) -> int:
         raise
 
 
-def get_monthly_kpi(month: str) -> dict:
+def get_monthly_kpi(month: str, exclude_categories: list[str] = None) -> dict:
     db = get_db()
-    with db.cursor() as cur:
-        cur.execute(
-            """SELECT
+    sql = """SELECT
                COALESCE(SUM(amount_gross), 0) AS total_gross,
                COALESCE(SUM(amount_net), 0) AS total_net,
                COALESCE(SUM(amount_gross - amount_net), 0) AS total_vat,
@@ -247,9 +245,14 @@ def get_monthly_kpi(month: str) -> dict:
                COALESCE(SUM(CASE WHEN payment_percent = 0   THEN amount_gross ELSE 0 END), 0) AS unpaid,
                COALESCE(SUM(CASE WHEN payment_percent > 0
                                   AND payment_percent < 100 THEN amount_gross ELSE 0 END), 0) AS partial
-               FROM expenses WHERE DATE_FORMAT(date, '%%Y-%%m') = %s""",
-            (month,)
-        )
+               FROM expenses WHERE DATE_FORMAT(date, '%%Y-%%m') = %s"""
+    params = [month]
+    if exclude_categories:
+        placeholders = ','.join(['%s'] * len(exclude_categories))
+        sql += f" AND (category IS NULL OR category NOT IN ({placeholders}))"
+        params.extend(exclude_categories)
+    with db.cursor() as cur:
+        cur.execute(sql, params)
         return cur.fetchone()
 
 
@@ -336,15 +339,18 @@ def unlink_transaction(expense_id: int, bank_txn_id: int) -> dict:
         raise
 
 
-def get_daily_totals(month: str) -> list[dict]:
+def get_daily_totals(month: str, exclude_categories: list[str] = None) -> list[dict]:
     db = get_db()
+    sql = """SELECT DAY(date) AS day, SUM(amount_gross) AS total
+               FROM expenses WHERE DATE_FORMAT(date, '%%Y-%%m') = %s"""
+    params = [month]
+    if exclude_categories:
+        placeholders = ','.join(['%s'] * len(exclude_categories))
+        sql += f" AND (category IS NULL OR category NOT IN ({placeholders}))"
+        params.extend(exclude_categories)
+    sql += " GROUP BY DAY(date) ORDER BY day"
     with db.cursor() as cur:
-        cur.execute(
-            """SELECT DAY(date) AS day, SUM(amount_gross) AS total
-               FROM expenses WHERE DATE_FORMAT(date, '%%Y-%%m') = %s
-               GROUP BY DAY(date) ORDER BY day""",
-            (month,)
-        )
+        cur.execute(sql, params)
         return cur.fetchall()
 
 

@@ -20,13 +20,64 @@
 
 <div class="page-header" style="margin-bottom:1.25rem">
   <h1>Dashboard <span class="text-muted" style="font-size:.9rem;font-weight:400">{{ today|ddmmyyyy }} · {{ month_label }}</span></h1>
-  <form class="filter-bar" method="get" action="{{ url_for('dashboard.index') }}" style="margin-bottom:0">
-    <select name="month" class="filter-select">
-      {% for m in months %}
-        <option value="{{ m.value }}" {{ 'selected' if month == m.value }}>{{ m.label }}</option>
-      {% endfor %}
-    </select>
-  </form>
+  <div class="header-actions">
+    <form class="filter-bar" method="get" action="{{ url_for('dashboard.index') }}" style="margin-bottom:0">
+      <select name="month" class="filter-select">
+        {% for m in months %}
+          <option value="{{ m.value }}" {{ 'selected' if month == m.value }}>{{ m.label }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <button class="btn btn-outline" onclick="document.getElementById('categoryFilterModal').classList.add('open')">
+      ⚙ Filtry kategorii
+      {% if excluded_expense_categories or excluded_income_categories %}
+        <span class="badge badge-yellow" style="margin-left:.3rem">
+          {{ (excluded_expense_categories|length) + (excluded_income_categories|length) }}
+        </span>
+      {% endif %}
+    </button>
+  </div>
+</div>
+
+{# ── Modal: filtry kategorii wliczanych do kalkulacji ────────────────────── #}
+<div id="categoryFilterModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Kategorie liczone na dashboardzie</h3>
+      <button onclick="document.getElementById('categoryFilterModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <p class="text-muted small" style="margin-top:0">
+      Odznacz kategorię, aby wykluczyć jej wydatki/przychody z wyliczeń na dashboardzie
+      (KPI, wykres, bilans). Domyślnie wliczane są wszystkie.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+      <div>
+        <h4 style="margin:.25rem 0 .5rem">Kategorie wydatków</h4>
+        {% for cat in expense_categories %}
+        <label class="checkbox-label" style="display:flex;margin-bottom:.4rem">
+          <input type="checkbox" class="cat-filter-expense" value="{{ cat }}"
+                 {{ 'checked' if cat not in excluded_expense_categories }}>
+          {{ cat }}
+        </label>
+        {% endfor %}
+      </div>
+      <div>
+        <h4 style="margin:.25rem 0 .5rem">Kategorie przychodów</h4>
+        {% for cat in income_categories %}
+        <label class="checkbox-label" style="display:flex;margin-bottom:.4rem">
+          <input type="checkbox" class="cat-filter-income" value="{{ cat }}"
+                 {{ 'checked' if cat not in excluded_income_categories }}>
+          {{ cat }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" id="btnSaveCategoryFilters">Zapisz</button>
+      <button type="button" class="btn btn-outline"
+              onclick="document.getElementById('categoryFilterModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
 </div>
 
 {# ── Bilans bieżącego miesiąca (3 karty) ────────────────────────────────── #}
@@ -278,5 +329,31 @@
   const inc = JSON.parse(canvas.dataset.incomes);
   drawDualBarChart(canvas, exp, inc);
 })();
+
+document.addEventListener('DOMContentLoaded', function () {
+  const btn = document.getElementById('btnSaveCategoryFilters');
+  if (!btn) return;
+  btn.addEventListener('click', async function () {
+    const excludedExpense = [...document.querySelectorAll('.cat-filter-expense:not(:checked)')].map(el => el.value);
+    const excludedIncome  = [...document.querySelectorAll('.cat-filter-income:not(:checked)')].map(el => el.value);
+    try {
+      await Promise.all([
+        fetch(API_BASE + '/api/user-settings/{{ excluded_expense_categories_key }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: JSON.stringify(excludedExpense) }),
+        }),
+        fetch(API_BASE + '/api/user-settings/{{ excluded_income_categories_key }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: JSON.stringify(excludedIncome) }),
+        }),
+      ]);
+      location.reload();
+    } catch (e) {
+      alert('Błąd zapisu: ' + e.message);
+    }
+  });
+});
 </script>
 {% endblock %}

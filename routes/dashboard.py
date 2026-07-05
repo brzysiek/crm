@@ -3,13 +3,30 @@ import json
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, session
 
+from models.dictionary import get_expense_categories, get_income_categories
 from models.expense import get_daily_totals, get_monthly_kpi, get_unpaid_expenses
 from models.income import (get_income_daily_totals, get_monthly_income_kpi,
                             get_unpaid_incomes)
+from models.user_settings import get_user_setting
 
 bp = Blueprint('dashboard', __name__)
+
+EXCLUDED_EXPENSE_CATEGORIES_KEY = 'dashboard_excluded_expense_categories'
+EXCLUDED_INCOME_CATEGORIES_KEY  = 'dashboard_excluded_income_categories'
+
+
+def _excluded_categories(key: str, valid: list[str]) -> list[str]:
+    """Domyślnie żadna kategoria nie jest wykluczona (wszystko liczone)."""
+    saved = get_user_setting(session['user_id'], key)
+    if not saved:
+        return []
+    try:
+        excluded = json.loads(saved)
+        return [c for c in excluded if c in valid]
+    except (ValueError, TypeError):
+        return []
 
 MONTHS_PL = {
     1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',
@@ -41,16 +58,21 @@ def index():
         month = today.strftime('%Y-%m')
         year, mon = today.year, today.month
 
-    expense_kpi = get_monthly_kpi(month)
-    income_kpi  = get_monthly_income_kpi(month)
+    expense_categories = get_expense_categories()
+    income_categories  = get_income_categories()
+    excluded_expense_categories = _excluded_categories(EXCLUDED_EXPENSE_CATEGORIES_KEY, expense_categories)
+    excluded_income_categories  = _excluded_categories(EXCLUDED_INCOME_CATEGORIES_KEY, income_categories)
+
+    expense_kpi = get_monthly_kpi(month, exclude_categories=excluded_expense_categories)
+    income_kpi  = get_monthly_income_kpi(month, exclude_categories=excluded_income_categories)
     balance = float(income_kpi['total_gross'] or 0) - float(expense_kpi['total_gross'] or 0)
     net_balance = float(income_kpi['total_net'] or 0) - float(expense_kpi['total_net'] or 0)
     vat_balance = float(income_kpi['total_vat'] or 0) - float(expense_kpi['total_vat'] or 0)
 
     days_in_month = calendar.monthrange(year, mon)[1]
 
-    exp_map  = {int(r['day']): float(r['total']) for r in get_daily_totals(month)}
-    inc_map  = {int(r['day']): float(r['total']) for r in get_income_daily_totals(month)}
+    exp_map  = {int(r['day']): float(r['total']) for r in get_daily_totals(month, exclude_categories=excluded_expense_categories)}
+    inc_map  = {int(r['day']): float(r['total']) for r in get_income_daily_totals(month, exclude_categories=excluded_income_categories)}
     expense_chart = json.dumps([exp_map.get(d, 0) for d in range(1, days_in_month + 1)])
     income_chart  = json.dumps([inc_map.get(d, 0) for d in range(1, days_in_month + 1)])
 
@@ -77,4 +99,10 @@ def index():
         unpaid_expense_total=unpaid_expense_total,
         unpaid_income_total=unpaid_income_total,
         today_date=today,
+        expense_categories=expense_categories,
+        income_categories=income_categories,
+        excluded_expense_categories=excluded_expense_categories,
+        excluded_income_categories=excluded_income_categories,
+        excluded_expense_categories_key=EXCLUDED_EXPENSE_CATEGORIES_KEY,
+        excluded_income_categories_key=EXCLUDED_INCOME_CATEGORIES_KEY,
     )
