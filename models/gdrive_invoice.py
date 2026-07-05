@@ -190,6 +190,28 @@ def bulk_reject_gdrive(ids: list[int]) -> int:
         raise
 
 
+def bulk_swap_type_gdrive(ids: list[int]) -> int:
+    """Zamienia typ faktury przychód<->koszt (tylko dla faktur oczekujących na akceptację)."""
+    if not ids:
+        return 0
+    db = get_db()
+    try:
+        placeholders = ','.join(['%s'] * len(ids))
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE gdrive_invoices "
+                f"SET invoice_type = IF(invoice_type='income', 'expense', 'income') "
+                f"WHERE id IN ({placeholders}) AND status='pending'",
+                ids,
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected
+    except Exception:
+        db.rollback()
+        raise
+
+
 def assign_gdrive_invoice(inv_id: int, record_id: int) -> None:
     db = get_db()
     try:

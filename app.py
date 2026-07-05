@@ -1488,6 +1488,18 @@ def api_gdrive_bulk_reject():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/gdrive/bulk-swap-type', methods=['POST'])
+def api_gdrive_bulk_swap_type():
+    """Zamienia typ zaznaczonych faktur oczekujących: przychód <-> koszt."""
+    from models.gdrive_invoice import bulk_swap_type_gdrive
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    affected = bulk_swap_type_gdrive(ids)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/logs')
 def api_logs():
     lines = int(request.args.get('lines', 200))

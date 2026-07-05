@@ -86,6 +86,9 @@
       <button type="button" class="btn btn-primary btn-sm" id="btnBulkAccept">
         Akceptuj zaznaczone
       </button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkSwapType">
+        Zamień przychód/koszt
+      </button>
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkReject">
         Odrzuć zaznaczone
       </button>
@@ -856,6 +859,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const btnAccept = document.getElementById('btnBulkAccept');
   const btnReject = document.getElementById('btnBulkReject');
+  const btnSwapType = document.getElementById('btnBulkSwapType');
   if (btnAccept) {
     btnAccept.addEventListener('click', () => {
       const ids = getCheckedIds();
@@ -868,6 +872,35 @@ document.addEventListener('DOMContentLoaded', function () {
       const ids = getCheckedIds();
       bulkAction(API_BASE + '/api/gdrive/bulk-reject', ids,
         `Odrzucić ${ids.length} zaznaczonych faktur?`);
+    });
+  }
+  if (btnSwapType) {
+    btnSwapType.addEventListener('click', async () => {
+      const ids = getCheckedIds();
+      if (!ids.length) return;
+      if (!confirm(`Zamienić typ (przychód ↔ koszt) dla ${ids.length} zaznaczonych faktur?`)) return;
+      const el = document.getElementById('apiResult');
+      el.style.display = 'block';
+      el.style.whiteSpace = 'pre-wrap';
+      try {
+        const r = await fetch(API_BASE + '/api/gdrive/bulk-swap-type', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ ids }),
+        });
+        const d = await r.json();
+        if (d.status === 'ok') {
+          el.className = 'api-result api-ok';
+          el.textContent = `Zamieniono typ: ${d.affected}`;
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          el.className = 'api-result api-error';
+          el.textContent = 'Błąd: ' + (d.message || 'nieznany');
+        }
+      } catch (e) {
+        el.className = 'api-result api-error';
+        el.textContent = 'Błąd żądania: ' + e.message;
+      }
     });
   }
 
