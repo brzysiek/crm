@@ -1,6 +1,7 @@
 """Pobiera profil firmy ze strony WWW: scrapuje stronę główną (+ stronę kontaktową,
 jeśli trzeba) i przepuszcza tekst przez Gemini, by wyciągnąć opis, branże i dane kontaktowe.
 """
+import base64
 import json
 import re
 from html.parser import HTMLParser
@@ -195,17 +196,55 @@ def _get_with_retry(url: str, attempts: int = 2):
     raise last_exc
 
 
-def _is_reachable(url: str) -> bool:
+MAX_FAVICON_BYTES = 512 * 1024  # ikony są małe — to bezpieczny margines
+
+
+def _sniff_image_type(data: bytes) -> str | None:
+    """Rozpoznaje typ obrazka po nagłówku bajtów — przydatne gdy serwer nie zwraca
+    poprawnego Content-Type (częste dla /favicon.ico, np. application/octet-stream)."""
+    head = data[:16]
+    if head.startswith(b'\x89PNG'):
+        return 'image/png'
+    if head[:4] in (b'\x00\x00\x01\x00', b'\x00\x00\x02\x00'):
+        return 'image/x-icon'
+    if head.startswith(b'\xff\xd8'):
+        return 'image/jpeg'
+    if head.startswith(b'GIF87a') or head.startswith(b'GIF89a'):
+        return 'image/gif'
+    stripped = data.lstrip()[:5]
+    if stripped.startswith(b'<?xml') or stripped.startswith(b'<svg'):
+        return 'image/svg+xml'
+    return None
+
+
+def _download_as_data_uri(url: str) -> str | None:
+    """Pobiera obrazek spod danego adresu i zwraca go jako data URI (base64) do zapisania
+    w bazie — dzięki temu strona nie musi za każdym razem hotlinkować obrazka z serwera
+    firmy, co bywa blokowane przez jej WAF. Zwraca None, gdy się nie uda, plik nie jest
+    obrazkiem, albo jest za duży."""
     try:
-        resp = requests.head(url, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT}, allow_redirects=True)
-        if resp.status_code < 400:
-            return True
-        # Niektóre serwery nie obsługują HEAD poprawnie (405/501) — spróbuj GET.
         resp = requests.get(url, timeout=FAVICON_TIMEOUT, headers={'User-Agent': USER_AGENT}, stream=True)
-        resp.close()
-        return resp.status_code < 400
+        if resp.status_code >= 400:
+            return None
+        chunks = []
+        total = 0
+        for chunk in resp.iter_content(8192):
+            total += len(chunk)
+            if total > MAX_FAVICON_BYTES:
+                return None
+            chunks.append(chunk)
+        data = b''.join(chunks)
+        if not data:
+            return None
+        content_type = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+        if not content_type.startswith('image/'):
+            content_type = _sniff_image_type(data)
+            if not content_type:
+                return None
+        encoded = base64.b64encode(data).decode('ascii')
+        return f'data:{content_type};base64,{encoded}'
     except Exception:
-        return False
+        return None
 
 
 def _google_favicon_fallback(normalized: str) -> str:
@@ -217,11 +256,11 @@ def _google_favicon_fallback(normalized: str) -> str:
 
 
 def get_favicon_url(url: str) -> str | None:
-    """Zwraca adres URL favicony strony (z <link rel="icon">, albo domyślny /favicon.ico).
-    Próbuje kilku wariantów adresu (www/bez www, http/https) i weryfikuje, że znaleziona
-    ikona faktycznie się ładuje, zanim ją zwróci. Gdy bezpośrednie pobranie strony się nie
-    powiedzie (np. hosting jest blokowany przez WAF docelowej strony) albo żadna znaleziona
-    ikona się nie ładuje, spada na serwis Google, który pobiera ikonę z własnych serwerów.
+    """Pobiera ikonę firmy (z <link rel="icon">, albo domyślny /favicon.ico) i zwraca ją
+    jako data URI (base64) do zapisania w bazie danych. Próbuje kilku wariantów adresu
+    (www/bez www, http/https). Gdy bezpośrednie pobranie strony się nie powiedzie (np.
+    hosting jest blokowany przez WAF docelowej strony) albo żadna znaleziona ikona się nie
+    pobierze, spada na serwis Google, który pobiera ikonę z własnych serwerów.
     Nigdy nie zgłasza wyjątku."""
     normalized = _normalize_url(url)
     if not normalized:
@@ -236,24 +275,25 @@ def get_favicon_url(url: str) -> str | None:
             break
         except Exception:
             continue
-    if resp is None:
-        return _google_favicon_fallback(normalized)
 
-    candidates = []
-    try:
-        parser = _FaviconLinkExtractor()
-        parser.feed(resp.text)
-        best = parser.best_icon()
-        if best:
-            candidates.append(urljoin(resp.url or base_url, best))
-    except Exception:
-        pass
-    candidates.append(urljoin(resp.url or base_url, '/favicon.ico'))
+    if resp is not None:
+        candidates = []
+        try:
+            parser = _FaviconLinkExtractor()
+            parser.feed(resp.text)
+            best = parser.best_icon()
+            if best:
+                candidates.append(urljoin(resp.url or base_url, best))
+        except Exception:
+            pass
+        candidates.append(urljoin(resp.url or base_url, '/favicon.ico'))
 
-    for candidate_url in candidates:
-        if _is_reachable(candidate_url):
-            return candidate_url
-    return _google_favicon_fallback(normalized)
+        for candidate_url in candidates:
+            data_uri = _download_as_data_uri(candidate_url)
+            if data_uri:
+                return data_uri
+
+    return _download_as_data_uri(_google_favicon_fallback(normalized))
 
 
 def scrape_company_site(url: str) -> dict:
