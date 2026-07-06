@@ -160,6 +160,18 @@ def update_gdrive_invoice_fields(inv_id: int, data: dict) -> bool:
         raise
 
 
+def get_active_gdrive_invoices_for_duplicate_check() -> list[dict]:
+    """Faktury z Dysku, które wciąż liczą się jako "w systemie" (nieodrzucone),
+    do wykrywania duplikatów między Fakturownią a Dyskiem."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, invoice_number, vendor_nip, status "
+            "FROM gdrive_invoices WHERE status != 'rejected'"
+        )
+        return cur.fetchall()
+
+
 def get_gdrive_pending_count() -> int:
     db = get_db()
     with db.cursor() as cur:

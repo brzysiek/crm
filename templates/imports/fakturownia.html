@@ -157,6 +157,13 @@
         </span>
       </div>
       <div class="invoice-card-body">
+        {% if inv.duplicate_label %}
+        <div class="text-muted small" style="margin-bottom:.35rem">
+          <span class="badge badge-yellow" title="Ta sama faktura (numer + NIP) występuje też w: {{ inv.duplicate_label }}">
+            ⚠ Możliwy duplikat — również w: {{ inv.duplicate_label }}
+          </span>
+        </div>
+        {% endif %}
         <div class="invoice-meta">
           <span class="inv-party-label">{{ 'Odbiorca:' if is_income else 'Wystawiający:' }}</span>
           <span><strong>{{ inv.vendor_name or '— brak nazwy —' }}</strong></span>

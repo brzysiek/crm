@@ -35,6 +35,18 @@ def get_pending_invoices(invoice_type: str = None) -> list[dict]:
         return [_fix_counterparty(row) for row in cur.fetchall()]
 
 
+def get_active_invoices_for_duplicate_check() -> list[dict]:
+    """Faktury z Fakturowni, które wciąż liczą się jako "w systemie" (nieodrzucone),
+    do wykrywania duplikatów między Fakturownią a Dyskiem."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, invoice_number, vendor_nip, status, raw_json "
+            "FROM fakturownia_invoices WHERE status != 'rejected'"
+        )
+        return [_fix_counterparty(row) for row in cur.fetchall()]
+
+
 def get_all_invoices(invoice_type: str = None, search: str = None, status: str = None,
                       sort: str = 'issue_date', direction: str = 'desc') -> list[dict]:
     """Pełna lista faktur z Fakturowni (nie tylko oczekujące) — do przeglądu/rejestru.

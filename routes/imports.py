@@ -97,9 +97,13 @@ def reject_bank_txn_view(txn_id):
 def fakturownia():
     from models.invoice import get_pending_invoices, get_sync_log
     from models.settings import get_all_settings
+    from services.duplicate_check import build_duplicate_map, duplicate_label
     type_filter = request.args.get('type_filter', '')
     cfg = get_all_settings()
     pending  = get_pending_invoices(invoice_type=type_filter or None)
+    dup_map = build_duplicate_map()
+    for inv in pending:
+        inv['duplicate_label'] = duplicate_label(dup_map.get(('fakturownia', inv['id']), []))
     sync_log = get_sync_log(10)
     return render_template('imports/fakturownia.html',
         active_tab='fakturownia',
@@ -125,9 +129,13 @@ def reject_invoice_view(inv_id):
 def gdrive():
     from models.gdrive_invoice import get_pending_gdrive_invoices
     from models.settings import get_all_settings
+    from services.duplicate_check import build_duplicate_map, duplicate_label
     type_filter = request.args.get('type_filter', '')
     cfg = get_all_settings()
     pending = get_pending_gdrive_invoices(invoice_type=type_filter or None)
+    dup_map = build_duplicate_map()
+    for inv in pending:
+        inv['duplicate_label'] = duplicate_label(dup_map.get(('gdrive', inv['id']), []))
     return render_template('imports/gdrive.html',
         active_tab='gdrive',
         cfg=cfg,
