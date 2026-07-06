@@ -213,11 +213,17 @@
       </div>
       <div class="invoice-txn-slot" id="txn-slot-{{ inv.id }}"></div>
       <div class="invoice-card-footer">
-        <button type="button"
-                class="btn btn-primary btn-sm"
-                onclick="acceptSingle({{ inv.id }})">
-          {{ 'Utwórz przychód' if is_income else 'Utwórz wydatek' }}
-        </button>
+        {% if is_income %}
+          <a href="{{ url_for('income.new_income', inv=inv.id, source='gdrive') }}"
+             class="btn btn-primary btn-sm">
+            Utwórz przychód
+          </a>
+        {% else %}
+          <a href="{{ url_for('expenses.new_expense', inv=inv.id, source='gdrive') }}"
+             class="btn btn-primary btn-sm">
+            Utwórz wydatek
+          </a>
+        {% endif %}
         <button type="button" class="btn btn-outline btn-sm"
                 onclick="showInvoiceDetails({{ inv.id }}, '{{ inv.invoice_number or inv.file_name }}')">
           Szczegóły dokumentu
@@ -762,11 +768,6 @@ async function bulkAction(url, ids, confirmMsg) {
     }
     el.innerHTML = msg;
   }
-}
-
-async function acceptSingle(invId) {
-  await bulkAction(API_BASE + '/api/gdrive/bulk-accept', [invId],
-    'Automatycznie utwórz wydatek/przychód z tej faktury?');
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

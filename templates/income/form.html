@@ -12,6 +12,9 @@
   {% if income.fakturownia_id is defined %}
     <input type="hidden" name="fakturownia_id" value="{{ income.fakturownia_id or '' }}">
   {% endif %}
+  {% if income.gdrive_invoice_id is defined %}
+    <input type="hidden" name="gdrive_invoice_id" value="{{ income.gdrive_invoice_id or '' }}">
+  {% endif %}
 
   <div class="form-grid form-grid-2">
 

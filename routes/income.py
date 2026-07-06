@@ -194,6 +194,15 @@ def new_income():
             except Exception:
                 pass
 
+        # Oznacz fakturę jako przypisaną jeśli formularz pochodzi z Dysku Google
+        gdrive_inv_id = request.form.get('gdrive_invoice_id', '').strip()
+        if gdrive_inv_id:
+            try:
+                from models.gdrive_invoice import assign_gdrive_invoice
+                assign_gdrive_invoice(int(gdrive_inv_id), income_id)
+            except Exception:
+                pass
+
         txn_ids = request.form.getlist('bank_txn_ids[]')
         if txn_ids:
             from models.income import link_income_transaction
@@ -272,8 +281,53 @@ def new_income():
             pass
 
     inv_id = request.args.get('inv')
+    inv_source = request.args.get('source', 'fakturownia')
     prefill = {'paid_by': session.get('full_name', '')}
     prefill_invoice = None
+    if inv_id and inv_source == 'gdrive':
+        try:
+            from models.gdrive_invoice import get_gdrive_invoice_by_id
+            inv = get_gdrive_invoice_by_id(int(inv_id))
+            if inv and inv['status'] == 'pending':
+                inv_date = str(inv.get('issue_date') or '')[:10] or today
+                payment_to = str(inv.get('payment_to') or '')[:10] if inv.get('payment_to') else ''
+                currency = (inv.get('currency') or 'PLN').upper()
+                orig_amount = inv.get('orig_amount')
+                prefill = {
+                    'date':             inv_date,
+                    'accounting_month': inv_date[:7],
+                    'payment_due_date': payment_to,
+                    'amount_gross':     inv.get('amount_gross', ''),
+                    'vat_rate':         '23',
+                    'invoice_number':   inv.get('invoice_number') or '',
+                    'client_name':      inv.get('vendor_name') or '',
+                    'client_nip':       inv.get('vendor_nip') or '',
+                    'description':      '',
+                    'invoice_status':   'disk',
+                    'invoice_ref':      inv.get('file_name') or '',
+                    'gdrive_invoice_id': inv['id'],
+                    'orig_amount':      orig_amount if currency != 'PLN' and orig_amount else '',
+                    'orig_currency':    currency if currency != 'PLN' and orig_amount else '',
+                    'paid_by':          session.get('full_name', ''),
+                }
+                prefill_invoice = {
+                    'source':          'gdrive',
+                    'id':              inv['id'],
+                    'invoice_number':  inv.get('invoice_number') or inv.get('file_name') or '',
+                    'vendor_name':     inv.get('vendor_name') or '',
+                    'issue_date':      inv_date,
+                    'amount_gross':    float(inv.get('amount_gross') or 0) or None,
+                    'file_name':       inv.get('file_name') or '',
+                }
+        except Exception:
+            pass
+
+        return render_template('income/form.html',
+            income=prefill, categories=categories,
+            action=url_for('income.new_income'),
+            title='Nowy przychód', today=today,
+            prefill_invoice=prefill_invoice)
+
     if inv_id:
         try:
             from models.invoice import get_invoice_by_id
