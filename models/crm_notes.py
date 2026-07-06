@@ -44,6 +44,26 @@ def get_notes(entity_type: str, entity_id: int) -> list[dict]:
         return cur.fetchall()
 
 
+def get_notes_multi(entities: list[tuple[str, int]]) -> list[dict]:
+    """Zwraca notatki z kilku encji naraz (np. firma + jej kontakty), połączone
+    chronologicznie. entities: lista (entity_type, entity_id)."""
+    if not entities:
+        return []
+    db = get_db()
+    with db.cursor() as cur:
+        conditions = " OR ".join(["(n.entity_type=%s AND n.entity_id=%s)"] * len(entities))
+        params = [v for pair in entities for v in pair]
+        cur.execute(
+            f"""SELECT n.*, u.full_name AS user_name
+                FROM crm_notes n
+                LEFT JOIN users u ON u.id = n.user_id
+                WHERE {conditions}
+                ORDER BY n.created_at DESC, n.id DESC""",
+            params
+        )
+        return cur.fetchall()
+
+
 def delete_note(note_id: int) -> None:
     db = get_db()
     try:

@@ -6,7 +6,7 @@ from flask import Blueprint, Response, flash, redirect, render_template, request
 from models.crm_company import get_company_by_id, get_company_tags
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, update_contact)
-from models.crm_notes import add_note, delete_note, get_history, get_notes
+from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
 from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
@@ -120,9 +120,19 @@ def view_contact(contact_id):
         company_industries = get_company_tags(contact['company_id'], 'industry')
         company_source = get_company_tags(contact['company_id'], 'source')
 
-    notes = get_notes('contact', contact_id)
+    company = get_company_by_id(contact['company_id']) if contact.get('company_id') else None
+
+    entities = [('contact', contact_id)]
+    if company:
+        entities.append(('company', company['id']))
+    notes = get_notes_multi(entities)
     for n in notes:
-        n['delete_url'] = url_for('crm_contacts.delete_note_view', contact_id=contact_id, note_id=n['id'])
+        if n['entity_type'] == 'contact':
+            n['source_label'] = 'Notatka kontaktu'
+            n['delete_url'] = url_for('crm_contacts.delete_note_view', contact_id=contact_id, note_id=n['id'])
+        else:
+            n['source_label'] = 'Notatka firmy'
+            n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=n['entity_id'], note_id=n['id'])
 
     return render_template('crm/contacts/detail.html',
         active_tab='contacts', contact=contact, company_tags=company_tags, company_industries=company_industries,

@@ -15,7 +15,7 @@
       {% for n in notes %}
       <div class="note-item">
         <div class="note-meta">
-          <span>{{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}</span>
+          <span>{{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}{% if n.source_label %} · {{ n.source_label }}{% endif %}</span>
           <form method="post" action="{{ n.delete_url }}" class="inline-form"
                 onsubmit="return confirm('Usunąć tę notatkę?')">
             <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>

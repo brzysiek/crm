@@ -4,7 +4,7 @@ from models.crm_company import (RELATION_LABELS, create_company, delete_company,
                                   derive_short_name, get_all_companies,
                                   get_company_by_id, get_company_tags,
                                   update_company)
-from models.crm_notes import add_note, delete_note, get_history, get_notes
+from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
 from models.user import get_active_users
 
 bp = Blueprint('crm_companies', __name__, url_prefix='/crm/companies')
@@ -158,9 +158,20 @@ def view_company(company_id):
     from models.crm_contact import get_all_contacts
     from models.crm_deal import get_all_deals, STAGE_BADGE_CLASSES, STAGE_LABELS
 
-    notes = get_notes('company', company_id)
+    contacts = get_all_contacts(company_id=company_id)
+
+    entities = [('company', company_id)] + [('contact', c['id']) for c in contacts]
+    notes = get_notes_multi(entities)
+    contacts_by_id = {c['id']: c for c in contacts}
     for n in notes:
-        n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=company_id, note_id=n['id'])
+        if n['entity_type'] == 'company':
+            n['source_label'] = 'Notatka firmy'
+            n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=company_id, note_id=n['id'])
+        else:
+            contact = contacts_by_id.get(n['entity_id'])
+            contact_name = f"{contact['first_name']} {contact['last_name']}".strip() if contact else 'kontaktu'
+            n['source_label'] = f'Notatka kontaktu: {contact_name}'
+            n['delete_url'] = url_for('crm_contacts.delete_note_view', contact_id=n['entity_id'], note_id=n['id'])
 
     street_line = ' '.join(filter(None, [company.get('street'), company.get('house_number')]))
     if company.get('flat_number'):
@@ -174,7 +185,7 @@ def view_company(company_id):
         tags=get_company_tags(company_id, 'tag'),
         industries=get_company_tags(company_id, 'industry'),
         source=get_company_tags(company_id, 'source'),
-        contacts=get_all_contacts(company_id=company_id),
+        contacts=contacts,
         deals=get_all_deals(company_id=company_id), stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,
         notes=notes,
