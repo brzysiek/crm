@@ -479,6 +479,67 @@ function section(title, rows) {
   return html;
 }
 
+/* ── Popup ze szczegółami faktury (Fakturownia / Dysk) — formularze kosztu/przychodu ── */
+function _buildGdriveInvoiceDetailsHTML(d) {
+  const fmt = (v) => (v !== null && v !== undefined && v !== '' ? v : '—');
+  const fmtMoney = (v) => v !== null && v !== undefined && v !== ''
+    ? parseFloat(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (d.currency || 'PLN')
+    : '—';
+  let html = '<div class="inv-details">';
+  html += section('Dane faktury (odczyt OCR)', [
+    ['Numer faktury', fmt(d.invoice_number)],
+    ['Kontrahent', fmt(d.vendor_name)],
+    ['NIP', fmt(d.vendor_nip)],
+    ['Data wystawienia', fmt(d.issue_date)],
+    ['Termin płatności', fmt(d.payment_to)],
+    ['Waluta', fmt(d.currency)],
+    ['Typ dokumentu', d.invoice_type === 'income' ? 'Przychodowa' : 'Kosztowa'],
+  ]);
+  html += section('Kwoty', [
+    ['Netto', fmtMoney(d.amount_net)],
+    ['VAT', fmtMoney(d.vat_amount)],
+    ['Brutto', '<strong>' + fmtMoney(d.amount_gross) + '</strong>'],
+  ]);
+  if (d.confidence_note) {
+    html += section('Uwagi OCR', [['Notatka', fmt(d.confidence_note)]]);
+  }
+  html += '</div>';
+  return html;
+}
+
+async function showLinkedInvoiceDetails(source, invId, label, isIncome) {
+  const modal = document.getElementById('invoiceDetailsModal');
+  const body  = document.getElementById('detailsModalBody');
+  const title = document.getElementById('detailsModalTitle');
+  if (!modal || !body) return;
+
+  title.textContent = 'Szczegóły faktury: ' + (label || '');
+  body.innerHTML = '<div class="details-loading">Ładowanie…</div>';
+  modal.classList.add('open');
+
+  try {
+    if (source === 'fakturownia') {
+      const r = await fetch(window.API_BASE + '/api/fakturownia/invoices/' + invId + '/details');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      body.innerHTML = buildDetailsHTML(d, !!isIncome);
+    } else {
+      const r = await fetch(window.API_BASE + '/api/gdrive/invoices/' + invId + '/details');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      body.innerHTML = _buildGdriveInvoiceDetailsHTML(d)
+        + '<div style="padding:0 1.25rem 1.25rem">'
+        + '<a href="' + window.API_BASE + '/api/gdrive/invoices/' + invId + '/pdf" '
+        + 'target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">Podgląd PDF</a>'
+        + '</div>';
+    }
+  } catch (e) {
+    body.innerHTML = '<div class="api-error" style="padding:1rem">Błąd ładowania: ' + e.message + '</div>';
+  }
+}
+
 /* ── Dual bar chart (income vs expenses, Canvas API) ─────────────────────────── */
 function drawDualBarChart(canvas, expData, incData) {
   if (!canvas) return;

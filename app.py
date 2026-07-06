@@ -537,7 +537,8 @@ def api_invoices_linked(entity_type, entity_id):
     result = []
     with db.cursor() as cur:
         cur.execute(
-            "SELECT id, invoice_number, vendor_name, issue_date, amount_gross "
+            "SELECT id, invoice_number, vendor_name, issue_date, amount_gross, "
+            "currency, orig_amount "
             "FROM fakturownia_invoices WHERE assigned_expense_id=%s AND status='assigned' "
             "AND invoice_type=%s",
             (entity_id, entity_type)
@@ -550,10 +551,13 @@ def api_invoices_linked(entity_type, entity_id):
                 'vendor_name': row.get('vendor_name') or '',
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
+                'currency': row.get('currency') or 'PLN',
+                'orig_amount': float(row['orig_amount']) if row.get('orig_amount') is not None else None,
             })
     with db.cursor() as cur:
         cur.execute(
-            "SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross "
+            "SELECT id, file_name, invoice_number, vendor_name, issue_date, amount_gross, "
+            "currency, orig_amount "
             "FROM gdrive_invoices WHERE assigned_record_id=%s AND status='assigned' "
             "AND invoice_type=%s",
             (entity_id, entity_type)
@@ -567,6 +571,8 @@ def api_invoices_linked(entity_type, entity_id):
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
                 'file_name': row.get('file_name') or '',
+                'currency': row.get('currency') or 'PLN',
+                'orig_amount': float(row['orig_amount']) if row.get('orig_amount') is not None else None,
             })
     return jsonify(result)
 

@@ -302,6 +302,21 @@
     </div>
   </div>
 </div>
+
+{# ── Modal: szczegóły faktury ─────────────────────────────────────────────── #}
+<div id="invoiceDetailsModal" class="modal-overlay"
+     onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 id="detailsModalTitle">Szczegóły faktury</h3>
+      <button onclick="document.getElementById('invoiceDetailsModal').classList.remove('open')"
+              class="modal-close">✕</button>
+    </div>
+    <div id="detailsModalBody" class="modal-body">
+      <div class="details-loading">Ładowanie…</div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -520,6 +535,7 @@ function fmtPLN(v) {
   return parseFloat(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' PLN';
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _jsAttrStr(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function bankBadgeClass(b) { return b === 'mbank' ? 'bank-badge-mbank' : 'bank-badge-unicredit'; }
 
 /* ── Sekcja faktur ────────────────────────────────────────────────────────── */
@@ -544,13 +560,24 @@ async function loadLinkedInvoices() {
     + '<th>Źródło</th><th>Nr faktury</th><th>Dostawca</th><th>Data</th>'
     + '<th class="text-right">Kwota brutto</th><th></th></tr></thead><tbody>';
   for (const inv of invs) {
+    const isForeign = inv.currency && inv.currency !== 'PLN' && inv.orig_amount;
+    const amountCell = fmtPLN(inv.amount_gross)
+      + (isForeign
+          ? ' <span class="badge badge-yellow" style="margin-left:4px">'
+            + parseFloat(inv.orig_amount).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            + ' ' + esc(inv.currency) + '</span>'
+          : '');
     html += '<tr>'
       + '<td><span class="badge ' + _invBadgeClass(inv.source) + '">' + _invLabel(inv.source) + '</span></td>'
       + '<td>' + esc(inv.invoice_number || '—') + '</td>'
       + '<td>' + esc(inv.vendor_name || '—') + '</td>'
       + '<td class="nowrap">' + (inv.issue_date || '—') + '</td>'
-      + '<td class="text-right nowrap">' + fmtPLN(inv.amount_gross) + '</td>'
-      + '<td><button type="button" class="btn btn-ghost btn-sm" onclick="unlinkInvoice(\'' + inv.source + '\',' + inv.id + ')">Odepnij</button></td>'
+      + '<td class="text-right nowrap">' + amountCell + '</td>'
+      + '<td class="nowrap">'
+      + '<button type="button" class="btn btn-ghost btn-sm" onclick="showLinkedInvoiceDetails(\''
+        + inv.source + '\',' + inv.id + ',\'' + _jsAttrStr(inv.invoice_number || inv.file_name || '') + '\', true)">Szczegóły</button> '
+      + '<button type="button" class="btn btn-ghost btn-sm" onclick="unlinkInvoice(\'' + inv.source + '\',' + inv.id + ')">Odepnij</button>'
+      + '</td>'
       + '</tr>';
   }
   el.innerHTML = html + '</tbody></table></div>';
