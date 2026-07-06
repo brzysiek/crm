@@ -588,7 +588,7 @@ def api_invoices_search():
     result = []
 
     sql = ("SELECT id, invoice_number, vendor_name, vendor_nip, issue_date, amount_gross, "
-           "ksef_number, raw_json "
+           "ksef_number, raw_json, currency, orig_amount "
            "FROM fakturownia_invoices WHERE status='pending'")
     params = []
     if entity_type in ('expense', 'income'):
@@ -621,9 +621,12 @@ def api_invoices_search():
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
                 'ksef_number': ksef,
+                'currency': row.get('currency') or 'PLN',
+                'orig_amount': float(row['orig_amount']) if row.get('orig_amount') is not None else None,
             })
 
-    sql = ("SELECT id, file_name, invoice_number, vendor_name, vendor_nip, issue_date, amount_gross "
+    sql = ("SELECT id, file_name, invoice_number, vendor_name, vendor_nip, issue_date, amount_gross, "
+           "currency, orig_amount "
            "FROM gdrive_invoices WHERE status='pending'")
     params = []
     if entity_type in ('expense', 'income'):
@@ -646,6 +649,8 @@ def api_invoices_search():
                 'issue_date': str(row['issue_date'])[:10] if row.get('issue_date') else '',
                 'amount_gross': float(row['amount_gross']) if row.get('amount_gross') is not None else None,
                 'file_name': row.get('file_name') or '',
+                'currency': row.get('currency') or 'PLN',
+                'orig_amount': float(row['orig_amount']) if row.get('orig_amount') is not None else None,
             })
 
     return jsonify(result)

@@ -654,19 +654,12 @@ async function loadLinkedInvoices() {
     + '<th>Źródło</th><th>Nr faktury</th><th>Dostawca</th><th>Data</th>'
     + '<th class="text-right">Kwota brutto</th><th></th></tr></thead><tbody>';
   for (const inv of invs) {
-    const isForeign = inv.currency && inv.currency !== 'PLN' && inv.orig_amount;
-    const amountCell = fmtPLN(inv.amount_gross)
-      + (isForeign
-          ? ' <span class="badge badge-yellow" style="margin-left:4px">'
-            + parseFloat(inv.orig_amount).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            + ' ' + esc(inv.currency) + '</span>'
-          : '');
     html += '<tr>'
       + '<td><span class="badge ' + _invBadgeClass(inv.source) + '">' + _invLabel(inv.source) + '</span></td>'
       + '<td>' + esc(inv.invoice_number || '—') + '</td>'
       + '<td>' + esc(inv.vendor_name || '—') + '</td>'
       + '<td class="nowrap">' + (inv.issue_date || '—') + '</td>'
-      + '<td class="text-right nowrap">' + amountCell + '</td>'
+      + '<td class="text-right nowrap">' + fmtPLN(inv.amount_gross) + _foreignBadge(inv) + '</td>'
       + '<td class="nowrap">'
       + '<button type="button" class="btn btn-ghost btn-sm" onclick="showLinkedInvoiceDetails(\''
         + inv.source + '\',' + inv.id + ',\'' + _jsAttrStr(inv.invoice_number || inv.file_name || '') + '\', false)">Szczegóły</button> '
@@ -733,7 +726,7 @@ async function doInvoiceSearch() {
       + '<td>' + esc(inv.invoice_number || inv.file_name || '—') + '</td>'
       + '<td>' + esc(inv.vendor_name || '—') + '</td>'
       + '<td class="nowrap">' + (inv.issue_date || '—') + '</td>'
-      + '<td class="text-right nowrap">' + fmtPLN(inv.amount_gross) + '</td>'
+      + '<td class="text-right nowrap">' + fmtPLN(inv.amount_gross) + _foreignBadge(inv) + '</td>'
       + (linked
           ? '<td><span class="badge badge-green">Powiązana ✓</span></td>'
           : '<td><button type="button" class="btn btn-primary btn-sm" onclick="linkInvoice(\'' + inv.source + '\',' + inv.id + ')">Powiąż</button></td>')
@@ -785,6 +778,12 @@ function _invBadgeClass(source) {
 }
 function _invLabel(source) {
   return source === 'fakturownia' ? 'Fakturownia' : 'Dysk Google';
+}
+function _foreignBadge(inv) {
+  if (!inv.currency || inv.currency === 'PLN' || !inv.orig_amount) return '';
+  return ' <span class="badge badge-yellow" style="margin-left:4px">'
+    + parseFloat(inv.orig_amount).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    + ' ' + esc(inv.currency) + '</span>';
 }
 </script>
 {% endblock %}
