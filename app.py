@@ -265,6 +265,20 @@ def api_expenses_bulk_category():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/expenses/bulk-description', methods=['POST'])
+def api_expenses_bulk_description():
+    from models.expense import bulk_set_description
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    description = (data.get('description') or '').strip()
+    if not description:
+        return jsonify({'status': 'error', 'message': 'Opis nie może być pusty.'})
+    affected = bulk_set_description(ids, description)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/expenses/bulk-person', methods=['POST'])
 def api_expenses_bulk_person():
     from models.expense import bulk_set_responsible_person
@@ -476,6 +490,20 @@ def api_incomes_bulk_category():
         return jsonify({'status': 'error', 'message': 'Brak ID.'})
     category = (data.get('category') or '').strip() or None
     affected = bulk_set_category(ids, category)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/incomes/bulk-description', methods=['POST'])
+def api_incomes_bulk_description():
+    from models.income import bulk_set_description
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    description = (data.get('description') or '').strip()
+    if not description:
+        return jsonify({'status': 'error', 'message': 'Opis nie może być pusty.'})
+    affected = bulk_set_description(ids, description)
     return jsonify({'status': 'ok', 'affected': affected})
 
 

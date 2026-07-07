@@ -158,6 +158,25 @@ def bulk_set_category(ids: list[int], category: str | None) -> int:
         raise
 
 
+def bulk_set_description(ids: list[int], description: str) -> int:
+    if not ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE incomes SET description=%s WHERE id IN ({placeholders})",
+                [description] + ids,
+            )
+            affected = cur.rowcount
+        db.commit()
+        return affected
+    except Exception:
+        db.rollback()
+        raise
+
+
 def bulk_set_paid_by(ids: list[int], person: str | None) -> int:
     if not ids:
         return 0

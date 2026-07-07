@@ -97,6 +97,9 @@
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetCategory">Nadaj kategorię</button>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkClearCategory">Usuń kategorię</button>
 
+    <input type="text" id="bulkDescriptionInput" class="filter-select" placeholder="Opis…">
+    <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetDescription">Ustaw opis</button>
+
     <input type="text" id="bulkPersonInput" class="filter-input" placeholder="Osoba odpowiedzialna">
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPerson">Przypisz osobę</button>
 
@@ -327,6 +330,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const person = (document.getElementById('bulkPersonInput').value || '').trim();
       if (!person) { alert('Wpisz osobę.'); return; }
       bulkUpdate(API_BASE + '/api/incomes/bulk-person', { person });
+    });
+  }
+
+  const btnSetDescription = document.getElementById('btnBulkSetDescription');
+  if (btnSetDescription) {
+    btnSetDescription.addEventListener('click', () => {
+      const description = document.getElementById('bulkDescriptionInput').value.trim();
+      if (!description) { alert('Podaj opis.'); return; }
+      const ids = getCheckedIds();
+      if (!confirm(`Ustawić ten sam opis dla ${ids.length} zaznaczonych przychodów?`)) return;
+      bulkUpdate(API_BASE + '/api/incomes/bulk-description', { description });
     });
   }
 
