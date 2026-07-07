@@ -4,7 +4,8 @@ from services.text_utils import format_phone
 
 FIELD_LABELS = {
     'first_name': 'Imię', 'last_name': 'Nazwisko', 'position': 'Stanowisko',
-    'email': 'Email', 'phone': 'Telefon', 'business_card_url': 'Wizytówka', 'description': 'Opis',
+    'email': 'Email', 'phone': 'Telefon', 'business_card_url': 'Wizytówka',
+    'linkedin_url': 'LinkedIn', 'description': 'Opis',
 }
 
 
@@ -83,13 +84,14 @@ def create_contact(data: dict, user_id: int | None) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_contacts
-                   (company_id, first_name, last_name, position, email, phone, business_card_url, description)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   (company_id, first_name, last_name, position, email, phone, business_card_url,
+                    linkedin_url, description)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data.get('company_id') or None, data['first_name'], data['last_name'],
                     data.get('position') or None, data.get('email') or None,
                     data.get('phone') or None, data.get('business_card_url') or None,
-                    data.get('description') or None,
+                    data.get('linkedin_url') or None, data.get('description') or None,
                 )
             )
         db.commit()
@@ -111,13 +113,13 @@ def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
             cur.execute(
                 """UPDATE crm_contacts SET
                    company_id=%s, first_name=%s, last_name=%s, position=%s,
-                   email=%s, phone=%s, business_card_url=%s, description=%s
+                   email=%s, phone=%s, business_card_url=%s, linkedin_url=%s, description=%s
                    WHERE id=%s""",
                 (
                     data.get('company_id') or None, data['first_name'], data['last_name'],
                     data.get('position') or None, data.get('email') or None,
                     data.get('phone') or None, data.get('business_card_url') or None,
-                    data.get('description') or None,
+                    data.get('linkedin_url') or None, data.get('description') or None,
                     contact_id,
                 )
             )

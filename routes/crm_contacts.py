@@ -20,6 +20,7 @@ def _parse_form(form):
         'email': form.get('email', '').strip(),
         'phone': form.get('phone', '').strip(),
         'business_card_url': form.get('business_card_url', '').strip(),
+        'linkedin_url': form.get('linkedin_url', '').strip(),
         'description': form.get('description', '').strip(),
         'company_id': form.get('company_id', type=int),
     }

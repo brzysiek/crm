@@ -35,6 +35,8 @@
         <dt>Telefon</dt><dd>{{ contact.phone|phone_link }}</dd>
         <dt>Wizytówka</dt>
         <dd>{% if contact.business_card_url %}<a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">Zobacz skan</a>{% else %}—{% endif %}</dd>
+        <dt>LinkedIn</dt>
+        <dd>{% if contact.linkedin_url %}<a href="{{ contact.linkedin_url if contact.linkedin_url.startswith('http') else 'https://' ~ contact.linkedin_url }}" target="_blank" rel="noopener">{{ contact.linkedin_url }}</a>{% else %}—{% endif %}</dd>
         <dt>Opis</dt><dd>{{ contact.description or '—' }}</dd>
       </dl>
     </div>

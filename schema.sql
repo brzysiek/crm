@@ -293,6 +293,7 @@ CREATE TABLE IF NOT EXISTS crm_contacts (
     email             VARCHAR(128),
     phone             VARCHAR(32),
     business_card_url VARCHAR(255),
+    linkedin_url      VARCHAR(255),
     description       TEXT,
     archived_at       DATETIME NULL,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
