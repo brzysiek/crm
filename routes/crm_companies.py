@@ -191,6 +191,7 @@ def view_company(company_id):
         notes=notes,
         history=get_history('company', company_id),
         add_note_url=url_for('crm_companies.add_note_view', company_id=company_id),
+        entity_type='company', entity_id=company_id,
     )
 
 

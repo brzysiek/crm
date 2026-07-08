@@ -141,6 +141,7 @@ def view_deal(deal_id):
         add_note_url=url_for('crm_deals.add_note_view', deal_id=deal_id),
         payments=payments,
         payments_total=sum(float(p['amount_net']) for p in payments),
+        entity_type='deal', entity_id=deal_id,
     )
 
 

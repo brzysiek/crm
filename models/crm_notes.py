@@ -30,6 +30,45 @@ def add_note(entity_type: str, entity_id: int, user_id: int | None, body: str) -
         raise
 
 
+def add_voice_note(entity_type: str, entity_id: int, user_id: int | None, audio_data: str) -> int:
+    """Dodaje notatkę głosową (jeszcze bez transkrypcji — body puste, audio_data
+    to pełny data URI nagrania)."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO crm_notes (entity_type, entity_id, user_id, body, audio_data) "
+                "VALUES (%s, %s, %s, '', %s)",
+                (entity_type, entity_id, _valid_user_id(user_id), audio_data)
+            )
+        db.commit()
+        return cur.lastrowid
+    except Exception:
+        db.rollback()
+        raise
+
+
+def get_note_by_id(note_id: int) -> dict | None:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT * FROM crm_notes WHERE id=%s", (note_id,))
+        return cur.fetchone()
+
+
+def set_note_transcript(note_id: int, body: str) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE crm_notes SET body=%s, transcribed_at=NOW() WHERE id=%s",
+                (body, note_id)
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 def get_notes(entity_type: str, entity_id: int) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:

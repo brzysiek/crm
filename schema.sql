@@ -352,12 +352,14 @@ CREATE TABLE IF NOT EXISTS crm_company_tags (
 
 -- ── CRM: Notatki i historia zmian — wspólne dla firm/kontaktów/interesów ────
 CREATE TABLE IF NOT EXISTS crm_notes (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    entity_type ENUM('company','contact','deal') NOT NULL,
-    entity_id   INT NOT NULL,
-    user_id     INT NULL,
-    body        TEXT NOT NULL,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    entity_type    ENUM('company','contact','deal') NOT NULL,
+    entity_id      INT NOT NULL,
+    user_id        INT NULL,
+    body           TEXT NOT NULL,
+    audio_data     MEDIUMTEXT NULL,
+    transcribed_at DATETIME NULL,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     KEY idx_entity (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -143,6 +143,7 @@ def view_contact(contact_id):
         notes=notes,
         history=get_history('contact', contact_id),
         add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),
+        entity_type='contact', entity_id=contact_id,
     )
 
 

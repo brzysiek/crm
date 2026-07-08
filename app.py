@@ -901,6 +901,65 @@ def api_gemini_test():
         return jsonify({'ok': False, 'message': f'Błąd połączenia: {str(e)[:150]}'})
 
 
+@app.route('/api/crm/notes/voice', methods=['POST'])
+def api_crm_notes_voice():
+    """Zapisuje nagraną notatkę głosową (jeszcze bez transkrypcji)."""
+    import base64
+    from models.crm_notes import VALID_ENTITY_TYPES, add_voice_note
+
+    entity_type = request.form.get('entity_type', '')
+    entity_id = request.form.get('entity_id', type=int)
+    audio_file = request.files.get('audio')
+
+    if entity_type not in VALID_ENTITY_TYPES or not entity_id:
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowa encja.'})
+    if not audio_file or not audio_file.filename:
+        return jsonify({'status': 'error', 'message': 'Brak nagrania.'})
+
+    audio_bytes = audio_file.read()
+    if not audio_bytes:
+        return jsonify({'status': 'error', 'message': 'Puste nagranie.'})
+
+    mime_type = audio_file.mimetype or 'audio/webm'
+    encoded = base64.b64encode(audio_bytes).decode('ascii')
+    audio_data = f'data:{mime_type};base64,{encoded}'
+
+    note_id = add_voice_note(entity_type, entity_id, session.get('user_id'), audio_data)
+    return jsonify({'status': 'ok', 'note_id': note_id})
+
+
+@app.route('/api/crm/notes/<int:note_id>/transcribe', methods=['POST'])
+def api_crm_notes_transcribe(note_id):
+    """Transkrybuje notatkę głosową na tekst za pomocą Gemini."""
+    import base64
+    from models.settings import get_setting
+    from models.crm_notes import get_note_by_id, set_note_transcript
+    from services.gemini_ocr import transcribe_audio
+
+    note = get_note_by_id(note_id)
+    if not note or not note.get('audio_data'):
+        return jsonify({'status': 'error', 'message': 'Nie znaleziono nagrania.'})
+
+    api_key = get_setting('gemini_api_key', '')
+    model = get_setting('gemini_model', 'gemini-2.5-flash')
+    if not api_key:
+        return jsonify({'status': 'error', 'message': 'Brak klucza API Gemini (Ustawienia).'})
+
+    try:
+        header, b64_payload = note['audio_data'].split(',', 1)
+        mime_type = header.split(':', 1)[1].split(';', 1)[0]
+        audio_bytes = base64.b64decode(b64_payload)
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowe dane nagrania.'})
+
+    result = transcribe_audio(audio_bytes, mime_type, api_key, model=model)
+    if 'error' in result:
+        return jsonify({'status': 'error', 'message': result['error']})
+
+    set_note_transcript(note_id, result['text'])
+    return jsonify({'status': 'ok', 'body': result['text']})
+
+
 @app.route('/api/fakturownia/test')
 def api_fakturownia_test():
     from models.settings import get_setting

@@ -132,3 +132,68 @@ def ocr_invoice_pdf(pdf_bytes: bytes, api_key: str,
 
     except Exception as exc:
         return {'error': str(exc)}
+
+
+def transcribe_audio(audio_bytes: bytes, mime_type: str, api_key: str,
+                     model: str = 'gemini-2.5-flash') -> dict:
+    """Transkrybuje nagranie głosowe (notatka CRM) na tekst po polsku.
+
+    Zwraca {'text': <transkrypt>} albo {'error': <komunikat>}.
+    """
+    try:
+        audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+        payload = {
+            'contents': [
+                {
+                    'parts': [
+                        {
+                            'inline_data': {
+                                'mime_type': mime_type,
+                                'data':      audio_b64,
+                            }
+                        },
+                        {'text': (
+                            'Przepisz to nagranie głosowe na tekst w języku polskim. '
+                            'Zwróć wyłącznie sam transkrypt, bez dodatkowych komentarzy, '
+                            'znaczników czasu ani cudzysłowów.'
+                        )},
+                    ]
+                }
+            ],
+            'generationConfig': {
+                'temperature':     0.1,
+                'maxOutputTokens': 8192,
+            },
+        }
+
+        url = (
+            'https://generativelanguage.googleapis.com/v1beta/'
+            f'models/{model}:generateContent?key={api_key}'
+        )
+        resp = requests.post(url, json=payload, timeout=TIMEOUT)
+        resp.raise_for_status()
+
+        data = resp.json()
+        candidates = data.get('candidates', [])
+        if not candidates:
+            finish = data.get('promptFeedback', {}).get('blockReason', 'brak kandydatów')
+            return {'error': f'Gemini nie zwrócił odpowiedzi: {finish}'}
+
+        text = ''
+        parts = candidates[0].get('content', {}).get('parts', [])
+        for part in parts:
+            text += part.get('text', '')
+
+        finish_reason = candidates[0].get('finishReason', '')
+        if finish_reason == 'MAX_TOKENS':
+            return {'error': 'Odpowiedź modelu została ucięta (MAX_TOKENS).'}
+
+        text = text.strip()
+        if not text:
+            return {'error': 'Model nie zwrócił żadnego tekstu.'}
+
+        return {'text': text}
+
+    except Exception as exc:
+        return {'error': str(exc)}
