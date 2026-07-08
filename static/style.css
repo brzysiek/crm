@@ -206,6 +206,11 @@ a:hover { text-decoration: underline; }
   .nav-user {
     display: none;
   }
+  .navbar.nav-open {
+    height: auto;
+    background: var(--surface);
+    padding-bottom: .5rem;
+  }
   .navbar.nav-open .navbar-nav,
   .navbar.nav-open .nav-user {
     display: flex;
