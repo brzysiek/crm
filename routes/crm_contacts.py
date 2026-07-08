@@ -37,8 +37,8 @@ def _validate(data):
 
 @bp.route('/')
 def list_contacts():
-    sort = request.args.get('sort', 'last_name')
-    direction = request.args.get('dir', 'asc')
+    sort = request.args.get('sort', 'created_at')
+    direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
 
     contacts = get_all_contacts(sort=sort, direction=direction, search=search or None)
