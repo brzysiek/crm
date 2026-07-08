@@ -288,18 +288,21 @@
   <div class="modal modal-txn">
     <div class="modal-header">
       <h3>Wyszukaj transakcję bankową</h3>
-      <button class="modal-close" onclick="document.getElementById('txnSearchModal').classList.remove('open')">×</button>
+      <button onclick="document.getElementById('txnSearchModal').classList.remove('open')" class="modal-close">✕</button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="padding:1rem">
       <div class="txn-search-bar">
-        <input type="text" id="txnSearchQ" class="form-control" placeholder="Szukaj opisu, kontrahenta…" oninput="debounceTxnSearch()">
-        <select id="txnBank" class="form-control" onchange="doTxnSearch()" style="width:auto">
+        <input type="text" id="txnSearchQ" placeholder="Szukaj opisu, kontrahenta…"
+               class="filter-input" oninput="debounceTxnSearch()">
+        <input type="number" id="txnMinAmt" placeholder="Kwota min"
+               class="filter-input txn-amt-input" oninput="debounceTxnSearch()">
+        <input type="number" id="txnMaxAmt" placeholder="Kwota max"
+               class="filter-input txn-amt-input" oninput="debounceTxnSearch()">
+        <select id="txnBank" class="filter-select" onchange="doTxnSearch()">
           <option value="">Wszystkie banki</option>
           <option value="mbank">mBank</option>
           <option value="unicredit">UniCredit</option>
         </select>
-        <input type="number" id="txnMinAmt" class="form-control txn-amt-input" placeholder="Kwota min" step="0.01" oninput="debounceTxnSearch()">
-        <input type="number" id="txnMaxAmt" class="form-control txn-amt-input" placeholder="Kwota max" step="0.01" oninput="debounceTxnSearch()">
       </div>
       <div id="txnSearchResults" style="margin-top:1rem"></div>
     </div>

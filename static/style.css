@@ -569,6 +569,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .form-group input[type=number],
 .form-group input[type=email],
 .form-group input[type=date],
+.form-group input[type=month],
 .form-group input[type=password],
 .form-group textarea,
 .form-group select {
