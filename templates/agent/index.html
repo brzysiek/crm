@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Agent{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom:1.25rem">
+  <h1>Agent</h1>
+  <p class="text-muted" style="margin:.25rem 0 0">
+    Wydaj polecenie głosowo lub tekstem — np. „Dodaj notatkę dla firmy Acme: umówiliśmy się na kolejne spotkanie za dwa tygodnie”.
+  </p>
+</div>
+
+<div class="inv-section agent-panel">
+  <div class="agent-input-area" id="agentInputArea">
+    <button type="button" id="agentRecordBtn" class="agent-record-btn">
+      <span class="agent-record-icon">🎙️</span>
+      <span class="agent-record-label">Nagrywaj</span>
+    </button>
+    <div id="agentRecordStatus" class="text-muted" style="text-align:center;margin-top:.6rem;min-height:1.2em"></div>
+
+    <div class="form-group" style="margin-top:1.5rem">
+      <label for="agentText">Polecenie</label>
+      <textarea id="agentText" rows="3" placeholder="Wpisz polecenie albo nagraj je głosowo…"></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" id="agentSubmitBtn" class="btn btn-primary">Wykonaj</button>
+      <button type="button" id="agentClearBtn" class="btn btn-ghost">Wyczyść</button>
+    </div>
+    <div id="agentParseStatus" class="text-muted" style="margin-top:.5rem;min-height:1.2em"></div>
+  </div>
+
+  <div id="agentConfirm" class="agent-confirm" style="display:none"></div>
+
+  <div id="agentDone" class="agent-done" style="display:none"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='agent.js') }}"></script>
+{% endblock %}

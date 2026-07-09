@@ -30,11 +30,17 @@
     <span></span><span></span><span></span>
   </button>
   <ul class="navbar-nav">
-    <li>
-      <a href="{{ url_for('agent.index') }}"
-         class="{{ 'active' if request.blueprint == 'agent' else '' }}">
-        Agent
-      </a>
+    <li class="navbar-dropdown" id="nav-dd-agent">
+      <button type="button"
+              class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'agent' else '' }}">
+        Agent <span class="navbar-dropdown-caret">▾</span>
+      </button>
+      <div class="navbar-dropdown-menu">
+        <a href="{{ url_for('agent.index') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'agent.index' else '' }}">🤖 Asystent</a>
+        <a href="{{ url_for('agent.history') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'agent.history' else '' }}">🕘 Historia</a>
+      </div>
     </li>
     <li class="navbar-dropdown" id="nav-dd-crm">
       <button type="button"

@@ -1805,6 +1805,14 @@ def api_crm_contacts_search():
     return jsonify(search_contacts(q, company_id=company_id))
 
 
+@app.route('/api/crm/deals/search')
+def api_crm_deals_search():
+    from models.crm_deal import get_all_deals
+    q = request.args.get('q', '').strip()
+    deals = get_all_deals(search=q or None)[:20]
+    return jsonify([{'id': d['id'], 'name': d['name']} for d in deals])
+
+
 @app.route('/api/crm/company-lookup')
 def api_crm_company_lookup():
     from services.company_lookup import lookup_by_krs, lookup_by_nip

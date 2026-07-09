@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Historia agenta{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom:1.25rem">
+  <h1>Historia agenta</h1>
+</div>
+
+<div class="inv-section">
+  <div style="padding:.85rem">
+    {% if tasks %}
+    <div class="history-list">
+      {% for t in tasks %}
+      <div class="history-item">
+        <div class="history-meta">
+          <span>
+            <span class="history-action {{ 'history-action-create' if t.status == 'done' else 'history-action-delete' }}">
+              {{ intent_labels.get(t.intent, t.intent) }} · {{ entity_type_labels.get(t.entity_type, t.entity_type) }}
+            </span>
+          </span>
+          <span>{{ t.user_name or 'System' }} · {{ t.created_at.strftime('%d.%m.%Y %H:%M') if t.created_at else '' }}</span>
+        </div>
+        <div class="note-body">{{ t.input_text }}</div>
+        <div class="text-muted" style="margin-top:.35rem;font-size:.85rem">{{ t.summary }}</div>
+        {% if t.entity_id %}
+        <div style="margin-top:.4rem">
+          {% if t.entity_type == 'company' %}
+            <a href="{{ url_for('crm_companies.view_company', company_id=t.entity_id) }}" class="btn btn-outline btn-sm">Zobacz klienta</a>
+          {% elif t.entity_type == 'contact' %}
+            <a href="{{ url_for('crm_contacts.view_contact', contact_id=t.entity_id) }}" class="btn btn-outline btn-sm">Zobacz kontakt</a>
+          {% elif t.entity_type == 'deal' %}
+            <a href="{{ url_for('crm_deals.view_deal', deal_id=t.entity_id) }}" class="btn btn-outline btn-sm">Zobacz interes</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">Brak historii poleceń.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

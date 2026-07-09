@@ -126,7 +126,7 @@ def get_company_by_nip(nip: str) -> dict | None:
 
 def search_companies(q: str, limit: int = 20) -> list[dict]:
     db = get_db()
-    sql = "SELECT id, name, short_name, city, nip FROM crm_companies WHERE archived_at IS NULL"
+    sql = "SELECT id, name, short_name, city, nip, favicon_url FROM crm_companies WHERE archived_at IS NULL"
     params = []
     if q:
         sql += " AND (name LIKE %s OR short_name LIKE %s OR nip LIKE %s)"

@@ -1672,3 +1672,88 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .view-toggle .btn { border-radius: 0; }
 .view-toggle .btn:first-child { border-radius: var(--radius-pill) 0 0 var(--radius-pill); }
 .view-toggle .btn:last-child  { border-radius: 0 var(--radius-pill) var(--radius-pill) 0; }
+
+/* ── Agent AI ─────────────────────────────────────────────────────────────── */
+.agent-panel { max-width: 640px; margin: 0 auto; padding: 2rem; }
+.agent-input-area { display: flex; flex-direction: column; }
+
+.agent-record-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto;
+  border: none;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: transform var(--speed) var(--curve), filter var(--speed) var(--curve);
+}
+.agent-record-btn:hover { transform: translateY(-1px); filter: brightness(1.04); }
+.agent-record-btn .agent-record-icon { font-size: 2.5rem; line-height: 1; }
+.agent-record-btn .agent-record-label { font-weight: 600; font-size: .95rem; }
+.agent-record-btn.recording {
+  background: var(--danger);
+  animation: agent-pulse 1.4s ease-in-out infinite;
+}
+@keyframes agent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, .35); }
+  50%      { box-shadow: 0 0 0 18px rgba(185, 28, 28, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-record-btn.recording { animation: none; }
+}
+
+.btn-lg {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-align: center;
+  border-radius: var(--radius-md);
+}
+
+.agent-confirm {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.agent-confirm-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.agent-confirm-row { margin-bottom: 1rem; }
+.agent-confirm-row label {
+  display: block;
+  font-weight: 500;
+  font-size: .85rem;
+  margin-bottom: .35rem;
+  color: var(--text-primary);
+}
+.agent-confirm-static {
+  padding: .5rem .75rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: .9rem;
+}
+.agent-confirm-actions { margin-top: 1.5rem; }
+.agent-confirm-cancel { margin-top: .6rem; }
+
+.agent-done {
+  margin-top: 1.75rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--success-bg);
+  color: var(--success-text);
+  text-align: center;
+}
+.agent-done .btn { margin-top: .75rem; }
