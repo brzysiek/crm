@@ -134,8 +134,6 @@ a:hover { text-decoration: underline; }
 }
 .navbar-nav a:hover { background: var(--surface-secondary); color: var(--text-primary); text-decoration: none; }
 .navbar-nav a.active { background: var(--gradient-primary); color: #fff; box-shadow: var(--shadow-lg); }
-.navbar-nav a.nav-placeholder { opacity: .45; cursor: default; }
-.navbar-nav a.nav-placeholder:hover { background: none; }
 
 .nav-badge {
   background: var(--error);
@@ -1272,79 +1270,70 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   align-self: center;
 }
 
-/* ── CRM: layout z chowanym menu bocznym ───────────────────────────────────────── */
-.crm-layout {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: var(--space-lg);
-  align-items: start;
-  transition: grid-template-columns .15s ease;
-}
-.crm-layout.collapsed { grid-template-columns: 48px 1fr; }
+/* ── Górne menu: rozwijane podmenu (CRM / Finanse) ────────────────────────────── */
+.navbar-dropdown { position: relative; }
 
-@media (max-width: 680px) {
-  .crm-layout, .crm-layout.collapsed { grid-template-columns: 1fr; }
-  .crm-sidebar-toggle { display: none; }
-  .crm-sidebar-nav { flex-direction: row; overflow-x: auto; }
-  .crm-sidebar-label { display: none; }
-  .crm-sidebar-link {
-    flex: 1; justify-content: center; padding: .75rem .5rem;
-    border-bottom: none; border-right: 1px solid var(--border);
-  }
-  .crm-sidebar-link:last-child { border-right: none; }
+.navbar-dropdown-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  padding: .45rem .9rem;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  font-size: .875rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  transition: background var(--speed) var(--curve), color var(--speed) var(--curve);
 }
+.navbar-dropdown-toggle:hover { background: var(--surface-secondary); color: var(--text-primary); }
+.navbar-dropdown-toggle.active { background: var(--gradient-primary); color: #fff; box-shadow: var(--shadow-lg); }
+.navbar-dropdown-caret { font-size: .65rem; opacity: .6; }
 
-.crm-sidebar {
+.navbar-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + .4rem);
+  left: 0;
+  min-width: 180px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-lg);
+  padding: .35rem;
+  z-index: 110;
 }
+.navbar-dropdown.open .navbar-dropdown-menu { display: block; }
 
-.crm-sidebar-toggle {
-  width: 100%;
+.navbar-dropdown-menu .navbar-dropdown-item {
   display: flex;
   align-items: center;
   gap: .5rem;
-  padding: .65rem 1rem;
-  background: var(--surface-secondary);
-  border: none;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  color: var(--text-primary);
+  padding: .5rem .7rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
   font-size: .8rem;
   font-weight: 500;
-  font-family: var(--font);
-}
-.crm-sidebar-toggle:hover { background: var(--border); }
-
-.crm-sidebar-nav { display: flex; flex-direction: column; }
-
-.crm-sidebar-icon { flex-shrink: 0; line-height: 1; }
-
-.crm-sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .75rem 1rem;
-  color: var(--text-primary);
-  font-size: .875rem;
-  font-weight: 500;
-  border-bottom: 1px solid var(--border);
-  transition: background var(--speed) var(--curve), color var(--speed) var(--curve);
   white-space: nowrap;
-  overflow: hidden;
+  box-shadow: none;
 }
-.crm-sidebar-link:last-child { border-bottom: none; }
-.crm-sidebar-link:hover { background: var(--surface-secondary); text-decoration: none; }
-.crm-sidebar-link.active { background: var(--gradient-primary); color: #fff; }
+.navbar-dropdown-menu .navbar-dropdown-item:hover { background: var(--surface-secondary); color: var(--text-primary); text-decoration: none; }
+.navbar-dropdown-menu .navbar-dropdown-item.active { background: var(--surface-secondary); color: var(--primary); }
 
-.crm-layout.collapsed .crm-sidebar-label { display: none; }
-.crm-layout.collapsed .crm-sidebar-toggle,
-.crm-layout.collapsed .crm-sidebar-link { justify-content: center; padding: .75rem .5rem; }
-
-.crm-content { min-width: 0; }
+@media (max-width: 880px) {
+  .navbar-dropdown-toggle { width: 100%; padding: .65rem .75rem; border-radius: var(--radius-sm); }
+  .navbar-dropdown-toggle.active { box-shadow: none; }
+  .navbar-dropdown-menu {
+    display: none;
+    position: static;
+    box-shadow: none;
+    border: none;
+    padding: 0 0 0 1rem;
+  }
+  .navbar-dropdown.open .navbar-dropdown-menu { display: block; }
+}
 
 /* ── CRM: tag/branża chip-input ──────────────────────────────────────────────── */
 .tag-input-wrap {

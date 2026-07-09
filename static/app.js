@@ -676,31 +676,34 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-/* ── CRM: zwijane menu boczne (Firmy / Kontakty / Interesy) ────────────────────
- * Stan (zwinięte/rozwinięte) zapamiętany w localStorage, wspólny dla wszystkich
- * podstron CRM. Bezpiecznie no-op, jeśli #crm-layout nie istnieje na stronie.
+/* ── Górne menu: rozwijane podmenu (CRM / Finanse) ─────────────────────────────
+ * Klik na przycisk otwiera/zamyka powiązane podmenu, klik poza nim zamyka je;
+ * otwarcie jednego podmenu zamyka pozostałe.
  */
-function initCrmSidebar() {
-  const layout = document.getElementById('crm-layout');
-  const btn = document.getElementById('crm-sidebar-toggle');
-  if (!layout || !btn) return;
+function initNavDropdowns() {
+  const dropdowns = document.querySelectorAll('.navbar-dropdown');
+  if (!dropdowns.length) return;
 
-  const STORAGE_KEY = 'crm_sidebar_collapsed';
-  let collapsed = localStorage.getItem(STORAGE_KEY) === '1';
+  dropdowns.forEach(dd => {
+    const toggle = dd.querySelector('.navbar-dropdown-toggle');
+    if (!toggle) return;
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      const wasOpen = dd.classList.contains('open');
+      dropdowns.forEach(other => other.classList.remove('open'));
+      dd.classList.toggle('open', !wasOpen);
+    });
+  });
 
-  function apply() {
-    layout.classList.toggle('collapsed', collapsed);
-    btn.title = collapsed ? 'Rozwiń menu' : 'Zwiń menu';
-  }
-  apply();
-
-  btn.addEventListener('click', () => {
-    collapsed = !collapsed;
-    localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
-    apply();
+  document.addEventListener('click', e => {
+    dropdowns.forEach(dd => {
+      if (dd.classList.contains('open') && !dd.contains(e.target)) {
+        dd.classList.remove('open');
+      }
+    });
   });
 }
-document.addEventListener('DOMContentLoaded', initCrmSidebar);
+document.addEventListener('DOMContentLoaded', initNavDropdowns);
 
 /* ── CRM: helpers ─────────────────────────────────────────────────────────────── */
 function crmEsc(s) {

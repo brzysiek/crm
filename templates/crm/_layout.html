@@ -1,45 +1,5 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="crm-layout" id="crm-layout">
-
-  <aside class="crm-sidebar">
-    <button type="button" class="crm-sidebar-toggle" id="crm-sidebar-toggle" title="Zwiń/rozwiń menu">
-      <span class="crm-sidebar-icon">☰</span>
-      <span class="crm-sidebar-label">Zwiń menu</span>
-    </button>
-    <nav class="crm-sidebar-nav">
-      <a href="{{ url_for('crm_companies.list_companies') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'companies' }}" title="Firmy">
-        <span class="crm-sidebar-icon">🏢</span>
-        <span class="crm-sidebar-label">Firmy</span>
-      </a>
-      <a href="{{ url_for('crm_contacts.list_contacts') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'contacts' }}" title="Kontakty">
-        <span class="crm-sidebar-icon">👤</span>
-        <span class="crm-sidebar-label">Kontakty</span>
-      </a>
-      <a href="{{ url_for('crm_deals.list_deals') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'deals' }}" title="Interesy">
-        <span class="crm-sidebar-icon">💼</span>
-        <span class="crm-sidebar-label">Interesy</span>
-      </a>
-      <a href="{{ url_for('crm_invoices.list_invoices') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'invoices' }}" title="Faktury">
-        <span class="crm-sidebar-icon">🧾</span>
-        <span class="crm-sidebar-label">Faktury</span>
-      </a>
-      <a href="{{ url_for('crm_plan.index') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'plan' }}" title="Plan">
-        <span class="crm-sidebar-icon">📊</span>
-        <span class="crm-sidebar-label">Plan</span>
-      </a>
-    </nav>
-  </aside>
-
-  <section class="crm-content">
-    {% block crm_content %}{% endblock %}
-  </section>
-
-</div>
+{% block crm_content %}{% endblock %}
 {% endblock %}

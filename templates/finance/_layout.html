@@ -1,43 +1,5 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="crm-layout" id="crm-layout">
-
-  <aside class="crm-sidebar">
-    <button type="button" class="crm-sidebar-toggle" id="crm-sidebar-toggle" title="Zwiń/rozwiń menu">
-      <span class="crm-sidebar-icon">☰</span>
-      <span class="crm-sidebar-label">Zwiń menu</span>
-    </button>
-    <nav class="crm-sidebar-nav">
-      <a href="{{ url_for('finance.index') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'dashboard' }}" title="Dashboard">
-        <span class="crm-sidebar-icon">📈</span>
-        <span class="crm-sidebar-label">Dashboard</span>
-      </a>
-      <a href="{{ url_for('expenses.list_expenses') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'expenses' }}" title="Wydatki">
-        <span class="crm-sidebar-icon">↓</span>
-        <span class="crm-sidebar-label">Wydatki</span>
-      </a>
-      <a href="{{ url_for('income.list_incomes') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'income' }}" title="Przychody">
-        <span class="crm-sidebar-icon">↑</span>
-        <span class="crm-sidebar-label">Przychody</span>
-      </a>
-      <a href="{{ url_for('imports.bank') }}"
-         class="crm-sidebar-link {{ 'active' if active_tab == 'imports' }}" title="Importy">
-        <span class="crm-sidebar-icon">📥</span>
-        <span class="crm-sidebar-label">Importy</span>
-        {% if imports_badge > 0 %}
-          <span class="nav-badge" style="margin-left:auto">{{ imports_badge }}</span>
-        {% endif %}
-      </a>
-    </nav>
-  </aside>
-
-  <section class="crm-content">
-    {% block finance_content %}{% endblock %}
-  </section>
-
-</div>
+{% block finance_content %}{% endblock %}
 {% endblock %}

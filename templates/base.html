@@ -25,23 +25,48 @@
         Agent
       </a>
     </li>
-    <li>
-      <a href="{{ url_for('crm_companies.list_companies') }}"
-         class="{{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
-        CRM
-      </a>
+    <li class="navbar-dropdown" id="nav-dd-crm">
+      <button type="button"
+              class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
+        CRM <span class="navbar-dropdown-caret">▾</span>
+      </button>
+      <div class="navbar-dropdown-menu">
+        <a href="{{ url_for('crm_companies.list_companies') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_companies' else '' }}">🏢 Firmy</a>
+        <a href="{{ url_for('crm_contacts.list_contacts') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_contacts' else '' }}">👤 Kontakty</a>
+        <a href="{{ url_for('crm_deals.list_deals') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_deals' else '' }}">💼 Interesy</a>
+        <a href="{{ url_for('crm_invoices.list_invoices') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_invoices' else '' }}">🧾 Faktury</a>
+        <a href="{{ url_for('crm_plan.index') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_plan' else '' }}">📊 Plan</a>
+      </div>
     </li>
-    <li>
-      <a href="{{ url_for('finance.index') }}"
-         class="{{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">
+    <li class="navbar-dropdown" id="nav-dd-finance">
+      <button type="button"
+              class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">
         Finanse
         {% if imports_badge > 0 %}
           <span class="nav-badge">{{ imports_badge }}</span>
         {% endif %}
-      </a>
-    </li>
-    <li>
-      <a href="#" class="nav-placeholder" title="Wkrótce">Przepływy</a>
+        <span class="navbar-dropdown-caret">▾</span>
+      </button>
+      <div class="navbar-dropdown-menu">
+        <a href="{{ url_for('finance.index') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'finance' else '' }}">📈 Dashboard</a>
+        <a href="{{ url_for('expenses.list_expenses') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'expenses' else '' }}">↓ Wydatki</a>
+        <a href="{{ url_for('income.list_incomes') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'income' else '' }}">↑ Przychody</a>
+        <a href="{{ url_for('imports.bank') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'imports' else '' }}">
+          📥 Importy
+          {% if imports_badge > 0 %}
+            <span class="nav-badge" style="margin-left:auto">{{ imports_badge }}</span>
+          {% endif %}
+        </a>
+      </div>
     </li>
   </ul>
   <div class="nav-user" id="nav-user">
