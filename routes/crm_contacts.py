@@ -3,7 +3,7 @@ from urllib.parse import quote
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 
-from models.crm_company import get_company_by_id, get_company_tags
+from models.crm_company import RELATION_LABELS, get_company_by_id, get_company_tags
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, update_contact)
 from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
@@ -136,8 +136,8 @@ def view_contact(contact_id):
             n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=n['entity_id'], note_id=n['id'])
 
     return render_template('crm/contacts/detail.html',
-        active_tab='contacts', contact=contact, company_tags=company_tags, company_industries=company_industries,
-        company_source=company_source,
+        active_tab='contacts', contact=contact, company=company, company_tags=company_tags,
+        company_industries=company_industries, company_source=company_source, relation_labels=RELATION_LABELS,
         deals=get_all_deals(contact_id=contact_id), stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,
         notes=notes,

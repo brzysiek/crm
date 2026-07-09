@@ -553,6 +553,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .badge-yellow  { background: var(--warning-bg); color: var(--warning-text); }
 .badge-red     { background: var(--error-bg); color: var(--error-text); }
 .badge-lime    { background: var(--success-bg); color: var(--success-text); }
+.badge-purple  { background: #f3e8ff; color: #7e22ce; }
 .badge-pct     { min-width: 3rem; text-align: center; }
 .badge-btn { cursor: pointer; border: none; font-family: inherit; font-size: inherit; font-weight: 600; line-height: inherit; }
 .badge-btn:hover { opacity: .8; }

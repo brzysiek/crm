@@ -29,6 +29,11 @@
         <dd>
           {% if contact.company_id %}
             <a href="{{ url_for('crm_companies.view_company', company_id=contact.company_id) }}">{{ contact.company_short_name or contact.company_name }}</a>
+            {% if company %}
+              <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
+                {{ relation_labels[company.relation_type] }}
+              </span>
+            {% endif %}
           {% else %}—{% endif %}
         </dd>
         <dt>Email</dt><dd>{{ contact.email or '—' }}</dd>

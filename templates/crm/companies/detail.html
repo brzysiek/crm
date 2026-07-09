@@ -10,7 +10,7 @@
     {% endif %}
     <div>
     <h1>{{ company.short_name or company.name }}
-      <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-outline', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
+      <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
         {{ relation_labels[company.relation_type] }}
       </span>
     </h1>
