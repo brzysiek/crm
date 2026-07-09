@@ -1790,6 +1790,19 @@ def api_crm_companies_bulk():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/crm/contacts/bulk-delete', methods=['POST'])
+def api_crm_contacts_bulk_delete():
+    from models.crm_contact import bulk_delete_contacts
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych kontaktów.'})
+
+    affected = bulk_delete_contacts(ids, session.get('user_id'))
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/crm/companies/search')
 def api_crm_companies_search():
     from models.crm_company import search_companies

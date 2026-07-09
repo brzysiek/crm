@@ -22,10 +22,22 @@
 </form>
 
 {% if contacts %}
+<div class="bulk-select-bar">
+  <label class="checkbox-label">
+    <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+    Zaznacz wszystkie
+  </label>
+  <div class="bulk-actions" id="bulkActions" style="display:none">
+    <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkDelete">Usuń zaznaczone</button>
+  </div>
+</div>
+
 <div class="table-wrapper">
   <table class="data-table" id="contacts-table">
     <thead>
       <tr>
+        <th class="col-checkbox"></th>
         <th class="card-cell"></th>
         {{ m.sort_th('Nazwisko', 'last_name', sort, direction, 'crm_contacts.list_contacts') }}
         {{ m.sort_th('Imię', 'first_name', sort, direction, 'crm_contacts.list_contacts') }}
@@ -41,6 +53,9 @@
     <tbody>
       {% for c in contacts %}
       <tr>
+        <td class="col-checkbox">
+          <input type="checkbox" class="row-checkbox" value="{{ c.id }}" onchange="updateBulkBar()">
+        </td>
         <td class="card-cell">
           {% if c.business_card_url %}
           <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
@@ -123,5 +138,53 @@ function openBusinessCardModal(url) {
 
 initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu',
   ['company_tags', 'company_industries']);
+
+function getCheckedIds() {
+  return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
+}
+
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  const bar = document.getElementById('bulkActions');
+  const cnt = document.getElementById('bulkCount');
+  if (!bar) return;
+  bar.style.display = ids.length > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'y' : 'ych');
+  const boxes = [...document.querySelectorAll('.row-checkbox')];
+  const cb = document.getElementById('selectAll');
+  if (cb) {
+    cb.checked = boxes.length > 0 && boxes.every(b => b.checked);
+    cb.indeterminate = boxes.some(b => b.checked) && !boxes.every(b => b.checked);
+  }
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-checkbox').forEach(box => { box.checked = cb.checked; });
+  updateBulkBar();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const btnDelete = document.getElementById('btnBulkDelete');
+  if (btnDelete) btnDelete.addEventListener('click', async () => {
+    const ids = getCheckedIds();
+    if (!ids.length) return;
+    if (!confirm(`Usunąć ${ids.length} zaznaczonych kontaktów?`)) return;
+    try {
+      const r = await fetch(window.API_BASE + '/api/crm/contacts/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        location.reload();
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  });
+});
 </script>
 {% endblock %}

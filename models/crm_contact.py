@@ -133,6 +133,14 @@ def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
             log_history('contact', contact_id, user_id, 'update', summary)
 
 
+def bulk_delete_contacts(contact_ids: list[int], user_id: int | None) -> int:
+    affected = 0
+    for contact_id in contact_ids:
+        delete_contact(contact_id, user_id, archive_company=False)
+        affected += 1
+    return affected
+
+
 def delete_contact(contact_id: int, user_id: int | None, archive_company: bool = False) -> None:
     contact = get_contact_by_id(contact_id)
     db = get_db()
