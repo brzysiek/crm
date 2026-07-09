@@ -1362,6 +1362,10 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 }
 .navbar-dropdown.open .navbar-dropdown-menu { display: block; }
 
+@media (min-width: 881px) {
+  .navbar-dropdown:hover .navbar-dropdown-menu { display: block; }
+}
+
 .navbar-dropdown-menu .navbar-dropdown-item {
   display: flex;
   align-items: center;
