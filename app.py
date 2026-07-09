@@ -1790,6 +1790,30 @@ def api_crm_companies_bulk():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/crm/companies/<int:company_id>/toggle-star', methods=['POST'])
+def api_crm_company_toggle_star(company_id):
+    from models.crm_company import get_company_by_id, set_starred
+
+    company = get_company_by_id(company_id)
+    if not company:
+        return jsonify({'status': 'error', 'message': 'Firma nie istnieje.'})
+    starred = not company.get('is_starred')
+    set_starred(company_id, starred)
+    return jsonify({'status': 'ok', 'starred': starred})
+
+
+@app.route('/api/crm/contacts/<int:contact_id>/toggle-star', methods=['POST'])
+def api_crm_contact_toggle_star(contact_id):
+    from models.crm_contact import get_contact_by_id, set_starred
+
+    contact = get_contact_by_id(contact_id)
+    if not contact:
+        return jsonify({'status': 'error', 'message': 'Kontakt nie istnieje.'})
+    starred = not contact.get('is_starred')
+    set_starred(contact_id, starred)
+    return jsonify({'status': 'ok', 'starred': starred})
+
+
 @app.route('/api/crm/companies/bulk-star', methods=['POST'])
 def api_crm_companies_bulk_star():
     from models.crm_company import bulk_set_starred

@@ -37,10 +37,7 @@
 
 {% if companies %}
 <div class="bulk-select-bar">
-  <label class="checkbox-label">
-    <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-    Zaznacz wszystkie
-  </label>
+  <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
   <div class="bulk-actions" id="bulkActions" style="display:none">
     <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
 
@@ -86,7 +83,9 @@
       {% for c in companies %}
       <tr class="{{ 'row-starred' if c.is_starred }}">
         <td class="col-checkbox">
-          <input type="checkbox" class="row-checkbox" value="{{ c.id }}" onchange="updateBulkBar()">
+          <input type="checkbox" class="row-checkbox" value="{{ c.id }}" onchange="updateBulkBar()" style="display:none">
+          <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
+                  onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
         </td>
         <td class="favicon-cell">
           {% if c.favicon_url %}
@@ -186,17 +185,39 @@ function updateBulkBar() {
   if (!bar) return;
   bar.style.display = ids.length > 0 ? 'flex' : 'none';
   if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'ą' : 'ych');
-  const boxes = [...document.querySelectorAll('.row-checkbox')];
-  const cb = document.getElementById('selectAll');
-  if (cb) {
-    cb.checked = boxes.length > 0 && boxes.every(b => b.checked);
-    cb.indeterminate = boxes.some(b => b.checked) && !boxes.every(b => b.checked);
-  }
 }
 
-function toggleSelectAll(cb) {
-  document.querySelectorAll('.row-checkbox').forEach(box => { box.checked = cb.checked; });
+let selectionMode = false;
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  document.querySelectorAll('.row-checkbox').forEach(el => {
+    el.style.display = selectionMode ? '' : 'none';
+    if (!selectionMode) el.checked = false;
+  });
+  document.querySelectorAll('.row-star').forEach(el => { el.style.display = selectionMode ? 'none' : ''; });
+  const btn = document.getElementById('btnToggleSelect');
+  if (btn) btn.textContent = selectionMode ? 'Anuluj zaznaczanie' : 'Zaznacz';
   updateBulkBar();
+}
+
+async function toggleRowStar(btn) {
+  const id = btn.dataset.id;
+  try {
+    const r = await fetch(window.API_BASE + '/api/crm/companies/' + id + '/toggle-star', { method: 'POST' });
+    const d = await r.json();
+    if (d.status === 'ok') {
+      btn.textContent = d.starred ? '★' : '☆';
+      btn.classList.toggle('starred', d.starred);
+      btn.title = d.starred ? 'Usuń z ulubionych' : 'Oznacz gwiazdką';
+      const row = btn.closest('tr');
+      if (row) row.classList.toggle('row-starred', d.starred);
+    } else {
+      alert('Błąd: ' + (d.message || 'nieznany'));
+    }
+  } catch (e) {
+    alert('Błąd żądania: ' + e.message);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function () {

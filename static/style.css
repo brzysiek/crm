@@ -918,6 +918,10 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .bulk-select-bar {
   margin-bottom: .5rem;
   font-size: .85rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
 }
 .checkbox-label {
   display: inline-flex;
