@@ -9,7 +9,11 @@
            onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'favicon-placeholder',textContent:'—'}))">
     {% endif %}
     <div>
-    <h1>{{ company.short_name or company.name }}
+    <h1>
+      <form method="post" action="{{ url_for('crm_companies.toggle_star_view', company_id=company.id) }}" class="inline-form" style="display:inline">
+        <button type="submit" class="star-toggle {{ 'starred' if company.is_starred }}" title="{{ 'Usuń z ulubionych' if company.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if company.is_starred else '☆' }}</button>
+      </form>
+      {{ company.short_name or company.name }}
       <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
         {{ relation_labels[company.relation_type] }}
       </span>

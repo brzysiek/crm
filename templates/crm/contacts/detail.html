@@ -4,7 +4,12 @@
 {% block crm_content %}
 <div class="detail-header">
   <div>
-    <h1>{{ contact.first_name }} {{ contact.last_name }}</h1>
+    <h1>
+      <form method="post" action="{{ url_for('crm_contacts.toggle_star_view', contact_id=contact.id) }}" class="inline-form" style="display:inline">
+        <button type="submit" class="star-toggle {{ 'starred' if contact.is_starred }}" title="{{ 'Usuń z ulubionych' if contact.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if contact.is_starred else '☆' }}</button>
+      </form>
+      {{ contact.first_name }} {{ contact.last_name }}
+    </h1>
     {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}</div>{% endif %}
   </div>
   <div class="header-actions">

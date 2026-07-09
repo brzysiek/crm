@@ -56,6 +56,8 @@
     </div>
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkAdd">Dodaj</button>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkRemove">Usuń</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">★ Oznacz</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">☆ Odznacz</button>
   </div>
 </div>
 
@@ -82,7 +84,7 @@
     </thead>
     <tbody>
       {% for c in companies %}
-      <tr>
+      <tr class="{{ 'row-starred' if c.is_starred }}">
         <td class="col-checkbox">
           <input type="checkbox" class="row-checkbox" value="{{ c.id }}" onchange="updateBulkBar()">
         </td>
@@ -232,6 +234,31 @@ document.addEventListener('DOMContentLoaded', function () {
   const btnRemove = document.getElementById('btnBulkRemove');
   if (btnAdd) btnAdd.addEventListener('click', () => bulkEdit('add'));
   if (btnRemove) btnRemove.addEventListener('click', () => bulkEdit('remove'));
+
+  async function bulkStar(starred) {
+    const ids = getCheckedIds();
+    if (!ids.length) return;
+    try {
+      const r = await fetch(window.API_BASE + '/api/crm/companies/bulk-star', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, starred }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        location.reload();
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  }
+
+  const btnStar = document.getElementById('btnBulkStar');
+  const btnUnstar = document.getElementById('btnBulkUnstar');
+  if (btnStar) btnStar.addEventListener('click', () => bulkStar(true));
+  if (btnUnstar) btnUnstar.addEventListener('click', () => bulkStar(false));
 });
 </script>
 {% endblock %}

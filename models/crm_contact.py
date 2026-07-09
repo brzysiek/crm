@@ -37,7 +37,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
                  "OR ct.phone LIKE %s OR co.name LIKE %s)")
         like = f"%{search}%"
         params.extend([like, like, like, like, like])
-    sql += f" ORDER BY {sort_col} {direction}, ct.id DESC"
+    sql += f" ORDER BY ct.is_starred DESC, {sort_col} {direction}, ct.id DESC"
 
     with db.cursor() as cur:
         cur.execute(sql, params)
@@ -131,6 +131,35 @@ def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
         summary = build_diff_summary(old, data, FIELD_LABELS)
         if summary:
             log_history('contact', contact_id, user_id, 'update', summary)
+
+
+def set_starred(contact_id: int, starred: bool) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_contacts SET is_starred=%s WHERE id=%s", (1 if starred else 0, contact_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def bulk_set_starred(contact_ids: list[int], starred: bool) -> int:
+    if not contact_ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(contact_ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE crm_contacts SET is_starred=%s WHERE id IN ({placeholders})",
+                [1 if starred else 0] + contact_ids,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return len(contact_ids)
 
 
 def bulk_delete_contacts(contact_ids: list[int], user_id: int | None) -> int:

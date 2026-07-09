@@ -1790,6 +1790,34 @@ def api_crm_companies_bulk():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/crm/companies/bulk-star', methods=['POST'])
+def api_crm_companies_bulk_star():
+    from models.crm_company import bulk_set_starred
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    starred = bool(data.get('starred'))
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych firm.'})
+
+    affected = bulk_set_starred(ids, starred)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/crm/contacts/bulk-star', methods=['POST'])
+def api_crm_contacts_bulk_star():
+    from models.crm_contact import bulk_set_starred
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    starred = bool(data.get('starred'))
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych kontaktów.'})
+
+    affected = bulk_set_starred(ids, starred)
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/crm/contacts/bulk-delete', methods=['POST'])
 def api_crm_contacts_bulk_delete():
     from models.crm_contact import bulk_delete_contacts

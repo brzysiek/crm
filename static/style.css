@@ -1201,6 +1201,14 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .row-partial  { background: var(--warning-bg); }
 .row-unpaid   { background: var(--error-bg); }
 .row-internal { background: var(--surface-secondary); }
+.row-starred  { background: var(--warning-bg); }
+
+.star-toggle {
+  background: none; border: none; cursor: pointer; padding: 0; font-size: 1.3rem;
+  line-height: 1; color: var(--text-muted); vertical-align: middle;
+}
+.star-toggle.starred { color: var(--warning); }
+.star-col { text-align: center; width: 1%; }
 
 .row-txn-linked     { background: var(--success-bg); }
 .row-txn-linked td  { opacity: .75; }

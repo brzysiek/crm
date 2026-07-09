@@ -101,7 +101,7 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
         (SELECT COUNT(*) FROM crm_contacts ct2
            WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL) AS contacts_count
         FROM crm_companies c {' '.join(joins)} WHERE {' AND '.join(where)}"""
-    sql += f" ORDER BY {order_col} {direction}, c.id DESC"
+    sql += f" ORDER BY c.is_starred DESC, {order_col} {direction}, c.id DESC"
 
     with db.cursor() as cur:
         cur.execute(sql, params)
@@ -171,6 +171,35 @@ def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+def set_starred(company_id: int, starred: bool) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_companies SET is_starred=%s WHERE id=%s", (1 if starred else 0, company_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def bulk_set_starred(company_ids: list[int], starred: bool) -> int:
+    if not company_ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(company_ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE crm_companies SET is_starred=%s WHERE id IN ({placeholders})",
+                [1 if starred else 0] + company_ids,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return len(company_ids)
 
 
 def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:

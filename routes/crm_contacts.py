@@ -5,7 +5,7 @@ from flask import Blueprint, Response, flash, redirect, render_template, request
 
 from models.crm_company import RELATION_LABELS, get_company_by_id, get_company_tags
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
-                                  get_contact_by_id, update_contact)
+                                  get_contact_by_id, set_starred, update_contact)
 from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
 from services.vcard import build_vcard
 
@@ -164,6 +164,14 @@ def download_vcard(contact_id):
             f"filename*=UTF-8''{quote(display_name)}.vcf"
         )
     })
+
+
+@bp.route('/<int:contact_id>/toggle-star', methods=['POST'])
+def toggle_star_view(contact_id):
+    contact = get_contact_by_id(contact_id)
+    if contact:
+        set_starred(contact_id, not contact.get('is_starred'))
+    return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
 
 
 @bp.route('/<int:contact_id>/delete', methods=['POST'])
