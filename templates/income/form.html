@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'finance/_layout.html' %}
 {% block title %}{{ title }}{% endblock %}
 
-{% block content %}
+{% block finance_content %}
 <div class="page-header">
   <h1>{{ title }}</h1>
   <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">← Wróć do listy</a>

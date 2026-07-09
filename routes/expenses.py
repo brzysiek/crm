@@ -165,6 +165,7 @@ def list_expenses():
     visible_columns = _visible_expense_columns()
 
     return render_template('expenses/list.html',
+        active_tab='expenses',
         expenses=expenses,
         categories=categories,
         users=users,
@@ -194,6 +195,7 @@ def new_expense():
             for e in errors:
                 flash(e, 'error')
             return render_template('expenses/form.html',
+                active_tab='expenses',
                 expense=request.form, users=users, categories=categories,
                 action=url_for('expenses.new_expense'),
                 title='Nowy wydatek', today=today)
@@ -297,6 +299,7 @@ def new_expense():
                     'responsible_person': session.get('full_name', ''),
                 }
                 return render_template('expenses/form.html',
+                active_tab='expenses',
                     expense=prefill, users=users, categories=categories,
                     action=url_for('expenses.new_expense'),
                     title='Nowy wydatek', today=today)
@@ -347,6 +350,7 @@ def new_expense():
             pass
 
         return render_template('expenses/form.html',
+                active_tab='expenses',
             expense=prefill, users=users, categories=categories,
             action=url_for('expenses.new_expense'),
             title='Nowy wydatek', today=today,
@@ -400,6 +404,7 @@ def new_expense():
             pass
 
     return render_template('expenses/form.html',
+                active_tab='expenses',
         expense=prefill, users=users, categories=categories,
         action=url_for('expenses.new_expense'),
         title='Nowy wydatek', today=today,
@@ -424,6 +429,7 @@ def edit_expense(expense_id):
             for e in errors:
                 flash(e, 'error')
             return render_template('expenses/form.html',
+                active_tab='expenses',
                 expense=request.form, users=users, categories=categories,
                 action=url_for('expenses.edit_expense', expense_id=expense_id),
                 title='Edytuj wydatek', today=today)
@@ -433,6 +439,7 @@ def edit_expense(expense_id):
         return redirect(url_for('expenses.list_expenses'))
 
     return render_template('expenses/form.html',
+                active_tab='expenses',
         expense=expense, users=users, categories=categories,
         action=url_for('expenses.edit_expense', expense_id=expense_id),
         title='Edytuj wydatek', today=today,

@@ -7,7 +7,7 @@ bp = Blueprint('auth', __name__)
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if session.get('user_id'):
-        return redirect(url_for('dashboard.index'))
+        return redirect(url_for('agent.index'))
 
     error = None
     if request.method == 'POST':
@@ -24,7 +24,7 @@ def login():
             session['full_name'] = user.get('full_name') or user['username']
             if remember:
                 session.permanent = True
-            return redirect(url_for('dashboard.index'))
+            return redirect(url_for('agent.index'))
         error = 'Nieprawidłowy login lub hasło.'
 
     return render_template('login.html', error=error)

@@ -153,25 +153,50 @@ a:hover { text-decoration: underline; }
 
 
 .nav-user {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: .75rem;
   justify-self: end;
 }
-.nav-username {
+.nav-user-toggle {
+  color: var(--text-secondary);
+  font-size: .8rem;
+  font-weight: 500;
+  font-family: var(--font);
+  padding: .4rem .9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  cursor: pointer;
+  transition: background var(--speed) var(--curve), color var(--speed) var(--curve);
+}
+.nav-user-toggle:hover {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+}
+.nav-user-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + .4rem);
+  right: 0;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: .35rem;
+  z-index: 110;
+}
+.nav-user.open .nav-user-menu { display: block; }
+.nav-user-menu-item {
+  display: block;
+  padding: .5rem .7rem;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-size: .8rem;
   font-weight: 500;
 }
-.nav-logout {
-  color: var(--text-secondary);
-  font-size: .8rem;
-  padding: .3rem .75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  transition: background var(--speed) var(--curve), color var(--speed) var(--curve);
-}
-.nav-logout:hover {
+.nav-user-menu-item:hover {
   background: var(--surface-secondary);
   color: var(--text-primary);
   text-decoration: none;
@@ -1259,6 +1284,14 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 
 @media (max-width: 680px) {
   .crm-layout, .crm-layout.collapsed { grid-template-columns: 1fr; }
+  .crm-sidebar-toggle { display: none; }
+  .crm-sidebar-nav { flex-direction: row; overflow-x: auto; }
+  .crm-sidebar-label { display: none; }
+  .crm-sidebar-link {
+    flex: 1; justify-content: center; padding: .75rem .5rem;
+    border-bottom: none; border-right: 1px solid var(--border);
+  }
+  .crm-sidebar-link:last-child { border-right: none; }
 }
 
 .crm-sidebar {

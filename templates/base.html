@@ -12,7 +12,7 @@
 <body>
 
 <nav class="navbar">
-  <a href="{{ url_for('dashboard.index') }}" class="navbar-brand">
+  <a href="{{ url_for('agent.index') }}" class="navbar-brand">
     <span class="brand-leaf">⬡</span> {{ app_name }}
   </a>
   <button type="button" class="navbar-toggle" id="navbar-toggle" aria-label="Menu" aria-expanded="false">
@@ -20,52 +20,38 @@
   </button>
   <ul class="navbar-nav">
     <li>
-      <a href="{{ url_for('dashboard.index') }}"
-         class="{{ 'active' if request.endpoint == 'dashboard.index' else '' }}">
-        Dashboard
+      <a href="{{ url_for('agent.index') }}"
+         class="{{ 'active' if request.blueprint == 'agent' else '' }}">
+        Agent
       </a>
     </li>
     <li>
       <a href="{{ url_for('crm_companies.list_companies') }}"
-         class="{{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan') else '' }}">
+         class="{{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
         CRM
       </a>
     </li>
     <li>
-      <a href="{{ url_for('expenses.list_expenses') }}"
-         class="{{ 'active' if request.blueprint == 'expenses' else '' }}">
-        Wydatki
-      </a>
-    </li>
-    <li>
-      <a href="{{ url_for('income.list_incomes') }}"
-         class="{{ 'active' if request.blueprint == 'income' else '' }}">
-        Przychody
-      </a>
-    </li>
-    <li>
-      <a href="#" class="nav-placeholder" title="Wkrótce">Przepływy</a>
-    </li>
-    <li>
-      {% set imports_badge = (bank_pending_count or 0) + (pending_count or 0) + (gdrive_pending_count or 0) %}
-      <a href="{{ url_for('imports.bank') }}"
-         class="{{ 'active' if request.blueprint == 'imports' else '' }}">
-        Importy
+      <a href="{{ url_for('finance.index') }}"
+         class="{{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">
+        Finanse
         {% if imports_badge > 0 %}
           <span class="nav-badge">{{ imports_badge }}</span>
         {% endif %}
       </a>
     </li>
     <li>
-      <a href="{{ url_for('settings.index') }}"
-         class="{{ 'active' if request.blueprint in ('settings','users') else '' }}">
-        Ustawienia
-      </a>
+      <a href="#" class="nav-placeholder" title="Wkrótce">Przepływy</a>
     </li>
   </ul>
-  <div class="nav-user">
-    <span class="nav-username">{{ current_user.full_name or current_user.username }}</span>
-    <a href="{{ url_for('auth.logout') }}" class="nav-logout" title="Wyloguj">Wyloguj</a>
+  <div class="nav-user" id="nav-user">
+    <button type="button" class="nav-user-toggle" id="nav-user-toggle">
+      {{ current_user.full_name or current_user.username }}
+    </button>
+    <div class="nav-user-menu" id="nav-user-menu">
+      <a href="{{ url_for('settings.index') }}" class="nav-user-menu-item">Ustawienia</a>
+      <a href="{{ url_for('auth.logout') }}" class="nav-user-menu-item">Wyloguj</a>
+    </div>
   </div>
 </nav>
 

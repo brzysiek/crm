@@ -19,6 +19,25 @@ function initNavbarToggle() {
 }
 document.addEventListener('DOMContentLoaded', initNavbarToggle);
 
+/* ── Górne menu: rozwijane menu użytkownika (Ustawienia / Wyloguj) ────────────── */
+function initNavUserMenu() {
+  const navUser = document.getElementById('nav-user');
+  const toggle = document.getElementById('nav-user-toggle');
+  if (!navUser || !toggle) return;
+
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+    navUser.classList.toggle('open');
+  });
+
+  document.addEventListener('click', e => {
+    if (navUser.classList.contains('open') && !navUser.contains(e.target)) {
+      navUser.classList.remove('open');
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', initNavUserMenu);
+
 /* ── VAT calculator ──────────────────────────────────────────────────────────── */
 function calcNet() {
   const grossEl = document.getElementById('amount_gross');

@@ -11,7 +11,7 @@ from models.income import (get_income_daily_totals, get_monthly_income_kpi,
                             get_unpaid_incomes)
 from models.user_settings import get_user_setting
 
-bp = Blueprint('dashboard', __name__)
+bp = Blueprint('finance', __name__, url_prefix='/finanse')
 
 EXCLUDED_EXPENSE_CATEGORIES_KEY = 'dashboard_excluded_expense_categories'
 EXCLUDED_INCOME_CATEGORIES_KEY  = 'dashboard_excluded_income_categories'
@@ -82,7 +82,8 @@ def index():
     unpaid_expense_total = sum(float(e['amount_gross'] or 0) for e in unpaid_expenses)
     unpaid_income_total  = sum(float(i['amount_gross'] or 0) for i in unpaid_incomes)
 
-    return render_template('dashboard.html',
+    return render_template('finance/dashboard.html',
+        active_tab='dashboard',
         month=month,
         month_label=f"{MONTHS_PL[mon]} {year}",
         months=_last_months(),

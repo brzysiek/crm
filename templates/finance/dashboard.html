@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'finance/_layout.html' %}
 {% block title %}Dashboard{% endblock %}
 
-{% block content %}
+{% block finance_content %}
 <style>
 .db-row2 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
 @media (max-width: 960px) { .db-row2 { grid-template-columns: repeat(2, 1fr); } }
@@ -21,7 +21,7 @@
 <div class="page-header" style="margin-bottom:1.25rem">
   <h1>Dashboard <span class="text-muted" style="font-size:.9rem;font-weight:400">{{ today|ddmmyyyy }} · {{ month_label }}</span></h1>
   <div class="header-actions">
-    <form class="filter-bar" method="get" action="{{ url_for('dashboard.index') }}" style="margin-bottom:0">
+    <form class="filter-bar" method="get" action="{{ url_for('finance.index') }}" style="margin-bottom:0">
       <select name="month" class="filter-select">
         {% for m in months %}
           <option value="{{ m.value }}" {{ 'selected' if month == m.value }}>{{ m.label }}</option>

@@ -182,6 +182,7 @@ def inject_globals():
         'pending_count':        cnt,
         'bank_pending_count':   bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
+        'imports_badge':        cnt + bank_cnt + gdrive_cnt,
         'app_name':             Config.APP_NAME,
         'vat_rates':            vat_rates,
         'payment_methods':      payment_methods,
@@ -1830,26 +1831,28 @@ def api_set_user_setting(key):
     return jsonify({'ok': True})
 
 
+from routes.agent import bp as agent_bp
 from routes.auth import bp as auth_bp
 from routes.crm_companies import bp as crm_companies_bp
 from routes.crm_contacts import bp as crm_contacts_bp
 from routes.crm_deals import bp as crm_deals_bp
 from routes.crm_plan import bp as crm_plan_bp
 from routes.crm_invoices import bp as crm_invoices_bp
-from routes.dashboard import bp as dashboard_bp
+from routes.finance import bp as finance_bp
 from routes.expenses import bp as expenses_bp
 from routes.imports import bp as imports_bp
 from routes.income import bp as income_bp
 from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
 
+app.register_blueprint(agent_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(crm_companies_bp)
 app.register_blueprint(crm_contacts_bp)
 app.register_blueprint(crm_deals_bp)
 app.register_blueprint(crm_plan_bp)
 app.register_blueprint(crm_invoices_bp)
-app.register_blueprint(dashboard_bp)
+app.register_blueprint(finance_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(imports_bp)
 app.register_blueprint(income_bp)

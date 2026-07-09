@@ -146,6 +146,7 @@ def list_incomes():
     visible_columns = _visible_income_columns()
 
     return render_template('income/list.html',
+        active_tab='income',
         incomes=incomes,
         kpi=kpi,
         categories=categories,
@@ -172,6 +173,7 @@ def new_income():
             for e in errors:
                 flash(e, 'error')
             return render_template('income/form.html',
+                active_tab='income',
                 income=request.form, categories=categories,
                 action=url_for('income.new_income'),
                 title='Nowy przychód', today=today)
@@ -274,6 +276,7 @@ def new_income():
                     'paid_by':       session.get('full_name', ''),
                 }
                 return render_template('income/form.html',
+                active_tab='income',
                     income=prefill, categories=categories,
                     action=url_for('income.new_income'),
                     title='Nowy przychód', today=today)
@@ -323,6 +326,7 @@ def new_income():
             pass
 
         return render_template('income/form.html',
+                active_tab='income',
             income=prefill, categories=categories,
             action=url_for('income.new_income'),
             title='Nowy przychód', today=today,
@@ -374,6 +378,7 @@ def new_income():
             pass
 
     return render_template('income/form.html',
+                active_tab='income',
         income=prefill, categories=categories,
         action=url_for('income.new_income'),
         title='Nowy przychód', today=today,
@@ -397,6 +402,7 @@ def edit_income(income_id):
             for e in errors:
                 flash(e, 'error')
             return render_template('income/form.html',
+                active_tab='income',
                 income=request.form, categories=categories,
                 action=url_for('income.edit_income', income_id=income_id),
                 title='Edytuj przychód', today=today)
@@ -406,6 +412,7 @@ def edit_income(income_id):
         return redirect(url_for('income.list_incomes'))
 
     return render_template('income/form.html',
+                active_tab='income',
         income=income, categories=categories,
         action=url_for('income.edit_income', income_id=income_id),
         title='Edytuj przychód', today=today,
