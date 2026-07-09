@@ -38,6 +38,26 @@ function initNavUserMenu() {
 }
 document.addEventListener('DOMContentLoaded', initNavUserMenu);
 
+/* ── CRM: domyślnie zwinięte paski filtrów na urządzeniach mobilnych ──────────── */
+function initFilterBarCollapse() {
+  document.querySelectorAll('.filter-bar').forEach(bar => {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'filter-bar-toggle';
+    toggle.textContent = '🔍 Filtry';
+    toggle.setAttribute('aria-expanded', 'false');
+    bar.classList.add('filter-bar-collapsible');
+    bar.parentNode.insertBefore(toggle, bar);
+
+    toggle.addEventListener('click', () => {
+      const open = bar.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.textContent = open ? '🔍 Ukryj filtry' : '🔍 Filtry';
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', initFilterBarCollapse);
+
 /* ── VAT calculator ──────────────────────────────────────────────────────────── */
 function calcNet() {
   const grossEl = document.getElementById('amount_gross');
