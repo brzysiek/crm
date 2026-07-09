@@ -88,6 +88,16 @@
     <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">Anuluj</a>
   </div>
 </form>
+
+{% if contact.id %}
+<div class="form-delete-row">
+  <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
+        class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if contact.company_id else 'false' }})">
+    <input type="hidden" name="archive_company" value="0">
+    <button type="submit" class="link-danger">Usuń kontakt</button>
+  </form>
+</div>
+{% endif %}
 </div>
 {% endblock %}
 

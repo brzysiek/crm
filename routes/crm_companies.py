@@ -139,13 +139,16 @@ def edit_company(company_id):
         flash('Firma została zaktualizowana.', 'success')
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
+    from models.crm_contact import get_all_contacts
+
     return render_template('crm/companies/form.html',
         active_tab='companies', company=company, owners=owners,
         tags=get_company_tags(company_id, 'tag'),
         industries=get_company_tags(company_id, 'industry'),
         source=get_company_tags(company_id, 'source'),
         action=url_for('crm_companies.edit_company', company_id=company_id),
-        title='Edytuj firmę', relation_labels=RELATION_LABELS)
+        title='Edytuj firmę', relation_labels=RELATION_LABELS,
+        contacts_count=len(get_all_contacts(company_id=company_id)))
 
 
 @bp.route('/<int:company_id>')
