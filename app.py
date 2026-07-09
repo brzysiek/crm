@@ -178,12 +178,22 @@ def inject_globals():
             {'value': 'transfer', 'label': 'Przelew / karta'},
             {'value': 'cash',     'label': 'Gotówka'},
         ]
+    try:
+        from models.settings import get_setting
+        app_name   = get_setting('app_name') or Config.APP_NAME
+        logo_main  = get_setting('logo_main') or None
+        logo_thumb = get_setting('logo_thumb') or None
+    except Exception as _e:
+        app.logger.error('inject_globals: get appearance settings failed: %s', _e)
+        app_name, logo_main, logo_thumb = Config.APP_NAME, None, None
     return {
         'pending_count':        cnt,
         'bank_pending_count':   bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
         'imports_badge':        cnt + bank_cnt + gdrive_cnt,
-        'app_name':             Config.APP_NAME,
+        'app_name':             app_name,
+        'logo_main':            logo_main,
+        'logo_thumb':           logo_thumb,
         'vat_rates':            vat_rates,
         'payment_methods':      payment_methods,
         'build_id':             _BUILD_ID,
@@ -193,6 +203,58 @@ def inject_globals():
             'full_name': session.get('full_name', ''),
         },
     }
+
+
+def _parse_data_uri(data_uri):
+    m = re.match(r'^data:([^;]+);base64,(.+)$', data_uri, re.DOTALL)
+    if not m:
+        return None, None
+    return m.group(1), m.group(2)
+
+
+@app.route('/branding/icon')
+def branding_icon():
+    import base64
+    from models.settings import get_setting
+    data_uri = get_setting('logo_thumb') or get_setting('logo_main')
+    mimetype, b64data = _parse_data_uri(data_uri or '')
+    if not mimetype:
+        return '', 404
+    try:
+        img_bytes = base64.b64decode(b64data)
+    except Exception:
+        return '', 404
+    resp = Response(img_bytes, mimetype=mimetype)
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    return resp
+
+
+@app.route('/manifest.webmanifest')
+def web_manifest():
+    from models.settings import get_setting
+    name = get_setting('app_name') or Config.APP_NAME
+    data_uri = get_setting('logo_thumb') or get_setting('logo_main') or ''
+    mimetype, _ = _parse_data_uri(data_uri)
+    icons = []
+    if mimetype:
+        icon_url = url_for('branding_icon')
+        sizes = 'any' if mimetype == 'image/svg+xml' else '192x192 512x512'
+        icons.append({'src': icon_url, 'sizes': sizes, 'type': mimetype, 'purpose': 'any'})
+        if mimetype != 'image/svg+xml':
+            icons.append({'src': icon_url, 'sizes': sizes, 'type': mimetype, 'purpose': 'maskable'})
+    manifest = {
+        'name':             name,
+        'short_name':       name,
+        'start_url':        url_for('agent.index'),
+        'scope':            url_for('agent.index'),
+        'display':          'standalone',
+        'background_color': '#ffffff',
+        'theme_color':       '#3b82f6',
+        'icons':            icons,
+    }
+    resp = jsonify(manifest)
+    resp.headers['Content-Type'] = 'application/manifest+json'
+    return resp
 
 
 @app.route('/api/fakturownia/invoices/<int:inv_id>/details')

@@ -1,0 +1,57 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<h2>Wygląd aplikacji</h2>
+
+<div class="settings-section">
+  <h3>Nazwa i logo</h3>
+  <form method="post" action="{{ url_for('settings.appearance') }}" enctype="multipart/form-data">
+
+    <div class="form-group">
+      <label for="app_name">Nazwa aplikacji</label>
+      <input type="text" id="app_name" name="app_name" value="{{ cfg.app_name or app_name }}">
+      <small class="text-muted">Widoczna w tytule karty przeglądarki i obok logo w górnym menu.</small>
+    </div>
+
+    <div class="form-group">
+      <label>Logo główne (górne menu)</label>
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.5rem">
+        {% if cfg.logo_main %}
+          <img src="{{ cfg.logo_main }}" alt="Logo główne" style="height:40px;border-radius:6px;border:1px solid var(--border)">
+          <label class="checkbox-label" style="margin:0">
+            <input type="checkbox" name="remove_logo_main" value="1"> Usuń obecne logo
+          </label>
+        {% else %}
+          <span class="text-muted small">Brak ustawionego logo — używany jest domyślny symbol ⬡.</span>
+        {% endif %}
+      </div>
+      <input type="file" name="logo_main" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+      <small class="text-muted">PNG/JPG/SVG/WEBP, maks. 1.5 MB.</small>
+    </div>
+
+    <div class="form-group">
+      <label>Logo — miniatura (ikona przeglądarki i aplikacji PWA)</label>
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.5rem">
+        {% if cfg.logo_thumb %}
+          <img src="{{ cfg.logo_thumb }}" alt="Miniatura logo" style="height:32px;width:32px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">
+          <label class="checkbox-label" style="margin:0">
+            <input type="checkbox" name="remove_logo_thumb" value="1"> Usuń obecną miniaturę
+          </label>
+        {% else %}
+          <span class="text-muted small">Brak ustawionej miniatury — używana jest domyślna ikona przeglądarki.</span>
+        {% endif %}
+      </div>
+      <input type="file" name="logo_thumb" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+      <small class="text-muted">
+        Najlepiej kwadratowy obrazek min. 512×512 px, maks. 1.5 MB. Używana jako favicon,
+        ikona po dodaniu aplikacji do ekranu głównego (telefon/PWA) oraz ikona zainstalowanej aplikacji.
+      </small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

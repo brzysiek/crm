@@ -38,6 +38,52 @@ def general():
     return render_template('settings/general.html', active_tab='general', cfg=cfg)
 
 
+_ALLOWED_LOGO_MIMES = {
+    'image/png', 'image/jpeg', 'image/svg+xml', 'image/webp',
+    'image/x-icon', 'image/vnd.microsoft.icon',
+}
+_MAX_LOGO_BYTES = 1_500_000
+
+
+@bp.route('/appearance', methods=['GET', 'POST'])
+def appearance():
+    import base64
+    from models.settings import get_all_settings, set_many
+
+    if request.method == 'POST':
+        data = {}
+
+        name = request.form.get('app_name', '').strip()
+        if name:
+            data['app_name'] = name
+        else:
+            flash('Nazwa aplikacji nie może być pusta.', 'error')
+
+        for field in ('logo_main', 'logo_thumb'):
+            if request.form.get(f'remove_{field}') == '1':
+                data[field] = ''
+                continue
+            f = request.files.get(field)
+            if f and f.filename:
+                if f.mimetype not in _ALLOWED_LOGO_MIMES:
+                    flash(f'Nieobsługiwany format pliku ({f.filename}).', 'error')
+                    continue
+                img_bytes = f.read()
+                if len(img_bytes) > _MAX_LOGO_BYTES:
+                    flash(f'Plik jest za duży ({f.filename}), maks. 1.5 MB.', 'error')
+                    continue
+                encoded = base64.b64encode(img_bytes).decode('ascii')
+                data[field] = f'data:{f.mimetype};base64,{encoded}'
+
+        if data:
+            set_many(data)
+            flash('Ustawienia wyglądu zostały zapisane.', 'success')
+        return redirect(url_for('settings.appearance'))
+
+    cfg = get_all_settings()
+    return render_template('settings/appearance.html', active_tab='appearance', cfg=cfg)
+
+
 @bp.route('/logs')
 def logs():
     return render_template('settings/logs.html', active_tab='logs')

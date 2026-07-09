@@ -50,7 +50,7 @@ INSERT IGNORE INTO dictionary_items (dict_type, value, label, sort_order) VALUES
 -- ── Ustawienia aplikacji ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS settings (
     `key`      VARCHAR(128) PRIMARY KEY,
-    value      TEXT,
+    value      MEDIUMTEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

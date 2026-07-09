@@ -7,13 +7,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="manifest" href="{{ url_for('web_manifest') }}">
+  <meta name="theme-color" content="#3b82f6">
+  {% if logo_thumb or logo_main %}
+  <link rel="icon" href="{{ url_for('branding_icon') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('branding_icon') }}">
+  {% endif %}
   {% block head_extra %}{% endblock %}
 </head>
 <body>
 
 <nav class="navbar">
   <a href="{{ url_for('agent.index') }}" class="navbar-brand">
-    <span class="brand-leaf">⬡</span> {{ app_name }}
+    {% if logo_main %}
+      <img src="{{ logo_main }}" alt="{{ app_name }}" class="navbar-logo-img">
+    {% else %}
+      <span class="brand-leaf">⬡</span>
+    {% endif %}
+    {{ app_name }}
   </a>
   <button type="button" class="navbar-toggle" id="navbar-toggle" aria-label="Menu" aria-expanded="false">
     <span></span><span></span><span></span>

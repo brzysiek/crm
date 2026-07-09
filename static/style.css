@@ -114,6 +114,13 @@ a:hover { text-decoration: underline; }
   color: transparent;
   font-size: 1.2rem;
 }
+.navbar-logo-img {
+  height: 28px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  border-radius: 6px;
+}
 
 .navbar-nav {
   display: flex;
