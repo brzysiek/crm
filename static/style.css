@@ -1588,6 +1588,9 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   flex: 1;
 }
 .file-name-btn {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   background: none;
   border: none;
   cursor: pointer;
@@ -1725,7 +1728,21 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
 .detail-grid-narrow-left { grid-template-columns: 1fr 2fr; }
 @media (max-width: 900px) { .detail-grid-narrow-left { grid-template-columns: 1fr; } }
+.detail-grid > div { min-width: 0; }
 .detail-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .25rem; }
+
+@media (max-width: 680px) {
+  .header-actions { flex-wrap: wrap; }
+  .detail-header h1 { font-size: 1.15rem; }
+  .detail-subtitle { font-size: .82rem; }
+  .inv-section h4, .inv-section-header h4 { font-size: 11px; }
+  .inv-dl dt, .inv-dl dd { font-size: .8rem; }
+  .data-table { font-size: .78rem; }
+  .note-body, .history-item .note-body { font-size: .82rem; }
+  .note-meta, .history-meta { font-size: .7rem; }
+  .file-name-btn { font-size: .82rem; }
+  .badge { font-size: .72rem; }
+}
 
 /* ── CRM: kanban (Plan, lista interesów) ───────────────────────────────────────── */
 .kanban-board {
