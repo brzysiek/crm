@@ -172,6 +172,36 @@ def get_source_contact_matches(names: list[str]) -> dict[str, dict]:
     return {r['full_name_lower']: r for r in rows}
 
 
+def get_source_company_matches(names: list[str], exclude_company_id: int | None = None) -> dict[str, dict]:
+    """Dopasowuje wartości źródła do istniejących firm po nazwie lub nazwie skróconej
+    (case-insensitive). Zwraca mapę {nazwa_źródła_lower: firma}."""
+    names = [n.strip() for n in (names or []) if n and n.strip()]
+    if not names:
+        return {}
+    lower_names = [n.lower() for n in names]
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(lower_names))
+    sql = f"""SELECT id, name, short_name, relation_type, created_at,
+                     LOWER(name) AS name_lower, LOWER(short_name) AS short_name_lower
+              FROM crm_companies
+              WHERE archived_at IS NULL
+                AND (LOWER(name) IN ({placeholders}) OR LOWER(short_name) IN ({placeholders}))"""
+    params = lower_names + lower_names
+    if exclude_company_id:
+        sql += " AND id != %s"
+        params.append(exclude_company_id)
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    result = {}
+    for r in rows:
+        if r['name_lower'] in lower_names:
+            result[r['name_lower']] = r
+        if r['short_name_lower'] and r['short_name_lower'] in lower_names:
+            result.setdefault(r['short_name_lower'], r)
+    return result
+
+
 def get_companies_referred_by_contact(contact_id: int) -> list[dict]:
     """Firmy, których źródłem jest polecenie od danego kontaktu (dopasowanie
     wartości źródła po imieniu i nazwisku kontaktu)."""
@@ -191,24 +221,60 @@ def get_companies_referred_by_contact(contact_id: int) -> list[dict]:
         return list(cur.fetchall())
 
 
+def get_companies_referred_by_company(company_id: int) -> list[dict]:
+    """Firmy, których źródłem jest polecenie od danej firmy (dopasowanie
+    wartości źródła po nazwie lub nazwie skróconej firmy)."""
+    company = get_company_by_id(company_id)
+    if not company:
+        return []
+    names = {company['name']}
+    if company.get('short_name'):
+        names.add(company['short_name'])
+    names_lower = [n.lower() for n in names]
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(names_lower))
+    with db.cursor() as cur:
+        cur.execute(
+            f"""SELECT DISTINCT c.id, c.name, c.short_name, c.relation_type, c.created_at
+                FROM crm_companies c
+                JOIN crm_company_tags cct ON cct.company_id = c.id
+                JOIN crm_tags t ON t.id = cct.tag_id AND t.kind = 'source'
+                WHERE LOWER(t.name) IN ({placeholders})
+                  AND c.archived_at IS NULL AND c.id != %s
+                ORDER BY c.created_at DESC""",
+            names_lower + [company_id]
+        )
+        return list(cur.fetchall())
+
+
 def _log_source_referrals(company_id: int, company_name: str, source_names: list[str],
                            user_id: int | None, previous_names: list[str] | None = None) -> None:
-    """Loguje w historii firmy i kontaktu fakt polecenia, gdy nowo dodana wartość
-    źródła odpowiada istniejącemu kontaktowi."""
+    """Loguje w historii firmy, kontaktu lub firmy polecającej fakt polecenia,
+    gdy nowo dodana wartość źródła odpowiada istniejącemu kontaktowi lub firmie."""
     previous_lower = {n.strip().lower() for n in (previous_names or []) if n and n.strip()}
     new_names = [n for n in (source_names or []) if n and n.strip() and n.strip().lower() not in previous_lower]
     if not new_names:
         return
-    matches = get_source_contact_matches(new_names)
+    contact_matches = get_source_contact_matches(new_names)
+    remaining = [n for n in new_names if n.strip().lower() not in contact_matches]
+    company_matches = get_source_company_matches(remaining, exclude_company_id=company_id) if remaining else {}
     for name in new_names:
-        contact = matches.get(name.strip().lower())
-        if not contact:
+        key = name.strip().lower()
+        contact = contact_matches.get(key)
+        if contact:
+            contact_name = f"{contact['first_name']} {contact['last_name']}"
+            log_history('company', company_id, user_id, 'update',
+                        f"Firma polecona przez kontakt „{contact_name}”.")
+            log_history('contact', contact['id'], user_id, 'update',
+                        f"Polecił(a) firmę „{company_name}”.")
             continue
-        contact_name = f"{contact['first_name']} {contact['last_name']}"
-        log_history('company', company_id, user_id, 'update',
-                    f"Firma polecona przez kontakt „{contact_name}”.")
-        log_history('contact', contact['id'], user_id, 'update',
-                    f"Polecił(a) firmę „{company_name}”.")
+        ref_company = company_matches.get(key)
+        if ref_company:
+            ref_name = ref_company['short_name'] or ref_company['name']
+            log_history('company', company_id, user_id, 'update',
+                        f"Firma polecona przez firmę „{ref_name}”.")
+            log_history('company', ref_company['id'], user_id, 'update',
+                        f"Poleciła firmę „{company_name}”.")
 
 
 def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:

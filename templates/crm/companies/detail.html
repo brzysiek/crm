@@ -80,9 +80,13 @@
           <div class="detail-tags">
             {% for s in source %}
               {% set src_contact = source_contacts.get(s.lower()) %}
+              {% set src_company = source_companies.get(s.lower()) %}
               {% if src_contact %}
               <a href="{{ url_for('crm_contacts.view_contact', contact_id=src_contact.id) }}"
                  class="badge badge-blue" title="Polecający: {{ src_contact.first_name }} {{ src_contact.last_name }}">{{ s }}</a>
+              {% elif src_company %}
+              <a href="{{ url_for('crm_companies.view_company', company_id=src_company.id) }}"
+                 class="badge badge-blue" title="Polecająca firma: {{ src_company.short_name or src_company.name }}">{{ s }}</a>
               {% else %}
               <span class="badge badge-outline">{{ s }}</span>
               {% endif %}
@@ -155,6 +159,33 @@
         </div>
         {% else %}
         <p class="text-muted small">Brak interesów przypisanych do tej firmy.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Otrzymane polecenia</h4>
+      </div>
+      <div style="padding:.85rem">
+        {% if referred_companies %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Firma</th><th>Relacja</th></tr></thead>
+            <tbody>
+              {% for c in referred_companies %}
+              <tr>
+                <td><a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or c.name }}</a></td>
+                <td><span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[c.relation_type] }}">
+                  {{ relation_labels[c.relation_type] }}
+                </span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Ta firma nie poleciła jeszcze żadnej firmy.</p>
         {% endif %}
       </div>
     </div>

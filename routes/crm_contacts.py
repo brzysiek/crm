@@ -3,7 +3,8 @@ from urllib.parse import quote
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 
-from models.crm_company import (RELATION_LABELS, get_companies_referred_by_contact,
+from models.crm_company import (RELATION_LABELS, get_companies_referred_by_company,
+                                  get_companies_referred_by_contact,
                                   get_company_by_id, get_company_tags)
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, set_starred, update_contact)
@@ -152,7 +153,11 @@ def view_contact(contact_id):
             h['source_label'] = f"Interes: {deal['name']}" if deal else 'Interes'
 
     activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
-    referred_companies = get_companies_referred_by_contact(contact_id)
+    referred_by_id = {c['id']: c for c in get_companies_referred_by_contact(contact_id)}
+    if contact.get('company_id'):
+        for c in get_companies_referred_by_company(contact['company_id']):
+            referred_by_id.setdefault(c['id'], c)
+    referred_companies = sorted(referred_by_id.values(), key=lambda c: c['created_at'], reverse=True)
 
     return render_template('crm/contacts/detail.html',
         active_tab='contacts', contact=contact, company=company, company_tags=company_tags,
