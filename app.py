@@ -1862,6 +1862,7 @@ def api_crm_files_upload():
     from models.crm_notes import log_history
     from models.settings import get_setting
     from services.gdrive import GoogleDriveClient
+    from services.images import resize_jpeg_if_needed
 
     company_id = request.form.get('company_id', type=int)
     contact_id = request.form.get('contact_id', type=int)
@@ -1907,6 +1908,8 @@ def api_crm_files_upload():
     for f, ext in valid_files:
         content = f.read()
         mime_type = ALLOWED_EXTENSIONS[ext]
+        if ext in ('jpg', 'jpeg'):
+            content = resize_jpeg_if_needed(content)
         try:
             result = client.upload_file(f.filename, mime_type, content, files_folder_id)
         except Exception as e:
