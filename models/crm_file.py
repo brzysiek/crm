@@ -24,15 +24,15 @@ def _valid_user_id(user_id: int | None) -> int | None:
 
 
 def add_file(company_id: int, contact_id: int | None, file_name: str, drive_file_id: str,
-             mime_type: str, file_size: int, user_id: int | None) -> int:
+             mime_type: str, file_size: int, user_id: int | None, category: str = 'file') -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_files
-                   (company_id, contact_id, file_name, drive_file_id, mime_type, file_size, user_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (company_id, contact_id, file_name, drive_file_id, mime_type, file_size,
+                   (company_id, contact_id, category, file_name, drive_file_id, mime_type, file_size, user_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (company_id, contact_id, category, file_name, drive_file_id, mime_type, file_size,
                  _valid_user_id(user_id))
             )
         db.commit()
@@ -49,11 +49,25 @@ def get_files_for_company(company_id: int) -> list[dict]:
             """SELECT f.*, u.full_name AS user_name
                FROM crm_files f
                LEFT JOIN users u ON u.id = f.user_id
-               WHERE f.company_id=%s
+               WHERE f.company_id=%s AND f.category='file'
                ORDER BY f.created_at DESC, f.id DESC""",
             (company_id,)
         )
         return cur.fetchall()
+
+
+def get_business_card(contact_id: int) -> dict | None:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT f.*, u.full_name AS user_name
+               FROM crm_files f
+               LEFT JOIN users u ON u.id = f.user_id
+               WHERE f.contact_id=%s AND f.category='business_card'
+               ORDER BY f.id DESC LIMIT 1""",
+            (contact_id,)
+        )
+        return cur.fetchone()
 
 
 def get_file_by_id(file_id: int) -> dict | None:

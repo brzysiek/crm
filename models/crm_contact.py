@@ -4,7 +4,7 @@ from services.text_utils import format_phone
 
 FIELD_LABELS = {
     'first_name': 'Imię', 'last_name': 'Nazwisko', 'position': 'Stanowisko',
-    'email': 'Email', 'phone': 'Telefon', 'business_card_url': 'Wizytówka',
+    'email': 'Email', 'phone': 'Telefon',
     'linkedin_url': 'LinkedIn', 'description': 'Opis',
 }
 
@@ -25,7 +25,11 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "   WHERE cct.company_id=co.id AND t.kind='tag') AS company_tags_list, "
            "(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') "
            "   FROM crm_company_tags cct JOIN crm_tags t ON t.id=cct.tag_id "
-           "   WHERE cct.company_id=co.id AND t.kind='industry') AS company_industries_list "
+           "   WHERE cct.company_id=co.id AND t.kind='industry') AS company_industries_list, "
+           "(SELECT f.id FROM crm_files f WHERE f.contact_id=ct.id AND f.category='business_card' "
+           "   ORDER BY f.id DESC LIMIT 1) AS business_card_file_id, "
+           "(SELECT f.mime_type FROM crm_files f WHERE f.contact_id=ct.id AND f.category='business_card' "
+           "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
            "WHERE ct.archived_at IS NULL")
     params = []
@@ -84,13 +88,13 @@ def create_contact(data: dict, user_id: int | None) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_contacts
-                   (company_id, first_name, last_name, position, email, phone, business_card_url,
+                   (company_id, first_name, last_name, position, email, phone,
                     linkedin_url, description)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data.get('company_id') or None, data['first_name'], data['last_name'],
                     data.get('position') or None, data.get('email') or None,
-                    data.get('phone') or None, data.get('business_card_url') or None,
+                    data.get('phone') or None,
                     data.get('linkedin_url') or None, data.get('description') or None,
                 )
             )
@@ -113,12 +117,12 @@ def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
             cur.execute(
                 """UPDATE crm_contacts SET
                    company_id=%s, first_name=%s, last_name=%s, position=%s,
-                   email=%s, phone=%s, business_card_url=%s, linkedin_url=%s, description=%s
+                   email=%s, phone=%s, linkedin_url=%s, description=%s
                    WHERE id=%s""",
                 (
                     data.get('company_id') or None, data['first_name'], data['last_name'],
                     data.get('position') or None, data.get('email') or None,
-                    data.get('phone') or None, data.get('business_card_url') or None,
+                    data.get('phone') or None,
                     data.get('linkedin_url') or None, data.get('description') or None,
                     contact_id,
                 )

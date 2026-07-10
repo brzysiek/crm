@@ -44,8 +44,6 @@
         </dd>
         <dt>Email</dt><dd>{{ contact.email or '—' }}</dd>
         <dt>Telefon</dt><dd>{{ contact.phone|phone_link }}</dd>
-        <dt>Wizytówka</dt>
-        <dd>{% if contact.business_card_url %}<a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">Zobacz skan</a>{% else %}—{% endif %}</dd>
         <dt>LinkedIn</dt>
         <dd>{% if contact.linkedin_url %}<a href="{{ contact.linkedin_url if contact.linkedin_url.startswith('http') else 'https://' ~ contact.linkedin_url }}" target="_blank" rel="noopener">{{ contact.linkedin_url }}</a>{% else %}—{% endif %}</dd>
         <dt>Opis</dt><dd>{{ contact.description or '—' }}</dd>
@@ -91,17 +89,44 @@
   </div>
 
   <div>
-    {% if contact.business_card_url %}
     <div class="inv-section" style="margin-bottom:1rem">
       <h4>Wizytówka</h4>
       <div style="padding:.85rem">
-        <a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">
-          <img src="{{ contact.business_card_url|drive_image_url }}" alt="Wizytówka"
-               style="max-width:100%;border-radius:8px;display:block">
-        </a>
+        {% if not contact.company_id %}
+        <p class="text-muted small">Ten kontakt nie jest przypisany do firmy — nie można dodać wizytówki.</p>
+        {% else %}
+          {% if business_card %}
+            {% if business_card.mime_type in ('image/jpeg', 'image/png') %}
+            <a href="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" target="_blank" rel="noopener">
+              <img src="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" alt="Wizytówka"
+                   style="max-width:100%;border-radius:8px;display:block;margin-bottom:.6rem">
+            </a>
+            {% else %}
+            <p class="small" style="margin-bottom:.6rem">
+              <a href="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" target="_blank" rel="noopener">{{ business_card.file_name }}</a>
+            </p>
+            {% endif %}
+            <div style="display:flex; gap:.5rem; align-items:center">
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                Podmień
+                <input type="file" id="businessCardInput" style="display:none"
+                       accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
+              </label>
+              <button type="button" class="btn btn-outline btn-sm" onclick="deleteBusinessCard({{ contact.id }})">Usuń</button>
+              <span id="businessCardStatus" class="small text-muted"></span>
+            </div>
+          {% else %}
+            <p class="text-muted small" style="margin-bottom:.6rem">Brak wizytówki.</p>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer">
+              + Dodaj wizytówkę
+              <input type="file" id="businessCardInput" style="display:none"
+                     accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
+            </label>
+            <span id="businessCardStatus" class="small text-muted"></span>
+          {% endif %}
+        {% endif %}
       </div>
     </div>
-    {% endif %}
 
     <div class="inv-section">
       <div class="inv-section-header">
@@ -135,4 +160,43 @@
     </div>
   </div>
 </div>
+
+<script>
+function uploadBusinessCard(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  const statusEl = document.getElementById('businessCardStatus');
+  if (statusEl) statusEl.textContent = 'Przesyłanie…';
+  fetch(window.API_BASE + '/api/crm/contacts/{{ contact.id }}/business-card/upload', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        location.reload();
+      } else {
+        if (statusEl) statusEl.textContent = '';
+        alert(data.message || 'Nie udało się przesłać wizytówki.');
+      }
+    })
+    .catch(() => {
+      if (statusEl) statusEl.textContent = '';
+      alert('Błąd sieci przy przesyłaniu wizytówki.');
+    });
+}
+
+function deleteBusinessCard(contactId) {
+  if (!confirm('Usunąć wizytówkę?')) return;
+  fetch(window.API_BASE + '/api/crm/contacts/' + contactId + '/business-card/delete', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        location.reload();
+      } else {
+        alert(data.message || 'Nie udało się usunąć wizytówki.');
+      }
+    })
+    .catch(() => alert('Błąd sieci przy usuwaniu wizytówki.'));
+}
+</script>
 {% endblock %}

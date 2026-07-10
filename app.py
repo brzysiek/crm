@@ -1962,6 +1962,99 @@ def api_crm_files_delete(file_id):
     return jsonify({'status': 'ok'})
 
 
+@app.route('/api/crm/contacts/<int:contact_id>/business-card/upload', methods=['POST'])
+def api_crm_business_card_upload(contact_id):
+    from models.crm_company import get_company_by_id
+    from models.crm_contact import get_contact_by_id
+    from models.crm_file import (ALLOWED_EXTENSIONS, add_file, delete_file as db_delete_file,
+                                  get_business_card)
+    from models.crm_notes import log_history
+    from models.settings import get_setting
+    from services.gdrive import GoogleDriveClient
+    from services.images import resize_jpeg_if_needed
+
+    contact = get_contact_by_id(contact_id)
+    if not contact:
+        return jsonify({'status': 'error', 'message': 'Kontakt nie istnieje.'})
+    if not contact.get('company_id'):
+        return jsonify({'status': 'error',
+                         'message': 'Kontakt nie jest przypisany do firmy — nie można dodać wizytówki.'})
+    company = get_company_by_id(contact['company_id'])
+
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'status': 'error', 'message': 'Nie wybrano pliku.'})
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'status': 'error',
+                         'message': 'Niedozwolony format pliku. Obsługiwane: PDF, DOCX, JPG, PNG, HEIC, XML.'})
+
+    api_token = get_setting('google_drive_api_token', '')
+    crm_root_id = get_setting('google_drive_crm_folder_id', '')
+    if not api_token or not crm_root_id:
+        return jsonify({'status': 'error',
+                         'message': 'Skonfiguruj Google Drive w Ustawieniach (token oraz ID folderu CRM).'})
+
+    content = f.read()
+    mime_type = ALLOWED_EXTENSIONS[ext]
+    if ext in ('jpg', 'jpeg'):
+        content = resize_jpeg_if_needed(content)
+
+    try:
+        client = GoogleDriveClient(api_token, crm_root_id)
+        crm_folder_id = client.find_or_create_folder('CRM', crm_root_id)
+        folder_name = company.get('short_name') or company.get('name')
+        company_folder_id = client.find_or_create_folder(folder_name, crm_folder_id)
+        cards_folder_id = client.find_or_create_folder('wizytówki', company_folder_id)
+        result = client.upload_file(f.filename, mime_type, content, cards_folder_id)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Błąd przesyłania wizytówki: {e}'})
+
+    existing = get_business_card(contact_id)
+    if existing:
+        try:
+            client.delete_file(existing['drive_file_id'])
+        except Exception as e:
+            app.logger.warning('api_crm_business_card_upload: nie udało się usunąć starej wizytówki '
+                                'z Drive (id=%s): %s', existing['id'], e)
+        db_delete_file(existing['id'])
+
+    add_file(contact['company_id'], contact_id, f.filename, result['id'], mime_type, len(content),
+             session.get('user_id'), category='business_card')
+
+    action_word = 'Zaktualizowano' if existing else 'Dodano'
+    log_history('contact', contact_id, session.get('user_id'), 'file',
+                f'{action_word} wizytówkę: {f.filename}')
+
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/crm/contacts/<int:contact_id>/business-card/delete', methods=['POST'])
+def api_crm_business_card_delete(contact_id):
+    from models.crm_file import delete_file as db_delete_file, get_business_card
+    from models.crm_notes import log_history
+    from models.settings import get_setting
+    from services.gdrive import GoogleDriveClient
+
+    existing = get_business_card(contact_id)
+    if not existing:
+        return jsonify({'status': 'error', 'message': 'Brak wizytówki do usunięcia.'})
+
+    api_token = get_setting('google_drive_api_token', '')
+    crm_root_id = get_setting('google_drive_crm_folder_id', '')
+    try:
+        client = GoogleDriveClient(api_token, crm_root_id)
+        client.delete_file(existing['drive_file_id'])
+    except Exception as e:
+        app.logger.warning('api_crm_business_card_delete: nie udało się usunąć wizytówki z Drive (id=%s): %s',
+                            existing['id'], e)
+
+    db_delete_file(existing['id'])
+    log_history('contact', contact_id, session.get('user_id'), 'file',
+                f"Usunięto wizytówkę: {existing['file_name']}")
+    return jsonify({'status': 'ok'})
+
+
 @app.route('/api/crm/files/<int:file_id>/download')
 def api_crm_files_download(file_id):
     import unicodedata

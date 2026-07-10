@@ -20,7 +20,6 @@ def _parse_form(form):
         'position': form.get('position', '').strip(),
         'email': form.get('email', '').strip(),
         'phone': form.get('phone', '').strip(),
-        'business_card_url': form.get('business_card_url', '').strip(),
         'linkedin_url': form.get('linkedin_url', '').strip(),
         'description': form.get('description', '').strip(),
         'company_id': form.get('company_id', type=int),
@@ -113,6 +112,7 @@ def view_contact(contact_id):
         return redirect(url_for('crm_contacts.list_contacts'))
 
     from models.crm_deal import get_all_deals, STAGE_BADGE_CLASSES, STAGE_LABELS
+    from models.crm_file import get_business_card
 
     company_tags = []
     company_industries = []
@@ -164,6 +164,7 @@ def view_contact(contact_id):
         can_upload_files=bool(company),
         upload_company_id=company['id'] if company else None,
         upload_contact_id=contact_id,
+        business_card=get_business_card(contact_id),
     )
 
 

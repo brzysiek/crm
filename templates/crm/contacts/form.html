@@ -65,17 +65,10 @@
     </div>
   </div>
 
-  <div class="form-grid form-grid-2">
-    <div class="form-group">
-      <label for="business_card_url">Wizytówka (link)</label>
-      <input type="text" id="business_card_url" name="business_card_url" placeholder="np. link do skanu wizytówki"
-             value="{{ contact.business_card_url or '' }}">
-    </div>
-    <div class="form-group">
-      <label for="linkedin_url">LinkedIn</label>
-      <input type="text" id="linkedin_url" name="linkedin_url" placeholder="np. linkedin.com/in/…"
-             value="{{ contact.linkedin_url or '' }}">
-    </div>
+  <div class="form-group">
+    <label for="linkedin_url">LinkedIn</label>
+    <input type="text" id="linkedin_url" name="linkedin_url" placeholder="np. linkedin.com/in/…"
+           value="{{ contact.linkedin_url or '' }}">
   </div>
 
   <div class="form-group">

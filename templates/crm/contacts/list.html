@@ -58,9 +58,9 @@
                   onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
         </td>
         <td class="card-cell">
-          {% if c.business_card_url %}
+          {% if c.business_card_file_id %}
           <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
-                  onclick="openBusinessCardModal('{{ c.business_card_url|drive_image_url }}')">🪪</button>
+                  onclick="openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
           {% else %}
           <span class="card-circle"></span>
           {% endif %}
@@ -132,9 +132,13 @@
 
 {% block scripts %}
 <script>
-function openBusinessCardModal(url) {
-  document.getElementById('businessCardModalImg').src = url;
-  document.getElementById('businessCardModal').classList.add('open');
+function openBusinessCardModal(url, mime) {
+  if (mime === 'image/jpeg' || mime === 'image/png') {
+    document.getElementById('businessCardModalImg').src = url;
+    document.getElementById('businessCardModal').classList.add('open');
+  } else {
+    window.open(url, '_blank');
+  }
 }
 
 initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu',
