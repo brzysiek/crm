@@ -218,6 +218,8 @@
           <th>Nr faktury</th>
           <th>Termin płatności</th>
           <th class="text-right">Kwota brutto</th>
+          <th class="text-right">Netto</th>
+          <th class="text-right">VAT</th>
           <th class="text-right">Opłacono</th>
           <th></th>
         </tr>
@@ -237,6 +239,8 @@
             {% else %}—{% endif %}
           </td>
           <td class="text-right"><strong>{{ e.amount_gross|pln }}</strong></td>
+          <td class="text-right nowrap">{{ e.amount_net|pln }}</td>
+          <td class="text-right nowrap">{{ (e.amount_gross - e.amount_net)|pln }}</td>
           <td class="text-right">
             <span class="badge {% if e.payment_percent == 0 %}badge-red{% else %}badge-yellow{% endif %}">
               {{ e.payment_percent|int }}%
@@ -253,6 +257,8 @@
         <tr class="table-sum-row">
           <td colspan="4">Suma ({{ unpaid_expenses|length }} pozycji)</td>
           <td class="text-right nowrap">{{ unpaid_expense_total|pln }}</td>
+          <td class="text-right nowrap">{{ unpaid_expenses|sum(attribute='amount_net')|pln }}</td>
+          <td class="text-right nowrap">{{ (unpaid_expense_total - unpaid_expenses|sum(attribute='amount_net'))|pln }}</td>
           <td colspan="2"></td>
         </tr>
       </tfoot>
@@ -285,6 +291,8 @@
           <th>Nr faktury</th>
           <th>Termin płatności</th>
           <th class="text-right">Kwota brutto</th>
+          <th class="text-right">Netto</th>
+          <th class="text-right">VAT</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -304,6 +312,8 @@
             {% else %}—{% endif %}
           </td>
           <td class="text-right"><strong>{{ inc.amount_gross|pln }}</strong></td>
+          <td class="text-right nowrap">{{ inc.amount_net|pln }}</td>
+          <td class="text-right nowrap">{{ (inc.amount_gross - inc.amount_net)|pln }}</td>
           <td>
             {% if inc.payment_status == 'unpaid' %}
               <span class="badge badge-red">Nieopłacone</span>
@@ -322,6 +332,8 @@
         <tr class="table-sum-row">
           <td colspan="4">Suma ({{ unpaid_incomes|length }} pozycji)</td>
           <td class="text-right nowrap">{{ unpaid_income_total|pln }}</td>
+          <td class="text-right nowrap">{{ unpaid_incomes|sum(attribute='amount_net')|pln }}</td>
+          <td class="text-right nowrap">{{ (unpaid_income_total - unpaid_incomes|sum(attribute='amount_net'))|pln }}</td>
           <td colspan="2"></td>
         </tr>
       </tfoot>

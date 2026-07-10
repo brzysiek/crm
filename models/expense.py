@@ -415,7 +415,7 @@ def get_unpaid_expenses(limit: int = 20) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             """SELECT id, date, contractor_name, invoice_number,
-                      description, amount_gross, payment_percent
+                      description, amount_gross, amount_net, payment_percent, payment_due_date
                FROM expenses
                WHERE payment_percent < 100
                ORDER BY date ASC, id DESC

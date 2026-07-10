@@ -353,7 +353,7 @@ def get_unpaid_incomes(limit: int = 20) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             """SELECT id, date, client_name, invoice_number,
-                      description, amount_gross, payment_status
+                      description, amount_gross, amount_net, payment_status, payment_due_date
                FROM incomes
                WHERE payment_status != 'paid'
                ORDER BY date ASC, id DESC
