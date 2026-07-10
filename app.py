@@ -1898,8 +1898,9 @@ def api_crm_files_upload():
 
     try:
         client = GoogleDriveClient(api_token, crm_root_id)
+        crm_folder_id = client.find_or_create_folder('CRM', crm_root_id)
         folder_name = company.get('short_name') or company.get('name')
-        company_folder_id = client.find_or_create_folder(folder_name, crm_root_id)
+        company_folder_id = client.find_or_create_folder(folder_name, crm_folder_id)
         files_folder_id = client.find_or_create_folder('pliki', company_folder_id)
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Błąd Google Drive: {e}'})
