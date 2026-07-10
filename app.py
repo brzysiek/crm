@@ -1905,6 +1905,7 @@ def api_crm_files_upload():
         return jsonify({'status': 'error', 'message': f'Błąd Google Drive: {e}'})
 
     saved = 0
+    saved_names = []
     for f, ext in valid_files:
         content = f.read()
         mime_type = ALLOWED_EXTENSIONS[ext]
@@ -1916,11 +1917,13 @@ def api_crm_files_upload():
             return jsonify({'status': 'error', 'message': f'Błąd przesyłania pliku {f.filename}: {e}'})
         add_file(company_id, contact_id, f.filename, result['id'], mime_type, len(content), session.get('user_id'))
         saved += 1
+        saved_names.append(f.filename)
 
-    summary = f'Dodano {saved} {files_word(saved)}'
-    log_history('company', company_id, session.get('user_id'), 'file', summary)
-    if contact_id:
-        log_history('contact', contact_id, session.get('user_id'), 'file', summary)
+    for name in saved_names:
+        summary = f'Dodano plik: {name}'
+        log_history('company', company_id, session.get('user_id'), 'file', summary)
+        if contact_id:
+            log_history('contact', contact_id, session.get('user_id'), 'file', summary)
 
     message = f'Dodano {saved} {files_word(saved)}.'
     if rejected:
@@ -1932,6 +1935,7 @@ def api_crm_files_upload():
 def api_crm_files_delete(file_id):
     from models.crm_file import delete_file as db_delete_file
     from models.crm_file import get_file_by_id
+    from models.crm_notes import log_history
     from models.settings import get_setting
     from services.gdrive import GoogleDriveClient
 
@@ -1948,6 +1952,12 @@ def api_crm_files_delete(file_id):
         app.logger.warning('api_crm_files_delete: nie udało się usunąć pliku z Drive (id=%s): %s', file_id, e)
 
     db_delete_file(file_id)
+
+    summary = f"Usunięto plik: {rec['file_name']}"
+    log_history('company', rec['company_id'], session.get('user_id'), 'file', summary)
+    if rec.get('contact_id'):
+        log_history('contact', rec['contact_id'], session.get('user_id'), 'file', summary)
+
     return jsonify({'status': 'ok'})
 
 
