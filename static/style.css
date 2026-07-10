@@ -1062,6 +1062,22 @@ input[type="file"]:hover::-webkit-file-upload-button {
   padding: 0;
 }
 
+/* ── Modal notatki (3x większy na desktopie) ──────────────────────────────── */
+.btn-voice-large {
+  width: 100%;
+  padding: 1.1rem 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.voice-note-cta { text-align: center; }
+
+@media (min-width: 761px) {
+  .modal-note {
+    max-width: 1320px;
+    width: 90vw;
+  }
+}
+
 /* ── Modal transakcji (szerszy) ─────────────────────────────────────────────── */
 .modal-txn {
   min-width: min(90vw, 1200px);

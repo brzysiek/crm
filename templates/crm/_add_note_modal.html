@@ -4,32 +4,34 @@
 <button type="button" class="btn btn-primary" onclick="document.getElementById('addNoteModal').classList.add('open')">📝 Notatka</button>
 
 <div id="addNoteModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
+  <div class="modal modal-note">
     <div class="modal-header">
       <h3>Dodaj notatkę</h3>
       <button class="modal-close" onclick="document.getElementById('addNoteModal').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ add_note_url }}">
-        <div class="form-group" style="margin-bottom:.5rem">
-          <textarea name="body" rows="4" placeholder="Dodaj notatkę…" required></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:.5rem">
-          <select name="note_type">
-            {% for key, label in note_type_labels.items() %}
-            <option value="{{ key }}" {% if key == 'other' %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <button type="submit" class="btn btn-outline btn-sm">+ Dodaj notatkę</button>
-      </form>
-
-      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
-        <button type="button" class="btn btn-primary btn-sm" id="btnVoiceNote"
+      <div class="voice-note-cta">
+        <button type="button" class="btn btn-primary btn-voice-large" id="btnVoiceNote"
                 data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}">
           🎙️ Nagraj notatkę głosową
         </button>
-        <span id="voiceNoteStatus" class="small text-muted" style="margin-left:.5rem"></span>
+        <div id="voiceNoteStatus" class="small text-muted" style="margin-top:.5rem"></div>
+      </div>
+
+      <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+        <form method="post" action="{{ add_note_url }}">
+          <div class="form-group" style="margin-bottom:.5rem">
+            <textarea name="body" rows="4" placeholder="Dodaj notatkę…" required></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:.5rem">
+            <select name="note_type">
+              {% for key, label in note_type_labels.items() %}
+              <option value="{{ key }}" {% if key == 'other' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-outline btn-sm">+ Dodaj notatkę</button>
+        </form>
       </div>
     </div>
   </div>
