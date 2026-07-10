@@ -1354,6 +1354,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   border-radius: var(--radius-pill);
   font-weight: 500;
   font-size: .875rem;
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: .35rem;
@@ -1476,6 +1477,14 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   cursor: pointer;
 }
 .tag-suggestion-item:hover, .tag-suggestion-item.active { background: var(--surface-secondary); }
+.tag-suggestion-hint {
+  font-size: .7rem;
+  color: var(--info-text);
+  background: var(--info-bg);
+  border-radius: var(--radius-sm);
+  padding: .05rem .4rem;
+  margin-left: .3rem;
+}
 
 /* ── CRM: wrapper dla pojedynczego pola z podpowiedziami (np. źródło) ──────────── */
 .suggest-wrap { position: relative; }

@@ -3,6 +3,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from models.crm_company import (RELATION_LABELS, create_company, delete_company,
                                   derive_short_name, get_all_companies,
                                   get_company_by_id, get_company_tags,
+                                  get_source_contact_matches,
                                   set_starred, update_company)
 from models.crm_file import get_files_for_company
 from models.crm_notes import add_note, delete_note, get_history_multi, get_notes_multi
@@ -203,11 +204,15 @@ def view_company(company_id):
         street_line or None, company.get('postal_code'), company.get('city'), company.get('country'),
     ]))
 
+    source = get_company_tags(company_id, 'source')
+    source_contacts = get_source_contact_matches(source)
+
     return render_template('crm/companies/detail.html',
         active_tab='companies', company=company, relation_labels=RELATION_LABELS, address=address,
         tags=get_company_tags(company_id, 'tag'),
         industries=get_company_tags(company_id, 'industry'),
-        source=get_company_tags(company_id, 'source'),
+        source=source,
+        source_contacts=source_contacts,
         contacts=contacts,
         deals=deals, stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,

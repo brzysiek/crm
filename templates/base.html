@@ -30,10 +30,10 @@
   </button>
   <ul class="navbar-nav">
     <li class="navbar-dropdown" id="nav-dd-agent">
-      <button type="button"
-              class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'agent' else '' }}">
+      <a href="{{ url_for('agent.index') }}"
+         class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'agent' else '' }}">
         Agent <span class="navbar-dropdown-caret">▾</span>
-      </button>
+      </a>
       <div class="navbar-dropdown-menu">
         <a href="{{ url_for('agent.index') }}"
            class="navbar-dropdown-item {{ 'active' if request.endpoint == 'agent.index' else '' }}">🤖 Asystent</a>
@@ -42,10 +42,10 @@
       </div>
     </li>
     <li class="navbar-dropdown" id="nav-dd-crm">
-      <button type="button"
-              class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
+      <a href="{{ url_for('crm_companies.list_companies') }}"
+         class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
         CRM <span class="navbar-dropdown-caret">▾</span>
-      </button>
+      </a>
       <div class="navbar-dropdown-menu">
         <a href="{{ url_for('crm_companies.list_companies') }}"
            class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_companies' else '' }}">🏢 Firmy</a>
@@ -60,14 +60,14 @@
       </div>
     </li>
     <li class="navbar-dropdown" id="nav-dd-finance">
-      <button type="button"
-              class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">
+      <a href="{{ url_for('finance.index') }}"
+         class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">
         Finanse
         {% if imports_badge > 0 %}
           <span class="nav-badge">{{ imports_badge }}</span>
         {% endif %}
         <span class="navbar-dropdown-caret">▾</span>
-      </button>
+      </a>
       <div class="navbar-dropdown-menu">
         <a href="{{ url_for('finance.index') }}"
            class="navbar-dropdown-item {{ 'active' if request.blueprint == 'finance' else '' }}">📈 Dashboard</a>

@@ -151,6 +151,66 @@ def get_company_tags(company_id: int, kind: str) -> list[str]:
         return [r['name'] for r in cur.fetchall()]
 
 
+def get_source_contact_matches(names: list[str]) -> dict[str, dict]:
+    """Dopasowuje wartości źródła do istniejących kontaktów po imieniu i nazwisku
+    (case-insensitive). Zwraca mapę {nazwa_źródła_lower: kontakt}."""
+    names = [n.strip() for n in (names or []) if n and n.strip()]
+    if not names:
+        return {}
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(names))
+    with db.cursor() as cur:
+        cur.execute(
+            f"""SELECT id, first_name, last_name,
+                       LOWER(CONCAT(first_name, ' ', last_name)) AS full_name_lower
+                FROM crm_contacts
+                WHERE archived_at IS NULL
+                  AND LOWER(CONCAT(first_name, ' ', last_name)) IN ({placeholders})""",
+            [n.lower() for n in names]
+        )
+        rows = cur.fetchall()
+    return {r['full_name_lower']: r for r in rows}
+
+
+def get_companies_referred_by_contact(contact_id: int) -> list[dict]:
+    """Firmy, których źródłem jest polecenie od danego kontaktu (dopasowanie
+    wartości źródła po imieniu i nazwisku kontaktu)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT DISTINCT c.id, c.name, c.short_name, c.relation_type, c.created_at
+               FROM crm_companies c
+               JOIN crm_company_tags cct ON cct.company_id = c.id
+               JOIN crm_tags t ON t.id = cct.tag_id AND t.kind = 'source'
+               JOIN crm_contacts ct
+                    ON LOWER(CONCAT(ct.first_name, ' ', ct.last_name)) = LOWER(t.name)
+               WHERE ct.id = %s AND c.archived_at IS NULL
+               ORDER BY c.created_at DESC""",
+            (contact_id,)
+        )
+        return list(cur.fetchall())
+
+
+def _log_source_referrals(company_id: int, company_name: str, source_names: list[str],
+                           user_id: int | None, previous_names: list[str] | None = None) -> None:
+    """Loguje w historii firmy i kontaktu fakt polecenia, gdy nowo dodana wartość
+    źródła odpowiada istniejącemu kontaktowi."""
+    previous_lower = {n.strip().lower() for n in (previous_names or []) if n and n.strip()}
+    new_names = [n for n in (source_names or []) if n and n.strip() and n.strip().lower() not in previous_lower]
+    if not new_names:
+        return
+    matches = get_source_contact_matches(new_names)
+    for name in new_names:
+        contact = matches.get(name.strip().lower())
+        if not contact:
+            continue
+        contact_name = f"{contact['first_name']} {contact['last_name']}"
+        log_history('company', company_id, user_id, 'update',
+                    f"Firma polecona przez kontakt „{contact_name}”.")
+        log_history('contact', contact['id'], user_id, 'update',
+                    f"Polecił(a) firmę „{company_name}”.")
+
+
 def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:
     tag_ids = get_or_create_tag_ids(kind, names)
     db = get_db()
@@ -211,6 +271,10 @@ def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | No
             continue
         set_company_tags(company_id, kind, current + [name])
         log_history('company', company_id, user_id, 'update', f'Dodano {label.lower()} „{name}”.')
+        if kind == 'source':
+            company = get_company_by_id(company_id)
+            _log_source_referrals(company_id, company['name'] if company else '', [name], user_id,
+                                   previous_names=current)
         affected += 1
     return affected
 
@@ -293,6 +357,8 @@ def create_company(data: dict, user_id: int | None,
         set_company_tags(company_id, 'source', source)
     log_history('company', company_id, user_id, 'create',
                 f"Utworzono firmę „{data['name']}”.")
+    if source:
+        _log_source_referrals(company_id, data['name'], source, user_id)
     return company_id
 
 
@@ -334,7 +400,9 @@ def update_company(company_id: int, data: dict, user_id: int | None,
     if industries is not None:
         set_company_tags(company_id, 'industry', industries)
     if source is not None:
+        previous_source = get_company_tags(company_id, 'source')
         set_company_tags(company_id, 'source', source)
+        _log_source_referrals(company_id, data['name'], source, user_id, previous_names=previous_source)
     if old:
         old_disp = dict(old)
         new_disp = dict(data)

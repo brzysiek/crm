@@ -3,7 +3,8 @@ from urllib.parse import quote
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 
-from models.crm_company import RELATION_LABELS, get_company_by_id, get_company_tags
+from models.crm_company import (RELATION_LABELS, get_companies_referred_by_contact,
+                                  get_company_by_id, get_company_tags)
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, set_starred, update_contact)
 from models.crm_file import get_files_for_company
@@ -151,11 +152,13 @@ def view_contact(contact_id):
             h['source_label'] = f"Interes: {deal['name']}" if deal else 'Interes'
 
     activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
+    referred_companies = get_companies_referred_by_contact(contact_id)
 
     return render_template('crm/contacts/detail.html',
         active_tab='contacts', contact=contact, company=company, company_tags=company_tags,
         company_industries=company_industries, company_source=company_source, relation_labels=RELATION_LABELS,
         deals=deals, stage_labels=STAGE_LABELS,
+        referred_companies=referred_companies,
         stage_badge_classes=STAGE_BADGE_CLASSES,
         activity=activity,
         add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),

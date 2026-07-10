@@ -1757,7 +1757,10 @@ def api_logs_clear():
 def api_crm_suggest():
     kind = request.args.get('type', '')
     q = request.args.get('q', '').strip()
-    if kind in ('tag', 'industry', 'source'):
+    if kind == 'source':
+        from models.crm_tags import suggest_sources
+        return jsonify(suggest_sources(q))
+    if kind in ('tag', 'industry'):
         from models.crm_tags import suggest_tags
         return jsonify(suggest_tags(kind, q))
     return jsonify([])

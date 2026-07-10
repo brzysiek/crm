@@ -78,7 +78,15 @@
         <dd>
           {% if source %}
           <div class="detail-tags">
-            {% for s in source %}<span class="badge badge-outline">{{ s }}</span>{% endfor %}
+            {% for s in source %}
+              {% set src_contact = source_contacts.get(s.lower()) %}
+              {% if src_contact %}
+              <a href="{{ url_for('crm_contacts.view_contact', contact_id=src_contact.id) }}"
+                 class="badge badge-blue" title="Polecający: {{ src_contact.first_name }} {{ src_contact.last_name }}">{{ s }}</a>
+              {% else %}
+              <span class="badge badge-outline">{{ s }}</span>
+              {% endif %}
+            {% endfor %}
           </div>
           {% else %}—{% endif %}
         </dd>

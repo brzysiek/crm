@@ -704,9 +704,11 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-/* ── Górne menu: rozwijane podmenu (CRM / Finanse) ─────────────────────────────
- * Klik na przycisk otwiera/zamyka powiązane podmenu, klik poza nim zamyka je;
- * otwarcie jednego podmenu zamyka pozostałe.
+/* ── Górne menu: rozwijane podmenu (CRM / Finanse / Agent) ─────────────────────
+ * Na desktopie (>880px) przycisk to link — klik przenosi na stronę główną
+ * sekcji, a podmenu z pozostałymi podstronami otwiera się po najechaniu (CSS
+ * :hover). Na mobile klik zamiast nawigacji otwiera/zamyka rozwijane podmenu;
+ * klik poza nim zamyka je, otwarcie jednego zamyka pozostałe.
  */
 function initNavDropdowns() {
   const dropdowns = document.querySelectorAll('.navbar-dropdown');
@@ -716,6 +718,8 @@ function initNavDropdowns() {
     const toggle = dd.querySelector('.navbar-dropdown-toggle');
     if (!toggle) return;
     toggle.addEventListener('click', e => {
+      if (!window.matchMedia('(max-width: 880px)').matches) return;
+      e.preventDefault();
       e.stopPropagation();
       const wasOpen = dd.classList.contains('open');
       dropdowns.forEach(other => other.classList.remove('open'));
@@ -920,14 +924,19 @@ function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
     timer = setTimeout(async () => {
       try {
         const resp = await fetch(window.API_BASE + '/api/crm/suggest?type=' + kind + '&q=' + encodeURIComponent(q));
-        const items = (await resp.json()).filter(it => !values.includes(it));
+        const raw = await resp.json();
+        const items = raw.filter(it => !values.includes(typeof it === 'string' ? it : it.value));
         if (items.length === 0) { closeSuggestions(); return; }
-        suggestBox.innerHTML = items.map(it =>
-          '<div class="tag-suggestion-item">' + crmEsc(it) + '</div>'
-        ).join('');
+        suggestBox.innerHTML = items.map(it => {
+          const isContact = typeof it === 'object' && it.contact_id;
+          const val = typeof it === 'string' ? it : it.value;
+          return '<div class="tag-suggestion-item">' + crmEsc(val) +
+            (isContact ? ' <span class="tag-suggestion-hint">kontakt</span>' : '') + '</div>';
+        }).join('');
         suggestBox.classList.add('open');
         suggestBox.querySelectorAll('.tag-suggestion-item').forEach((el, i) => {
-          el.onclick = () => addValue(items[i]);
+          const val = typeof items[i] === 'string' ? items[i] : items[i].value;
+          el.onclick = () => addValue(val);
         });
       } catch (_) { closeSuggestions(); }
     }, 250);
@@ -967,12 +976,16 @@ function initSuggestInput(inputId, suggestId, kindFn) {
         const resp = await fetch(window.API_BASE + '/api/crm/suggest?type=' + kind + '&q=' + encodeURIComponent(q));
         const items = await resp.json();
         if (items.length === 0) { closeSuggestions(); return; }
-        suggestBox.innerHTML = items.map(it =>
-          '<div class="tag-suggestion-item">' + crmEsc(it) + '</div>'
-        ).join('');
+        suggestBox.innerHTML = items.map(it => {
+          const isContact = typeof it === 'object' && it.contact_id;
+          const val = typeof it === 'string' ? it : it.value;
+          return '<div class="tag-suggestion-item">' + crmEsc(val) +
+            (isContact ? ' <span class="tag-suggestion-hint">kontakt</span>' : '') + '</div>';
+        }).join('');
         suggestBox.classList.add('open');
         suggestBox.querySelectorAll('.tag-suggestion-item').forEach((el, i) => {
-          el.onclick = () => { input.value = items[i]; closeSuggestions(); input.focus(); };
+          const val = typeof items[i] === 'string' ? items[i] : items[i].value;
+          el.onclick = () => { input.value = val; closeSuggestions(); input.focus(); };
         });
       } catch (_) { closeSuggestions(); }
     }, 250);

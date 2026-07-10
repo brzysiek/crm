@@ -150,6 +150,33 @@
       </div>
     </div>
 
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Otrzymane polecenia</h4>
+      </div>
+      <div style="padding:.85rem">
+        {% if referred_companies %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Firma</th><th>Relacja</th></tr></thead>
+            <tbody>
+              {% for c in referred_companies %}
+              <tr>
+                <td><a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or c.name }}</a></td>
+                <td><span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[c.relation_type] }}">
+                  {{ relation_labels[c.relation_type] }}
+                </span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Ten kontakt nie polecił jeszcze żadnej firmy.</p>
+        {% endif %}
+      </div>
+    </div>
+
     <div style="margin-top:1rem">
       {% include 'crm/_activity_feed.html' %}
     </div>
