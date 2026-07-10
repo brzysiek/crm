@@ -119,7 +119,14 @@ class GoogleDriveClient:
 
     def _get(self, path: str, params: dict = None) -> requests.Response:
         url = f'{self.DRIVE_API}{path}'
-        p = {**self._auth_params(), **(params or {})}
+        # supportsAllDrives/includeItemsFromAllDrives: wymagane, żeby pliki/foldery
+        # leżące na Dysku współdzielonym (Shared Drive) w ogóle pojawiały się w wynikach.
+        p = {
+            **self._auth_params(),
+            'supportsAllDrives': 'true',
+            'includeItemsFromAllDrives': 'true',
+            **(params or {}),
+        }
         resp = requests.get(url, headers=self._auth_headers(), params=p, timeout=TIMEOUT)
         _raise_for_status(resp)
         return resp
@@ -168,7 +175,7 @@ class GoogleDriveClient:
     def download_file(self, file_id: str) -> bytes:
         """Download the binary content of a file."""
         url = f'{self.DRIVE_API}/files/{file_id}'
-        p = {**self._auth_params(), 'alt': 'media'}
+        p = {**self._auth_params(), 'alt': 'media', 'supportsAllDrives': 'true'}
         resp = requests.get(url, headers=self._auth_headers(), params=p, timeout=60)
         _raise_for_status(resp)
         return resp.content
@@ -203,7 +210,7 @@ class GoogleDriveClient:
         resp = requests.post(
             f'{self.DRIVE_API}/files',
             headers={**self._auth_headers(), 'Content-Type': 'application/json'},
-            params=self._auth_params(),
+            params={**self._auth_params(), 'supportsAllDrives': 'true'},
             json=body,
             timeout=TIMEOUT,
         )
@@ -234,7 +241,7 @@ class GoogleDriveClient:
         resp = requests.post(
             'https://www.googleapis.com/upload/drive/v3/files',
             headers=headers,
-            params={**self._auth_params(), 'uploadType': 'multipart'},
+            params={**self._auth_params(), 'uploadType': 'multipart', 'supportsAllDrives': 'true'},
             data=body,
             timeout=60,
         )
@@ -246,7 +253,7 @@ class GoogleDriveClient:
         resp = requests.delete(
             f'{self.DRIVE_API}/files/{file_id}',
             headers=self._auth_headers(),
-            params=self._auth_params(),
+            params={**self._auth_params(), 'supportsAllDrives': 'true'},
             timeout=TIMEOUT,
         )
         _raise_for_status(resp)
