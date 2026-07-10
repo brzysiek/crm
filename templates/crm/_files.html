@@ -10,6 +10,7 @@
       {% if upload_contact_id %}<input type="hidden" name="contact_id" value="{{ upload_contact_id }}">{% endif %}
       <div class="form-group" style="margin-bottom:.5rem">
         <input type="file" name="files" multiple accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml">
+        <div class="files-queue" style="margin-top:.5rem"></div>
       </div>
       <button type="submit" class="btn btn-outline btn-sm" id="btnUploadFiles">+ Dodaj pliki</button>
       <span id="filesUploadStatus" class="small text-muted" style="margin-left:.5rem"></span>
@@ -59,10 +60,49 @@
   if (!form) return;
   const statusEl = document.getElementById('filesUploadStatus');
   const btn = document.getElementById('btnUploadFiles');
+  const input = form.querySelector('input[type="file"]');
+  const queueEl = form.querySelector('.files-queue');
+  let queuedFiles = [];
+
+  function renderQueue() {
+    queueEl.innerHTML = '';
+    queuedFiles.forEach((file, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.style.marginRight = '.35rem';
+      chip.style.marginBottom = '.35rem';
+      chip.appendChild(document.createTextNode(file.name));
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'tag-chip-remove';
+      rm.textContent = '✕';
+      rm.addEventListener('click', () => {
+        queuedFiles.splice(i, 1);
+        syncInput();
+        renderQueue();
+      });
+      chip.appendChild(rm);
+      queueEl.appendChild(chip);
+    });
+  }
+
+  function syncInput() {
+    const dt = new DataTransfer();
+    queuedFiles.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+  }
+
+  input.addEventListener('change', function() {
+    Array.from(input.files).forEach(f => {
+      const isDup = queuedFiles.some(q => q.name === f.name && q.size === f.size && q.lastModified === f.lastModified);
+      if (!isDup) queuedFiles.push(f);
+    });
+    syncInput();
+    renderQueue();
+  });
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
-    const input = form.querySelector('input[type="file"]');
     if (!input.files.length) return;
     const fd = new FormData(form);
     btn.disabled = true;
