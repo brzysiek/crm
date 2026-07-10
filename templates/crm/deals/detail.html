@@ -14,7 +14,7 @@
   <div class="header-actions">
     <a href="{{ url_for('crm_deals.edit_deal', deal_id=deal.id) }}" class="btn btn-outline">✎ Edytuj</a>
     <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=deal.id) }}"
-          class="inline-form" onsubmit="return confirm('Usunąć ten interes?')">
+          class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
       <button type="submit" class="btn btn-outline">✕ Usuń</button>
     </form>
     <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">← Lista</a>
@@ -25,7 +25,7 @@
   <div>
 
     <div class="inv-section">
-      <h4>Dane interesu</h4>
+      <h4>Dane deala</h4>
       <dl class="inv-dl">
         <dt>Etap</dt>
         <dd><span class="badge {{ stage_badge_classes[deal.stage] }}">{{ stage_labels[deal.stage] }}</span></dd>

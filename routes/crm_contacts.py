@@ -151,7 +151,7 @@ def view_contact(contact_id):
             h['source_label'] = 'Firma'
         else:
             deal = next((d for d in deals if d['id'] == h['entity_id']), None)
-            h['source_label'] = f"Interes: {deal['name']}" if deal else 'Interes'
+            h['source_label'] = f"Deal: {deal['name']}" if deal else 'Deal'
 
     activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
     referred_by_id = {c['id']: c for c in get_companies_referred_by_contact(contact_id)}

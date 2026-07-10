@@ -1,10 +1,10 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
-{% block title %}Interesy{% endblock %}
+{% block title %}Deale{% endblock %}
 
 {% block crm_content %}
 <div class="page-header">
-  <h1>Interesy</h1>
+  <h1>Deale</h1>
   <div class="header-actions">
     <div class="view-toggle">
       <button type="button" class="btn btn-outline" id="deals-view-list">☰ Lista</button>
@@ -14,7 +14,7 @@
       ('stage', 'Etap'), ('amount', 'Kwota'), ('company_name', 'Firma'),
       ('contact_name', 'Kontakt'), ('start_date', 'Rozpoczęcie'), ('end_date', 'Zakończenie'),
     ]) }}
-    <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">+ Dodaj interes</a>
+    <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">+ Dodaj deal</a>
   </div>
 </div>
 
@@ -68,7 +68,7 @@
         <td class="col-actions nowrap">
           <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">✎</a>
           <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
-                class="inline-form" onsubmit="return confirm('Usunąć ten interes?')">
+                class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
             <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
           </form>
         </td>
@@ -77,7 +77,7 @@
     </tbody>
   </table>
 </div>
-<div class="table-count">{{ deals|length }} interesów</div>
+<div class="table-count">{{ deals|length }} deali</div>
 </div>
 
 <div id="deals-kanban-view" style="display:none">
@@ -105,7 +105,7 @@
           </a>
           {% endfor %}
         {% else %}
-          <p class="text-muted small" style="padding:.4rem .2rem">Brak interesów.</p>
+          <p class="text-muted small" style="padding:.4rem .2rem">Brak deali.</p>
         {% endif %}
       </div>
     </div>
@@ -114,8 +114,8 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <p>Brak interesów spełniających kryteria.</p>
-  <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">Dodaj pierwszy interes</a>
+  <p>Brak deali spełniających kryteria.</p>
+  <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">Dodaj pierwszy deal</a>
 </div>
 {% endif %}
 {% endblock %}

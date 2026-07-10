@@ -3,7 +3,7 @@ from database import get_db
 VALID_INTENTS = ('note', 'create')
 VALID_ENTITY_TYPES = ('company', 'contact', 'deal')
 
-ENTITY_TYPE_LABELS = {'company': 'Klient', 'contact': 'Kontakt', 'deal': 'Interes'}
+ENTITY_TYPE_LABELS = {'company': 'Klient', 'contact': 'Kontakt', 'deal': 'Deal'}
 INTENT_LABELS = {'note': 'Notatka', 'create': 'Dodanie'}
 
 

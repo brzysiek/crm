@@ -34,7 +34,7 @@ def _parse_form(form):
 def _validate(data):
     errors = []
     if not data.get('name'):
-        errors.append('Nazwa interesu jest wymagana.')
+        errors.append('Nazwa deala jest wymagana.')
     return errors
 
 
@@ -71,11 +71,11 @@ def new_deal():
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
                 prefill_company=None, prefill_contact=None,
-                action=url_for('crm_deals.new_deal'), title='Nowy interes')
+                action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
         deal_id = create_deal(data, session.get('user_id'))
         maybe_auto_schedule_payment(deal_id, data.get('end_date'), data.get('amount'))
-        flash('Interes został zapisany.', 'success')
+        flash('Deal został zapisany.', 'success')
         return redirect(url_for('crm_deals.view_deal', deal_id=deal_id))
 
     deal = {}
@@ -86,14 +86,14 @@ def new_deal():
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         prefill_company=prefill_company, prefill_contact=prefill_contact,
-        action=url_for('crm_deals.new_deal'), title='Nowy interes')
+        action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
 
 @bp.route('/<int:deal_id>/edit', methods=['GET', 'POST'])
 def edit_deal(deal_id):
     deal = get_deal_by_id(deal_id)
     if not deal:
-        flash('Interes nie istnieje.', 'error')
+        flash('Deal nie istnieje.', 'error')
         return redirect(url_for('crm_deals.list_deals'))
 
     owners = get_active_users()
@@ -107,11 +107,11 @@ def edit_deal(deal_id):
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
                 prefill_company=None, prefill_contact=None,
-                action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj interes')
+                action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
         update_deal(deal_id, data, session.get('user_id'))
         maybe_auto_schedule_payment(deal_id, data.get('end_date'), data.get('amount'))
-        flash('Interes został zaktualizowany.', 'success')
+        flash('Deal został zaktualizowany.', 'success')
         return redirect(url_for('crm_deals.view_deal', deal_id=deal_id))
 
     prefill_company = get_company_by_id(deal['company_id']) if deal.get('company_id') else None
@@ -119,14 +119,14 @@ def edit_deal(deal_id):
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         prefill_company=prefill_company, prefill_contact=prefill_contact,
-        action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj interes')
+        action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
 
 @bp.route('/<int:deal_id>')
 def view_deal(deal_id):
     deal = get_deal_by_id(deal_id)
     if not deal:
-        flash('Interes nie istnieje.', 'error')
+        flash('Deal nie istnieje.', 'error')
         return redirect(url_for('crm_deals.list_deals'))
 
     notes = get_notes('deal', deal_id)
@@ -151,7 +151,7 @@ def view_deal(deal_id):
 @bp.route('/<int:deal_id>/delete', methods=['POST'])
 def delete_deal_view(deal_id):
     delete_deal(deal_id, session.get('user_id'))
-    flash('Interes został usunięty.', 'success')
+    flash('Deal został usunięty.', 'success')
     return redirect(url_for('crm_deals.list_deals'))
 
 

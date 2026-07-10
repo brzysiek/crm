@@ -98,7 +98,7 @@
     ));
   }
 
-  const ENTITY_LABEL = { company: 'Klient', contact: 'Kontakt', deal: 'Interes' };
+  const ENTITY_LABEL = { company: 'Klient', contact: 'Kontakt', deal: 'Deal' };
   const SEARCH_URL = {
     company: '/api/crm/companies/search',
     contact: '/api/crm/contacts/search',
@@ -109,7 +109,7 @@
     if (intent === 'note') return 'Notatka';
     if (entityType === 'company') return 'Dodanie klienta';
     if (entityType === 'contact') return 'Dodanie kontaktu';
-    return 'Dodanie interesu';
+    return 'Dodanie deala';
   }
 
   function pickerHtml(pickerId, selected, placeholder) {
@@ -185,7 +185,7 @@
     } else {
       rows += pickerRow('Klient', 'agent-link-company-picker', result.link_company, result.link_company_hint, 'Szukaj firmy…');
       rows += pickerRow('Kontakt', 'agent-link-contact-picker', result.link_contact, result.link_contact_hint, 'Szukaj kontaktu…');
-      rows += fieldRow('deal_name', 'Nazwa interesu', fields.deal_name, false);
+      rows += fieldRow('deal_name', 'Nazwa deala', fields.deal_name, false);
       rows += fieldRow('amount', 'Kwota', fields.amount, false);
       rows += fieldRow('description', 'Opis', fields.description, true);
     }

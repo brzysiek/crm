@@ -88,7 +88,7 @@ def create_deal(data: dict, user_id: int | None) -> int:
     except Exception:
         db.rollback()
         raise
-    log_history('deal', deal_id, user_id, 'create', f"Utworzono interes „{data['name']}”.")
+    log_history('deal', deal_id, user_id, 'create', f"Utworzono deal „{data['name']}”.")
     return deal_id
 
 
@@ -135,4 +135,4 @@ def delete_deal(deal_id: int, user_id: int | None) -> None:
         db.rollback()
         raise
     if deal:
-        log_history('deal', deal_id, user_id, 'delete', f"Usunięto interes „{deal['name']}”.")
+        log_history('deal', deal_id, user_id, 'delete', f"Usunięto deal „{deal['name']}”.")

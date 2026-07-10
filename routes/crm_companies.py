@@ -195,7 +195,7 @@ def view_company(company_id):
             h['source_label'] = f'Kontakt: {contact_name}'
         else:
             deal = deals_by_id.get(h['entity_id'])
-            h['source_label'] = f"Interes: {deal['name']}" if deal else 'Interes'
+            h['source_label'] = f"Deal: {deal['name']}" if deal else 'Deal'
 
     activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
 

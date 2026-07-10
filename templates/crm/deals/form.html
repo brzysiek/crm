@@ -93,7 +93,7 @@
   </div>
 
   <div class="form-actions">
-    <button type="submit" class="btn btn-primary">Zapisz interes</button>
+    <button type="submit" class="btn btn-primary">Zapisz deal</button>
     <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">Anuluj</a>
   </div>
 </form>
@@ -101,8 +101,8 @@
 {% if deal.id %}
 <div class="form-delete-row">
   <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=deal.id) }}"
-        class="inline-form" onsubmit="return confirm('Usunąć ten interes?')">
-    <button type="submit" class="link-danger">Usuń interes</button>
+        class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
+    <button type="submit" class="link-danger">Usuń deal</button>
   </form>
 </div>
 {% endif %}

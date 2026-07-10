@@ -29,7 +29,7 @@
           {% elif t.entity_type == 'contact' %}
             <a href="{{ url_for('crm_contacts.view_contact', contact_id=t.entity_id) }}" class="btn btn-outline btn-sm">Zobacz kontakt</a>
           {% elif t.entity_type == 'deal' %}
-            <a href="{{ url_for('crm_deals.view_deal', deal_id=t.entity_id) }}" class="btn btn-outline btn-sm">Zobacz interes</a>
+            <a href="{{ url_for('crm_deals.view_deal', deal_id=t.entity_id) }}" class="btn btn-outline btn-sm">Zobacz deal</a>
           {% endif %}
         </div>
         {% endif %}

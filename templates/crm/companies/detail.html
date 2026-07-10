@@ -136,8 +136,8 @@
 
     <div class="inv-section" style="margin-top:1rem">
       <div class="inv-section-header">
-        <h4>Interesy</h4>
-        <a href="{{ url_for('crm_deals.new_deal', company_id=company.id) }}" class="btn btn-outline btn-sm">+ Dodaj interes</a>
+        <h4>Deale</h4>
+        <a href="{{ url_for('crm_deals.new_deal', company_id=company.id) }}" class="btn btn-outline btn-sm">+ Dodaj deal</a>
       </div>
       <div style="padding:.85rem">
         {% if deals %}
@@ -158,7 +158,7 @@
           </table>
         </div>
         {% else %}
-        <p class="text-muted small">Brak interesów przypisanych do tej firmy.</p>
+        <p class="text-muted small">Brak deali przypisanych do tej firmy.</p>
         {% endif %}
       </div>
     </div>
