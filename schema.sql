@@ -365,18 +365,6 @@ CREATE TABLE IF NOT EXISTS crm_notes (
     KEY idx_entity (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS crm_history (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    entity_type ENUM('company','contact','deal') NOT NULL,
-    entity_id   INT NOT NULL,
-    user_id     INT NULL,
-    action      ENUM('create','update','delete','file') NOT NULL,
-    summary     TEXT NOT NULL,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    KEY idx_entity (entity_type, entity_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- ── CRM: Pliki — przetrzymywane na Google Drive (CRM/<firma>/pliki) ────────
 CREATE TABLE IF NOT EXISTS crm_files (
     id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -394,6 +382,20 @@ CREATE TABLE IF NOT EXISTS crm_files (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     KEY idx_company (company_id),
     KEY idx_contact_category (contact_id, category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS crm_history (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    entity_type ENUM('company','contact','deal') NOT NULL,
+    entity_id   INT NOT NULL,
+    user_id     INT NULL,
+    action      ENUM('create','update','delete','file') NOT NULL,
+    summary     TEXT NOT NULL,
+    file_id     INT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (file_id) REFERENCES crm_files(id) ON DELETE SET NULL,
+    KEY idx_entity (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS agent_tasks (

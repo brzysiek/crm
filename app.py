@@ -1906,7 +1906,7 @@ def api_crm_files_upload():
         return jsonify({'status': 'error', 'message': f'Błąd Google Drive: {e}'})
 
     saved = 0
-    saved_names = []
+    saved_files = []
     for f, ext in valid_files:
         content = f.read()
         mime_type = ALLOWED_EXTENSIONS[ext]
@@ -1916,15 +1916,16 @@ def api_crm_files_upload():
             result = client.upload_file(f.filename, mime_type, content, files_folder_id)
         except Exception as e:
             return jsonify({'status': 'error', 'message': f'Błąd przesyłania pliku {f.filename}: {e}'})
-        add_file(company_id, contact_id, f.filename, result['id'], mime_type, len(content), session.get('user_id'))
+        new_file_id = add_file(company_id, contact_id, f.filename, result['id'], mime_type, len(content),
+                                session.get('user_id'))
         saved += 1
-        saved_names.append(f.filename)
+        saved_files.append((new_file_id, f.filename))
 
-    for name in saved_names:
+    for new_file_id, name in saved_files:
         summary = f'Dodano plik: {name}'
-        log_history('company', company_id, session.get('user_id'), 'file', summary)
+        log_history('company', company_id, session.get('user_id'), 'file', summary, file_id=new_file_id)
         if contact_id:
-            log_history('contact', contact_id, session.get('user_id'), 'file', summary)
+            log_history('contact', contact_id, session.get('user_id'), 'file', summary, file_id=new_file_id)
 
     message = f'Dodano {saved} {files_word(saved)}.'
     if rejected:
@@ -2019,12 +2020,12 @@ def api_crm_business_card_upload(contact_id):
                                 'z Drive (id=%s): %s', existing['id'], e)
         db_delete_file(existing['id'])
 
-    add_file(contact['company_id'], contact_id, f.filename, result['id'], mime_type, len(content),
-             session.get('user_id'), category='business_card')
+    new_file_id = add_file(contact['company_id'], contact_id, f.filename, result['id'], mime_type, len(content),
+                            session.get('user_id'), category='business_card')
 
     action_word = 'Zaktualizowano' if existing else 'Dodano'
     log_history('contact', contact_id, session.get('user_id'), 'file',
-                f'{action_word} wizytówkę: {f.filename}')
+                f'{action_word} wizytówkę: {f.filename}', file_id=new_file_id)
 
     return jsonify({'status': 'ok'})
 

@@ -115,27 +115,30 @@ def delete_note(note_id: int) -> None:
 
 
 def log_history(entity_type: str, entity_id: int, user_id: int | None,
-                 action: str, summary: str) -> int:
+                 action: str, summary: str, file_id: int | None = None) -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
             # Chroni przed zdublowanym wpisem, gdy ten sam zapis trafi do bazy
             # dwa razy (np. podwójny submit formularza) — identyczna
-            # akcja/treść w ciągu kilku sekund jest traktowana jako duplikat.
+            # akcja/treść/plik w ciągu kilku sekund jest traktowana jako duplikat.
+            # file_id (NULL-safe <=>) odróżnia dwa różne pliki o tej samej nazwie
+            # wgrane w jednej turze, żeby oba trafiły do historii.
             cur.execute(
                 """SELECT id FROM crm_history
                    WHERE entity_type=%s AND entity_id=%s AND action=%s AND summary=%s
+                     AND file_id <=> %s
                      AND created_at >= NOW() - INTERVAL 10 SECOND
                    ORDER BY id DESC LIMIT 1""",
-                (entity_type, entity_id, action, summary)
+                (entity_type, entity_id, action, summary, file_id)
             )
             existing = cur.fetchone()
             if existing:
                 return existing['id']
             cur.execute(
-                "INSERT INTO crm_history (entity_type, entity_id, user_id, action, summary) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (entity_type, entity_id, _valid_user_id(user_id), action, summary)
+                "INSERT INTO crm_history (entity_type, entity_id, user_id, action, summary, file_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (entity_type, entity_id, _valid_user_id(user_id), action, summary, file_id)
             )
             new_id = cur.lastrowid
         db.commit()
@@ -149,9 +152,11 @@ def get_history(entity_type: str, entity_id: int) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            """SELECT h.*, u.full_name AS user_name
+            """SELECT h.*, u.full_name AS user_name, f.file_name AS file_current_name,
+                      f.mime_type AS file_mime_type
                FROM crm_history h
                LEFT JOIN users u ON u.id = h.user_id
+               LEFT JOIN crm_files f ON f.id = h.file_id
                WHERE h.entity_type=%s AND h.entity_id=%s
                ORDER BY h.created_at DESC, h.id DESC""",
             (entity_type, entity_id)
@@ -169,9 +174,11 @@ def get_history_multi(entities: list[tuple[str, int]]) -> list[dict]:
         conditions = " OR ".join(["(h.entity_type=%s AND h.entity_id=%s)"] * len(entities))
         params = [v for pair in entities for v in pair]
         cur.execute(
-            f"""SELECT h.*, u.full_name AS user_name
+            f"""SELECT h.*, u.full_name AS user_name, f.file_name AS file_current_name,
+                       f.mime_type AS file_mime_type
                 FROM crm_history h
                 LEFT JOIN users u ON u.id = h.user_id
+                LEFT JOIN crm_files f ON f.id = h.file_id
                 WHERE {conditions}
                 ORDER BY h.created_at DESC, h.id DESC""",
             params

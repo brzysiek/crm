@@ -1575,11 +1575,33 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.25rem;
   line-height: 1;
   padding: 0;
   flex-shrink: 0;
 }
+.file-ext-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 34px;
+  height: 40px;
+  flex-shrink: 0;
+  clip-path: polygon(0 0, 65% 0, 100% 28%, 100% 100%, 0 100%);
+  border-radius: 3px;
+  font-size: .5rem;
+  font-weight: 800;
+  letter-spacing: -.2px;
+  color: #fff;
+  padding-bottom: 4px;
+}
+.file-ext-pdf                    { background: #ef4444; }
+.file-ext-docx                   { background: #3b82f6; }
+.file-ext-xlsx                   { background: #22c55e; }
+.file-ext-xml                    { background: #f59e0b; }
+.file-ext-jpg, .file-ext-jpeg,
+.file-ext-png, .file-ext-heic    { background: #8b5cf6; }
+.file-ext-other                  { background: #9ca3af; }
 .file-meta {
   display: flex;
   flex-direction: column;
@@ -1604,6 +1626,15 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   text-overflow: ellipsis;
 }
 .file-name-btn:hover { color: var(--primary); text-decoration: underline; }
+.file-name-btn-inline {
+  display: inline;
+  width: auto;
+  max-width: none;
+  white-space: normal;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: underline;
+}
 
 /* ── CRM: favicon firmy ───────────────────────────────────────────────────────── */
 .favicon-cell { width: 60px; min-width: 60px; max-width: 60px; }

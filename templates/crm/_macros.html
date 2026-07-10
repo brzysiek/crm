@@ -10,6 +10,16 @@
   </th>
 {% endmacro %}
 
+{% macro file_icon_button(file) %}
+  {% set ext = (file.file_name.rsplit('.', 1)[-1].lower() if '.' in file.file_name else '') %}
+  {% set known = ['pdf', 'docx', 'xlsx', 'jpg', 'jpeg', 'png', 'heic', 'xml'] %}
+  <button type="button" class="file-icon-btn" title="Podgląd" data-file-id="{{ file.id }}"
+          data-mime="{{ file.mime_type or '' }}" data-name="{{ file.file_name }}"
+          onclick="openFilePreview(this)">
+    <span class="file-ext-icon file-ext-{{ ext if ext in known else 'other' }}">{{ ext[:4]|upper }}</span>
+  </button>
+{% endmacro %}
+
 {% macro col_toggle(btn_id, menu_id, columns) %}
   <div class="col-toggle">
     <button type="button" id="{{ btn_id }}" class="btn btn-outline btn-sm">Kolumny ▾</button>

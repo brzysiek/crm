@@ -40,7 +40,16 @@
             </span>
             <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}</span>
           </div>
+          {% if item.action == 'file' and item.file_id and ': ' in item.summary %}
+            {% set prefix, fname = item.summary.split(': ', 1) %}
+            <div class="note-body">{{ prefix }}:
+              <button type="button" class="file-name-btn file-name-btn-inline" data-file-id="{{ item.file_id }}"
+                      data-mime="{{ item.file_mime_type or '' }}" data-name="{{ item.file_current_name or fname }}"
+                      onclick="openFilePreview(this)">{{ fname }}</button>
+            </div>
+          {% else %}
           <div class="note-body">{{ item.summary }}</div>
+          {% endif %}
         </div>
         {% endif %}
       {% endfor %}

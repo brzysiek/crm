@@ -1,5 +1,6 @@
 {# Wspólny partial: pliki + notatki + historia. Wymaga: notes, history, add_note_url,
    entity_type, entity_id, files, can_upload_files, upload_company_id, upload_contact_id #}
+{% import 'crm/_macros.html' as m %}
 
 <div class="inv-section">
   <h4>Pliki</h4>
@@ -23,13 +24,8 @@
     {% if files %}
     <div class="files-list">
       {% for file in files %}
-      {% set ext = (file.file_name.rsplit('.', 1)[-1].lower() if '.' in file.file_name else '') %}
       <div class="file-item">
-        <button type="button" class="file-icon-btn" title="Podgląd" data-file-id="{{ file.id }}"
-                data-mime="{{ file.mime_type or '' }}" data-name="{{ file.file_name }}"
-                onclick="openFilePreview(this)">{{
-                  {'pdf': '📄', 'docx': '📝', 'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'heic': '🖼️', 'xml': '📰'}.get(ext, '📎')
-                }}</button>
+        {{ m.file_icon_button(file) }}
         <div class="file-meta">
           <button type="button" class="file-name-btn" data-file-id="{{ file.id }}"
                   data-mime="{{ file.mime_type or '' }}" data-name="{{ file.file_name }}"
@@ -324,7 +320,16 @@ function openFilePreview(btn) {
           </span>
           <span>{{ h.user_name or 'System' }} · {{ h.created_at|ddmmyyyy }}</span>
         </div>
+        {% if h.action == 'file' and h.file_id and ': ' in h.summary %}
+          {% set prefix, fname = h.summary.split(': ', 1) %}
+          <div class="note-body">{{ prefix }}:
+            <button type="button" class="file-name-btn file-name-btn-inline" data-file-id="{{ h.file_id }}"
+                    data-mime="{{ h.file_mime_type or '' }}" data-name="{{ h.file_current_name or fname }}"
+                    onclick="openFilePreview(this)">{{ fname }}</button>
+          </div>
+        {% else %}
         <div class="note-body">{{ h.summary }}</div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
