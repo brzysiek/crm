@@ -264,17 +264,17 @@ def _log_source_referrals(company_id: int, company_name: str, source_names: list
         if contact:
             contact_name = f"{contact['first_name']} {contact['last_name']}"
             log_history('company', company_id, user_id, 'update',
-                        f"Firma polecona przez kontakt „{contact_name}”.")
+                        f"Firma polecona przez kontakt „{contact_name}”.", entry_type='referral')
             log_history('contact', contact['id'], user_id, 'update',
-                        f"Polecił(a) firmę „{company_name}”.")
+                        f"Polecił(a) firmę „{company_name}”.", entry_type='referral')
             continue
         ref_company = company_matches.get(key)
         if ref_company:
             ref_name = ref_company['short_name'] or ref_company['name']
             log_history('company', company_id, user_id, 'update',
-                        f"Firma polecona przez firmę „{ref_name}”.")
+                        f"Firma polecona przez firmę „{ref_name}”.", entry_type='referral')
             log_history('company', ref_company['id'], user_id, 'update',
-                        f"Poleciła firmę „{company_name}”.")
+                        f"Poleciła firmę „{company_name}”.", entry_type='referral')
 
 
 def set_company_tags(company_id: int, kind: str, names: list[str]) -> None:
@@ -336,7 +336,8 @@ def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | No
         if name in current:
             continue
         set_company_tags(company_id, kind, current + [name])
-        log_history('company', company_id, user_id, 'update', f'Dodano {label.lower()} „{name}”.')
+        log_history('company', company_id, user_id, 'update', f'Dodano {label.lower()} „{name}”.',
+                    entry_type='tag_add')
         if kind == 'source':
             company = get_company_by_id(company_id)
             _log_source_referrals(company_id, company['name'] if company else '', [name], user_id,
@@ -353,7 +354,8 @@ def bulk_remove_tag(company_ids: list[int], kind: str, name: str, user_id: int |
         if name not in current:
             continue
         set_company_tags(company_id, kind, [t for t in current if t != name])
-        log_history('company', company_id, user_id, 'update', f'Usunięto {label.lower()} „{name}”.')
+        log_history('company', company_id, user_id, 'update', f'Usunięto {label.lower()} „{name}”.',
+                    entry_type='tag_remove')
         affected += 1
     return affected
 

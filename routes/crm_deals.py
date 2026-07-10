@@ -6,7 +6,8 @@ from models.crm_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, create_deal, del
                               get_all_deals, get_deal_by_id, update_deal)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
-from models.crm_notes import NOTE_TYPE_LABELS, add_note, delete_note, get_history, get_notes
+from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
+                                get_history, get_notes)
 from models.user import get_active_users
 
 bp = Blueprint('crm_deals', __name__, url_prefix='/crm/deals')
@@ -143,6 +144,7 @@ def view_deal(deal_id):
         payments_total=sum(float(p['amount_net']) for p in payments),
         entity_type='deal', entity_id=deal_id,
         note_type_labels=NOTE_TYPE_LABELS,
+        history_badge_labels=HISTORY_BADGE_LABELS,
     )
 
 

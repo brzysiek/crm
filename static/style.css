@@ -1581,6 +1581,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .history-action-update { background: var(--info-bg); color: var(--info-text); }
 .history-action-delete { background: var(--error-bg); color: var(--error-text); }
 .history-action-file   { background: #f3e8ff; color: #7e22ce; }
+.history-action-note   { background: var(--warning-bg); color: var(--warning-text); }
 
 /* ── CRM: pliki ───────────────────────────────────────────────────────────────── */
 .files-list {

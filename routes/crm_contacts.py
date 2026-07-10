@@ -9,7 +9,8 @@ from models.crm_company import (RELATION_LABELS, get_companies_referred_by_compa
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, set_starred, update_contact)
 from models.crm_file import get_files_for_company
-from models.crm_notes import NOTE_TYPE_LABELS, add_note, delete_note, get_history_multi, get_notes_multi
+from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
+                                get_history_multi, get_notes_multi)
 from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
@@ -174,6 +175,7 @@ def view_contact(contact_id):
         upload_contact_id=contact_id,
         business_card=get_business_card(contact_id),
         note_type_labels=NOTE_TYPE_LABELS,
+        history_badge_labels=HISTORY_BADGE_LABELS,
     )
 
 

@@ -5,6 +5,17 @@ VALID_ENTITY_TYPES = ('company', 'contact', 'deal')
 NOTE_TYPE_LABELS = {'phone': 'Telefon', 'meeting': 'Spotkanie', 'task': 'Zadanie', 'other': 'Inne'}
 VALID_NOTE_TYPES = tuple(NOTE_TYPE_LABELS)
 
+HISTORY_BADGE_LABELS = {
+    'create': 'Utworzono',
+    'update': 'Edycja',
+    'delete': 'Usunięto',
+    'file': 'Dodany plik',
+    'tag_add': 'Dodany tag',
+    'tag_remove': 'Usunięty tag',
+    'referral': 'Polecenie',
+    'note': 'Notatka',
+}
+
 
 def _valid_note_type(note_type: str | None) -> str:
     return note_type if note_type in VALID_NOTE_TYPES else 'other'
@@ -138,7 +149,9 @@ def delete_note(note_id: int) -> None:
 
 
 def log_history(entity_type: str, entity_id: int, user_id: int | None,
-                 action: str, summary: str, file_id: int | None = None) -> int:
+                 action: str, summary: str, file_id: int | None = None,
+                 entry_type: str | None = None) -> int:
+    entry_type = entry_type or action
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -159,9 +172,9 @@ def log_history(entity_type: str, entity_id: int, user_id: int | None,
             if existing:
                 return existing['id']
             cur.execute(
-                "INSERT INTO crm_history (entity_type, entity_id, user_id, action, summary, file_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (entity_type, entity_id, _valid_user_id(user_id), action, summary, file_id)
+                "INSERT INTO crm_history (entity_type, entity_id, user_id, action, summary, file_id, entry_type) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (entity_type, entity_id, _valid_user_id(user_id), action, summary, file_id, entry_type)
             )
             new_id = cur.lastrowid
         db.commit()

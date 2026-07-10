@@ -10,7 +10,9 @@
         {% if item._kind == 'note' %}
         <div class="note-item">
           <div class="note-meta">
-            <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}
+            <span>
+              <span class="history-action history-action-note">{{ history_badge_labels.note }}</span>
+              {{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}
               · <select class="note-type-select" data-note-id="{{ item.id }}" onchange="updateNoteType(this)">
                   {% for key, label in note_type_labels.items() %}
                   <option value="{{ key }}" {% if key == item.note_type %}selected{% endif %}>{{ label }}</option>
@@ -42,7 +44,7 @@
         <div class="history-item">
           <div class="history-meta">
             <span class="history-action history-action-{{ item.action }}">
-              {{ {'create': 'Utworzono', 'update': 'Edycja', 'delete': 'Usunięto', 'file': 'Plik'}[item.action] }}
+              {{ history_badge_labels.get(item.entry_type or item.action, item.action) }}
             </span>
             <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}</span>
           </div>

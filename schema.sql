@@ -391,6 +391,7 @@ CREATE TABLE IF NOT EXISTS crm_history (
     entity_id   INT NOT NULL,
     user_id     INT NULL,
     action      ENUM('create','update','delete','file') NOT NULL,
+    entry_type  VARCHAR(20) NULL,
     summary     TEXT NOT NULL,
     file_id     INT NULL,
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,

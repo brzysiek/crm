@@ -217,7 +217,9 @@ function openFilePreview(btn) {
       {% for n in notes %}
       <div class="note-item">
         <div class="note-meta">
-          <span>{{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}{% if n.source_label %} · {{ n.source_label }}{% endif %}
+          <span>
+            <span class="history-action history-action-note">{{ history_badge_labels.note }}</span>
+            {{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}{% if n.source_label %} · {{ n.source_label }}{% endif %}
             · <select class="note-type-select" data-note-id="{{ n.id }}" onchange="updateNoteType(this)">
                 {% for key, label in note_type_labels.items() %}
                 <option value="{{ key }}" {% if key == n.note_type %}selected{% endif %}>{{ label }}</option>
@@ -383,7 +385,7 @@ function updateNoteType(sel) {
       <div class="history-item">
         <div class="history-meta">
           <span class="history-action history-action-{{ h.action }}">
-            {{ {'create': 'Utworzono', 'update': 'Edycja', 'delete': 'Usunięto', 'file': 'Plik'}[h.action] }}
+            {{ history_badge_labels.get(h.entry_type or h.action, h.action) }}
           </span>
           <span>{{ h.user_name or 'System' }} · {{ h.created_at|ddmmyyyy }}</span>
         </div>
