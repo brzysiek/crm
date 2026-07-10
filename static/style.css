@@ -1723,6 +1723,8 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   align-items: start;
 }
 @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+.detail-grid-narrow-left { grid-template-columns: 1fr 2fr; }
+@media (max-width: 900px) { .detail-grid-narrow-left { grid-template-columns: 1fr; } }
 .detail-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .25rem; }
 
 /* ── CRM: kanban (Plan, lista interesów) ───────────────────────────────────────── */
