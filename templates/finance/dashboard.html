@@ -258,7 +258,7 @@
           <td colspan="4">Suma ({{ unpaid_expenses|length }} pozycji)</td>
           <td class="text-right nowrap">{{ unpaid_expense_total|pln }}</td>
           <td class="text-right nowrap">{{ unpaid_expenses|sum(attribute='amount_net')|pln }}</td>
-          <td class="text-right nowrap">{{ (unpaid_expense_total - unpaid_expenses|sum(attribute='amount_net'))|pln }}</td>
+          <td class="text-right nowrap">{{ (unpaid_expense_total - unpaid_expenses|sum(attribute='amount_net')|float)|pln }}</td>
           <td colspan="2"></td>
         </tr>
       </tfoot>
@@ -333,7 +333,7 @@
           <td colspan="4">Suma ({{ unpaid_incomes|length }} pozycji)</td>
           <td class="text-right nowrap">{{ unpaid_income_total|pln }}</td>
           <td class="text-right nowrap">{{ unpaid_incomes|sum(attribute='amount_net')|pln }}</td>
-          <td class="text-right nowrap">{{ (unpaid_income_total - unpaid_incomes|sum(attribute='amount_net'))|pln }}</td>
+          <td class="text-right nowrap">{{ (unpaid_income_total - unpaid_incomes|sum(attribute='amount_net')|float)|pln }}</td>
           <td colspan="2"></td>
         </tr>
       </tfoot>
