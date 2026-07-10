@@ -194,6 +194,13 @@ function openFilePreview(btn) {
       <div class="form-group" style="margin-bottom:.5rem">
         <textarea name="body" rows="2" placeholder="Dodaj notatkę…" required></textarea>
       </div>
+      <div class="form-group" style="margin-bottom:.5rem">
+        <select name="note_type">
+          {% for key, label in note_type_labels.items() %}
+          <option value="{{ key }}" {% if key == 'other' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <button type="submit" class="btn btn-outline btn-sm">+ Dodaj notatkę</button>
     </form>
 
@@ -210,7 +217,13 @@ function openFilePreview(btn) {
       {% for n in notes %}
       <div class="note-item">
         <div class="note-meta">
-          <span>{{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}{% if n.source_label %} · {{ n.source_label }}{% endif %}</span>
+          <span>{{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}{% if n.source_label %} · {{ n.source_label }}{% endif %}
+            · <select class="note-type-select" data-note-id="{{ n.id }}" onchange="updateNoteType(this)">
+                {% for key, label in note_type_labels.items() %}
+                <option value="{{ key }}" {% if key == n.note_type %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+          </span>
           <form method="post" action="{{ n.delete_url }}" class="inline-form"
                 onsubmit="return confirm('Usunąć tę notatkę?')">
             <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
@@ -345,6 +358,20 @@ function openFilePreview(btn) {
     });
   });
 })();
+
+function updateNoteType(sel) {
+  const noteId = sel.dataset.noteId;
+  const fd = new FormData();
+  fd.append('note_type', sel.value);
+  fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/type', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') {
+        alert(data.message || 'Nie udało się zmienić typu notatki.');
+      }
+    })
+    .catch(() => alert('Błąd sieci przy zmianie typu notatki.'));
+}
 </script>
 
 <div class="inv-section" style="margin-top:1rem">

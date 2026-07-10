@@ -14,6 +14,13 @@
         <div class="form-group" style="margin-bottom:.5rem">
           <textarea name="body" rows="4" placeholder="Dodaj notatkę…" required></textarea>
         </div>
+        <div class="form-group" style="margin-bottom:.5rem">
+          <select name="note_type">
+            {% for key, label in note_type_labels.items() %}
+            <option value="{{ key }}" {% if key == 'other' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <button type="submit" class="btn btn-outline btn-sm">+ Dodaj notatkę</button>
       </form>
 

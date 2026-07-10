@@ -7,7 +7,7 @@ from models.crm_company import (RELATION_LABELS, create_company, delete_company,
                                   get_source_company_matches, get_source_contact_matches,
                                   set_starred, update_company)
 from models.crm_file import get_files_for_company
-from models.crm_notes import add_note, delete_note, get_history_multi, get_notes_multi
+from models.crm_notes import NOTE_TYPE_LABELS, add_note, delete_note, get_history_multi, get_notes_multi
 from models.user import get_active_users
 
 bp = Blueprint('crm_companies', __name__, url_prefix='/crm/companies')
@@ -228,6 +228,7 @@ def view_company(company_id):
         can_upload_files=True,
         upload_company_id=company_id,
         upload_contact_id=None,
+        note_type_labels=NOTE_TYPE_LABELS,
     )
 
 
@@ -250,8 +251,9 @@ def delete_company_view(company_id):
 @bp.route('/<int:company_id>/notes', methods=['POST'])
 def add_note_view(company_id):
     body = request.form.get('body', '').strip()
+    note_type = request.form.get('note_type', 'other')
     if body:
-        add_note('company', company_id, session.get('user_id'), body)
+        add_note('company', company_id, session.get('user_id'), body, note_type=note_type)
         flash('Notatka została dodana.', 'success')
     return redirect(url_for('crm_companies.view_company', company_id=company_id))
 

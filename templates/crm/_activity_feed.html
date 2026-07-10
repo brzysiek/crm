@@ -10,7 +10,13 @@
         {% if item._kind == 'note' %}
         <div class="note-item">
           <div class="note-meta">
-            <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}</span>
+            <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}
+              · <select class="note-type-select" data-note-id="{{ item.id }}" onchange="updateNoteType(this)">
+                  {% for key, label in note_type_labels.items() %}
+                  <option value="{{ key }}" {% if key == item.note_type %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+            </span>
             <form method="post" action="{{ item.delete_url }}" class="inline-form"
                   onsubmit="return confirm('Usunąć tę notatkę?')">
               <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
@@ -84,4 +90,18 @@ document.querySelectorAll('.btn-transcribe-note').forEach(function(btn) {
       });
   });
 });
+
+function updateNoteType(sel) {
+  const noteId = sel.dataset.noteId;
+  const fd = new FormData();
+  fd.append('note_type', sel.value);
+  fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/type', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') {
+        alert(data.message || 'Nie udało się zmienić typu notatki.');
+      }
+    })
+    .catch(() => alert('Błąd sieci przy zmianie typu notatki.'));
+}
 </script>

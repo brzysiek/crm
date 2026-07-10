@@ -991,6 +991,19 @@ def api_crm_notes_voice():
     return jsonify({'status': 'ok', 'note_id': note_id})
 
 
+@app.route('/api/crm/notes/<int:note_id>/type', methods=['POST'])
+def api_crm_notes_set_type(note_id):
+    """Zmienia typ istniejącej notatki (np. notatki głosowej domyślnie zapisanej jako 'inne')."""
+    from models.crm_notes import VALID_NOTE_TYPES, set_note_type
+
+    note_type = request.form.get('note_type', '')
+    if note_type not in VALID_NOTE_TYPES:
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowy typ notatki.'})
+
+    set_note_type(note_id, note_type)
+    return jsonify({'status': 'ok'})
+
+
 @app.route('/api/crm/notes/<int:note_id>/transcribe', methods=['POST'])
 def api_crm_notes_transcribe(note_id):
     """Transkrybuje notatkę głosową na tekst za pomocą Gemini."""

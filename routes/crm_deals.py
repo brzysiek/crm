@@ -6,7 +6,7 @@ from models.crm_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, create_deal, del
                               get_all_deals, get_deal_by_id, update_deal)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
-from models.crm_notes import add_note, delete_note, get_history, get_notes
+from models.crm_notes import NOTE_TYPE_LABELS, add_note, delete_note, get_history, get_notes
 from models.user import get_active_users
 
 bp = Blueprint('crm_deals', __name__, url_prefix='/crm/deals')
@@ -142,6 +142,7 @@ def view_deal(deal_id):
         payments=payments,
         payments_total=sum(float(p['amount_net']) for p in payments),
         entity_type='deal', entity_id=deal_id,
+        note_type_labels=NOTE_TYPE_LABELS,
     )
 
 
@@ -155,8 +156,9 @@ def delete_deal_view(deal_id):
 @bp.route('/<int:deal_id>/notes', methods=['POST'])
 def add_note_view(deal_id):
     body = request.form.get('body', '').strip()
+    note_type = request.form.get('note_type', 'other')
     if body:
-        add_note('deal', deal_id, session.get('user_id'), body)
+        add_note('deal', deal_id, session.get('user_id'), body, note_type=note_type)
         flash('Notatka została dodana.', 'success')
     return redirect(url_for('crm_deals.view_deal', deal_id=deal_id))
 

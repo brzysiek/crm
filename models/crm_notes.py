@@ -2,6 +2,13 @@ from database import get_db
 
 VALID_ENTITY_TYPES = ('company', 'contact', 'deal')
 
+NOTE_TYPE_LABELS = {'phone': 'Telefon', 'meeting': 'Spotkanie', 'task': 'Zadanie', 'other': 'Inne'}
+VALID_NOTE_TYPES = tuple(NOTE_TYPE_LABELS)
+
+
+def _valid_note_type(note_type: str | None) -> str:
+    return note_type if note_type in VALID_NOTE_TYPES else 'other'
+
 
 def _valid_user_id(user_id: int | None) -> int | None:
     """Zwraca user_id tylko jeśli wciąż istnieje w tabeli users — chroni przed naruszeniem
@@ -14,14 +21,15 @@ def _valid_user_id(user_id: int | None) -> int | None:
         return user_id if cur.fetchone() else None
 
 
-def add_note(entity_type: str, entity_id: int, user_id: int | None, body: str) -> int:
+def add_note(entity_type: str, entity_id: int, user_id: int | None, body: str,
+             note_type: str = 'other') -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                "INSERT INTO crm_notes (entity_type, entity_id, user_id, body) "
-                "VALUES (%s, %s, %s, %s)",
-                (entity_type, entity_id, _valid_user_id(user_id), body)
+                "INSERT INTO crm_notes (entity_type, entity_id, user_id, body, note_type) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (entity_type, entity_id, _valid_user_id(user_id), body, _valid_note_type(note_type))
             )
         db.commit()
         return cur.lastrowid
@@ -30,19 +38,34 @@ def add_note(entity_type: str, entity_id: int, user_id: int | None, body: str) -
         raise
 
 
-def add_voice_note(entity_type: str, entity_id: int, user_id: int | None, audio_data: str) -> int:
+def add_voice_note(entity_type: str, entity_id: int, user_id: int | None, audio_data: str,
+                    note_type: str = 'other') -> int:
     """Dodaje notatkę głosową (jeszcze bez transkrypcji — body puste, audio_data
-    to pełny data URI nagrania)."""
+    to pełny data URI nagrania). Domyślnie zapisywana jako typ 'inne'."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                "INSERT INTO crm_notes (entity_type, entity_id, user_id, body, audio_data) "
-                "VALUES (%s, %s, %s, '', %s)",
-                (entity_type, entity_id, _valid_user_id(user_id), audio_data)
+                "INSERT INTO crm_notes (entity_type, entity_id, user_id, body, audio_data, note_type) "
+                "VALUES (%s, %s, %s, '', %s, %s)",
+                (entity_type, entity_id, _valid_user_id(user_id), audio_data, _valid_note_type(note_type))
             )
         db.commit()
         return cur.lastrowid
+    except Exception:
+        db.rollback()
+        raise
+
+
+def set_note_type(note_id: int, note_type: str) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE crm_notes SET note_type=%s WHERE id=%s",
+                (_valid_note_type(note_type), note_id)
+            )
+        db.commit()
     except Exception:
         db.rollback()
         raise
