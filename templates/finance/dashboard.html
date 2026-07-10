@@ -249,6 +249,13 @@
         </tr>
         {% endfor %}
       </tbody>
+      <tfoot>
+        <tr class="table-sum-row">
+          <td colspan="4">Suma ({{ unpaid_expenses|length }} pozycji)</td>
+          <td class="text-right nowrap">{{ unpaid_expense_total|pln }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
   {% else %}
@@ -311,6 +318,13 @@
         </tr>
         {% endfor %}
       </tbody>
+      <tfoot>
+        <tr class="table-sum-row">
+          <td colspan="4">Suma ({{ unpaid_incomes|length }} pozycji)</td>
+          <td class="text-right nowrap">{{ unpaid_income_total|pln }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
   {% else %}
