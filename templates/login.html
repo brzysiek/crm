@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RosliNarnia – Logowanie</title>
+  <title>{{ app_name }} – Logowanie</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -30,6 +30,12 @@
     .logo {
       text-align: center;
       margin-bottom: 1.8rem;
+    }
+
+    .logo-img {
+      max-width: 180px;
+      max-height: 64px;
+      margin-bottom: 0.6rem;
     }
 
     .logo h1 {
@@ -138,7 +144,10 @@
 <body>
   <div class="card">
     <div class="logo">
-      <h1>RosliNarnia</h1>
+      {% if logo_main %}
+      <img src="{{ logo_main }}" alt="{{ app_name }}" class="logo-img">
+      {% endif %}
+      <h1>{{ app_name }}</h1>
       <p>System zarządzania finansami</p>
     </div>
 
