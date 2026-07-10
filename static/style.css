@@ -1155,7 +1155,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 
 .inv-dl {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: max-content 1fr;
   gap: 0;
   padding: .5rem .85rem;
 }
