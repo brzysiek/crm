@@ -23,6 +23,7 @@ def general():
             data['fakturownia_sync_schedule'] = request.form.get('sync_schedule', 'manual')
         if section in ('gdrive', 'all'):
             data['google_drive_folder_id'] = request.form.get('google_drive_folder_id', '').strip()
+            data['google_drive_crm_folder_id'] = request.form.get('google_drive_crm_folder_id', '').strip()
             drive_token = request.form.get('google_drive_api_token', '').strip()
             if drive_token:
                 data['google_drive_api_token'] = drive_token

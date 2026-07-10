@@ -4,6 +4,7 @@ from models.crm_company import (RELATION_LABELS, create_company, delete_company,
                                   derive_short_name, get_all_companies,
                                   get_company_by_id, get_company_tags,
                                   set_starred, update_company)
+from models.crm_file import get_files_for_company
 from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
 from models.user import get_active_users
 
@@ -195,6 +196,10 @@ def view_company(company_id):
         history=get_history('company', company_id),
         add_note_url=url_for('crm_companies.add_note_view', company_id=company_id),
         entity_type='company', entity_id=company_id,
+        files=get_files_for_company(company_id),
+        can_upload_files=True,
+        upload_company_id=company_id,
+        upload_contact_id=None,
     )
 
 

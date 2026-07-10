@@ -74,6 +74,19 @@
     </div>
 
     <div class="form-group">
+      <label for="google_drive_crm_folder_id">ID folderu CRM (pliki klientów)</label>
+      <input type="text" id="google_drive_crm_folder_id" name="google_drive_crm_folder_id"
+             placeholder="np. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
+             value="{{ cfg.google_drive_crm_folder_id or '' }}">
+      <small class="text-muted">
+        Osobny folder na pliki dodawane do firm/kontaktów w CRM
+        (struktura: ten folder / nazwa firmy / pliki). Wymaga konta usługi
+        (service account) z uprawnieniem do edycji tego folderu — sam klucz API nie
+        wystarczy do zapisu.
+      </small>
+    </div>
+
+    <div class="form-group">
       <label for="google_drive_api_token">Token / klucz API</label>
       <div class="input-reveal-wrap">
         <input type="password" id="google_drive_api_token" name="google_drive_api_token"

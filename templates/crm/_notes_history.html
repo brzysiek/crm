@@ -1,6 +1,157 @@
-{# Wspólny partial: notatki + historia zmian. Wymaga: notes, history, add_note_url, entity_type, entity_id #}
+{# Wspólny partial: pliki + notatki + historia. Wymaga: notes, history, add_note_url,
+   entity_type, entity_id, files, can_upload_files, upload_company_id, upload_contact_id #}
 
 <div class="inv-section">
+  <h4>Pliki</h4>
+  <div style="padding:.85rem">
+    {% if can_upload_files %}
+    <form id="filesUploadForm" style="margin-bottom:1rem">
+      <input type="hidden" name="company_id" value="{{ upload_company_id }}">
+      {% if upload_contact_id %}<input type="hidden" name="contact_id" value="{{ upload_contact_id }}">{% endif %}
+      <div class="form-group" style="margin-bottom:.5rem">
+        <input type="file" name="files" multiple accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml">
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm" id="btnUploadFiles">+ Dodaj pliki</button>
+      <span id="filesUploadStatus" class="small text-muted" style="margin-left:.5rem"></span>
+    </form>
+    {% else %}
+    <p class="text-muted small" style="margin-bottom:1rem">
+      Ten kontakt nie jest przypisany do firmy — pliki można dodać tylko z poziomu firmy lub kontaktu przypisanego do firmy.
+    </p>
+    {% endif %}
+
+    {% if files %}
+    <div class="files-list">
+      {% for file in files %}
+      {% set ext = (file.file_name.rsplit('.', 1)[-1].lower() if '.' in file.file_name else '') %}
+      <div class="file-item">
+        <button type="button" class="file-icon-btn" title="Podgląd" data-file-id="{{ file.id }}"
+                data-mime="{{ file.mime_type or '' }}" data-name="{{ file.file_name }}"
+                onclick="openFilePreview(this)">{{
+                  {'pdf': '📄', 'docx': '📝', 'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'heic': '🖼️', 'xml': '📰'}.get(ext, '📎')
+                }}</button>
+        <div class="file-meta">
+          <button type="button" class="file-name-btn" data-file-id="{{ file.id }}"
+                  data-mime="{{ file.mime_type or '' }}" data-name="{{ file.file_name }}"
+                  onclick="openFilePreview(this)">{{ file.file_name }}</button>
+          <span class="text-muted small">
+            {{ file.user_name or 'System' }} · {{ file.created_at|ddmmyyyy }}{% if file.file_size %} · {{ file.file_size|filesizeformat }}{% endif %}
+          </span>
+        </div>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="deleteFile({{ file.id }})">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small">Brak plików.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div id="filePreviewModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 id="filePreviewTitle">Podgląd pliku</h3>
+      <button class="modal-close" onclick="document.getElementById('filePreviewModal').classList.remove('open')">✕</button>
+    </div>
+    <div id="filePreviewBody" class="modal-body"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const form = document.getElementById('filesUploadForm');
+  if (!form) return;
+  const statusEl = document.getElementById('filesUploadStatus');
+  const btn = document.getElementById('btnUploadFiles');
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const input = form.querySelector('input[type="file"]');
+    if (!input.files.length) return;
+    const fd = new FormData(form);
+    btn.disabled = true;
+    statusEl.textContent = 'Przesyłanie…';
+    fetch(window.API_BASE + '/api/crm/files/upload', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          location.reload();
+        } else {
+          btn.disabled = false;
+          statusEl.textContent = '';
+          alert(data.message || 'Nie udało się przesłać plików.');
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        statusEl.textContent = '';
+        alert('Błąd sieci przy przesyłaniu plików.');
+      });
+  });
+})();
+
+function deleteFile(fileId) {
+  if (!confirm('Usunąć ten plik?')) return;
+  fetch(window.API_BASE + '/api/crm/files/' + fileId + '/delete', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        location.reload();
+      } else {
+        alert(data.message || 'Nie udało się usunąć pliku.');
+      }
+    })
+    .catch(() => alert('Błąd sieci przy usuwaniu pliku.'));
+}
+
+function openFilePreview(btn) {
+  const fileId = btn.dataset.fileId;
+  const mime = btn.dataset.mime;
+  const name = btn.dataset.name;
+  const url = window.API_BASE + '/api/crm/files/' + fileId + '/download';
+  const body = document.getElementById('filePreviewBody');
+  const title = document.getElementById('filePreviewTitle');
+  title.textContent = name;
+  body.innerHTML = '';
+
+  if (mime === 'application/pdf') {
+    const wrap = document.createElement('div');
+    wrap.className = 'invoice-detail-pdf';
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.title = 'Podgląd';
+    wrap.appendChild(iframe);
+    body.appendChild(wrap);
+  } else if (mime === 'image/jpeg' || mime === 'image/png') {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = name;
+    img.style.maxWidth = '100%';
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+    img.style.borderRadius = '8px';
+    body.appendChild(img);
+  } else {
+    const p = document.createElement('p');
+    p.className = 'text-muted';
+    p.style.padding = '1rem 0';
+    p.textContent = 'Podgląd niedostępny dla tego typu pliku.';
+    body.appendChild(p);
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.className = 'btn btn-outline btn-sm';
+    a.download = name;
+    a.textContent = 'Pobierz plik';
+    body.appendChild(a);
+  }
+
+  document.getElementById('filePreviewModal').classList.add('open');
+}
+</script>
+
+<div class="inv-section" style="margin-top:1rem">
   <h4>Notatki</h4>
   <div style="padding:.85rem">
     <form method="post" action="{{ add_note_url }}" style="margin-bottom:.5rem">
@@ -161,7 +312,7 @@
 </script>
 
 <div class="inv-section" style="margin-top:1rem">
-  <h4>Historia zmian</h4>
+  <h4>Historia</h4>
   <div style="padding:.85rem">
     {% if history %}
     <div class="history-list">
@@ -169,7 +320,7 @@
       <div class="history-item">
         <div class="history-meta">
           <span class="history-action history-action-{{ h.action }}">
-            {{ {'create': 'Utworzono', 'update': 'Edycja', 'delete': 'Usunięto'}[h.action] }}
+            {{ {'create': 'Utworzono', 'update': 'Edycja', 'delete': 'Usunięto', 'file': 'Plik'}[h.action] }}
           </span>
           <span>{{ h.user_name or 'System' }} · {{ h.created_at|ddmmyyyy }}</span>
         </div>

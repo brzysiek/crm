@@ -6,6 +6,7 @@ from flask import Blueprint, Response, flash, redirect, render_template, request
 from models.crm_company import RELATION_LABELS, get_company_by_id, get_company_tags
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, set_starred, update_contact)
+from models.crm_file import get_files_for_company
 from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
 from services.vcard import build_vcard
 
@@ -144,6 +145,10 @@ def view_contact(contact_id):
         history=get_history('contact', contact_id),
         add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),
         entity_type='contact', entity_id=contact_id,
+        files=get_files_for_company(company['id']) if company else [],
+        can_upload_files=bool(company),
+        upload_company_id=company['id'] if company else None,
+        upload_contact_id=contact_id,
     )
 
 

@@ -1855,6 +1855,136 @@ def api_crm_contacts_bulk_delete():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/crm/files/upload', methods=['POST'])
+def api_crm_files_upload():
+    from models.crm_company import get_company_by_id
+    from models.crm_file import ALLOWED_EXTENSIONS, add_file, files_word
+    from models.crm_notes import log_history
+    from models.settings import get_setting
+    from services.gdrive import GoogleDriveClient
+
+    company_id = request.form.get('company_id', type=int)
+    contact_id = request.form.get('contact_id', type=int)
+    uploaded = request.files.getlist('files')
+
+    if not company_id:
+        return jsonify({'status': 'error',
+                         'message': 'Brak firmy — pliki można dodać tylko dla firmy lub kontaktu przypisanego do firmy.'})
+    company = get_company_by_id(company_id)
+    if not company:
+        return jsonify({'status': 'error', 'message': 'Firma nie istnieje.'})
+    if not uploaded:
+        return jsonify({'status': 'error', 'message': 'Nie wybrano żadnego pliku.'})
+
+    api_token = get_setting('google_drive_api_token', '')
+    crm_root_id = get_setting('google_drive_crm_folder_id', '')
+    if not api_token or not crm_root_id:
+        return jsonify({'status': 'error',
+                         'message': 'Skonfiguruj Google Drive w Ustawieniach (token oraz ID folderu CRM).'})
+
+    valid_files = []
+    rejected = []
+    for f in uploaded:
+        ext = f.filename.rsplit('.', 1)[-1].lower() if f.filename and '.' in f.filename else ''
+        if ext not in ALLOWED_EXTENSIONS:
+            rejected.append(f.filename)
+            continue
+        valid_files.append((f, ext))
+
+    if not valid_files:
+        return jsonify({'status': 'error',
+                         'message': 'Niedozwolony format pliku. Obsługiwane: PDF, DOCX, JPG, PNG, HEIC, XML.'})
+
+    try:
+        client = GoogleDriveClient(api_token, crm_root_id)
+        folder_name = company.get('short_name') or company.get('name')
+        company_folder_id = client.find_or_create_folder(folder_name, crm_root_id)
+        files_folder_id = client.find_or_create_folder('pliki', company_folder_id)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Błąd Google Drive: {e}'})
+
+    saved = 0
+    for f, ext in valid_files:
+        content = f.read()
+        mime_type = ALLOWED_EXTENSIONS[ext]
+        try:
+            result = client.upload_file(f.filename, mime_type, content, files_folder_id)
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Błąd przesyłania pliku {f.filename}: {e}'})
+        add_file(company_id, contact_id, f.filename, result['id'], mime_type, len(content), session.get('user_id'))
+        saved += 1
+
+    summary = f'Dodano {saved} {files_word(saved)}'
+    log_history('company', company_id, session.get('user_id'), 'file', summary)
+    if contact_id:
+        log_history('contact', contact_id, session.get('user_id'), 'file', summary)
+
+    message = f'Dodano {saved} {files_word(saved)}.'
+    if rejected:
+        message += f' Pominięto nieobsługiwane pliki: {", ".join(rejected)}.'
+    return jsonify({'status': 'ok', 'saved': saved, 'rejected': rejected, 'message': message})
+
+
+@app.route('/api/crm/files/<int:file_id>/delete', methods=['POST'])
+def api_crm_files_delete(file_id):
+    from models.crm_file import delete_file as db_delete_file
+    from models.crm_file import get_file_by_id
+    from models.settings import get_setting
+    from services.gdrive import GoogleDriveClient
+
+    rec = get_file_by_id(file_id)
+    if not rec:
+        return jsonify({'status': 'error', 'message': 'Plik nie istnieje.'})
+
+    api_token = get_setting('google_drive_api_token', '')
+    crm_root_id = get_setting('google_drive_crm_folder_id', '')
+    try:
+        client = GoogleDriveClient(api_token, crm_root_id)
+        client.delete_file(rec['drive_file_id'])
+    except Exception as e:
+        app.logger.warning('api_crm_files_delete: nie udało się usunąć pliku z Drive (id=%s): %s', file_id, e)
+
+    db_delete_file(file_id)
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/crm/files/<int:file_id>/download')
+def api_crm_files_download(file_id):
+    import unicodedata
+    from urllib.parse import quote
+
+    from models.crm_file import INLINE_PREVIEW_MIMES, get_file_by_id
+    from models.settings import get_setting
+    from services.gdrive import GoogleDriveClient
+
+    rec = get_file_by_id(file_id)
+    if not rec:
+        return jsonify({'error': 'Plik nie istnieje'}), 404
+
+    api_token = get_setting('google_drive_api_token', '')
+    crm_root_id = get_setting('google_drive_crm_folder_id', '')
+    if not api_token:
+        return jsonify({'error': 'Brak konfiguracji Google Drive.'}), 400
+
+    try:
+        client = GoogleDriveClient(api_token, crm_root_id)
+        content = client.download_file(rec['drive_file_id'])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    display_name = rec['file_name']
+    ascii_name = unicodedata.normalize('NFKD', display_name).encode('ascii', 'ignore').decode('ascii') or 'plik'
+    mime = rec.get('mime_type') or 'application/octet-stream'
+    disposition = 'inline' if mime in INLINE_PREVIEW_MIMES else 'attachment'
+
+    return Response(content, mimetype=mime, headers={
+        'Content-Disposition': (
+            f'{disposition}; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(display_name)}"
+        )
+    })
+
+
 @app.route('/api/crm/companies/search')
 def api_crm_companies_search():
     from models.crm_company import search_companies

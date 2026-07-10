@@ -10,6 +10,7 @@ which is already in requirements.txt).
 import base64
 import json
 import time
+import uuid
 from typing import Optional
 
 import requests
@@ -46,7 +47,9 @@ def _get_service_account_token(sa_json: dict) -> str:
     payload = {
         'iss': client_email,
         'sub': client_email,
-        'scope': 'https://www.googleapis.com/auth/drive.readonly',
+        # Pełny zakres (nie tylko readonly) — wymagany do zapisu plików CRM
+        # (tworzenie folderów, upload). Odczyt faktur nadal działa bez zmian.
+        'scope': 'https://www.googleapis.com/auth/drive',
         'aud': 'https://oauth2.googleapis.com/token',
         'iat': now,
         'exp': now + 3600,
@@ -159,3 +162,81 @@ class GoogleDriveClient:
         resp = requests.get(url, headers=self._auth_headers(), params=p, timeout=60)
         resp.raise_for_status()
         return resp.content
+
+    def _require_write_capable(self) -> None:
+        if self._api_key:
+            raise ValueError(
+                'Zapis do Google Drive wymaga konta usługi (service account JSON), '
+                'prosty klucz API nie pozwala na zapis.'
+            )
+
+    def find_folder(self, name: str, parent_id: str) -> Optional[str]:
+        """Find an immediate subfolder of parent_id by exact name. Returns its id or None."""
+        safe_name = name.replace("\\", "\\\\").replace("'", "\\'")
+        q = (
+            f"'{parent_id}' in parents "
+            "and mimeType = 'application/vnd.google-apps.folder' "
+            f"and name = '{safe_name}' and trashed = false"
+        )
+        params = {'q': q, 'fields': 'files(id,name)', 'pageSize': 1}
+        resp = self._get('/files', params)
+        files = resp.json().get('files', [])
+        return files[0]['id'] if files else None
+
+    def create_folder(self, name: str, parent_id: str) -> str:
+        self._require_write_capable()
+        body = {
+            'name': name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_id],
+        }
+        resp = requests.post(
+            f'{self.DRIVE_API}/files',
+            headers={**self._auth_headers(), 'Content-Type': 'application/json'},
+            params=self._auth_params(),
+            json=body,
+            timeout=TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json()['id']
+
+    def find_or_create_folder(self, name: str, parent_id: str) -> str:
+        existing = self.find_folder(name, parent_id)
+        if existing:
+            return existing
+        return self.create_folder(name, parent_id)
+
+    def upload_file(self, name: str, mime_type: str, content: bytes, parent_id: str) -> dict:
+        self._require_write_capable()
+        metadata = {'name': name, 'parents': [parent_id]}
+        boundary = uuid.uuid4().hex
+        body = (
+            f'--{boundary}\r\n'
+            'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+            f'{json.dumps(metadata)}\r\n'
+            f'--{boundary}\r\n'
+            f'Content-Type: {mime_type}\r\n\r\n'
+        ).encode() + content + f'\r\n--{boundary}--'.encode()
+        headers = {
+            **self._auth_headers(),
+            'Content-Type': f'multipart/related; boundary={boundary}',
+        }
+        resp = requests.post(
+            'https://www.googleapis.com/upload/drive/v3/files',
+            headers=headers,
+            params={**self._auth_params(), 'uploadType': 'multipart'},
+            data=body,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def delete_file(self, file_id: str) -> None:
+        self._require_write_capable()
+        resp = requests.delete(
+            f'{self.DRIVE_API}/files/{file_id}',
+            headers=self._auth_headers(),
+            params=self._auth_params(),
+            timeout=TIMEOUT,
+        )
+        resp.raise_for_status()
