@@ -2,8 +2,8 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
-from models.crm_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, create_deal, delete_deal,
-                              get_all_deals, get_deal_by_id, update_deal)
+from models.crm_deal import (KANBAN_DEFAULT_HIDDEN_STAGES, STAGE_BADGE_CLASSES, STAGE_LABELS,
+                              create_deal, delete_deal, get_all_deals, get_deal_by_id, update_deal)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
@@ -49,6 +49,7 @@ def list_deals():
     return render_template('crm/deals/list.html',
         active_tab='deals', deals=deals, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         sort=sort, direction=direction, filters={'search': search, 'stage': stage},
+        kanban_default_hidden_stages=KANBAN_DEFAULT_HIDDEN_STAGES,
     )
 
 

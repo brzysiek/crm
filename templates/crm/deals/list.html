@@ -81,10 +81,20 @@
 </div>
 
 <div id="deals-kanban-view" style="display:none">
+  <div class="col-toggle" id="kanban-stage-toggle" style="margin-bottom:.6rem">
+    <button type="button" id="kanban-stage-toggle-btn" class="btn btn-outline btn-sm">Statusy ▾</button>
+    <div id="kanban-stage-toggle-menu" class="col-toggle-menu">
+      {% for val, label in stage_labels.items() %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" data-stage="{{ val }}"> {{ label }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
   <div class="kanban-board">
     {% for stage_val, stage_label in stage_labels.items() %}
     {% set stage_deals = deals|selectattr('stage', 'equalto', stage_val)|list %}
-    <div class="kanban-column">
+    <div class="kanban-column" data-stage="{{ stage_val }}">
       <div class="kanban-column-header">
         <div class="kanban-column-header-top">
           <span class="kanban-column-name">
@@ -124,5 +134,6 @@
 <script>
 initColumnToggle('deals-table', 'crm_deals_columns', 'deals-col-btn', 'deals-col-menu');
 initDealsViewToggle();
+initKanbanStageToggle({{ kanban_default_hidden_stages|tojson }});
 </script>
 {% endblock %}

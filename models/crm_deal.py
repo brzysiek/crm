@@ -2,14 +2,16 @@ from database import get_db
 from models.crm_notes import log_history, build_diff_summary
 
 STAGE_LABELS = {
-    'new': 'Lead', 'in_progress': 'W trakcie', 'in_delivery': 'W toku projektu',
-    'completed': 'Zakończony', 'won': 'Wygrany', 'lost': 'Przegrany', 'someday': 'Kiedyś',
+    'new': 'Lead', 'in_progress': 'Kwalifikacja', 'won': 'Wygrany', 'in_delivery': 'W toku projektu',
+    'completed': 'Zakończony', 'someday': 'Kiedyś', 'lost': 'Przegrany', 'unqualified': 'Niekwalifikowany',
 }
 
 STAGE_BADGE_CLASSES = {
-    'new': 'badge-yellow', 'in_progress': 'badge-blue', 'in_delivery': 'badge-purple',
-    'completed': 'badge-lime', 'won': 'badge-green', 'lost': 'badge-red', 'someday': 'badge-gray',
+    'new': 'badge-yellow', 'in_progress': 'badge-blue', 'won': 'badge-green', 'in_delivery': 'badge-purple',
+    'completed': 'badge-lime', 'someday': 'badge-gray', 'lost': 'badge-red', 'unqualified': 'badge-orange',
 }
+
+KANBAN_DEFAULT_HIDDEN_STAGES = ['completed', 'lost', 'unqualified']
 
 FIELD_LABELS = {
     'name': 'Nazwa', 'description': 'Opis', 'amount': 'Kwota', 'stage': 'Etap',

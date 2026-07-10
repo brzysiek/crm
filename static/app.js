@@ -1312,3 +1312,82 @@ function initDealsViewToggle() {
 
   apply(localStorage.getItem(STORAGE_KEY) === 'kanban' ? 'kanban' : 'list');
 }
+
+/* ── CRM: wybór statusów widocznych w widoku Kanban (zapamiętany w localStorage/serwerze) ── */
+function initKanbanStageToggle(defaultHidden) {
+  const btn = document.getElementById('kanban-stage-toggle-btn');
+  const menu = document.getElementById('kanban-stage-toggle-menu');
+  const board = document.getElementById('deals-kanban-view');
+  if (!btn || !menu || !board) return;
+
+  const STORAGE_KEY = 'crm_deals_kanban_stages';
+  const items = Array.from(menu.querySelectorAll('input[type=checkbox]'));
+
+  function parseStored(raw) {
+    if (raw == null) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (_) {}
+    return null;
+  }
+
+  let hidden = parseStored(localStorage.getItem(STORAGE_KEY));
+  if (hidden === null) hidden = (defaultHidden || []).slice();
+
+  function applyVisibility() {
+    items.forEach(cb => {
+      const stage = cb.dataset.stage;
+      const isHidden = hidden.includes(stage);
+      cb.checked = !isHidden;
+      board.querySelectorAll('.kanban-column[data-stage="' + stage + '"]').forEach(col => {
+        col.style.display = isHidden ? 'none' : '';
+      });
+    });
+  }
+
+  function persist() {
+    const value = JSON.stringify(hidden);
+    localStorage.setItem(STORAGE_KEY, value);
+    fetch(window.API_BASE + '/api/user-settings/' + STORAGE_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    }).catch(() => {});
+  }
+
+  items.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const stage = cb.dataset.stage;
+      hidden = cb.checked ? hidden.filter(s => s !== stage) : [...hidden, stage];
+      persist();
+      applyVisibility();
+    });
+  });
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
+  });
+
+  applyVisibility();
+
+  /* Serwer jest źródłem prawdy między urządzeniami — localStorage to tylko
+     natychmiastowy cache na czas wczytywania strony. */
+  fetch(window.API_BASE + '/api/user-settings/' + STORAGE_KEY)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.value) {
+        const parsed = parseStored(data.value);
+        if (parsed) {
+          hidden = parsed;
+          localStorage.setItem(STORAGE_KEY, data.value);
+          applyVisibility();
+        }
+      }
+    })
+    .catch(() => {});
+}

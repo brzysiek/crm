@@ -311,7 +311,7 @@ CREATE TABLE IF NOT EXISTS crm_deals (
     amount         DECIMAL(12,2),
     company_id     INT NULL,
     contact_id     INT NULL,
-    stage          ENUM('new','in_progress','in_delivery','completed','won','lost','someday') DEFAULT 'new',
+    stage          ENUM('new','in_progress','won','in_delivery','completed','someday','lost','unqualified') DEFAULT 'new',
     start_date     DATE,
     end_date       DATE,
     owner_user_id  INT NULL,
