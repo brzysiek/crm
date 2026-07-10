@@ -1,0 +1,78 @@
+{# Wspólny partial: zunifikowany feed aktywności (notatki + historia), posortowany chronologicznie.
+   Wymaga: activity — lista pozycji z polem _kind ('note' albo 'history'). #}
+
+<div class="inv-section">
+  <h4>Historia</h4>
+  <div style="padding:.85rem">
+    {% if activity %}
+    <div class="history-list">
+      {% for item in activity %}
+        {% if item._kind == 'note' %}
+        <div class="note-item">
+          <div class="note-meta">
+            <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}</span>
+            <form method="post" action="{{ item.delete_url }}" class="inline-form"
+                  onsubmit="return confirm('Usunąć tę notatkę?')">
+              <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            </form>
+          </div>
+          {% if item.audio_data and not item.transcribed_at %}
+            <div class="note-body"><em class="text-muted">Notatka głosowa</em></div>
+          {% else %}
+            <div class="note-body">{{ item.body }}</div>
+          {% endif %}
+          {% if item.audio_data %}
+          <div class="note-audio" style="margin-top:.4rem;display:flex;align-items:center;gap:.5rem">
+            <audio controls preload="none" src="{{ item.audio_data }}" style="height:32px;max-width:260px"></audio>
+            {% if not item.transcribed_at %}
+            <button type="button" class="btn btn-outline btn-sm btn-transcribe-note" data-note-id="{{ item.id }}">
+              Transkrybuj
+            </button>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="history-item">
+          <div class="history-meta">
+            <span class="history-action history-action-{{ item.action }}">
+              {{ {'create': 'Utworzono', 'update': 'Edycja', 'delete': 'Usunięto', 'file': 'Plik'}[item.action] }}
+            </span>
+            <span>{{ item.user_name or 'System' }} · {{ item.created_at|ddmmyyyy }}{% if item.source_label %} · {{ item.source_label }}{% endif %}</span>
+          </div>
+          <div class="note-body">{{ item.summary }}</div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small">Brak historii.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.btn-transcribe-note').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const noteId = btn.dataset.noteId;
+    btn.disabled = true;
+    btn.textContent = 'Transkrybuję…';
+    fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/transcribe', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          location.reload();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Transkrybuj';
+          alert(data.message || 'Nie udało się przetranskrybować notatki.');
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Transkrybuj';
+        alert('Błąd sieci przy transkrypcji.');
+      });
+  });
+});
+</script>

@@ -20,6 +20,7 @@
       <input type="hidden" name="archive_company" value="0">
       <button type="submit" class="btn btn-outline">✕ Usuń</button>
     </form>
+    {% include 'crm/_add_note_modal.html' %}
     <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">← Lista</a>
   </div>
 </div>
@@ -83,9 +84,28 @@
     </div>
     {% endif %}
 
-    <div class="inv-section" style="margin-top:1rem">
-      <div class="txn-section-header" style="padding:.6rem .85rem 0">
-        <h4 style="background:none;color:var(--bottle-dark);padding:0;text-transform:none;font-size:1rem;letter-spacing:0">Interesy</h4>
+    <div style="margin-top:1rem">
+      {% include 'crm/_files.html' %}
+    </div>
+
+  </div>
+
+  <div>
+    {% if contact.business_card_url %}
+    <div class="inv-section" style="margin-bottom:1rem">
+      <h4>Wizytówka</h4>
+      <div style="padding:.85rem">
+        <a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">
+          <img src="{{ contact.business_card_url|drive_image_url }}" alt="Wizytówka"
+               style="max-width:100%;border-radius:8px;display:block">
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="inv-section">
+      <div class="inv-section-header">
+        <h4>Interesy</h4>
         <a href="{{ url_for('crm_deals.new_deal', contact_id=contact.id) }}" class="btn btn-outline btn-sm">+ Dodaj interes</a>
       </div>
       <div style="padding:.85rem">
@@ -110,21 +130,9 @@
       </div>
     </div>
 
-  </div>
-
-  <div>
-    {% if contact.business_card_url %}
-    <div class="inv-section" style="margin-bottom:1rem">
-      <h4>Wizytówka</h4>
-      <div style="padding:.85rem">
-        <a href="{{ contact.business_card_url }}" target="_blank" rel="noopener">
-          <img src="{{ contact.business_card_url|drive_image_url }}" alt="Wizytówka"
-               style="max-width:100%;border-radius:8px;display:block">
-        </a>
-      </div>
+    <div style="margin-top:1rem">
+      {% include 'crm/_activity_feed.html' %}
     </div>
-    {% endif %}
-    {% include 'crm/_notes_history.html' %}
   </div>
 </div>
 {% endblock %}

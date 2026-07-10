@@ -28,6 +28,7 @@
       <input type="hidden" name="archive_contacts" value="0">
       <button type="submit" class="btn btn-outline">✕ Usuń</button>
     </form>
+    {% include 'crm/_add_note_modal.html' %}
     <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline">← Lista</a>
   </div>
 </div>
@@ -38,19 +39,24 @@
     <div class="inv-section">
       <h4>Dane firmy</h4>
       <dl class="inv-dl">
+        <dt>Opis</dt><dd>{{ company.description or '—' }}</dd>
+        <dt>Strona WWW</dt>
+        <dd>{% if company.website %}<a href="{{ company.website if company.website.startswith('http') else 'https://' ~ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a>{% else %}—{% endif %}</dd>
+        <dt>Email</dt><dd>{{ company.email or '—' }}</dd>
+        <dt>Telefon</dt><dd>{{ company.phone|phone_link }}</dd>
+      </dl>
+      <dl class="inv-dl hidden" id="companyMoreFields">
         <dt>Adres</dt>
         <dd>{{ address or '—' }}</dd>
         <dt>Województwo</dt><dd>{{ company.voivodeship or '—' }}</dd>
-        <dt>Email</dt><dd>{{ company.email or '—' }}</dd>
-        <dt>Telefon</dt><dd>{{ company.phone|phone_link }}</dd>
-        <dt>Strona WWW</dt>
-        <dd>{% if company.website %}<a href="{{ company.website if company.website.startswith('http') else 'https://' ~ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a>{% else %}—{% endif %}</dd>
         <dt>LinkedIn</dt>
         <dd>{% if company.linkedin_url %}<a href="{{ company.linkedin_url if company.linkedin_url.startswith('http') else 'https://' ~ company.linkedin_url }}" target="_blank" rel="noopener">{{ company.linkedin_url }}</a>{% else %}—{% endif %}</dd>
         <dt>NIP</dt><dd>{{ company.nip or '—' }}</dd>
         <dt>KRS</dt><dd>{{ company.krs or '—' }}</dd>
-        <dt>Opis</dt><dd>{{ company.description or '—' }}</dd>
       </dl>
+      <div style="padding:.6rem .85rem">
+        <button type="button" class="btn btn-outline btn-sm" onclick="toggleMoreFields('companyMoreFields', this)">▼ Więcej danych</button>
+      </div>
     </div>
 
     {% if tags or industries or source %}
@@ -85,9 +91,17 @@
     </div>
     {% endif %}
 
-    <div class="inv-section" style="margin-top:1rem">
-      <div class="txn-section-header" style="padding:.6rem .85rem 0">
-        <h4 style="background:none;color:var(--bottle-dark);padding:0;text-transform:none;font-size:1rem;letter-spacing:0">Kontakty</h4>
+    <div style="margin-top:1rem">
+      {% include 'crm/_files.html' %}
+    </div>
+
+  </div>
+
+  <div>
+
+    <div class="inv-section">
+      <div class="inv-section-header">
+        <h4>Kontakty</h4>
         <a href="{{ url_for('crm_contacts.new_contact', company_id=company.id) }}" class="btn btn-outline btn-sm">+ Dodaj kontakt</a>
       </div>
       <div style="padding:.85rem">
@@ -114,8 +128,8 @@
     </div>
 
     <div class="inv-section" style="margin-top:1rem">
-      <div class="txn-section-header" style="padding:.6rem .85rem 0">
-        <h4 style="background:none;color:var(--bottle-dark);padding:0;text-transform:none;font-size:1rem;letter-spacing:0">Interesy</h4>
+      <div class="inv-section-header">
+        <h4>Interesy</h4>
         <a href="{{ url_for('crm_deals.new_deal', company_id=company.id) }}" class="btn btn-outline btn-sm">+ Dodaj interes</a>
       </div>
       <div style="padding:.85rem">
@@ -142,10 +156,10 @@
       </div>
     </div>
 
-  </div>
+    <div style="margin-top:1rem">
+      {% include 'crm/_activity_feed.html' %}
+    </div>
 
-  <div>
-    {% include 'crm/_notes_history.html' %}
   </div>
 </div>
 {% endblock %}

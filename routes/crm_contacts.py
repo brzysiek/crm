@@ -7,7 +7,7 @@ from models.crm_company import RELATION_LABELS, get_company_by_id, get_company_t
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, set_starred, update_contact)
 from models.crm_file import get_files_for_company
-from models.crm_notes import add_note, delete_note, get_history, get_notes_multi
+from models.crm_notes import add_note, delete_note, get_history_multi, get_notes_multi
 from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
@@ -123,12 +123,14 @@ def view_contact(contact_id):
         company_source = get_company_tags(contact['company_id'], 'source')
 
     company = get_company_by_id(contact['company_id']) if contact.get('company_id') else None
+    deals = get_all_deals(contact_id=contact_id)
 
     entities = [('contact', contact_id)]
     if company:
         entities.append(('company', company['id']))
     notes = get_notes_multi(entities)
     for n in notes:
+        n['_kind'] = 'note'
         if n['entity_type'] == 'contact':
             n['source_label'] = 'Notatka kontaktu'
             n['delete_url'] = url_for('crm_contacts.delete_note_view', contact_id=contact_id, note_id=n['id'])
@@ -136,13 +138,26 @@ def view_contact(contact_id):
             n['source_label'] = 'Notatka firmy'
             n['delete_url'] = url_for('crm_companies.delete_note_view', company_id=n['entity_id'], note_id=n['id'])
 
+    history_entities = entities + [('deal', d['id']) for d in deals]
+    history = get_history_multi(history_entities)
+    for h in history:
+        h['_kind'] = 'history'
+        if h['entity_type'] == 'contact':
+            h['source_label'] = None
+        elif h['entity_type'] == 'company':
+            h['source_label'] = 'Firma'
+        else:
+            deal = next((d for d in deals if d['id'] == h['entity_id']), None)
+            h['source_label'] = f"Interes: {deal['name']}" if deal else 'Interes'
+
+    activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
+
     return render_template('crm/contacts/detail.html',
         active_tab='contacts', contact=contact, company=company, company_tags=company_tags,
         company_industries=company_industries, company_source=company_source, relation_labels=RELATION_LABELS,
-        deals=get_all_deals(contact_id=contact_id), stage_labels=STAGE_LABELS,
+        deals=deals, stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,
-        notes=notes,
-        history=get_history('contact', contact_id),
+        activity=activity,
         add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),
         entity_type='contact', entity_id=contact_id,
         files=get_files_for_company(company['id']) if company else [],

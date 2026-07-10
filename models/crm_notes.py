@@ -159,6 +159,26 @@ def get_history(entity_type: str, entity_id: int) -> list[dict]:
         return cur.fetchall()
 
 
+def get_history_multi(entities: list[tuple[str, int]]) -> list[dict]:
+    """Zwraca historię z kilku encji naraz (np. firma + jej kontakty + interesy),
+    połączoną chronologicznie. entities: lista (entity_type, entity_id)."""
+    if not entities:
+        return []
+    db = get_db()
+    with db.cursor() as cur:
+        conditions = " OR ".join(["(h.entity_type=%s AND h.entity_id=%s)"] * len(entities))
+        params = [v for pair in entities for v in pair]
+        cur.execute(
+            f"""SELECT h.*, u.full_name AS user_name
+                FROM crm_history h
+                LEFT JOIN users u ON u.id = h.user_id
+                WHERE {conditions}
+                ORDER BY h.created_at DESC, h.id DESC""",
+            params
+        )
+        return cur.fetchall()
+
+
 def build_diff_summary(old: dict, new: dict, field_labels: dict) -> str | None:
     """Porównuje stare i nowe wartości pól, zwraca czytelny opis zmian albo None gdy brak różnic."""
     changes = []

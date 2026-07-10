@@ -120,6 +120,14 @@ function toggleNewCategory(select) {
   if (show) newCat.focus();
 }
 
+/* ── Więcej danych toggle (np. dodatkowe pola firmy) ─────────────────────────── */
+function toggleMoreFields(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const hidden = el.classList.toggle('hidden');
+  btn.textContent = hidden ? '▼ Więcej danych' : '▲ Mniej danych';
+}
+
 /* ── API key reveal toggle ───────────────────────────────────────────────────── */
 function toggleReveal(inputId, btn) {
   const el = document.getElementById(inputId);

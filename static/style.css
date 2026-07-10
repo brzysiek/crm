@@ -1137,6 +1137,20 @@ input[type="file"]:hover::-webkit-file-upload-button {
   margin: 0;
 }
 
+.inv-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  background: var(--gradient-primary);
+  padding: .45rem .9rem;
+}
+
+.inv-section-header h4 {
+  background: none;
+  padding: 0;
+}
+
 .inv-dl {
   display: grid;
   grid-template-columns: 180px 1fr;

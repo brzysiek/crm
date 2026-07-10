@@ -1,0 +1,112 @@
+{# Wspólny partial: przycisk "+ Notatka" w pasku akcji + modal dodawania notatki (tekst/głos).
+   Wymaga: add_note_url, entity_type, entity_id #}
+
+<button type="button" class="btn btn-outline" onclick="document.getElementById('addNoteModal').classList.add('open')">📝 Notatka</button>
+
+<div id="addNoteModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Dodaj notatkę</h3>
+      <button class="modal-close" onclick="document.getElementById('addNoteModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ add_note_url }}">
+        <div class="form-group" style="margin-bottom:.5rem">
+          <textarea name="body" rows="4" placeholder="Dodaj notatkę…" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">+ Dodaj notatkę</button>
+      </form>
+
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <button type="button" class="btn btn-outline btn-sm" id="btnVoiceNote"
+                data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}">
+          🎙️ Nagraj notatkę głosową
+        </button>
+        <span id="voiceNoteStatus" class="small text-muted" style="margin-left:.5rem"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const btnVoice = document.getElementById('btnVoiceNote');
+  const statusEl = document.getElementById('voiceNoteStatus');
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let recording = false;
+
+  function setStatus(text) { if (statusEl) statusEl.textContent = text; }
+
+  async function startRecording() {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      alert('Brak dostępu do mikrofonu: ' + err.message);
+      return;
+    }
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+    const mimeType = candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+    try {
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    } catch (err) {
+      alert('Nagrywanie audio nie jest wspierane w tej przeglądarce.');
+      stream.getTracks().forEach(t => t.stop());
+      return;
+    }
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || mimeType || 'audio/webm' });
+      uploadVoiceNote(blob);
+    };
+    mediaRecorder.start();
+    recording = true;
+    btnVoice.textContent = '⏹ Zatrzymaj i zapisz';
+    setStatus('Nagrywanie…');
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && recording) {
+      mediaRecorder.stop();
+      recording = false;
+      btnVoice.textContent = '🎙️ Nagraj notatkę głosową';
+    }
+  }
+
+  function uploadVoiceNote(blob) {
+    setStatus('Zapisywanie…');
+    btnVoice.disabled = true;
+    const ext = (blob.type.includes('mp4') || blob.type.includes('m4a')) ? 'm4a'
+      : blob.type.includes('ogg') ? 'ogg' : 'webm';
+    const form = new FormData();
+    form.append('audio', blob, 'notatka.' + ext);
+    form.append('entity_type', btnVoice.dataset.entityType);
+    form.append('entity_id', btnVoice.dataset.entityId);
+    fetch(window.API_BASE + '/api/crm/notes/voice', { method: 'POST', body: form })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          location.reload();
+        } else {
+          setStatus('');
+          btnVoice.disabled = false;
+          alert(data.message || 'Nie udało się zapisać notatki głosowej.');
+        }
+      })
+      .catch(() => {
+        setStatus('');
+        btnVoice.disabled = false;
+        alert('Błąd sieci przy zapisie notatki głosowej.');
+      });
+  }
+
+  if (btnVoice) {
+    btnVoice.addEventListener('click', () => {
+      if (!recording) startRecording(); else stopRecording();
+    });
+  }
+})();
+</script>
