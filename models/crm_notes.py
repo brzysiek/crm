@@ -100,7 +100,7 @@ def get_notes_multi(entities: list[tuple[str, int]]) -> list[dict]:
                 ORDER BY n.created_at DESC, n.id DESC""",
             params
         )
-        return cur.fetchall()
+        return list(cur.fetchall())
 
 
 def delete_note(note_id: int) -> None:
@@ -183,7 +183,7 @@ def get_history_multi(entities: list[tuple[str, int]]) -> list[dict]:
                 ORDER BY h.created_at DESC, h.id DESC""",
             params
         )
-        return cur.fetchall()
+        return list(cur.fetchall())
 
 
 def build_diff_summary(old: dict, new: dict, field_labels: dict) -> str | None:
