@@ -27,6 +27,16 @@ def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
 
 
+def _raise_for_status(resp: requests.Response) -> None:
+    """Jak resp.raise_for_status(), ale dołącza treść odpowiedzi Google (zawiera
+    dokładny powód błędu, np. 'Drive API has not been used...' albo
+    'insufficientFilePermissions') — sam kod statusu (403 Forbidden) tego nie mówi."""
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        raise requests.HTTPError(f'{e} — treść odpowiedzi: {resp.text[:500]}', response=resp) from None
+
+
 def _get_service_account_token(sa_json: dict) -> str:
     """Return a valid OAuth2 access token for a service account.
 
@@ -111,7 +121,7 @@ class GoogleDriveClient:
         url = f'{self.DRIVE_API}{path}'
         p = {**self._auth_params(), **(params or {})}
         resp = requests.get(url, headers=self._auth_headers(), params=p, timeout=TIMEOUT)
-        resp.raise_for_status()
+        _raise_for_status(resp)
         return resp
 
     def list_subfolders(self, folder_id: str) -> list[dict]:
@@ -160,7 +170,7 @@ class GoogleDriveClient:
         url = f'{self.DRIVE_API}/files/{file_id}'
         p = {**self._auth_params(), 'alt': 'media'}
         resp = requests.get(url, headers=self._auth_headers(), params=p, timeout=60)
-        resp.raise_for_status()
+        _raise_for_status(resp)
         return resp.content
 
     def _require_write_capable(self) -> None:
@@ -197,7 +207,7 @@ class GoogleDriveClient:
             json=body,
             timeout=TIMEOUT,
         )
-        resp.raise_for_status()
+        _raise_for_status(resp)
         return resp.json()['id']
 
     def find_or_create_folder(self, name: str, parent_id: str) -> str:
@@ -228,7 +238,7 @@ class GoogleDriveClient:
             data=body,
             timeout=60,
         )
-        resp.raise_for_status()
+        _raise_for_status(resp)
         return resp.json()
 
     def delete_file(self, file_id: str) -> None:
@@ -239,4 +249,4 @@ class GoogleDriveClient:
             params=self._auth_params(),
             timeout=TIMEOUT,
         )
-        resp.raise_for_status()
+        _raise_for_status(resp)
