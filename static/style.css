@@ -334,6 +334,8 @@ a:hover { text-decoration: underline; }
 .btn-outline:hover { border-color: var(--primary); background: var(--info-bg); }
 .btn-ghost    { background: transparent; color: var(--text-secondary); border-color: transparent; }
 .btn-ghost:hover { background: var(--surface-secondary); color: var(--text-primary); }
+.btn-danger   { background: #ef4444; color: #fff; border-color: transparent; box-shadow: 0 12px 32px rgba(239, 68, 68, .18); }
+.btn-danger:hover { transform: translateY(-1px); filter: brightness(1.04); color: #fff; }
 .btn-sm { padding: .35rem .8rem; font-size: .8rem; }
 
 /* ── File inputs ────────────────────────────────────────────────────────────── */

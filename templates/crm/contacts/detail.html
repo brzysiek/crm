@@ -13,15 +13,10 @@
     {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}</div>{% endif %}
   </div>
   <div class="header-actions">
-    <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">📇 Wizytówka</a>
+    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline" title="Wróć do listy">←</a>
     <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">✎ Edytuj</a>
-    <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
-          class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if contact.company_id else 'false' }})">
-      <input type="hidden" name="archive_company" value="0">
-      <button type="submit" class="btn btn-outline">✕ Usuń</button>
-    </form>
     {% include 'crm/_add_note_modal.html' %}
-    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">← Lista</a>
+    <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">📇 Wizytówka</a>
   </div>
 </div>
 
@@ -159,6 +154,14 @@
       {% include 'crm/_activity_feed.html' %}
     </div>
   </div>
+</div>
+
+<div class="header-actions" style="justify-content:flex-end; margin-top:1rem">
+  <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
+        class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if contact.company_id else 'false' }})">
+    <input type="hidden" name="archive_company" value="0">
+    <button type="submit" class="btn btn-danger">✕ Usuń kontakt</button>
+  </form>
 </div>
 
 <script>
