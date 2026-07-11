@@ -92,12 +92,38 @@ def update_task(task_id: int, data: dict) -> None:
         raise
 
 
+def _sync_project_status(cur, parent_id: int | None) -> None:
+    """Projekt kończy się automatycznie, gdy wszystkie jego podzadania są zrobione;
+    odnawia się automatycznie, jeśli któreś znów przestanie być zrobione."""
+    if not parent_id:
+        return
+    cur.execute("SELECT is_project, status FROM tasks WHERE id=%s", (parent_id,))
+    parent = cur.fetchone()
+    if not parent or not parent['is_project']:
+        return
+    cur.execute(
+        "SELECT COUNT(*) AS total, SUM(status='done') AS done FROM tasks WHERE parent_id=%s",
+        (parent_id,)
+    )
+    counts = cur.fetchone()
+    total = counts['total'] or 0
+    done = counts['done'] or 0
+    if total > 0 and done == total and parent['status'] != 'done':
+        cur.execute("UPDATE tasks SET status='done', completed_at=NOW() WHERE id=%s", (parent_id,))
+    elif parent['status'] == 'done' and done < total:
+        cur.execute("UPDATE tasks SET status='next', completed_at=NULL WHERE id=%s", (parent_id,))
+
+
 def delete_task(task_id: int) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
+            cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
+            row = cur.fetchone()
+            parent_id = row['parent_id'] if row else None
             cur.execute("UPDATE tasks SET parent_id=NULL WHERE parent_id=%s", (task_id,))
             cur.execute("DELETE FROM tasks WHERE id=%s", (task_id,))
+            _sync_project_status(cur, parent_id)
         db.commit()
     except Exception:
         db.rollback()
@@ -110,6 +136,9 @@ def set_status(task_id: int, status: str) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
+            cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
+            row = cur.fetchone()
+            parent_id = row['parent_id'] if row else None
             if status == 'done':
                 cur.execute(
                     "UPDATE tasks SET status=%s, completed_at=NOW() WHERE id=%s",
@@ -120,6 +149,7 @@ def set_status(task_id: int, status: str) -> None:
                     "UPDATE tasks SET status=%s, completed_at=NULL WHERE id=%s",
                     (status, task_id)
                 )
+            _sync_project_status(cur, parent_id)
         db.commit()
     except Exception:
         db.rollback()

@@ -6,15 +6,22 @@
   <h1>Projekty</h1>
 </div>
 
+<div class="filter-bar" style="gap:.5rem">
+  <input type="text" id="gtdNewProjectInput" class="filter-input" style="flex:1"
+         placeholder="Nazwa nowego projektu…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddProject('gtdNewProjectInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddProject('gtdNewProjectInput')">+ Nowy projekt</button>
+</div>
+
 {% if not projects %}
-  <p class="text-muted">Brak aktywnych projektów. Zamień zadanie w projekt z poziomu Inbox lub Next actions.</p>
+  <p class="text-muted">Brak aktywnych projektów. Dodaj nowy powyżej albo zamień zadanie w projekt z poziomu Inbox lub Next actions.</p>
 {% else %}
 <table class="data-table">
   <thead>
     <tr>
       <th>Projekt</th>
       <th>Postęp</th>
-      <th class="col-actions" style="width:120px"></th>
+      <th class="col-actions" style="width:200px"></th>
     </tr>
   </thead>
   <tbody>
@@ -36,7 +43,11 @@
         {% endif %}
       </td>
       <td class="col-actions">
-        <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.project_detail', project_id=p.id) }}">Otwórz</a>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.project_detail', project_id=p.id) }}">Otwórz</a>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ p.id }}, {{ p.title|tojson }})">✎</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteProject({{ p.id }})">🗑</button>
+        </div>
       </td>
     </tr>
     {% endfor %}

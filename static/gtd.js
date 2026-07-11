@@ -208,6 +208,43 @@ function gtdDeleteTask(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdAddProject(inputId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, is_project: true, status: 'next' }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdRenameProject(taskId, currentTitle) {
+  const title = window.prompt('Nowa nazwa projektu:', currentTitle || '');
+  if (title === null) return;
+  const trimmed = title.trim();
+  if (!trimmed) return;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: trimmed }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdDeleteProject(taskId) {
+  if (!confirm('Usunąć ten projekt? Zadania w nim zostaną zachowane, ale odłączone od projektu.')) return;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.href = window.API_BASE + '/gtd/projekty'; else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdAddSubtask(projectId, inputId) {
   const input = document.getElementById(inputId);
   const title = input.value.trim();
