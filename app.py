@@ -65,6 +65,19 @@ def ddmmyyyy(value):
         return str(value)
 
 
+@app.template_filter('hhmm')
+def hhmm_format(value):
+    """Formatuje TIME z MySQL (pymysql zwraca timedelta) albo time/str jako 'HH:MM'."""
+    if value is None or value == '':
+        return ''
+    if hasattr(value, 'strftime'):
+        return value.strftime('%H:%M')
+    if hasattr(value, 'total_seconds'):
+        total_min = int(value.total_seconds()) // 60
+        return f"{total_min // 60:02d}:{total_min % 60:02d}"
+    return str(value)[:5]
+
+
 @app.template_filter('date_iso')
 def date_iso(value):
     if value is None:
@@ -186,11 +199,18 @@ def inject_globals():
     except Exception as _e:
         app.logger.error('inject_globals: get appearance settings failed: %s', _e)
         app_name, logo_main, logo_thumb = Config.APP_NAME, None, None
+    try:
+        from models.task import count_inbox
+        gtd_inbox_badge = count_inbox()
+    except Exception as _e:
+        app.logger.error('inject_globals: count_inbox failed: %s', _e)
+        gtd_inbox_badge = 0
     return {
         'pending_count':        cnt,
         'bank_pending_count':   bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
         'imports_badge':        cnt + bank_cnt + gdrive_cnt,
+        'gtd_inbox_badge':      gtd_inbox_badge,
         'app_name':             app_name,
         'logo_main':            logo_main,
         'logo_thumb':           logo_thumb,
@@ -2233,6 +2253,7 @@ from routes.imports import bp as imports_bp
 from routes.income import bp as income_bp
 from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
+from routes.gtd import bp as gtd_bp
 
 app.register_blueprint(agent_bp)
 app.register_blueprint(auth_bp)
@@ -2247,6 +2268,7 @@ app.register_blueprint(imports_bp)
 app.register_blueprint(income_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(users_bp)
+app.register_blueprint(gtd_bp)
 
 if __name__ == '__main__':
     app.run(debug=Config.DEBUG, host='0.0.0.0', port=5001)

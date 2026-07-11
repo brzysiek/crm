@@ -1,0 +1,38 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import task_cells %}
+{% block title %}Czeka na — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="page-header">
+  <h1>Czeka na</h1>
+</div>
+
+{% if not tasks %}
+  <p class="text-muted">Nic nie czeka na kogoś innego.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Kontekst</th>
+      <th>Termin</th>
+      <th class="col-actions" style="width:200px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tasks %}
+    <tr data-task-id="{{ t.id }}">
+      {{ task_cells(t) }}
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">▶ Wróć do Next</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

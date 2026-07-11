@@ -7,24 +7,17 @@ Supports two authentication modes:
 Service account uses JWT-based OAuth2 (no extra packages — uses `cryptography`
 which is already in requirements.txt).
 """
-import base64
 import json
-import time
 import uuid
 from typing import Optional
 
 import requests
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+
+from services.google_auth import get_service_account_token
 
 TIMEOUT = 20
 
-# Module-level token cache: { (client_email, private_key_id) → (access_token, expires_at) }
-_token_cache: dict = {}
-
-
-def _b64url(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
+DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
 
 
 def _raise_for_status(resp: requests.Response) -> None:
@@ -35,60 +28,6 @@ def _raise_for_status(resp: requests.Response) -> None:
         resp.raise_for_status()
     except requests.HTTPError as e:
         raise requests.HTTPError(f'{e} — treść odpowiedzi: {resp.text[:500]}', response=resp) from None
-
-
-def _get_service_account_token(sa_json: dict) -> str:
-    """Return a valid OAuth2 access token for a service account.
-
-    Tokens are cached for 55 minutes (Google issues 1-hour tokens).
-    """
-    client_email = sa_json['client_email']
-    private_key_id = sa_json.get('private_key_id', '')
-    cache_key = (client_email, private_key_id)
-
-    cached = _token_cache.get(cache_key)
-    if cached:
-        token, expires_at = cached
-        if time.time() < expires_at:
-            return token
-
-    now = int(time.time())
-    header = {'alg': 'RS256', 'typ': 'JWT', 'kid': private_key_id}
-    payload = {
-        'iss': client_email,
-        'sub': client_email,
-        # Pełny zakres (nie tylko readonly) — wymagany do zapisu plików CRM
-        # (tworzenie folderów, upload). Odczyt faktur nadal działa bez zmian.
-        'scope': 'https://www.googleapis.com/auth/drive',
-        'aud': 'https://oauth2.googleapis.com/token',
-        'iat': now,
-        'exp': now + 3600,
-    }
-
-    header_b64  = _b64url(json.dumps(header,  separators=(',', ':')).encode())
-    payload_b64 = _b64url(json.dumps(payload, separators=(',', ':')).encode())
-    signing_input = f'{header_b64}.{payload_b64}'.encode()
-
-    private_key_pem = sa_json['private_key'].encode()
-    private_key = serialization.load_pem_private_key(private_key_pem, password=None)
-    signature = private_key.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
-    jwt_token = f'{header_b64}.{payload_b64}.{_b64url(signature)}'
-
-    resp = requests.post(
-        'https://oauth2.googleapis.com/token',
-        data={
-            'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-            'assertion':  jwt_token,
-        },
-        timeout=TIMEOUT,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    access_token = data['access_token']
-    expires_in   = int(data.get('expires_in', 3600))
-
-    _token_cache[cache_key] = (access_token, time.time() + min(expires_in, 55 * 60))
-    return access_token
 
 
 class GoogleDriveClient:
@@ -108,7 +47,7 @@ class GoogleDriveClient:
 
     def _auth_headers(self) -> dict:
         if self._sa_json:
-            token = _get_service_account_token(self._sa_json)
+            token = get_service_account_token(self._sa_json, DRIVE_SCOPE)
             return {'Authorization': f'Bearer {token}'}
         return {}
 

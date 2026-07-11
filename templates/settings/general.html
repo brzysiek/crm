@@ -104,6 +104,18 @@
       {% endif %}
     </div>
 
+    <div class="form-group">
+      <label for="gtd_gcal_calendar_id">GTD: ID kalendarza „Zadania” (Google Calendar)</label>
+      <input type="text" id="gtd_gcal_calendar_id" name="gtd_gcal_calendar_id"
+             placeholder="np. abc123@group.calendar.google.com"
+             value="{{ cfg.gtd_gcal_calendar_id or '' }}">
+      <small class="text-muted">
+        Osobny kalendarz Google udostępniony kontu usługi (z prawem edycji),
+        na który GTD jednokierunkowo wypycha zablokowane bloki czasu. Wymaga
+        service account w polu „Token / klucz API” powyżej.
+      </small>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Zapisz konfigurację Google Drive</button>
       <button type="button" class="btn btn-outline" id="btnTestDrive">Testuj połączenie</button>

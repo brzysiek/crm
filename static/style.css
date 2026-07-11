@@ -1950,3 +1950,54 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   text-align: center;
 }
 .agent-done .btn { margin-top: .75rem; }
+
+/* ── GTD ──────────────────────────────────────────────────────────────────── */
+.gtd-quick-add {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .6rem .8rem;
+  margin-bottom: 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+#gtdVoiceBtn.recording {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+  animation: agent-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  #gtdVoiceBtn.recording { animation: none; }
+}
+
+.gtd-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-bottom: 1.2rem;
+}
+.gtd-timeline-row {
+  display: flex;
+  gap: .9rem;
+  align-items: stretch;
+}
+.gtd-timeline-time {
+  flex: 0 0 60px;
+  padding-top: .7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  text-align: right;
+}
+.gtd-timeline-card {
+  flex: 1;
+  padding: .6rem .9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}

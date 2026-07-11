@@ -1,0 +1,67 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import task_cells, star_btn %}
+{% block title %}Tydzień — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="page-header">
+  <h1>Tydzień: {{ week_label }}</h1>
+  <span class="badge {{ 'badge-red' if week_star_count > 15 else 'badge-gray' }}" title="Priorytety tygodnia (miękki limit 10-15)">★ {{ week_star_count }}/15</span>
+</div>
+
+<h3 style="margin:.5rem 0">Priorytety tygodnia</h3>
+{% if not priority_tasks %}
+  <p class="text-muted">Brak oznaczonych priorytetów tygodnia. Oznacz gwiazdką zadania poniżej lub w Next actions.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Kontekst</th>
+      <th>Termin</th>
+      <th style="width:2.2rem"></th>
+      <th class="col-actions" style="width:140px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in priority_tasks %}
+    <tr data-task-id="{{ t.id }}">
+      {{ task_cells(t) }}
+      <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h3 style="margin:1.2rem 0 .5rem">Pozostałe next actions</h3>
+{% if not candidates %}
+  <p class="text-muted">Brak innych next actions do rozważenia.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Kontekst</th>
+      <th>Termin</th>
+      <th style="width:2.2rem"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in candidates %}
+    <tr data-task-id="{{ t.id }}">
+      {{ task_cells(t) }}
+      <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{% macro task_cells(t, today=none) %}
+  <td class="col-checkbox">
+    <input type="checkbox" {{ 'checked' if t.status == 'done' }}
+           onchange="gtdToggleDone({{ t.id }}, this.checked, '{{ 'next' if t.status == 'done' else t.status }}')">
+  </td>
+  <td>
+    <div style="font-weight:600">
+      {{ t.title }}
+      {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
+      {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
+    </div>
+    {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes }}</div>{% endif %}
+    {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
+  </td>
+  <td>{% if t.context_name %}<span class="badge badge-blue">@{{ t.context_name }}</span>{% endif %}</td>
+  <td>
+    {% if t.due_date %}
+      <span class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}">{{ t.due_date|ddmmyyyy }}</span>
+    {% endif %}
+    {% if t.scheduled_date %}
+      <span class="badge badge-green">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</span>
+    {% endif %}
+  </td>
+{% endmacro %}
+
+{% macro star_btn(t, field, url) %}
+  <button type="button" class="btn-ghost btn-sm" style="font-size:1rem;line-height:1;padding:.2rem .35rem"
+          title="Priorytet" onclick="gtdToggleStar({{ t.id }}, '{{ url }}')">{{ '★' if t[field] else '☆' }}</button>
+{% endmacro %}

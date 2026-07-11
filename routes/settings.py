@@ -24,6 +24,7 @@ def general():
         if section in ('gdrive', 'all'):
             data['google_drive_folder_id'] = request.form.get('google_drive_folder_id', '').strip()
             data['google_drive_crm_folder_id'] = request.form.get('google_drive_crm_folder_id', '').strip()
+            data['gtd_gcal_calendar_id'] = request.form.get('gtd_gcal_calendar_id', '').strip()
             drive_token = request.form.get('google_drive_api_token', '').strip()
             if drive_token:
                 data['google_drive_api_token'] = drive_token
