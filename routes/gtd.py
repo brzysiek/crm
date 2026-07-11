@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, sessio
 import models.task as task_model
 from models.crm_tags import add_tag, get_or_create_tag_ids, get_tags
 
-bp = Blueprint('gtd', __name__, url_prefix='/gtd')
+bp = Blueprint('gtd', __name__)
 
 CONTEXT_KIND = 'task_context'
 
@@ -48,7 +48,7 @@ def _format_time(value) -> str:
 
 # ── Widok dnia ───────────────────────────────────────────────────────────────
 
-@bp.route('/dzis')
+@bp.route('/gtd/dzis')
 def day():
     day_arg = request.args.get('d')
     today = date.today()
@@ -77,7 +77,7 @@ def day():
 
 # ── Widok tygodnia ───────────────────────────────────────────────────────────
 
-@bp.route('/tydzien')
+@bp.route('/gtd/tydzien')
 def week():
     today = date.today()
     week_start, week_end = _week_range(today)
@@ -98,7 +98,7 @@ def week():
 
 # ── Inbox ────────────────────────────────────────────────────────────────────
 
-@bp.route('/inbox')
+@bp.route('/gtd/inbox')
 def inbox():
     return render_template(
         'gtd/inbox.html', active_tab='inbox',
@@ -108,7 +108,7 @@ def inbox():
 
 # ── Next actions ─────────────────────────────────────────────────────────────
 
-@bp.route('/next')
+@bp.route('/gtd/next')
 def next_actions():
     context_id = request.args.get('context', type=int)
     contexts = get_tags(CONTEXT_KIND)
@@ -121,7 +121,7 @@ def next_actions():
 
 # ── Czeka na ─────────────────────────────────────────────────────────────────
 
-@bp.route('/czeka-na')
+@bp.route('/gtd/czeka-na')
 def waiting():
     return render_template('gtd/waiting.html', active_tab='waiting',
                             tasks=task_model.get_waiting_tasks())
@@ -129,7 +129,7 @@ def waiting():
 
 # ── Kiedyś/może ──────────────────────────────────────────────────────────────
 
-@bp.route('/kiedys-moze')
+@bp.route('/gtd/kiedys-moze')
 def someday():
     return render_template('gtd/someday.html', active_tab='someday',
                             tasks=task_model.get_someday_tasks())
@@ -137,13 +137,13 @@ def someday():
 
 # ── Projekty ─────────────────────────────────────────────────────────────────
 
-@bp.route('/projekty')
+@bp.route('/gtd/projekty')
 def projects():
     return render_template('gtd/projects.html', active_tab='projekty',
                             projects=task_model.get_projects())
 
 
-@bp.route('/projekty/<int:project_id>')
+@bp.route('/gtd/projekty/<int:project_id>')
 def project_detail(project_id):
     project = task_model.get_task(project_id)
     if not project or not project['is_project']:
