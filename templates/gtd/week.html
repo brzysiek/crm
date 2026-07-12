@@ -66,6 +66,20 @@
 
 {% for group in day_groups %}
 <h3 style="margin:1.2rem 0 .5rem">{{ group.label }}</h3>
+{% if group.gcal_events %}
+<div class="gtd-timeline">
+  {% for e in group.gcal_events %}
+  <div class="gtd-timeline-row">
+    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}</div>
+    <div class="gtd-timeline-card gtd-gcal-card">
+      <strong>{{ e.title }}</strong>
+      <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% if group.tasks %}
 <table class="data-table">
   <thead>
     <tr>
@@ -92,6 +106,7 @@
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
 {% endfor %}
 
 <h3 style="margin:1.2rem 0 .5rem">Bez konkretnego dnia</h3>

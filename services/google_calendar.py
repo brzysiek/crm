@@ -38,16 +38,17 @@ class GoogleCalendarClient:
         token = get_service_account_token(self._sa_json, CALENDAR_SCOPE)
         return {'Authorization': f'Bearer {token}'}
 
-    def get_busy_events(self, calendar_id: str, day: date) -> list[dict]:
-        """Read-only: zwraca wydarzenia z danego kalendarza (np. 'primary') na dany dzień."""
-        start = datetime.combine(day, datetime.min.time())
-        end = start + timedelta(days=1)
+    def get_events(self, calendar_id: str, start: date, end: date) -> list[dict]:
+        """Read-only: zwraca wydarzenia z danego kalendarza (np. 'primary') w przedziale
+        [start, end) — end wyłącznie."""
+        start_dt = datetime.combine(start, datetime.min.time())
+        end_dt = datetime.combine(end, datetime.min.time())
         resp = requests.get(
             f'{CALENDAR_API}/calendars/{calendar_id}/events',
             headers=self._auth_headers(),
             params={
-                'timeMin': start.isoformat() + 'Z',
-                'timeMax': end.isoformat() + 'Z',
+                'timeMin': start_dt.isoformat() + 'Z',
+                'timeMax': end_dt.isoformat() + 'Z',
                 'singleEvents': 'true',
                 'orderBy': 'startTime',
             },
@@ -55,6 +56,10 @@ class GoogleCalendarClient:
         )
         _raise_for_status(resp)
         return resp.json().get('items', [])
+
+    def get_busy_events(self, calendar_id: str, day: date) -> list[dict]:
+        """Read-only: zwraca wydarzenia z danego kalendarza (np. 'primary') na dany dzień."""
+        return self.get_events(calendar_id, day, day + timedelta(days=1))
 
     def upsert_task_event(self, calendar_id: str, event_id: str | None, title: str,
                            day: date, time_str: str, duration_min: int, notes: str = '') -> dict:

@@ -45,6 +45,21 @@
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">+ Dodaj do dnia</button>
 </div>
 
+{% if gcal_events %}
+<h3 style="margin:1.2rem 0 .5rem">📅 Wydarzenia z kalendarza</h3>
+<div class="gtd-timeline">
+  {% for e in gcal_events %}
+  <div class="gtd-timeline-row">
+    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}</div>
+    <div class="gtd-timeline-card gtd-gcal-card">
+      <strong>{{ e.title }}</strong>
+      <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% set scheduled = tasks|selectattr('scheduled_time')|list %}
 {% set unscheduled = tasks|rejectattr('scheduled_time')|list %}
 

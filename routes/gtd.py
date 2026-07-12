@@ -31,18 +31,54 @@ def _week_range(d: date) -> tuple[date, date]:
     return monday, monday + timedelta(days=6)
 
 
-def _day_groups(week_start: date, week_end: date) -> list[dict]:
-    """Dzieli zadania zaplanowane na konkretne dni w danym tygodniu na sekcje
-    dzień-po-dniu — tylko dni, na które faktycznie coś zaplanowano."""
+def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = None) -> list[dict]:
+    """Dzieli zadania zaplanowane na konkretne dni w danym tygodniu (plus wydarzenia
+    z Google Calendar, jeśli podano) na sekcje dzień-po-dniu — tylko dni, na które
+    faktycznie coś zaplanowano lub coś jest w kalendarzu."""
+    gcal_by_day = gcal_by_day or {}
     scheduled = task_model.get_scheduled_tasks_between(week_start, week_end)
     groups = []
     d = week_start
     while d <= week_end:
         day_tasks = [t for t in scheduled if t['scheduled_date'] == d]
-        if day_tasks:
-            groups.append({'date': d, 'label': _day_label(d), 'tasks': day_tasks})
+        day_events = gcal_by_day.get(d, [])
+        if day_tasks or day_events:
+            groups.append({'date': d, 'label': _day_label(d), 'tasks': day_tasks, 'gcal_events': day_events})
         d += timedelta(days=1)
     return groups
+
+
+def _gcal_events_by_day(start: date, end: date) -> dict:
+    """Read-only: wydarzenia z Google Calendar w przedziale [start, end] (włącznie),
+    pogrupowane po dniu. Zwraca {} po cichu jeśli integracja nie jest skonfigurowana
+    albo API zwróci błąd — kalendarz jest tylko dodatkowym kontekstem, nie ma prawa
+    wywalić widoku dnia/tygodnia."""
+    client, _ = _gcal_client_and_calendar()
+    if not client:
+        return {}
+    try:
+        raw = client.get_events('primary', start, end + timedelta(days=1))
+    except Exception:
+        return {}
+    by_day: dict = {}
+    for e in raw:
+        start_info = e.get('start', {})
+        if start_info.get('dateTime'):
+            dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00'))
+            d = dt.date()
+            time_label = dt.strftime('%H:%M')
+        elif start_info.get('date'):
+            d = datetime.strptime(start_info['date'], '%Y-%m-%d').date()
+            time_label = None
+        else:
+            continue
+        by_day.setdefault(d, []).append({
+            'title': e.get('summary') or '(bez tytułu)',
+            'time': time_label,
+        })
+    for events in by_day.values():
+        events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
+    return by_day
 
 
 def _format_time(value) -> str:
@@ -67,6 +103,7 @@ def day():
 
     tasks = task_model.get_tasks_for_day(current)
     unfinished = task_model.get_unfinished_before(current) if current == today else []
+    gcal_events = _gcal_events_by_day(current, current).get(current, [])
 
     return render_template(
         'gtd/day.html',
@@ -81,6 +118,7 @@ def day():
         tasks=tasks,
         unfinished=unfinished,
         today_star_count=task_model.count_today_priority(current),
+        gcal_events=gcal_events,
     )
 
 
@@ -93,7 +131,8 @@ def week():
     priority_tasks = task_model.get_week_priority_tasks()
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
     unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
-    day_groups = _day_groups(week_start, week_end)
+    gcal_by_day = _gcal_events_by_day(week_start, week_end)
+    day_groups = _day_groups(week_start, week_end, gcal_by_day)
 
     return render_template(
         'gtd/week.html',
@@ -114,7 +153,8 @@ def next_week():
     next_monday = _week_range(date.today())[0] + timedelta(days=7)
     week_end = next_monday + timedelta(days=6)
     bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
-    day_groups = _day_groups(next_monday, week_end)
+    gcal_by_day = _gcal_events_by_day(next_monday, week_end)
+    day_groups = _day_groups(next_monday, week_end, gcal_by_day)
 
     return render_template(
         'gtd/next_week.html',
