@@ -3,23 +3,14 @@ from datetime import date, datetime, timedelta
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 import models.task as task_model
-from models.crm_tags import add_tag, get_or_create_tag_ids, get_tags
 
 bp = Blueprint('gtd', __name__)
-
-CONTEXT_KIND = 'task_context'
 
 MONTHS_PL = {
     1: 'stycznia', 2: 'lutego', 3: 'marca', 4: 'kwietnia', 5: 'maja', 6: 'czerwca',
     7: 'lipca', 8: 'sierpnia', 9: 'września', 10: 'października', 11: 'listopada', 12: 'grudnia',
 }
 WEEKDAYS_PL = ('poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota', 'niedziela')
-
-
-@bp.context_processor
-def inject_gtd_contexts():
-    """Konteksty (@tagi) potrzebne w globalnym modalu edycji zadania (gtd/_layout.html)."""
-    return {'contexts': get_tags(CONTEXT_KIND)}
 
 
 def _parse_date(value: str | None, fallback: date) -> date:
@@ -38,6 +29,20 @@ def _day_label(d: date) -> str:
 def _week_range(d: date) -> tuple[date, date]:
     monday = d - timedelta(days=d.weekday())
     return monday, monday + timedelta(days=6)
+
+
+def _day_groups(week_start: date, week_end: date) -> list[dict]:
+    """Dzieli zadania zaplanowane na konkretne dni w danym tygodniu na sekcje
+    dzień-po-dniu — tylko dni, na które faktycznie coś zaplanowano."""
+    scheduled = task_model.get_scheduled_tasks_between(week_start, week_end)
+    groups = []
+    d = week_start
+    while d <= week_end:
+        day_tasks = [t for t in scheduled if t['scheduled_date'] == d]
+        if day_tasks:
+            groups.append({'date': d, 'label': _day_label(d), 'tasks': day_tasks})
+        d += timedelta(days=1)
+    return groups
 
 
 def _format_time(value) -> str:
@@ -62,7 +67,6 @@ def day():
 
     tasks = task_model.get_tasks_for_day(current)
     unfinished = task_model.get_unfinished_before(current) if current == today else []
-    contexts = get_tags(CONTEXT_KIND)
 
     return render_template(
         'gtd/day.html',
@@ -77,7 +81,6 @@ def day():
         tasks=tasks,
         unfinished=unfinished,
         today_star_count=task_model.count_today_priority(current),
-        contexts=contexts,
     )
 
 
@@ -90,6 +93,7 @@ def week():
     priority_tasks = task_model.get_week_priority_tasks()
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
     unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
+    day_groups = _day_groups(week_start, week_end)
 
     return render_template(
         'gtd/week.html',
@@ -100,6 +104,7 @@ def week():
         priority_tasks=priority_tasks,
         bucket_tasks=bucket_tasks,
         unfinished_weeks=unfinished_weeks,
+        day_groups=day_groups,
         week_star_count=task_model.count_week_priority(),
     )
 
@@ -109,6 +114,7 @@ def next_week():
     next_monday = _week_range(date.today())[0] + timedelta(days=7)
     week_end = next_monday + timedelta(days=6)
     bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
+    day_groups = _day_groups(next_monday, week_end)
 
     return render_template(
         'gtd/next_week.html',
@@ -117,6 +123,7 @@ def next_week():
         week_end=week_end,
         week_label=f"{next_monday.day} {MONTHS_PL[next_monday.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
         bucket_tasks=bucket_tasks,
+        day_groups=day_groups,
     )
 
 
@@ -126,7 +133,7 @@ def next_week():
 def inbox():
     return render_template(
         'gtd/inbox.html', active_tab='inbox',
-        tasks=task_model.get_inbox_tasks(), contexts=get_tags(CONTEXT_KIND),
+        tasks=task_model.get_inbox_tasks(),
     )
 
 
@@ -134,12 +141,12 @@ def inbox():
 
 @bp.route('/gtd/next')
 def next_actions():
-    context_id = request.args.get('context', type=int)
-    contexts = get_tags(CONTEXT_KIND)
+    project_id = request.args.get('project', type=int)
     return render_template(
         'gtd/next_actions.html', active_tab='next',
-        tasks=task_model.get_next_actions(context_id), contexts=contexts,
-        selected_context=context_id,
+        tasks=task_model.get_next_actions(project_id),
+        projects=task_model.get_projects(include_done=True),
+        selected_project=project_id,
     )
 
 
@@ -149,6 +156,14 @@ def next_actions():
 def waiting():
     return render_template('gtd/waiting.html', active_tab='waiting',
                             tasks=task_model.get_waiting_tasks())
+
+
+# ── Ukończone ────────────────────────────────────────────────────────────────
+
+@bp.route('/gtd/ukonczone')
+def completed():
+    return render_template('gtd/completed.html', active_tab='ukonczone',
+                            tasks=task_model.get_completed_tasks())
 
 
 # ── Kiedyś/może ──────────────────────────────────────────────────────────────
@@ -175,7 +190,6 @@ def project_detail(project_id):
     return render_template(
         'gtd/project_detail.html', active_tab='projekty',
         project=project, subtasks=task_model.get_project_subtasks(project_id),
-        contexts=get_tags(CONTEXT_KIND),
     )
 
 
@@ -210,14 +224,9 @@ def api_voice_add():
     if 'error' in parsed:
         return jsonify({'status': 'error', 'message': parsed['error']})
 
-    context_tag_id = None
-    if parsed['context']:
-        ids = get_or_create_tag_ids(CONTEXT_KIND, [parsed['context']])
-        context_tag_id = ids[0] if ids else None
-
     task_id = task_model.create_task(
         parsed['title'], session.get('user_id'), is_project=parsed['is_project'],
-        status='inbox', due_date=parsed['due_date'] or None, context_tag_id=context_tag_id,
+        status='inbox', due_date=parsed['due_date'] or None,
     )
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
@@ -236,7 +245,6 @@ def api_create_task():
         status=data.get('status', 'inbox'),
         notes=data.get('notes'),
         parent_id=data.get('parent_id'),
-        context_tag_id=data.get('context_tag_id'),
         due_date=data.get('due_date') or None,
         scheduled_date=data.get('scheduled_date') or None,
         scheduled_time=data.get('scheduled_time') or None,
@@ -332,18 +340,6 @@ def api_convert_project(task_id):
 def api_flatten_project(task_id):
     task_model.flatten_project(task_id)
     return jsonify({'status': 'ok'})
-
-
-# ── API: konteksty ───────────────────────────────────────────────────────────
-
-@bp.route('/api/gtd/contexts', methods=['POST'])
-def api_add_context():
-    data = request.get_json(silent=True) or {}
-    name = (data.get('name') or '').strip()
-    if not name:
-        return jsonify({'status': 'error', 'message': 'Nazwa kontekstu jest wymagana.'})
-    tag_id = add_tag(CONTEXT_KIND, name)
-    return jsonify({'status': 'ok', 'id': tag_id, 'name': name})
 
 
 # ── API: integracja z Google Calendar (jednokierunkowy push zablokowanego czasu) ──

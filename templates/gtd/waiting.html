@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells %}
+{% from 'gtd/_macros.html' import task_cells, row_class %}
 {% block title %}Czeka na — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -15,14 +15,14 @@
     <tr>
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
-      <th>Kontekst</th>
+      <th>Projekt</th>
       <th>Termin</th>
       <th class="col-actions" style="width:200px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in tasks %}
-    <tr data-task-id="{{ t.id }}">
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t) }}
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">

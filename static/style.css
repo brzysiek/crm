@@ -2001,3 +2001,35 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
 }
+
+.gtd-status-badge {
+  cursor: pointer;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  user-select: none;
+}
+
+.data-table tr.gtd-row-done td { background: var(--success-bg); }
+.data-table tr.gtd-row-overdue td { background: var(--error-bg); }
+.gtd-timeline-card.gtd-row-done { background: var(--success-bg); }
+.gtd-timeline-card.gtd-row-overdue { background: var(--error-bg); }
+
+.term-cell { position: relative; display: inline-block; }
+.term-hover-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  display: none;
+  flex-wrap: wrap;
+  gap: .2rem;
+  width: 210px;
+  margin-top: .25rem;
+  padding: .4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+}
+.term-cell:hover .term-hover-picker { display: flex; }

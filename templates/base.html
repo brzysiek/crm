@@ -62,7 +62,7 @@
     <li class="navbar-dropdown" id="nav-dd-gtd">
       <a href="{{ url_for('gtd.day') }}"
          class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'gtd' else '' }}">
-        Getting Things Done
+        Zadania
         {% if gtd_inbox_badge > 0 %}
           <span class="nav-badge">{{ gtd_inbox_badge }}</span>
         {% endif %}
@@ -90,6 +90,8 @@
            class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.waiting' else '' }}">⏳ Czeka na</a>
         <a href="{{ url_for('gtd.someday') }}"
            class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.someday' else '' }}">💤 Kiedyś/może</a>
+        <a href="{{ url_for('gtd.completed') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.completed' else '' }}">✅ Ukończone</a>
       </div>
     </li>
     <li class="navbar-dropdown" id="nav-dd-finance">

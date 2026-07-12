@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, star_btn %}
+{% from 'gtd/_macros.html' import task_cells, star_btn, row_class %}
 {% block title %}Ten tydzień — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -15,7 +15,7 @@
   <table class="data-table">
     <tbody>
       {% for t in unfinished_weeks %}
-      <tr data-task-id="{{ t.id }}">
+      <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
         {{ task_cells(t) }}
         <td class="col-actions">
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
@@ -41,7 +41,7 @@
     <tr>
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
-      <th>Kontekst</th>
+      <th>Projekt</th>
       <th>Termin</th>
       <th style="width:2.2rem"></th>
       <th class="col-actions" style="width:140px"></th>
@@ -49,7 +49,7 @@
   </thead>
   <tbody>
     {% for t in priority_tasks %}
-    <tr data-task-id="{{ t.id }}">
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t) }}
       <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
       <td class="col-actions">
@@ -64,7 +64,37 @@
 </table>
 {% endif %}
 
-<h3 style="margin:1.2rem 0 .5rem">Zaplanowane na ten tydzień</h3>
+{% for group in day_groups %}
+<h3 style="margin:1.2rem 0 .5rem">{{ group.label }}</h3>
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Projekt</th>
+      <th>Termin</th>
+      <th style="width:2.2rem"></th>
+      <th class="col-actions" style="width:200px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in group.tasks %}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t, week_start=week_start) }}
+      <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕ Odepnij dzień</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endfor %}
+
+<h3 style="margin:1.2rem 0 .5rem">Bez konkretnego dnia</h3>
 {% if not bucket_tasks %}
   <p class="text-muted">Brak zadań przypisanych do tego tygodnia. Wrzuć je z Inbox lub Next actions przyciskiem „Ten tydzień”.</p>
 {% else %}
@@ -73,7 +103,7 @@
     <tr>
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
-      <th>Kontekst</th>
+      <th>Projekt</th>
       <th>Termin</th>
       <th style="width:2.2rem"></th>
       <th class="col-actions" style="width:200px"></th>
@@ -81,8 +111,8 @@
   </thead>
   <tbody>
     {% for t in bucket_tasks %}
-    <tr data-task-id="{{ t.id }}">
-      {{ task_cells(t) }}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t, week_start=week_start) }}
       <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">

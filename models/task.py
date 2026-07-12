@@ -12,11 +12,9 @@ STATUS_LABELS = {
     'done': 'Zrobione',
 }
 
-_LIST_FIELDS = """t.*, ct.name AS context_name,
-                  p.title AS project_title"""
+_LIST_FIELDS = """t.*, p.title AS project_title"""
 
 _LIST_JOINS = """FROM tasks t
-                 LEFT JOIN crm_tags ct ON ct.id = t.context_tag_id
                  LEFT JOIN tasks p ON p.id = t.parent_id"""
 
 
@@ -43,17 +41,16 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO tasks
-                   (title, notes, is_project, parent_id, status, context_tag_id, waiting_on,
+                   (title, notes, is_project, parent_id, status, waiting_on,
                     due_date, scheduled_date, scheduled_time, scheduled_duration_min,
                     is_today_priority, is_week_priority, created_by)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     title,
                     fields.get('notes') or None,
                     1 if is_project else 0,
                     fields.get('parent_id') or None,
                     status if status in VALID_STATUSES else 'inbox',
-                    fields.get('context_tag_id') or None,
                     fields.get('waiting_on') or None,
                     fields.get('due_date') or None,
                     fields.get('scheduled_date') or None,
@@ -73,7 +70,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
 
 
 def update_task(task_id: int, data: dict) -> None:
-    allowed = ('title', 'notes', 'status', 'context_tag_id', 'waiting_on', 'due_date',
+    allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
@@ -306,13 +303,13 @@ def get_inbox_tasks() -> list[dict]:
         return cur.fetchall()
 
 
-def get_next_actions(context_tag_id: int | None = None) -> list[dict]:
+def get_next_actions(project_id: int | None = None) -> list[dict]:
     db = get_db()
     sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='next' AND t.is_project=0"
     params = []
-    if context_tag_id:
-        sql += " AND t.context_tag_id=%s"
-        params.append(context_tag_id)
+    if project_id:
+        sql += " AND t.parent_id=%s"
+        params.append(project_id)
     sql += " ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC"
     with db.cursor() as cur:
         cur.execute(sql, params)
@@ -398,11 +395,12 @@ def get_unfinished_before(day: date, limit: int = 20) -> list[dict]:
 
 
 def get_week_priority_tasks() -> list[dict]:
+    """Priorytety tygodnia (gwiazdka) — zadania zrobione zostają widoczne."""
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND t.status != 'done' "
-            f"ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC"
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 "
+            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
         )
         return cur.fetchall()
 
@@ -422,13 +420,25 @@ def get_unfinished_weeks_before(monday: date, limit: int = 20) -> list[dict]:
 
 
 def get_week_bucket_tasks(monday: date) -> list[dict]:
-    """Zadania przypisane do luźnego bloku tygodniowego (bez konkretnego dnia)."""
+    """Zadania przypisane do luźnego bloku tygodniowego (bez konkretnego dnia).
+    Zadania zrobione zostają widoczne (nie znikają z widoku tygodnia)."""
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_week=%s AND t.status != 'done' "
-            f"ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_week=%s "
+            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             (monday,)
+        )
+        return cur.fetchall()
+
+
+def get_completed_tasks(limit: int = 200) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='done' "
+            f"ORDER BY t.completed_at DESC, t.id DESC LIMIT %s",
+            (limit,)
         )
         return cur.fetchall()
 

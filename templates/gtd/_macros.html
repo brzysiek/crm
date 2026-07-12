@@ -1,30 +1,44 @@
-{% macro task_cells(t, today=none) %}
+{% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else 'gtd-row-todo') }}{% endmacro %}
+
+{% macro task_cells(t, today=none, week_start=none) %}
   <td class="col-checkbox">
-    <input type="checkbox" {{ 'checked' if t.status == 'done' }}
-           onchange="gtdToggleDone({{ t.id }}, this.checked, '{{ 'next' if t.status == 'done' else t.status }}')">
+    <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
+          onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
   </td>
   <td>
     <div style="font-weight:600">
       {{ t.title }}
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
-      <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj kontekst / termin"
-              onclick="gtdOpenEditTask({{ t.id }}, {{ t.context_tag_id or 'null' }}, '{{ t.due_date or '' }}')">✎</button>
+      <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
+              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}')">✎</button>
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes }}</div>{% endif %}
-    {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
   </td>
-  <td>{% if t.context_name %}<span class="badge badge-blue">@{{ t.context_name }}</span>{% endif %}</td>
+  <td>{% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple">📁 {{ t.project_title }}</a>{% endif %}</td>
   <td>
-    {% if t.due_date %}
-      <span class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}">{{ t.due_date|ddmmyyyy }}</span>
-    {% endif %}
-    {% if t.scheduled_date %}
-      <span class="badge badge-green">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</span>
-    {% endif %}
-    {% if t.planned_week %}
-      <span class="badge badge-blue" title="Blok tygodniowy">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</span>
-    {% endif %}
+    <div class="term-cell">
+      <span>
+        {% if t.due_date %}
+          <span class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}">{{ t.due_date|ddmmyyyy }}</span>
+        {% endif %}
+        {% if t.scheduled_date %}
+          <span class="badge badge-green">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</span>
+        {% endif %}
+        {% if t.planned_week %}
+          <span class="badge badge-blue" title="Blok tygodniowy">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</span>
+        {% endif %}
+        {% if not t.due_date and not t.scheduled_date and not t.planned_week %}<span class="text-muted" style="font-size:.78rem">—</span>{% endif %}
+      </span>
+      {% if week_start %}
+      <div class="term-hover-picker">
+        {% for wd in ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'] %}
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdSetWeekday({{ t.id }}, '{{ week_start.isoformat() }}', {{ loop.index0 }})">{{ wd }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
   </td>
 {% endmacro %}
 

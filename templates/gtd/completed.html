@@ -1,14 +1,14 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, row_class %}
-{% block title %}Kiedyś/może — GTD{% endblock %}
+{% block title %}Ukończone — GTD{% endblock %}
 
 {% block gtd_content %}
 <div class="page-header">
-  <h1>Kiedyś/może</h1>
+  <h1>Ukończone</h1>
 </div>
 
 {% if not tasks %}
-  <p class="text-muted">Lista pomysłów na później jest pusta.</p>
+  <p class="text-muted">Brak ukończonych zadań.</p>
 {% else %}
 <table class="data-table">
   <thead>
@@ -17,7 +17,7 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:200px"></th>
+      <th class="col-actions" style="width:140px"></th>
     </tr>
   </thead>
   <tbody>
@@ -26,7 +26,7 @@
       {{ task_cells(t) }}
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">▶ Aktywuj</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">↺ Cofnij</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </div>
       </td>

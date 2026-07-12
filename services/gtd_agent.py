@@ -20,12 +20,9 @@ Pola do zwrócenia:
   string "" jeśli nie podano żadnego terminu.
 - "is_project": true jeśli notatka opisuje coś większego, wieloetapowego (np. "zorganizować
   wyjazd", "przygotować ofertę dla klienta X") a nie pojedynczą czynność — inaczej false.
-- "context": jedna z krótkich etykiet kontekstu wykonania, jeśli da się rozpoznać z treści:
-  "telefon" (trzeba komuś zadzwonić), "komputer" (praca przy komputerze), "biuro", "dom",
-  "sprawunek" (coś załatwić poza domem/biurem) — albo "" jeśli nie da się jednoznacznie określić.
 
 Zwróć WYŁĄCZNIE JSON w dokładnie tym kształcie:
-{{"title": "", "due_date": "", "is_project": false, "context": ""}}
+{{"title": "", "due_date": "", "is_project": false}}
 """
 
 
@@ -54,7 +51,7 @@ def parse_task_text(text: str, api_key: str, today, model: str = 'gemini-2.5-fla
     """Parsuje szybko wpisaną/wypowiedzianą notatkę na strukturalne zadanie.
 
     `today` to obiekt date użyty do przeliczenia dat względnych.
-    Zwraca {'title':.., 'due_date':.., 'is_project':.., 'context':..} albo {'error': ..}.
+    Zwraca {'title':.., 'due_date':.., 'is_project':..} albo {'error': ..}.
     """
     try:
         prompt = _SYSTEM_PROMPT_TMPL.format(
@@ -98,11 +95,8 @@ def parse_task_text(text: str, api_key: str, today, model: str = 'gemini-2.5-fla
         if due_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', due_date):
             due_date = ''
         is_project = bool(parsed.get('is_project'))
-        context = str(parsed.get('context') or '').strip().lower()
-        if context not in ('telefon', 'komputer', 'biuro', 'dom', 'sprawunek'):
-            context = ''
 
-        return {'title': title, 'due_date': due_date, 'is_project': is_project, 'context': context}
+        return {'title': title, 'due_date': due_date, 'is_project': is_project}
 
     except Exception as exc:
         return {'error': str(exc)}

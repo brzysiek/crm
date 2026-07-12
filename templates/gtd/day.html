@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, star_btn %}
+{% from 'gtd/_macros.html' import task_cells, star_btn, row_class %}
 {% block title %}Dziś — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -22,7 +22,7 @@
   <table class="data-table">
     <tbody>
       {% for t in unfinished %}
-      <tr data-task-id="{{ t.id }}">
+      <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
         {{ task_cells(t, today) }}
         <td class="col-actions">
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
@@ -54,16 +54,15 @@
   {% for t in scheduled|sort(attribute='scheduled_time') %}
   <div class="gtd-timeline-row" data-task-id="{{ t.id }}">
     <div class="gtd-timeline-time">{{ t.scheduled_time|hhmm }}<span class="text-muted" style="font-size:.72rem;display:block">{{ t.scheduled_duration_min or 30 }} min</span></div>
-    <div class="gtd-timeline-card">
+    <div class="gtd-timeline-card {{ row_class(t) }}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div>
-          <input type="checkbox" {{ 'checked' if t.status == 'done' }}
-                 onchange="gtdToggleDone({{ t.id }}, this.checked, '{{ 'next' if t.status == 'done' else t.status }}')">
+          <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
+                onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
           <strong>{{ t.title }}</strong>
-          {% if t.context_name %}<span class="badge badge-blue" style="margin-left:.4rem">@{{ t.context_name }}</span>{% endif %}
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
-          <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj kontekst / termin"
-                  onclick="gtdOpenEditTask({{ t.id }}, {{ t.context_tag_id or 'null' }}, '{{ t.due_date or '' }}')">✎</button>
+          <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}')">✎</button>
           {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
@@ -92,7 +91,7 @@
     <tr>
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
-      <th>Kontekst</th>
+      <th>Projekt</th>
       <th>Termin</th>
       <th style="width:2.2rem" title="Priorytet dnia"></th>
       <th class="col-actions" style="width:180px"></th>
@@ -100,7 +99,7 @@
   </thead>
   <tbody>
     {% for t in unscheduled %}
-    <tr data-task-id="{{ t.id }}">
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, today) }}
       <td>{{ star_btn(t, 'is_today_priority', 'toggle_today') }}</td>
       <td class="col-actions">
