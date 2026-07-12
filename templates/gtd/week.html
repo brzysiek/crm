@@ -1,10 +1,10 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, star_btn %}
-{% block title %}Tydzień — GTD{% endblock %}
+{% block title %}Ten tydzień — GTD{% endblock %}
 
 {% block gtd_content %}
 <div class="page-header">
-  <h1>Tydzień: {{ week_label }}</h1>
+  <h1>Ten tydzień: {{ week_label }}</h1>
   <span class="badge {{ 'badge-red' if week_star_count > 15 else 'badge-gray' }}" title="Priorytety tygodnia (miękki limit 10-15)">★ {{ week_star_count }}/15</span>
 </div>
 
@@ -40,9 +40,9 @@
 </table>
 {% endif %}
 
-<h3 style="margin:1.2rem 0 .5rem">Pozostałe next actions</h3>
-{% if not candidates %}
-  <p class="text-muted">Brak innych next actions do rozważenia.</p>
+<h3 style="margin:1.2rem 0 .5rem">Zaplanowane na ten tydzień</h3>
+{% if not bucket_tasks %}
+  <p class="text-muted">Brak zadań przypisanych do tego tygodnia. Wrzuć je z Inbox lub Next actions przyciskiem „Ten tydzień”.</p>
 {% else %}
 <table class="data-table">
   <thead>
@@ -52,13 +52,21 @@
       <th>Kontekst</th>
       <th>Termin</th>
       <th style="width:2.2rem"></th>
+      <th class="col-actions" style="width:200px"></th>
     </tr>
   </thead>
   <tbody>
-    {% for t in candidates %}
+    {% for t in bucket_tasks %}
     <tr data-task-id="{{ t.id }}">
       {{ task_cells(t) }}
       <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdClearWeek({{ t.id }})">✕ Z tygodnia</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
     </tr>
     {% endfor %}
   </tbody>

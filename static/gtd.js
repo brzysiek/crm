@@ -177,6 +177,24 @@ function gtdScheduleToday(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdAssignWeek(taskId, week) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_week', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ week }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdClearWeek(taskId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/clear_week', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdUnschedule(taskId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/unschedule', { method: 'POST' })
     .then(r => r.json())

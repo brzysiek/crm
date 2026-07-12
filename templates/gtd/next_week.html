@@ -1,0 +1,39 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import task_cells %}
+{% block title %}Przyszły tydzień — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="page-header">
+  <h1>Przyszły tydzień: {{ week_label }}</h1>
+</div>
+
+{% if not bucket_tasks %}
+  <p class="text-muted">Brak zadań przypisanych do przyszłego tygodnia. Wrzuć je z Inbox lub Next actions przyciskiem „Przyszły tydzień”.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Kontekst</th>
+      <th>Termin</th>
+      <th class="col-actions" style="width:220px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in bucket_tasks %}
+    <tr data-task-id="{{ t.id }}">
+      {{ task_cells(t) }}
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'this')">→ Ten tydzień</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdClearWeek({{ t.id }})">✕ Z tygodnia</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

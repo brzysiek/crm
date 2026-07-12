@@ -88,7 +88,7 @@ def week():
     today = date.today()
     week_start, week_end = _week_range(today)
     priority_tasks = task_model.get_week_priority_tasks()
-    candidates = [t for t in task_model.get_next_actions() if not t['is_week_priority']]
+    bucket_tasks = task_model.get_week_bucket_tasks(week_start)
 
     return render_template(
         'gtd/week.html',
@@ -97,8 +97,24 @@ def week():
         week_end=week_end,
         week_label=f"{week_start.day} {MONTHS_PL[week_start.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
         priority_tasks=priority_tasks,
-        candidates=candidates,
+        bucket_tasks=bucket_tasks,
         week_star_count=task_model.count_week_priority(),
+    )
+
+
+@bp.route('/gtd/przyszly-tydzien')
+def next_week():
+    next_monday = _week_range(date.today())[0] + timedelta(days=7)
+    week_end = next_monday + timedelta(days=6)
+    bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
+
+    return render_template(
+        'gtd/next_week.html',
+        active_tab='przyszly_tydzien',
+        week_start=next_monday,
+        week_end=week_end,
+        week_label=f"{next_monday.day} {MONTHS_PL[next_monday.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
+        bucket_tasks=bucket_tasks,
     )
 
 
@@ -282,6 +298,25 @@ def api_unschedule(task_id):
     if task and task.get('gcal_event_id'):
         _try_gcal_delete(task)
     task_model.unschedule_task(task_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/tasks/<int:task_id>/assign_week', methods=['POST'])
+def api_assign_week(task_id):
+    data = request.get_json(silent=True) or {}
+    week = data.get('week')
+    if week not in ('this', 'next'):
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowy tydzień.'})
+    task = task_model.get_task(task_id)
+    if task and task.get('gcal_event_id'):
+        _try_gcal_delete(task)
+    task_model.assign_week(task_id, 0 if week == 'this' else 1)
+    return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
+
+
+@bp.route('/api/gtd/tasks/<int:task_id>/clear_week', methods=['POST'])
+def api_clear_week(task_id):
+    task_model.clear_week(task_id)
     return jsonify({'status': 'ok'})
 
 

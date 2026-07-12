@@ -38,6 +38,8 @@
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'this')">🗓 Ten tydz.</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'next')">🗓 Przyszły tydz.</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </div>

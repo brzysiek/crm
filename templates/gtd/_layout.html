@@ -12,7 +12,11 @@
       </a>
       <a href="{{ url_for('gtd.week') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'tydzien' }}">
-        🗓 Tydzień
+        🗓 Ten tydzień
+      </a>
+      <a href="{{ url_for('gtd.next_week') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'przyszly_tydzien' }}">
+        🗓 Przyszły tydzień
       </a>
       <a href="{{ url_for('gtd.inbox') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'inbox' }}">

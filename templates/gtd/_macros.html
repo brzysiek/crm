@@ -22,6 +22,9 @@
     {% if t.scheduled_date %}
       <span class="badge badge-green">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</span>
     {% endif %}
+    {% if t.planned_week %}
+      <span class="badge badge-blue" title="Blok tygodniowy">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</span>
+    {% endif %}
   </td>
 {% endmacro %}
 

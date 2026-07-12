@@ -189,14 +189,53 @@ def toggle_week_priority(task_id: int) -> bool:
 
 def schedule_task(task_id: int, scheduled_date: str | None, scheduled_time: str | None = None,
                    scheduled_duration_min: int | None = None) -> None:
+    """Ustawia konkretny dzień/godzinę. Zadanie 'wychodzi' z Inbox (status next) i traci
+    ewentualne przypisanie do luźnego bloku tygodniowego — dzień jest bardziej konkretny."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                """UPDATE tasks SET scheduled_date=%s, scheduled_time=%s, scheduled_duration_min=%s
-                   WHERE id=%s""",
+                """UPDATE tasks SET scheduled_date=%s, scheduled_time=%s, scheduled_duration_min=%s,
+                   planned_week=NULL, status=IF(status='inbox','next',status) WHERE id=%s""",
                 (scheduled_date or None, scheduled_time or None, scheduled_duration_min or None, task_id)
             )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _monday_of(d: date, week_offset: int) -> date:
+    monday = d - timedelta(days=d.weekday())
+    return monday + timedelta(weeks=week_offset)
+
+
+def assign_week(task_id: int, week_offset: int) -> date:
+    """Przypisuje zadanie do luźnego bloku tygodniowego (0 = ten tydzień, 1 = przyszły)
+    — bez konkretnego dnia. Zadanie wychodzi z Inbox i traci ewentualne zaplanowanie
+    na konkretny dzień (blok tygodniowy i konkretny dzień się wykluczają)."""
+    monday = _monday_of(date.today(), week_offset)
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """UPDATE tasks SET planned_week=%s, scheduled_date=NULL, scheduled_time=NULL,
+                   scheduled_duration_min=NULL, gcal_event_id=NULL,
+                   status=IF(status='inbox','next',status) WHERE id=%s""",
+                (monday, task_id)
+            )
+        db.commit()
+        return monday
+    except Exception:
+        db.rollback()
+        raise
+
+
+def clear_week(task_id: int) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE tasks SET planned_week=NULL WHERE id=%s", (task_id,))
         db.commit()
     except Exception:
         db.rollback()
@@ -364,6 +403,18 @@ def get_week_priority_tasks() -> list[dict]:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND t.status != 'done' "
             f"ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC"
+        )
+        return cur.fetchall()
+
+
+def get_week_bucket_tasks(monday: date) -> list[dict]:
+    """Zadania przypisane do luźnego bloku tygodniowego (bez konkretnego dnia)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_week=%s AND t.status != 'done' "
+            f"ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            (monday,)
         )
         return cur.fetchall()
 
