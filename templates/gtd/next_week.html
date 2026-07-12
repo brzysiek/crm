@@ -7,6 +7,12 @@
   <h1>Przyszły tydzień: {{ week_label }}</h1>
 </div>
 
+{% if gcal_error %}
+<div class="flash flash-error" style="margin-bottom:1rem">
+  Błąd pobierania wydarzeń z Google Calendar: {{ gcal_error }}
+</div>
+{% endif %}
+
 {% for group in day_groups %}
 <h3 style="margin:1.2rem 0 .5rem">{{ group.label }}</h3>
 {% if group.gcal_events %}

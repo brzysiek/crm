@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
-from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 import models.task as task_model
 
@@ -48,23 +49,28 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
     return groups
 
 
-def _gcal_events_by_day(start: date, end: date) -> dict:
+WARSAW_TZ = ZoneInfo('Europe/Warsaw')
+
+
+def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     """Read-only: wydarzenia z Google Calendar w przedziale [start, end] (włącznie),
-    pogrupowane po dniu. Zwraca {} po cichu jeśli integracja nie jest skonfigurowana
-    albo API zwróci błąd — kalendarz jest tylko dodatkowym kontekstem, nie ma prawa
-    wywalić widoku dnia/tygodnia."""
+    pogrupowane po dniu. Zwraca ({}, None) jeśli integracja nie jest skonfigurowana.
+    Błąd API nie ma prawa wywalić widoku dnia/tygodnia, więc jest przechwytywany —
+    ale zwracany jako komunikat, żeby dało się go zobaczyć wprost w interfejsie
+    zamiast szukać w logach serwera."""
     client, calendar_id = _gcal_read_client_and_calendar()
     if not client:
-        return {}
+        return {}, None
     try:
         raw = client.get_events(calendar_id, start, end + timedelta(days=1))
-    except Exception:
-        return {}
+    except Exception as e:
+        current_app.logger.exception('GTD: błąd pobierania wydarzeń z Google Calendar (calendar_id=%s)', calendar_id)
+        return {}, str(e)
     by_day: dict = {}
     for e in raw:
         start_info = e.get('start', {})
         if start_info.get('dateTime'):
-            dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
             d = dt.date()
             time_label = dt.strftime('%H:%M')
         elif start_info.get('date'):
@@ -78,7 +84,7 @@ def _gcal_events_by_day(start: date, end: date) -> dict:
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
-    return by_day
+    return by_day, None
 
 
 def _format_time(value) -> str:
@@ -103,7 +109,7 @@ def day():
 
     tasks = task_model.get_tasks_for_day(current)
     unfinished = task_model.get_unfinished_before(current) if current == today else []
-    gcal_events = _gcal_events_by_day(current, current).get(current, [])
+    gcal_by_day, gcal_error = _gcal_events_by_day(current, current)
 
     return render_template(
         'gtd/day.html',
@@ -118,7 +124,8 @@ def day():
         tasks=tasks,
         unfinished=unfinished,
         today_star_count=task_model.count_today_priority(current),
-        gcal_events=gcal_events,
+        gcal_events=gcal_by_day.get(current, []),
+        gcal_error=gcal_error,
     )
 
 
@@ -131,7 +138,7 @@ def week():
     priority_tasks = task_model.get_week_priority_tasks()
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
     unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
-    gcal_by_day = _gcal_events_by_day(week_start, week_end)
+    gcal_by_day, gcal_error = _gcal_events_by_day(week_start, week_end)
     day_groups = _day_groups(week_start, week_end, gcal_by_day)
 
     return render_template(
@@ -145,6 +152,7 @@ def week():
         unfinished_weeks=unfinished_weeks,
         day_groups=day_groups,
         week_star_count=task_model.count_week_priority(),
+        gcal_error=gcal_error,
     )
 
 
@@ -153,7 +161,7 @@ def next_week():
     next_monday = _week_range(date.today())[0] + timedelta(days=7)
     week_end = next_monday + timedelta(days=6)
     bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
-    gcal_by_day = _gcal_events_by_day(next_monday, week_end)
+    gcal_by_day, gcal_error = _gcal_events_by_day(next_monday, week_end)
     day_groups = _day_groups(next_monday, week_end, gcal_by_day)
 
     return render_template(
@@ -164,6 +172,7 @@ def next_week():
         week_label=f"{next_monday.day} {MONTHS_PL[next_monday.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
         bucket_tasks=bucket_tasks,
         day_groups=day_groups,
+        gcal_error=gcal_error,
     )
 
 

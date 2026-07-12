@@ -45,6 +45,12 @@
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">+ Dodaj do dnia</button>
 </div>
 
+{% if gcal_error %}
+<div class="flash flash-error" style="margin-bottom:1rem">
+  Błąd pobierania wydarzeń z Google Calendar: {{ gcal_error }}
+</div>
+{% endif %}
+
 {% if gcal_events %}
 <h3 style="margin:1.2rem 0 .5rem">📅 Wydarzenia z kalendarza</h3>
 <div class="gtd-timeline">

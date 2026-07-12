@@ -8,6 +8,12 @@
   <span class="badge {{ 'badge-red' if week_star_count > 15 else 'badge-gray' }}" title="Priorytety tygodnia (miękki limit 10-15)">★ {{ week_star_count }}/15</span>
 </div>
 
+{% if gcal_error %}
+<div class="flash flash-error" style="margin-bottom:1rem">
+  Błąd pobierania wydarzeń z Google Calendar: {{ gcal_error }}
+</div>
+{% endif %}
+
 {% if unfinished_weeks %}
 <div class="filter-bar" style="flex-direction:column;align-items:stretch;gap:.5rem;background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:1rem">
   <div style="font-weight:600">Niedokończone z poprzednich tygodni ({{ unfinished_weeks|length }})</div>
