@@ -344,9 +344,12 @@ function gtdSubmitEditTask() {
 
 /* ── Przypisanie zadania do konkretnego dnia tygodnia (hover-picker w widoku tygodnia) ── */
 function gtdSetWeekday(taskId, weekStartIso, dayIndex) {
-  const start = new Date(weekStartIso + 'T00:00:00');
+  const [y, m, d] = weekStartIso.split('-').map(Number);
+  const start = new Date(y, m - 1, d);
   start.setDate(start.getDate() + dayIndex);
-  const dayIso = start.toISOString().slice(0, 10);
+  const dayIso = start.getFullYear() + '-'
+    + String(start.getMonth() + 1).padStart(2, '0') + '-'
+    + String(start.getDate()).padStart(2, '0');
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/schedule', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
