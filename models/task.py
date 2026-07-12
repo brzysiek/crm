@@ -407,6 +407,20 @@ def get_week_priority_tasks() -> list[dict]:
         return cur.fetchall()
 
 
+def get_unfinished_weeks_before(monday: date, limit: int = 20) -> list[dict]:
+    """Zadania z blokiem tygodniowym sprzed `monday`, wciąż nieukończone — do sekcji
+    przeglądu na stronie 'Ten tydzień', nigdy nie przenoszone automatycznie (jak przy dniach)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
+            f"WHERE t.planned_week < %s AND t.status != 'done' "
+            f"ORDER BY t.planned_week DESC, t.id DESC LIMIT %s",
+            (monday, limit)
+        )
+        return cur.fetchall()
+
+
 def get_week_bucket_tasks(monday: date) -> list[dict]:
     """Zadania przypisane do luźnego bloku tygodniowego (bez konkretnego dnia)."""
     db = get_db()

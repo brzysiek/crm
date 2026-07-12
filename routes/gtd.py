@@ -89,6 +89,7 @@ def week():
     week_start, week_end = _week_range(today)
     priority_tasks = task_model.get_week_priority_tasks()
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
+    unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
 
     return render_template(
         'gtd/week.html',
@@ -98,6 +99,7 @@ def week():
         week_label=f"{week_start.day} {MONTHS_PL[week_start.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
         priority_tasks=priority_tasks,
         bucket_tasks=bucket_tasks,
+        unfinished_weeks=unfinished_weeks,
         week_star_count=task_model.count_week_priority(),
     )
 
