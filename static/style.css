@@ -1757,6 +1757,52 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .card-circle-has { cursor: pointer; background: var(--info-bg); }
 .card-circle-has:hover { filter: brightness(.95); }
 
+/* ── CRM: skanowanie wizytówki (modal + kolejka przetwarzania w tle) ─────────── */
+.card-scan-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+.card-scan-label { font-size: .85rem; font-weight: 600; margin-bottom: .35rem; }
+.card-scan-drop {
+  aspect-ratio: 1.6 / 1;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--surface-secondary);
+}
+.card-scan-drop:hover { border-color: var(--primary); }
+.card-scan-placeholder { color: var(--text-muted); font-size: .85rem; text-align: center; padding: 0 .5rem; }
+.card-scan-preview { width: 100%; height: 100%; object-fit: cover; }
+
+.card-scan-queue { display: flex; flex-direction: column; gap: .5rem; margin-top: 1.25rem; }
+.card-scan-item {
+  border-radius: var(--radius-sm);
+  padding: .6rem .75rem;
+  font-size: .85rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.card-scan-pending { background: var(--surface-secondary); color: var(--text-muted); flex-direction: row; align-items: center; }
+.card-scan-success { background: var(--success-bg); }
+.card-scan-error { background: var(--error-bg); }
+.card-scan-warning { color: var(--text-muted); font-size: .8rem; }
+.card-scan-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: card-scan-spin .7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes card-scan-spin { to { transform: rotate(360deg); } }
+
 /* ── CRM: sortowalne nagłówki tabel ───────────────────────────────────────────── */
 .sort-link { color: inherit; display: inline-flex; align-items: center; gap: .25rem; }
 .sort-link:hover { color: var(--primary); text-decoration: none; }

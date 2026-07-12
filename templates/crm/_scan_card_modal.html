@@ -1,0 +1,137 @@
+{# Wspólny partial: przycisk "📇 Skanuj wizytówkę" + modal skanowania (przód/tył).
+   OCR i enrichment działają w tle na serwerze — po wysłaniu formularz od razu się
+   czyści, więc można od razu zeskanować kolejną wizytówkę bez czekania na wynik. #}
+
+<button type="button" class="btn btn-outline" onclick="document.getElementById('scanCardModal').classList.add('open')">📇 Skanuj wizytówkę</button>
+
+<div id="scanCardModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Skanuj wizytówkę</h3>
+      <button class="modal-close" onclick="document.getElementById('scanCardModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="card-scan-sides">
+        <div class="card-scan-side">
+          <div class="card-scan-label">Przód wizytówki</div>
+          <div class="card-scan-drop" onclick="document.getElementById('cardScanFront').click()">
+            <img id="cardScanFrontPreview" class="card-scan-preview" style="display:none">
+            <span id="cardScanFrontPlaceholder" class="card-scan-placeholder">📷 Zrób zdjęcie</span>
+          </div>
+          <input type="file" id="cardScanFront" accept="image/*" capture="environment" style="display:none">
+        </div>
+        <div class="card-scan-side">
+          <div class="card-scan-label">Tył wizytówki <span class="text-muted">(opcjonalnie)</span></div>
+          <div class="card-scan-drop" onclick="document.getElementById('cardScanBack').click()">
+            <img id="cardScanBackPreview" class="card-scan-preview" style="display:none">
+            <span id="cardScanBackPlaceholder" class="card-scan-placeholder">📷 Zrób zdjęcie</span>
+          </div>
+          <input type="file" id="cardScanBack" accept="image/*" capture="environment" style="display:none">
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="cardScanSubmitBtn" onclick="cardScanSubmit()"
+              style="width:100%;margin-top:1rem" disabled>Skanuj</button>
+
+      <div class="card-scan-queue" id="cardScanQueue"
+           data-company-url="{{ url_for('crm_companies.view_company', company_id=0) }}"
+           data-contact-url="{{ url_for('crm_contacts.view_contact', contact_id=0) }}"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const frontInput = document.getElementById('cardScanFront');
+  const backInput = document.getElementById('cardScanBack');
+  const frontPreview = document.getElementById('cardScanFrontPreview');
+  const backPreview = document.getElementById('cardScanBackPreview');
+  const frontPlaceholder = document.getElementById('cardScanFrontPlaceholder');
+  const backPlaceholder = document.getElementById('cardScanBackPlaceholder');
+  const submitBtn = document.getElementById('cardScanSubmitBtn');
+  const queue = document.getElementById('cardScanQueue');
+  if (!queue) return;
+
+  const companyUrlTpl = queue.dataset.companyUrl;
+  const contactUrlTpl = queue.dataset.contactUrl;
+
+  function updateSubmitState() {
+    submitBtn.disabled = !(frontInput.files[0] || backInput.files[0]);
+  }
+
+  function bindPreview(input, img, placeholder) {
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (!file) {
+        img.style.display = 'none';
+        placeholder.style.display = '';
+        updateSubmitState();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => { img.src = e.target.result; img.style.display = ''; placeholder.style.display = 'none'; };
+      reader.readAsDataURL(file);
+      updateSubmitState();
+    });
+  }
+  bindPreview(frontInput, frontPreview, frontPlaceholder);
+  bindPreview(backInput, backPreview, backPlaceholder);
+
+  function resetForm() {
+    frontInput.value = '';
+    backInput.value = '';
+    frontPreview.style.display = 'none';
+    backPreview.style.display = 'none';
+    frontPlaceholder.style.display = '';
+    backPlaceholder.style.display = '';
+    updateSubmitState();
+  }
+
+  window.cardScanSubmit = function() {
+    const front = frontInput.files[0];
+    const back = backInput.files[0];
+    if (!front && !back) return;
+
+    const form = new FormData();
+    if (front) form.append('front', front);
+    if (back) form.append('back', back);
+
+    const item = document.createElement('div');
+    item.className = 'card-scan-item card-scan-pending';
+    item.innerHTML = '<span class="card-scan-spinner"></span><span>Skanowanie i rozpoznawanie…</span>';
+    queue.prepend(item);
+
+    resetForm();
+
+    fetch(window.API_BASE + '/api/crm/business-cards/scan', { method: 'POST', body: form })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          item.className = 'card-scan-item card-scan-success';
+          let html = '';
+          if (data.company_id) {
+            const url = companyUrlTpl.replace(/\/0$/, '/' + data.company_id);
+            const label = data.company_created ? 'Nowa firma' : 'Dopasowano firmę';
+            html += `<div>✅ ${label}: <a href="${url}" target="_blank">${data.company_name}</a></div>`;
+          }
+          if (data.contact_id) {
+            const url = contactUrlTpl.replace(/\/0$/, '/' + data.contact_id);
+            const label = data.contact_created ? 'Nowy kontakt' : 'Dopasowano kontakt';
+            html += `<div>👤 ${label}: <a href="${url}" target="_blank">${data.contact_name}</a></div>`;
+          }
+          if (data.warning) {
+            html += `<div class="card-scan-warning">⚠️ ${data.warning}</div>`;
+          }
+          item.innerHTML = html;
+        } else {
+          item.className = 'card-scan-item card-scan-error';
+          item.innerHTML = `<div>❌ ${data.error || 'Nie udało się przetworzyć wizytówki.'}</div>`;
+        }
+      })
+      .catch(e => {
+        item.className = 'card-scan-item card-scan-error';
+        item.innerHTML = `<div>❌ Błąd sieci: ${e.message}</div>`;
+      });
+  };
+})();
+</script>

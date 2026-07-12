@@ -10,6 +10,7 @@
       ('position', 'Stanowisko'), ('company_name', 'Firma'), ('email', 'Email'), ('phone', 'Telefon'),
       ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
     ]) }}
+    {% include 'crm/_scan_card_modal.html' %}
     <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">+ Dodaj kontakt</a>
   </div>
 </div>

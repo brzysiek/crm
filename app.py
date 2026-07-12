@@ -2226,6 +2226,47 @@ def api_crm_companies_quick_create():
     return jsonify({'ok': True, 'id': company_id, 'name': company_data['name'], 'created': True})
 
 
+_CARD_ALLOWED_EXTENSIONS = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'heic': 'image/heic'}
+
+
+@app.route('/api/crm/business-cards/scan', methods=['POST'])
+def api_crm_business_cards_scan():
+    from models.settings import get_setting
+    from services.business_card import process_business_card
+    from services.images import resize_jpeg_if_needed
+
+    def read_side(field_name):
+        f = request.files.get(field_name)
+        if not f or not f.filename:
+            return None
+        ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+        if ext not in _CARD_ALLOWED_EXTENSIONS:
+            raise ValueError('Niedozwolony format zdjęcia. Obsługiwane: JPG, PNG, HEIC.')
+        content = f.read()
+        mime_type = _CARD_ALLOWED_EXTENSIONS[ext]
+        if ext in ('jpg', 'jpeg'):
+            content = resize_jpeg_if_needed(content)
+        return content, mime_type
+
+    try:
+        front = read_side('front')
+        back = read_side('back')
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+    if not front and not back:
+        return jsonify({'ok': False, 'error': 'Dodaj przynajmniej jedno zdjęcie wizytówki (przód).'})
+
+    api_key = get_setting('gemini_api_key', '')
+    model = get_setting('gemini_model', 'gemini-2.5-flash')
+    drive_api_token = get_setting('google_drive_api_token', '')
+    drive_root_id = get_setting('google_drive_crm_folder_id', '')
+
+    result = process_business_card(front, back, api_key, model, drive_api_token, drive_root_id,
+                                    session.get('user_id'))
+    return jsonify(result)
+
+
 @app.route('/api/user-settings/<key>')
 def api_get_user_setting(key):
     from models.user_settings import get_user_setting

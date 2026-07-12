@@ -12,6 +12,7 @@
       ('primary_contact', 'Kontakt'), ('tags', 'Tagi'), ('industries', 'Branże'),
       ('short_description', 'Krótki opis'), ('description', 'Opis'),
     ]) }}
+    {% include 'crm/_scan_card_modal.html' %}
     <a href="{{ url_for('crm_companies.new_company') }}" class="btn btn-primary">+ Dodaj firmę</a>
   </div>
 </div>
