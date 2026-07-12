@@ -2267,6 +2267,24 @@ def api_crm_business_cards_scan():
     return jsonify(result)
 
 
+@app.route('/api/crm/business-cards/scan-text', methods=['POST'])
+def api_crm_business_cards_scan_text():
+    from models.settings import get_setting
+    from services.business_card import process_business_card_from_text
+
+    data = request.get_json(silent=True) or {}
+    text = data.get('text', '')
+
+    api_key = get_setting('gemini_api_key', '')
+    model = get_setting('gemini_model', 'gemini-2.5-flash')
+    drive_api_token = get_setting('google_drive_api_token', '')
+    drive_root_id = get_setting('google_drive_crm_folder_id', '')
+
+    result = process_business_card_from_text(text, api_key, model, drive_api_token, drive_root_id,
+                                              session.get('user_id'))
+    return jsonify(result)
+
+
 @app.route('/api/user-settings/<key>')
 def api_get_user_setting(key):
     from models.user_settings import get_user_setting

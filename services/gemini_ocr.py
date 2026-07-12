@@ -161,20 +161,35 @@ CARD_SYSTEM_PROMPT = (
 )
 
 
-def ocr_business_card(images: list[tuple[bytes, str]], api_key: str,
-                       model: str = 'gemini-2.5-flash') -> dict:
-    """Odczytuje dane firmy i kontaktu ze zdjęć wizytówki (1-2 zdjęcia: przód, opcjonalnie tył).
+TEXT_SYSTEM_PROMPT = (
+    "Poniżej znajduje się tekst stopki z wiadomości email (podpis pod mailem). "
+    "Wyciągnij z niej dane firmy oraz osoby kontaktowej i zwróć WYŁĄCZNIE obiekt JSON "
+    "(bez markdown, bez dodatkowego tekstu) z polami:\n"
+    "- company_name: nazwa firmy widoczna w stopce\n"
+    "- company_nip: NIP firmy (same cyfry), jeśli widoczny\n"
+    "- company_krs: numer KRS, jeśli widoczny\n"
+    "- company_website: adres strony WWW firmy, jeśli widoczny\n"
+    "- company_email: ogólny/firmowy adres email (np. biuro@, kontakt@), jeśli widoczny i inny niż email osoby\n"
+    "- company_phone: firmowy numer telefonu (stacjonarny/centrala), jeśli widoczny i inny niż telefon osoby\n"
+    "- company_street: nazwa ulicy siedziby firmy, jeśli widoczna\n"
+    "- company_house_number: numer domu/budynku, jeśli widoczny\n"
+    "- company_flat_number: numer lokalu, jeśli widoczny\n"
+    "- company_postal_code: kod pocztowy w formacie 00-000, jeśli widoczny\n"
+    "- company_city: miasto siedziby firmy, jeśli widoczne\n"
+    "- first_name: imię osoby kontaktowej (autora maila), jeśli widoczne\n"
+    "- last_name: nazwisko osoby kontaktowej, jeśli widoczne\n"
+    "- position: stanowisko osoby kontaktowej, jeśli widoczne\n"
+    "- contact_email: bezpośredni, imienny adres email osoby, jeśli widoczny\n"
+    "- contact_phone: bezpośredni/komórkowy numer telefonu osoby, jeśli widoczny\n"
+    "- confidence_note: krótka uwaga o pewności odczytu lub niejasnościach\n\n"
+    "Dla pól, których nie da się ustalić, zwróć pusty string \"\"."
+)
 
-    `images` to lista (bytes, mime_type). Zwraca słownik z polami opisanymi w CARD_SYSTEM_PROMPT,
-    albo {'error': <komunikat>} przy niepowodzeniu.
-    """
+
+def _run_card_extraction(parts: list, api_key: str, model: str) -> dict:
+    """Wspólna logika wywołania Gemini dla ekstrakcji danych wizytówki/stopki maila
+    (`parts` to gotowa lista części żądania — obrazy i/lub tekst z promptem)."""
     try:
-        parts = [
-            {'inline_data': {'mime_type': mime, 'data': base64.b64encode(img).decode('utf-8')}}
-            for img, mime in images
-        ]
-        parts.append({'text': CARD_SYSTEM_PROMPT})
-
         payload = {
             'contents': [{'parts': parts}],
             'generationConfig': {
@@ -213,6 +228,30 @@ def ocr_business_card(images: list[tuple[bytes, str]], api_key: str,
 
     except Exception as exc:
         return {'error': str(exc)}
+
+
+def ocr_business_card(images: list[tuple[bytes, str]], api_key: str,
+                       model: str = 'gemini-2.5-flash') -> dict:
+    """Odczytuje dane firmy i kontaktu ze zdjęć wizytówki (1-2 zdjęcia: przód, opcjonalnie tył).
+
+    `images` to lista (bytes, mime_type). Zwraca słownik z polami opisanymi w CARD_SYSTEM_PROMPT,
+    albo {'error': <komunikat>} przy niepowodzeniu.
+    """
+    parts = [
+        {'inline_data': {'mime_type': mime, 'data': base64.b64encode(img).decode('utf-8')}}
+        for img, mime in images
+    ]
+    parts.append({'text': CARD_SYSTEM_PROMPT})
+    return _run_card_extraction(parts, api_key, model)
+
+
+def extract_business_card_text(text: str, api_key: str, model: str = 'gemini-2.5-flash') -> dict:
+    """Wyciąga dane firmy i kontaktu z wklejonego tekstu stopki maila.
+
+    Zwraca słownik z polami opisanymi w TEXT_SYSTEM_PROMPT, albo {'error': <komunikat>}.
+    """
+    parts = [{'text': f'{TEXT_SYSTEM_PROMPT}\n\n=== TEKST STOPKI ===\n{text}'}]
+    return _run_card_extraction(parts, api_key, model)
 
 
 def transcribe_audio(audio_bytes: bytes, mime_type: str, api_key: str,

@@ -10,7 +10,7 @@ from models.crm_file import ALLOWED_EXTENSIONS, add_file
 from services.company_lookup import lookup_by_nip
 from services.company_profile import build_company_profile
 from services.gdrive import GoogleDriveClient
-from services.gemini_ocr import ocr_business_card
+from services.gemini_ocr import extract_business_card_text, ocr_business_card
 
 _MATCH_THRESHOLD = 0.55
 _PUBLIC_EMAIL_DOMAINS = {
@@ -84,9 +84,41 @@ def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, st
     if ocr.get('error'):
         return {'ok': False, 'error': f'Błąd OCR wizytówki: {ocr["error"]}'}
 
+    uploads = []
+    if back:
+        uploads.append((*back, 'tyl'))
+    if front:
+        uploads.append((*front, 'przod'))
+
+    return _process_extracted(ocr, api_key, model, drive_api_token, drive_root_id, user_id, uploads)
+
+
+def process_business_card_from_text(text: str, api_key: str, model: str, drive_api_token: str,
+                                     drive_root_id: str, user_id: int | None) -> dict:
+    """Przetwarza wklejony tekst stopki maila: ekstrakcja danych -> enrichment (WWW / NIP) ->
+    dopasowanie lub utworzenie firmy i kontaktu. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
+    if not api_key:
+        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach ogólnych.'}
+
+    text = (text or '').strip()
+    if not text:
+        return {'ok': False, 'error': 'Wklej tekst stopki maila.'}
+
+    extracted = extract_business_card_text(text, api_key, model)
+    if extracted.get('error'):
+        return {'ok': False, 'error': f'Błąd odczytu stopki maila: {extracted["error"]}'}
+
+    return _process_extracted(extracted, api_key, model, drive_api_token, drive_root_id, user_id, [])
+
+
+def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_token: str, drive_root_id: str,
+                        user_id: int | None, uploads: list[tuple[bytes, str, str]]) -> dict:
+    """Wspólna logika po uzyskaniu wyekstrahowanych danych (z OCR wizytówki lub z tekstu stopki maila):
+    enrichment (WWW / NIP) -> dopasowanie lub utworzenie firmy i kontaktu -> zapis plików (jeśli podano)."""
+    ocr = extracted
     company_name_card = (ocr.get('company_name') or '').strip()
     if not company_name_card:
-        return {'ok': False, 'error': 'Nie udało się odczytać nazwy firmy z wizytówki.'}
+        return {'ok': False, 'error': 'Nie udało się odczytać nazwy firmy.'}
 
     nip = re.sub(r'\D', '', ocr.get('company_nip') or '')
     website = _first(ocr.get('company_website'),
@@ -170,28 +202,24 @@ def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, st
             contact_display_name = hint
 
     warning = None
-    if drive_api_token and drive_root_id:
-        uploads = []
-        if back:
-            uploads.append((*back, 'tyl'))
-        if front:
-            uploads.append((*front, 'przod'))
-        try:
-            client = GoogleDriveClient(drive_api_token, drive_root_id)
-            crm_folder_id = client.find_or_create_folder('CRM', drive_root_id)
-            company_folder_id = client.find_or_create_folder(company_display_name, crm_folder_id)
-            cards_folder_id = client.find_or_create_folder('wizytówki', company_folder_id)
-            stamp = time.strftime('%Y%m%d_%H%M%S')
-            for side_bytes, side_mime, side_label in uploads:
-                ext = _MIME_TO_EXT.get(side_mime, 'jpg')
-                file_name = f'wizytowka_{stamp}_{side_label}.{ext}'
-                result = client.upload_file(file_name, side_mime, side_bytes, cards_folder_id)
-                add_file(company_id, contact_id, file_name, result['id'], side_mime, len(side_bytes),
-                         user_id, category='business_card')
-        except Exception as e:
-            warning = f'Firma/kontakt zapisane, ale nie udało się zapisać zdjęć wizytówki w Google Drive: {e}'
-    else:
-        warning = 'Firma/kontakt zapisane, ale zdjęcia wizytówki nie zostały zapisane — skonfiguruj Google Drive w Ustawieniach.'
+    if uploads:
+        if drive_api_token and drive_root_id:
+            try:
+                client = GoogleDriveClient(drive_api_token, drive_root_id)
+                crm_folder_id = client.find_or_create_folder('CRM', drive_root_id)
+                company_folder_id = client.find_or_create_folder(company_display_name, crm_folder_id)
+                cards_folder_id = client.find_or_create_folder('wizytówki', company_folder_id)
+                stamp = time.strftime('%Y%m%d_%H%M%S')
+                for side_bytes, side_mime, side_label in uploads:
+                    ext = _MIME_TO_EXT.get(side_mime, 'jpg')
+                    file_name = f'wizytowka_{stamp}_{side_label}.{ext}'
+                    result = client.upload_file(file_name, side_mime, side_bytes, cards_folder_id)
+                    add_file(company_id, contact_id, file_name, result['id'], side_mime, len(side_bytes),
+                             user_id, category='business_card')
+            except Exception as e:
+                warning = f'Firma/kontakt zapisane, ale nie udało się zapisać zdjęć wizytówki w Google Drive: {e}'
+        else:
+            warning = 'Firma/kontakt zapisane, ale zdjęcia wizytówki nie zostały zapisane — skonfiguruj Google Drive w Ustawieniach.'
 
     return {
         'ok': True,

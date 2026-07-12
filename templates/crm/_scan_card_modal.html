@@ -33,6 +33,12 @@
       <button type="button" class="btn btn-primary" id="cardScanSubmitBtn" onclick="cardScanSubmit()"
               style="width:100%;margin-top:1rem" disabled>Skanuj</button>
 
+      <div class="card-scan-divider">lub wklej tekst stopki z maila</div>
+      <textarea id="cardScanTextInput" class="card-scan-textarea" rows="5"
+                placeholder="Wklej tutaj stopkę z podpisem z wiadomości email…"></textarea>
+      <button type="button" class="btn btn-primary" id="cardScanTextSubmitBtn" onclick="cardScanTextSubmit()"
+              style="width:100%;margin-top:.5rem" disabled>Skanuj tekst</button>
+
       <div class="card-scan-queue" id="cardScanQueue"
            data-company-url="{{ url_for('crm_companies.view_company', company_id=0) }}"
            data-contact-url="{{ url_for('crm_contacts.view_contact', contact_id=0) }}"></div>
@@ -49,6 +55,8 @@
   const frontPlaceholder = document.getElementById('cardScanFrontPlaceholder');
   const backPlaceholder = document.getElementById('cardScanBackPlaceholder');
   const submitBtn = document.getElementById('cardScanSubmitBtn');
+  const textInput = document.getElementById('cardScanTextInput');
+  const textSubmitBtn = document.getElementById('cardScanTextSubmitBtn');
   const queue = document.getElementById('cardScanQueue');
   if (!queue) return;
 
@@ -57,6 +65,34 @@
 
   function updateSubmitState() {
     submitBtn.disabled = !(frontInput.files[0] || backInput.files[0]);
+  }
+
+  textInput.addEventListener('input', () => {
+    textSubmitBtn.disabled = !textInput.value.trim();
+  });
+
+  function renderResult(item, data) {
+    if (data.ok) {
+      item.className = 'card-scan-item card-scan-success';
+      let html = '';
+      if (data.company_id) {
+        const url = companyUrlTpl.replace(/\/0$/, '/' + data.company_id);
+        const label = data.company_created ? 'Nowa firma' : 'Dopasowano firmę';
+        html += `<div>✅ ${label}: <a href="${url}" target="_blank">${data.company_name}</a></div>`;
+      }
+      if (data.contact_id) {
+        const url = contactUrlTpl.replace(/\/0$/, '/' + data.contact_id);
+        const label = data.contact_created ? 'Nowy kontakt' : 'Dopasowano kontakt';
+        html += `<div>👤 ${label}: <a href="${url}" target="_blank">${data.contact_name}</a></div>`;
+      }
+      if (data.warning) {
+        html += `<div class="card-scan-warning">⚠️ ${data.warning}</div>`;
+      }
+      item.innerHTML = html;
+    } else {
+      item.className = 'card-scan-item card-scan-error';
+      item.innerHTML = `<div>❌ ${data.error || 'Nie udało się przetworzyć wizytówki.'}</div>`;
+    }
   }
 
   function bindPreview(input, img, placeholder) {
@@ -105,29 +141,32 @@
 
     fetch(window.API_BASE + '/api/crm/business-cards/scan', { method: 'POST', body: form })
       .then(r => r.json())
-      .then(data => {
-        if (data.ok) {
-          item.className = 'card-scan-item card-scan-success';
-          let html = '';
-          if (data.company_id) {
-            const url = companyUrlTpl.replace(/\/0$/, '/' + data.company_id);
-            const label = data.company_created ? 'Nowa firma' : 'Dopasowano firmę';
-            html += `<div>✅ ${label}: <a href="${url}" target="_blank">${data.company_name}</a></div>`;
-          }
-          if (data.contact_id) {
-            const url = contactUrlTpl.replace(/\/0$/, '/' + data.contact_id);
-            const label = data.contact_created ? 'Nowy kontakt' : 'Dopasowano kontakt';
-            html += `<div>👤 ${label}: <a href="${url}" target="_blank">${data.contact_name}</a></div>`;
-          }
-          if (data.warning) {
-            html += `<div class="card-scan-warning">⚠️ ${data.warning}</div>`;
-          }
-          item.innerHTML = html;
-        } else {
-          item.className = 'card-scan-item card-scan-error';
-          item.innerHTML = `<div>❌ ${data.error || 'Nie udało się przetworzyć wizytówki.'}</div>`;
-        }
-      })
+      .then(data => renderResult(item, data))
+      .catch(e => {
+        item.className = 'card-scan-item card-scan-error';
+        item.innerHTML = `<div>❌ Błąd sieci: ${e.message}</div>`;
+      });
+  };
+
+  window.cardScanTextSubmit = function() {
+    const text = textInput.value.trim();
+    if (!text) return;
+
+    const item = document.createElement('div');
+    item.className = 'card-scan-item card-scan-pending';
+    item.innerHTML = '<span class="card-scan-spinner"></span><span>Odczytywanie i rozpoznawanie…</span>';
+    queue.prepend(item);
+
+    textInput.value = '';
+    textSubmitBtn.disabled = true;
+
+    fetch(window.API_BASE + '/api/crm/business-cards/scan-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+      .then(r => r.json())
+      .then(data => renderResult(item, data))
       .catch(e => {
         item.className = 'card-scan-item card-scan-error';
         item.innerHTML = `<div>❌ Błąd sieci: ${e.message}</div>`;
