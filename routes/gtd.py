@@ -53,11 +53,11 @@ def _gcal_events_by_day(start: date, end: date) -> dict:
     pogrupowane po dniu. Zwraca {} po cichu jeśli integracja nie jest skonfigurowana
     albo API zwróci błąd — kalendarz jest tylko dodatkowym kontekstem, nie ma prawa
     wywalić widoku dnia/tygodnia."""
-    client, _ = _gcal_client_and_calendar()
+    client, calendar_id = _gcal_read_client_and_calendar()
     if not client:
         return {}
     try:
-        raw = client.get_events('primary', start, end + timedelta(days=1))
+        raw = client.get_events(calendar_id, start, end + timedelta(days=1))
     except Exception:
         return {}
     by_day: dict = {}
@@ -390,6 +390,19 @@ def _gcal_client_and_calendar():
 
     token = get_setting('google_drive_api_token', '')
     calendar_id = get_setting('gtd_gcal_calendar_id', '')
+    if not token or not calendar_id:
+        return None, None
+    return GoogleCalendarClient(token), calendar_id
+
+
+def _gcal_read_client_and_calendar():
+    """Osobny, tylko-do-odczytu kalendarz (np. Twój główny kalendarz udostępniony
+    kontu usługi) — celowo inny niż kalendarz „Zadania” używany do zapisu."""
+    from models.settings import get_setting
+    from services.google_calendar import GoogleCalendarClient
+
+    token = get_setting('google_drive_api_token', '')
+    calendar_id = get_setting('gtd_gcal_read_calendar_id', '')
     if not token or not calendar_id:
         return None, None
     return GoogleCalendarClient(token), calendar_id
