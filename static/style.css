@@ -1427,6 +1427,16 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   padding: .35rem;
   z-index: 110;
 }
+/* Niewidzialny mostek nad menu — bez niego mysz „wypada” z hovera
+   w przerwie między przyciskiem a listą i submenu znika za wcześnie. */
+.navbar-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  top: -.4rem;
+  left: 0;
+  right: 0;
+  height: .4rem;
+}
 .navbar-dropdown.open .navbar-dropdown-menu { display: block; }
 
 @media (min-width: 881px) {
@@ -2086,5 +2096,14 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md, var(--shadow-sm));
+}
+/* Niewidzialny mostek nad pickerem — ta sama przerwa co przy .navbar-dropdown-menu. */
+.term-hover-picker::before {
+  content: '';
+  position: absolute;
+  top: -.25rem;
+  left: 0;
+  right: 0;
+  height: .25rem;
 }
 .term-cell:hover .term-hover-picker { display: flex; }
