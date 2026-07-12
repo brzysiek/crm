@@ -40,6 +40,13 @@
 </div>
 {% endif %}
 
+<div class="filter-bar" style="gap:.5rem">
+  <input type="text" id="gtdWeekAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj zadanie na ten tydzień…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToWeek('this', 'gtdWeekAddInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToWeek('this', 'gtdWeekAddInput')">+ Dodaj do tygodnia</button>
+</div>
+
 <h3 style="margin:.5rem 0">Priorytety tygodnia</h3>
 {% if not priority_tasks %}
   <p class="text-muted">Brak oznaczonych priorytetów tygodnia. Oznacz gwiazdką zadania poniżej lub w Next actions.</p>

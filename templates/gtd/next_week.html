@@ -13,6 +13,13 @@
 </div>
 {% endif %}
 
+<div class="filter-bar" style="gap:.5rem;margin-bottom:1rem">
+  <input type="text" id="gtdNextWeekAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj zadanie na przyszły tydzień…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToWeek('next', 'gtdNextWeekAddInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToWeek('next', 'gtdNextWeekAddInput')">+ Dodaj do przyszłego tygodnia</button>
+</div>
+
 {% for group in day_groups %}
 <div class="gtd-day-section">
 <h3>{{ group.label }}</h3>

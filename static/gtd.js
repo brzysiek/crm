@@ -291,6 +291,32 @@ function gtdAddToDay(dayIso, inputId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdAddToWeek(week, inputId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'next' }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return null; }
+      return fetch(window.API_BASE + '/api/gtd/tasks/' + data.task.id + '/assign_week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week }),
+      }).then(r => r.json());
+    })
+    .then(result => {
+      if (!result) return;
+      if (result.status === 'ok') location.reload();
+      else alert(result.message || 'Błąd.');
+    })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdGcalPush(taskId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/gcal_push', { method: 'POST' })
     .then(r => r.json())
