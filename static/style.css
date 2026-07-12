@@ -796,6 +796,39 @@ input[type="file"]:hover::-webkit-file-upload-button {
   min-width: 0;
 }
 
+.gtd-sidebar-toggle { display: none; }
+
+@media (max-width: 680px) {
+  .gtd-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: .75rem 1rem;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .gtd-sidebar-toggle-icon {
+    transition: transform var(--speed) var(--curve);
+  }
+  .gtd-sidebar.open .gtd-sidebar-toggle-icon {
+    transform: rotate(180deg);
+  }
+  .gtd-sidebar .settings-nav {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--speed) var(--curve);
+  }
+  .gtd-sidebar.open .settings-nav {
+    max-height: 500px;
+  }
+}
+
 .settings-content h2 {
   font-size: 1.25rem;
   font-weight: 700;

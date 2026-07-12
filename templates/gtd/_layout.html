@@ -2,9 +2,24 @@
 {% block title %}Getting Things Done{% endblock %}
 
 {% block content %}
+{% set gtd_tab_labels = {
+  'dzis': '📅 Dziś',
+  'tydzien': '🗓 Ten tydzień',
+  'przyszly_tydzien': '🗓 Przyszły tydzień',
+  'inbox': '📥 Inbox',
+  'next': '▶ Next actions',
+  'projekty': '📁 Projekty',
+  'waiting': '⏳ Czeka na',
+  'someday': '💤 Kiedyś/może',
+  'ukonczone': '✅ Ukończone',
+} %}
 <div class="settings-layout">
 
-  <aside class="settings-sidebar">
+  <aside class="settings-sidebar gtd-sidebar">
+    <button type="button" class="gtd-sidebar-toggle" onclick="this.closest('.gtd-sidebar').classList.toggle('open')">
+      <span>{{ gtd_tab_labels.get(active_tab, 'Menu') }}</span>
+      <span class="gtd-sidebar-toggle-icon">▾</span>
+    </button>
     <nav class="settings-nav">
       <a href="{{ url_for('gtd.day') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'dzis' }}">
