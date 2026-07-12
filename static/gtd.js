@@ -303,3 +303,48 @@ function gtdSubmitTimeBlock() {
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
 }
+
+/* ── Modal edycji kontekstu i terminu ── */
+function gtdOpenEditTask(taskId, currentContextId, currentDue) {
+  document.getElementById('gtdEditTaskId').value = taskId;
+  document.getElementById('gtdEditTaskContext').value = currentContextId || '';
+  document.getElementById('gtdEditTaskDue').value = currentDue || '';
+  document.getElementById('gtdEditTaskModal').classList.add('open');
+}
+
+function gtdAddContextInline() {
+  const input = document.getElementById('gtdNewContextInput');
+  const name = input.value.trim();
+  if (!name) return;
+  fetch(window.API_BASE + '/api/gtd/contexts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
+      const select = document.getElementById('gtdEditTaskContext');
+      const option = document.createElement('option');
+      option.value = data.id;
+      option.textContent = '@' + data.name;
+      select.appendChild(option);
+      select.value = data.id;
+      input.value = '';
+    })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdSubmitEditTask() {
+  const taskId = document.getElementById('gtdEditTaskId').value;
+  const context_tag_id = document.getElementById('gtdEditTaskContext').value || null;
+  const due_date = document.getElementById('gtdEditTaskDue').value || null;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ context_tag_id, due_date }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}

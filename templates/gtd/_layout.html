@@ -80,6 +80,41 @@
   </div>
 </div>
 
+{# ── Modal: edycja kontekstu i terminu zadania ────────────────────────────── #}
+<div id="gtdEditTaskModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edytuj zadanie</h3>
+      <button onclick="document.getElementById('gtdEditTaskModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="gtdEditTaskId">
+      <div class="agent-confirm-row">
+        <label>Kontekst</label>
+        <select id="gtdEditTaskContext" class="filter-select" style="width:100%">
+          <option value="">— brak —</option>
+          {% for c in contexts %}
+          <option value="{{ c.id }}">@{{ c.name }}</option>
+          {% endfor %}
+        </select>
+        <div style="display:flex;gap:.35rem;margin-top:.4rem">
+          <input type="text" id="gtdNewContextInput" class="filter-input" style="flex:1"
+                 placeholder="Nowy kontekst, np. telefon" autocomplete="off">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddContextInline()">+ Dodaj</button>
+        </div>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Termin</label>
+        <input type="date" id="gtdEditTaskDue" class="filter-input" style="width:100%">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="gtdSubmitEditTask()">Zapisz</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('gtdEditTaskModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}

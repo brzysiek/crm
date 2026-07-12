@@ -16,6 +16,12 @@ MONTHS_PL = {
 WEEKDAYS_PL = ('poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota', 'niedziela')
 
 
+@bp.context_processor
+def inject_gtd_contexts():
+    """Konteksty (@tagi) potrzebne w globalnym modalu edycji zadania (gtd/_layout.html)."""
+    return {'contexts': get_tags(CONTEXT_KIND)}
+
+
 def _parse_date(value: str | None, fallback: date) -> date:
     if value:
         try:

@@ -61,11 +61,14 @@
                  onchange="gtdToggleDone({{ t.id }}, this.checked, '{{ 'next' if t.status == 'done' else t.status }}')">
           <strong>{{ t.title }}</strong>
           {% if t.context_name %}<span class="badge badge-blue" style="margin-left:.4rem">@{{ t.context_name }}</span>{% endif %}
+          {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
+          <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj kontekst / termin"
+                  onclick="gtdOpenEditTask({{ t.id }}, {{ t.context_tag_id or 'null' }}, '{{ t.due_date or '' }}')">✎</button>
           {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
           {{ star_btn(t, 'is_today_priority', 'toggle_today') }}
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">✎ Godzina</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰ Godzina</button>
           {% if not t.gcal_event_id %}
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ t.id }})">📆 Push</button>
           {% else %}
