@@ -59,6 +59,41 @@
            class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_plan' else '' }}">📊 Plan</a>
       </div>
     </li>
+    <li class="navbar-dropdown" id="nav-dd-gtd">
+      <a href="{{ url_for('gtd.day') }}"
+         class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'gtd' else '' }}">
+        Zadania
+        {% if gtd_inbox_badge > 0 %}
+          <span class="nav-badge">{{ gtd_inbox_badge }}</span>
+        {% endif %}
+        <span class="navbar-dropdown-caret">▾</span>
+      </a>
+      <div class="navbar-dropdown-menu">
+        <a href="{{ url_for('gtd.day') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.day' else '' }}">📅 Dziś</a>
+        <a href="{{ url_for('gtd.week') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.week' else '' }}">🗓 Ten tydzień</a>
+        <a href="{{ url_for('gtd.next_week') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.next_week' else '' }}">🗓 Przyszły tydzień</a>
+        <a href="{{ url_for('gtd.inbox') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.inbox' else '' }}">
+          📥 Inbox
+          {% if gtd_inbox_badge > 0 %}
+            <span class="nav-badge" style="margin-left:auto">{{ gtd_inbox_badge }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('gtd.next_actions') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.next_actions' else '' }}">▶ Next actions</a>
+        <a href="{{ url_for('gtd.projects') }}"
+           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'gtd' and request.endpoint in ('gtd.projects', 'gtd.project_detail') else '' }}">📁 Projekty</a>
+        <a href="{{ url_for('gtd.waiting') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.waiting' else '' }}">⏳ Czeka na</a>
+        <a href="{{ url_for('gtd.someday') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.someday' else '' }}">💤 Kiedyś/może</a>
+        <a href="{{ url_for('gtd.completed') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.completed' else '' }}">✅ Ukończone</a>
+      </div>
+    </li>
     <li class="navbar-dropdown" id="nav-dd-finance">
       <a href="{{ url_for('finance.index') }}"
          class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">

@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Getting Things Done{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+
+  <aside class="settings-sidebar">
+    <nav class="settings-nav">
+      <a href="{{ url_for('gtd.day') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'dzis' }}">
+        📅 Dziś
+      </a>
+      <a href="{{ url_for('gtd.week') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'tydzien' }}">
+        🗓 Ten tydzień
+      </a>
+      <a href="{{ url_for('gtd.next_week') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'przyszly_tydzien' }}">
+        🗓 Przyszły tydzień
+      </a>
+      <a href="{{ url_for('gtd.inbox') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'inbox' }}">
+        📥 Inbox
+      </a>
+      <a href="{{ url_for('gtd.next_actions') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'next' }}">
+        ▶ Next actions
+      </a>
+      <a href="{{ url_for('gtd.projects') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'projekty' }}">
+        📁 Projekty
+      </a>
+      <a href="{{ url_for('gtd.waiting') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'waiting' }}">
+        ⏳ Czeka na
+      </a>
+      <a href="{{ url_for('gtd.someday') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'someday' }}">
+        💤 Kiedyś/może
+      </a>
+      <a href="{{ url_for('gtd.completed') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'ukonczone' }}">
+        ✅ Ukończone
+      </a>
+    </nav>
+  </aside>
+
+  <section class="settings-content">
+    <div class="gtd-quick-add">
+      <input type="text" id="gtdQuickInput" class="filter-input" style="flex:1"
+             placeholder="Szybko dodaj zadanie… (Enter, żeby zapisać do Inbox)" autocomplete="off">
+      <button type="button" id="gtdQuickAddBtn" class="btn btn-primary btn-sm">+ Dodaj</button>
+      <button type="button" id="gtdVoiceBtn" class="btn btn-outline btn-sm" title="Dodaj głosowo">🎙</button>
+      <span id="gtdQuickAddStatus" class="text-muted" style="font-size:.8rem"></span>
+    </div>
+
+    {% block gtd_content %}{% endblock %}
+  </section>
+
+</div>
+
+{# ── Modal: blokowanie czasu (time-blocking) ─────────────────────────────── #}
+<div id="gtdTimeBlockModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Zablokuj czas</h3>
+      <button onclick="document.getElementById('gtdTimeBlockModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="gtdTimeBlockTaskId">
+      <div class="agent-confirm-row">
+        <label>Data</label>
+        <input type="date" id="gtdTimeBlockDate" class="filter-input" style="width:100%">
+      </div>
+      <div class="agent-confirm-row">
+        <label>Godzina</label>
+        <input type="time" id="gtdTimeBlockTime" class="filter-input" style="width:100%">
+      </div>
+      <div class="agent-confirm-row">
+        <label>Czas trwania (minuty)</label>
+        <input type="number" id="gtdTimeBlockDuration" class="filter-input" style="width:100%" value="30" min="5" step="5">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="gtdSubmitTimeBlock()">Zapisz</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('gtdTimeBlockModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal: edycja terminu zadania ────────────────────────────── #}
+<div id="gtdEditTaskModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edytuj zadanie</h3>
+      <button onclick="document.getElementById('gtdEditTaskModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="gtdEditTaskId">
+      <div class="agent-confirm-row">
+        <label>Termin</label>
+        <input type="date" id="gtdEditTaskDue" class="filter-input" style="width:100%">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="gtdSubmitEditTask()">Zapisz</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('gtdEditTaskModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='gtd.js') }}"></script>
+{% endblock %}

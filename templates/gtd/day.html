@@ -1,0 +1,116 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import task_cells, star_btn, row_class %}
+{% block title %}Dziś — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="page-header">
+  <h1>{{ current_day_label }}{% if is_today %} <span class="badge badge-blue">dziś</span>{% endif %}</h1>
+  <div class="header-actions" style="align-items:center;gap:.5rem">
+    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day', d=prev_day) }}">← Poprzedni</a>
+    {% if not is_today %}
+      <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day') }}">Dziś</a>
+    {% endif %}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day', d=next_day) }}">Następny →</a>
+    <span class="badge {{ 'badge-red' if today_star_count > 3 else 'badge-gray' }}" title="Priorytety dnia (miękki limit 1-3)">★ {{ today_star_count }}/3</span>
+  </div>
+</div>
+
+{% if unfinished %}
+<div class="filter-bar" style="flex-direction:column;align-items:stretch;gap:.5rem;background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:1rem">
+  <div style="font-weight:600">Niedokończone z poprzednich dni ({{ unfinished|length }})</div>
+  <div class="text-muted" style="font-size:.8rem">GTD nie przenosi zadań automatycznie — zdecyduj, co zrobić z każdym.</div>
+  <table class="data-table">
+    <tbody>
+      {% for t in unfinished %}
+      <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
+        {{ task_cells(t, today) }}
+        <td class="col-actions">
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤 Kiedyś</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="filter-bar" style="gap:.5rem">
+  <input type="text" id="gtdDayAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj zadanie na ten dzień…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">+ Dodaj do dnia</button>
+</div>
+
+{% set scheduled = tasks|selectattr('scheduled_time')|list %}
+{% set unscheduled = tasks|rejectattr('scheduled_time')|list %}
+
+{% if scheduled %}
+<h3 style="margin:1.2rem 0 .5rem">Zaplanowane godzinowo</h3>
+<div class="gtd-timeline">
+  {% for t in scheduled|sort(attribute='scheduled_time') %}
+  <div class="gtd-timeline-row" data-task-id="{{ t.id }}">
+    <div class="gtd-timeline-time">{{ t.scheduled_time|hhmm }}<span class="text-muted" style="font-size:.72rem;display:block">{{ t.scheduled_duration_min or 30 }} min</span></div>
+    <div class="gtd-timeline-card {{ row_class(t) }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div>
+          <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
+                onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
+          <strong>{{ t.title }}</strong>
+          {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
+          <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}')">✎</button>
+          {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
+        </div>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          {{ star_btn(t, 'is_today_priority', 'toggle_today') }}
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰ Godzina</button>
+          {% if not t.gcal_event_id %}
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ t.id }})">📆 Push</button>
+          {% else %}
+          <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">📆 ✓</span>
+          {% endif %}
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕ Odepnij</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h3 style="margin:1.2rem 0 .5rem">Bez konkretnej godziny</h3>
+{% if not unscheduled %}
+  <p class="text-muted">Brak zadań bez godziny na ten dzień.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Projekt</th>
+      <th>Termin</th>
+      <th style="width:2.2rem" title="Priorytet dnia"></th>
+      <th class="col-actions" style="width:180px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in unscheduled %}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t, today) }}
+      <td>{{ star_btn(t, 'is_today_priority', 'toggle_today') }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰ Zablokuj czas</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

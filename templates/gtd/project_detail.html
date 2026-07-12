@@ -1,0 +1,58 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import task_cells, row_class %}
+{% block title %}{{ project.title }} — Projekt — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="page-header">
+  <h1>
+    📁 {{ project.title }}
+    {% if project.status == 'done' %}<span class="badge badge-green" style="margin-left:.4rem">zakończony</span>{% endif %}
+  </h1>
+  <div class="header-actions">
+    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.projects') }}">← Projekty</a>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ project.id }}, {{ project.title|tojson }})">✎ Zmień nazwę</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdFlattenProject({{ project.id }})">Cofnij do zwykłego zadania</button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteProject({{ project.id }})">🗑 Usuń projekt</button>
+  </div>
+</div>
+
+{% if project.notes %}
+  <p class="text-muted">{{ project.notes }}</p>
+{% endif %}
+
+<div class="filter-bar" style="gap:.5rem">
+  <input type="text" id="gtdSubtaskInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj podzadanie…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddSubtask({{ project.id }}, 'gtdSubtaskInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddSubtask({{ project.id }}, 'gtdSubtaskInput')">+ Dodaj podzadanie</button>
+</div>
+
+{% if not subtasks %}
+  <p class="text-muted">Brak podzadań — dodaj pierwsze powyżej.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Projekt</th>
+      <th>Termin</th>
+      <th class="col-actions" style="width:140px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in subtasks %}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t) }}
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
