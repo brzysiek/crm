@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, row_class %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
 {% block title %}Przyszły tydzień — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -16,6 +16,7 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
+      <th style="width:4.2rem"></th>
       <th class="col-actions" style="width:220px"></th>
     </tr>
   </thead>
@@ -23,6 +24,7 @@
     {% for t in group.tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, week_start=week_start) }}
+      <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'next')">✕ Odepnij dzień</button>
@@ -46,6 +48,7 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
+      <th style="width:4.2rem"></th>
       <th class="col-actions" style="width:220px"></th>
     </tr>
   </thead>
@@ -53,6 +56,7 @@
     {% for t in bucket_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, week_start=week_start) }}
+      <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'this')">→ Ten tydzień</button>

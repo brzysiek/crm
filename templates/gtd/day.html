@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, star_btn, row_class %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
 {% block title %}Dziś — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -66,7 +66,7 @@
           {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          {{ star_btn(t, 'is_today_priority', 'toggle_today') }}
+          {{ priority_stars(t) }}
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰ Godzina</button>
           {% if not t.gcal_event_id %}
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ t.id }})">📆 Push</button>
@@ -93,7 +93,7 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th style="width:2.2rem" title="Priorytet dnia"></th>
+      <th style="width:4.2rem" title="Priorytety"></th>
       <th class="col-actions" style="width:180px"></th>
     </tr>
   </thead>
@@ -101,7 +101,7 @@
     {% for t in unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, today) }}
-      <td>{{ star_btn(t, 'is_today_priority', 'toggle_today') }}</td>
+      <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰ Zablokuj czas</button>

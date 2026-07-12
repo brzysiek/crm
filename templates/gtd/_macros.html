@@ -42,7 +42,11 @@
   </td>
 {% endmacro %}
 
-{% macro star_btn(t, field, url) %}
-  <button type="button" class="btn-ghost btn-sm" style="font-size:1rem;line-height:1;padding:.2rem .35rem"
-          title="Priorytet" onclick="gtdToggleStar({{ t.id }}, '{{ url }}')">{{ '★' if t[field] else '☆' }}</button>
+{% macro priority_stars(t) %}
+  <span style="display:inline-flex;gap:.1rem;white-space:nowrap">
+    <button type="button" class="btn-ghost btn-sm" style="font-size:1rem;line-height:1;padding:.2rem .3rem"
+            title="Priorytet dnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_today')">{{ '★' if t.is_today_priority else '☆' }}</button>
+    <button type="button" class="btn-ghost btn-sm" style="font-size:1rem;line-height:1;padding:.2rem .3rem"
+            title="Priorytet tygodnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_week')">{{ '⚑' if t.is_week_priority else '⚐' }}</button>
+  </span>
 {% endmacro %}
