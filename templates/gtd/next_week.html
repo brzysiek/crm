@@ -14,7 +14,8 @@
 {% endif %}
 
 {% for group in day_groups %}
-<h3 style="margin:1.2rem 0 .5rem">{{ group.label }}</h3>
+<div class="gtd-day-section">
+<h3>{{ group.label }}</h3>
 {% if group.gcal_events %}
 <div class="gtd-timeline">
   {% for e in group.gcal_events %}
@@ -56,6 +57,7 @@
   </tbody>
 </table>
 {% endif %}
+</div>
 {% endfor %}
 
 <h3 style="margin:1.2rem 0 .5rem">Bez konkretnego dnia</h3>
