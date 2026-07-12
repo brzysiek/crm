@@ -233,7 +233,11 @@ def convert_to_project(task_id: int) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("UPDATE tasks SET is_project=1 WHERE id=%s", (task_id,))
+            cur.execute(
+                "UPDATE tasks SET is_project=1, "
+                "status=IF(status='inbox', 'next', status) WHERE id=%s",
+                (task_id,)
+            )
         db.commit()
     except Exception:
         db.rollback()
