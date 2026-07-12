@@ -1954,6 +1954,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 /* ── GTD ──────────────────────────────────────────────────────────────────── */
 .gtd-quick-add {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: .5rem;
   padding: .6rem .8rem;
@@ -1994,6 +1995,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 }
 .gtd-timeline-card {
   flex: 1;
+  min-width: 0;
   padding: .6rem .9rem;
   background: var(--surface);
   border: 1px solid var(--border);

@@ -10,6 +10,7 @@
 {% if not tasks %}
   <p class="text-muted">Lista pomysłów na później jest pusta.</p>
 {% else %}
+<div class="table-wrapper">
 <table class="data-table">
   <thead>
     <tr>
@@ -34,5 +35,6 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {% endblock %}

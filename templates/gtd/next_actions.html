@@ -19,6 +19,7 @@
 {% if not tasks %}
   <p class="text-muted">Brak zadań next action{{ ' w tym projekcie' if selected_project }}.</p>
 {% else %}
+<div class="table-wrapper">
 <table class="data-table">
   <thead>
     <tr>
@@ -48,5 +49,6 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {% endblock %}

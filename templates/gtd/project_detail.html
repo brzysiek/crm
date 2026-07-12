@@ -30,6 +30,7 @@
 {% if not subtasks %}
   <p class="text-muted">Brak podzadań — dodaj pierwsze powyżej.</p>
 {% else %}
+<div class="table-wrapper">
 <table class="data-table">
   <thead>
     <tr>
@@ -54,5 +55,6 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {% endblock %}

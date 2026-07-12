@@ -30,6 +30,7 @@
 </div>
 {% endif %}
 {% if group.tasks %}
+<div class="table-wrapper">
 <table class="data-table">
   <thead>
     <tr>
@@ -56,6 +57,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 </div>
 {% endfor %}
@@ -64,6 +66,7 @@
 {% if not bucket_tasks %}
   <p class="text-muted">Brak zadań przypisanych do przyszłego tygodnia. Wrzuć je z Inbox lub Next actions przyciskiem „Przyszły tydzień”.</p>
 {% else %}
+<div class="table-wrapper">
 <table class="data-table">
   <thead>
     <tr>
@@ -91,5 +94,6 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {% endblock %}
