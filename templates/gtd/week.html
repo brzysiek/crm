@@ -84,7 +84,7 @@
       <td>{{ star_btn(t, 'is_week_priority', 'toggle_week') }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕ Odepnij dzień</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'this')">✕ Odepnij dzień</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </div>
       </td>
