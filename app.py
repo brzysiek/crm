@@ -1,4 +1,5 @@
 from flask import Flask, Response, jsonify, redirect, request, session, url_for
+from flask.json.provider import DefaultJSONProvider
 from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException
 from config import Config
@@ -7,12 +8,26 @@ import traceback as _tb
 import logging
 import os
 import re
+from datetime import datetime as _dt, timedelta as _timedelta
 from logging.handlers import RotatingFileHandler
-from datetime import datetime as _dt
 
 _BUILD_ID = _dt.now().strftime('%Y%m%d.%H%M')
 
+
+class _AppJSONProvider(DefaultJSONProvider):
+    """Dokłada obsługę timedelta — pymysql zwraca kolumny TIME (np. scheduled_time)
+    jako timedelta, którego domyślny encoder Flaska nie potrafi zserializować."""
+
+    @staticmethod
+    def default(obj):
+        if isinstance(obj, _timedelta):
+            total_min = int(obj.total_seconds()) // 60
+            return f"{total_min // 60:02d}:{total_min % 60:02d}"
+        return DefaultJSONProvider.default(obj)
+
+
 app = Flask(__name__)
+app.json = _AppJSONProvider(app)
 app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY
 database.init_app(app)
