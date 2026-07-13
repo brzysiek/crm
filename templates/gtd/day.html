@@ -53,6 +53,39 @@
 </div>
 {% endif %}
 
+<h3 style="margin:.5rem 0">Priorytety dnia</h3>
+{% if not priority_tasks %}
+  <p class="text-muted">Brak oznaczonych priorytetów dnia. Oznacz gwiazdką zadania poniżej lub w Next actions.</p>
+{% else %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Projekt</th>
+      <th>Termin</th>
+      <th style="width:4.2rem"></th>
+      <th class="col-actions" style="width:100px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in priority_tasks %}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t, today) }}
+      <td>{{ priority_stars(t) }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
 {% if timeline %}
 <h3 style="margin:1.2rem 0 .5rem">Harmonogram dnia</h3>
 <div class="gtd-timeline">

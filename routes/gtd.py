@@ -139,6 +139,7 @@ def day():
 
     unscheduled = [t for t in tasks if not t.get('scheduled_time')]
     timeline = _build_timeline(tasks, gcal_events)
+    priority_tasks = task_model.get_today_priority_tasks(current)
 
     return render_template(
         'gtd/day.html',
@@ -153,6 +154,7 @@ def day():
         tasks=tasks,
         unscheduled=unscheduled,
         unfinished=unfinished,
+        priority_tasks=priority_tasks,
         today_star_count=task_model.count_today_priority(current),
         timeline=timeline,
         gcal_error=gcal_error,

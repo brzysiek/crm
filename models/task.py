@@ -503,6 +503,20 @@ def get_scheduled_tasks_between(start: date, end: date) -> list[dict]:
         return cur.fetchall()
 
 
+def get_today_priority_tasks(day: date) -> list[dict]:
+    """Priorytety dnia (gwiazdka) zaplanowane na dany dzień — zadania zrobione
+    zostają widoczne (nie znikają z listy)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
+            f"WHERE t.is_today_priority=1 AND t.scheduled_date=%s "
+            f"ORDER BY (t.status='done'), t.scheduled_time IS NULL, t.scheduled_time ASC, t.id DESC",
+            (day,)
+        )
+        return cur.fetchall()
+
+
 def count_today_priority(day: date) -> int:
     db = get_db()
     with db.cursor() as cur:
