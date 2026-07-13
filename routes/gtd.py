@@ -69,10 +69,15 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     by_day: dict = {}
     for e in raw:
         start_info = e.get('start', {})
+        end_info = e.get('end', {})
+        duration_min = None
         if start_info.get('dateTime'):
             dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
             d = dt.date()
             time_label = dt.strftime('%H:%M')
+            if end_info.get('dateTime'):
+                end_dt = datetime.fromisoformat(end_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
+                duration_min = max(0, int((end_dt - dt).total_seconds()) // 60)
         elif start_info.get('date'):
             d = datetime.strptime(start_info['date'], '%Y-%m-%d').date()
             time_label = None
@@ -81,6 +86,7 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         by_day.setdefault(d, []).append({
             'title': e.get('summary') or '(bez tytułu)',
             'time': time_label,
+            'duration_min': duration_min,
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
@@ -110,6 +116,17 @@ def day():
     tasks = task_model.get_tasks_for_day(current)
     unfinished = task_model.get_unfinished_before(current) if current == today else []
     gcal_by_day, gcal_error = _gcal_events_by_day(current, current)
+    gcal_events = gcal_by_day.get(current, [])
+
+    scheduled = [t for t in tasks if t.get('scheduled_time')]
+    unscheduled = [t for t in tasks if not t.get('scheduled_time')]
+
+    timeline = (
+        [{'kind': 'gcal', 'time': e['time'], 'duration_min': e['duration_min'], 'event': e} for e in gcal_events]
+        + [{'kind': 'task', 'time': _format_time(t['scheduled_time']), 'duration_min': t.get('scheduled_duration_min') or 30,
+            'task': t} for t in scheduled]
+    )
+    timeline.sort(key=lambda x: (x['time'] is None, x['time'] or ''))
 
     return render_template(
         'gtd/day.html',
@@ -122,9 +139,10 @@ def day():
         today=today,
         today_iso=today.isoformat(),
         tasks=tasks,
+        unscheduled=unscheduled,
         unfinished=unfinished,
         today_star_count=task_model.count_today_priority(current),
-        gcal_events=gcal_by_day.get(current, []),
+        timeline=timeline,
         gcal_error=gcal_error,
     )
 

@@ -53,28 +53,21 @@
 </div>
 {% endif %}
 
-{% if gcal_events %}
-<h3 style="margin:1.2rem 0 .5rem">📅 Wydarzenia z kalendarza</h3>
+{% if timeline %}
+<h3 style="margin:1.2rem 0 .5rem">Harmonogram dnia</h3>
 <div class="gtd-timeline">
-  {% for e in gcal_events %}
+  {% for item in timeline %}
+  {% if item.kind == 'gcal' %}
+  {% set e = item.event %}
   <div class="gtd-timeline-row">
-    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}</div>
+    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}{% if e.duration_min %}<span class="text-muted" style="font-size:.72rem;display:block">{{ e.duration_min }} min</span>{% endif %}</div>
     <div class="gtd-timeline-card gtd-gcal-card">
       <strong>{{ e.title }}</strong>
       <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
     </div>
   </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-{% set scheduled = tasks|selectattr('scheduled_time')|list %}
-{% set unscheduled = tasks|rejectattr('scheduled_time')|list %}
-
-{% if scheduled %}
-<h3 style="margin:1.2rem 0 .5rem">Zaplanowane godzinowo</h3>
-<div class="gtd-timeline">
-  {% for t in scheduled|sort(attribute='scheduled_time') %}
+  {% else %}
+  {% set t = item.task %}
   <div class="gtd-timeline-row" data-task-id="{{ t.id }}">
     <div class="gtd-timeline-time">{{ t.scheduled_time|hhmm }}<span class="text-muted" style="font-size:.72rem;display:block">{{ t.scheduled_duration_min or 30 }} min</span></div>
     <div class="gtd-timeline-card {{ row_class(t) }}">
@@ -101,6 +94,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
   {% endfor %}
 </div>
 {% endif %}
