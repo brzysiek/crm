@@ -5,6 +5,7 @@
 {% block gtd_content %}
 <div class="page-header">
   <h1>Przyszły tydzień: {{ week_label }}</h1>
+  <span class="badge {{ 'badge-red' if week_star_count > 15 else 'badge-gray' }}" title="Priorytety tygodnia (miękki limit 10-15)">★ {{ week_star_count }}/15</span>
 </div>
 
 {% if gcal_error %}
@@ -19,6 +20,40 @@
          onkeydown="if(event.key==='Enter') gtdAddToWeek('next', 'gtdNextWeekAddInput')">
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToWeek('next', 'gtdNextWeekAddInput')">+ Dodaj do przyszłego tygodnia</button>
 </div>
+
+<h3 style="margin:.5rem 0">Priorytety tygodnia</h3>
+{% if not priority_tasks %}
+  <p class="text-muted">Brak oznaczonych priorytetów przyszłego tygodnia. Oznacz gwiazdką zadania poniżej.</p>
+{% else %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Projekt</th>
+      <th>Termin</th>
+      <th style="width:4.2rem"></th>
+      <th class="col-actions" style="width:140px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in priority_tasks %}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t, week_start=week_start) }}
+      <td>{{ priority_stars(t) }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
 
 {% for group in day_groups %}
 <div class="gtd-day-section">

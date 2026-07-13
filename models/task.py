@@ -394,13 +394,21 @@ def get_unfinished_before(day: date, limit: int = 20) -> list[dict]:
         return cur.fetchall()
 
 
-def get_week_priority_tasks() -> list[dict]:
-    """Priorytety tygodnia (gwiazdka) — zadania zrobione zostają widoczne."""
+def get_week_priority_tasks(monday: date, sunday: date, include_unassigned: bool = False) -> list[dict]:
+    """Priorytety tygodnia (gwiazdka) należące do danego tygodnia (blok tygodniowy lub
+    konkretny dzień mieszczący się w zakresie) — zadania zrobione zostają widoczne.
+    `include_unassigned` dokłada priorytety bez żadnego przypisania do tygodnia/dnia
+    (domyślnie lądują w widoku 'Ten tydzień')."""
     db = get_db()
     with db.cursor() as cur:
+        clause = "(t.planned_week=%s OR (t.scheduled_date BETWEEN %s AND %s))"
+        params = [monday, monday, sunday]
+        if include_unassigned:
+            clause = f"({clause} OR (t.planned_week IS NULL AND t.scheduled_date IS NULL))"
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 "
-            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND {clause} "
+            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            tuple(params)
         )
         return cur.fetchall()
 
@@ -465,10 +473,17 @@ def count_today_priority(day: date) -> int:
         return cur.fetchone()['cnt']
 
 
-def count_week_priority() -> int:
+def count_week_priority(monday: date, sunday: date, include_unassigned: bool = False) -> int:
     db = get_db()
     with db.cursor() as cur:
-        cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE is_week_priority=1 AND status != 'done'")
+        clause = "(planned_week=%s OR (scheduled_date BETWEEN %s AND %s))"
+        params = [monday, monday, sunday]
+        if include_unassigned:
+            clause = f"({clause} OR (planned_week IS NULL AND scheduled_date IS NULL))"
+        cur.execute(
+            f"SELECT COUNT(*) AS cnt FROM tasks WHERE is_week_priority=1 AND status != 'done' AND {clause}",
+            tuple(params)
+        )
         return cur.fetchone()['cnt']
 
 

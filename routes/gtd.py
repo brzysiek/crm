@@ -135,7 +135,7 @@ def day():
 def week():
     today = date.today()
     week_start, week_end = _week_range(today)
-    priority_tasks = task_model.get_week_priority_tasks()
+    priority_tasks = task_model.get_week_priority_tasks(week_start, week_end, include_unassigned=True)
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
     unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
     gcal_by_day, gcal_error = _gcal_events_by_day(week_start, week_end)
@@ -151,7 +151,7 @@ def week():
         bucket_tasks=bucket_tasks,
         unfinished_weeks=unfinished_weeks,
         day_groups=day_groups,
-        week_star_count=task_model.count_week_priority(),
+        week_star_count=task_model.count_week_priority(week_start, week_end, include_unassigned=True),
         gcal_error=gcal_error,
     )
 
@@ -160,6 +160,7 @@ def week():
 def next_week():
     next_monday = _week_range(date.today())[0] + timedelta(days=7)
     week_end = next_monday + timedelta(days=6)
+    priority_tasks = task_model.get_week_priority_tasks(next_monday, week_end)
     bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
     gcal_by_day, gcal_error = _gcal_events_by_day(next_monday, week_end)
     day_groups = _day_groups(next_monday, week_end, gcal_by_day)
@@ -170,8 +171,10 @@ def next_week():
         week_start=next_monday,
         week_end=week_end,
         week_label=f"{next_monday.day} {MONTHS_PL[next_monday.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
+        priority_tasks=priority_tasks,
         bucket_tasks=bucket_tasks,
         day_groups=day_groups,
+        week_star_count=task_model.count_week_priority(next_monday, week_end),
         gcal_error=gcal_error,
     )
 
