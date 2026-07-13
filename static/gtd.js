@@ -202,6 +202,17 @@ function gtdUnschedule(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdMoveTask(taskId, day, direction) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ day, direction }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdConvertToProject(taskId) {
   if (!confirm('Zamienić to zadanie w projekt?')) return;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/convert_project', { method: 'POST' })

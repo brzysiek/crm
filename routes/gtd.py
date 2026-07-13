@@ -399,6 +399,17 @@ def api_unschedule(task_id):
     return jsonify({'status': 'ok'})
 
 
+@bp.route('/api/gtd/tasks/<int:task_id>/move', methods=['POST'])
+def api_move_task(task_id):
+    data = request.get_json(silent=True) or {}
+    day = _parse_date(data.get('day'), date.today())
+    direction = data.get('direction')
+    if direction not in ('up', 'down'):
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowy kierunek.'}), 400
+    task_model.move_task_in_day(task_id, day, direction)
+    return jsonify({'status': 'ok'})
+
+
 @bp.route('/api/gtd/tasks/<int:task_id>/assign_week', methods=['POST'])
 def api_assign_week(task_id):
     data = request.get_json(silent=True) or {}

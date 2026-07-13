@@ -83,6 +83,12 @@
       <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:.1rem .4rem" title="Przesuń wyżej"
+                  {{ 'disabled' if loop.first }}
+                  onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'up')">↑</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:.1rem .4rem" title="Przesuń niżej"
+                  {{ 'disabled' if loop.last }}
+                  onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'down')">↓</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰ Zablokuj czas</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕</button>
         </div>

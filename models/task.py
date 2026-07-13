@@ -384,10 +384,39 @@ def get_tasks_for_day(day: date) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.scheduled_date=%s "
-            f"ORDER BY t.scheduled_time IS NULL, t.scheduled_time ASC, t.is_today_priority DESC, t.id ASC",
+            f"ORDER BY t.scheduled_time IS NULL, t.scheduled_time ASC, "
+            f"t.day_order ASC, t.is_today_priority DESC, t.id ASC",
             (day,)
         )
         return cur.fetchall()
+
+
+def move_task_in_day(task_id: int, day: date, direction: str) -> None:
+    """Zamienia miejscami zadanie z sąsiadem na liście zadań bez konkretnej
+    godziny w danym dniu (ręczna kolejność, `day_order` normalizowany do 0..n-1
+    przy każdym przesunięciu)."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM tasks WHERE scheduled_date=%s AND scheduled_time IS NULL "
+                "ORDER BY day_order ASC, is_today_priority DESC, id ASC",
+                (day,)
+            )
+            ids = [row['id'] for row in cur.fetchall()]
+            if task_id not in ids:
+                return
+            idx = ids.index(task_id)
+            swap_idx = idx - 1 if direction == 'up' else idx + 1
+            if swap_idx < 0 or swap_idx >= len(ids):
+                return
+            ids[idx], ids[swap_idx] = ids[swap_idx], ids[idx]
+            for i, tid in enumerate(ids):
+                cur.execute("UPDATE tasks SET day_order=%s WHERE id=%s", (i, tid))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def get_unfinished_before(day: date, limit: int = 20) -> list[dict]:

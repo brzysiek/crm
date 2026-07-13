@@ -427,6 +427,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     scheduled_date         DATE NULL,
     scheduled_time         TIME NULL,
     scheduled_duration_min INT NULL,
+    day_order              INT NOT NULL DEFAULT 0,
     planned_week           DATE NULL,
     gcal_event_id          VARCHAR(255) NULL,
     is_today_priority      TINYINT(1) NOT NULL DEFAULT 0,
