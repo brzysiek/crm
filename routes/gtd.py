@@ -32,10 +32,24 @@ def _week_range(d: date) -> tuple[date, date]:
     return monday, monday + timedelta(days=6)
 
 
+def _build_timeline(tasks: list[dict], gcal_events: list[dict]) -> list[dict]:
+    """Łączy wydarzenia z kalendarza i zadania zaplanowane godzinowo w jeden
+    chronologiczny harmonogram (posortowany po godzinie, brak godziny na końcu
+    zostawiamy tylko dla wydarzeń całodniowych)."""
+    timeline = (
+        [{'kind': 'gcal', 'time': e['time'], 'duration_min': e['duration_min'], 'event': e} for e in gcal_events]
+        + [{'kind': 'task', 'time': _format_time(t['scheduled_time']), 'duration_min': t.get('scheduled_duration_min') or 30,
+            'task': t} for t in tasks if t.get('scheduled_time')]
+    )
+    timeline.sort(key=lambda x: (x['time'] is None, x['time'] or ''))
+    return timeline
+
+
 def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = None) -> list[dict]:
     """Dzieli zadania zaplanowane na konkretne dni w danym tygodniu (plus wydarzenia
     z Google Calendar, jeśli podano) na sekcje dzień-po-dniu — tylko dni, na które
-    faktycznie coś zaplanowano lub coś jest w kalendarzu."""
+    faktycznie coś zaplanowano lub coś jest w kalendarzu. Każdy dzień dostaje wspólny
+    harmonogram godzinowy (`timeline`) i listę zadań bez konkretnej godziny (`unscheduled`)."""
     gcal_by_day = gcal_by_day or {}
     scheduled = task_model.get_scheduled_tasks_between(week_start, week_end)
     groups = []
@@ -44,7 +58,12 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
         day_tasks = [t for t in scheduled if t['scheduled_date'] == d]
         day_events = gcal_by_day.get(d, [])
         if day_tasks or day_events:
-            groups.append({'date': d, 'label': _day_label(d), 'tasks': day_tasks, 'gcal_events': day_events})
+            groups.append({
+                'date': d,
+                'label': _day_label(d),
+                'timeline': _build_timeline(day_tasks, day_events),
+                'unscheduled': [t for t in day_tasks if not t.get('scheduled_time')],
+            })
         d += timedelta(days=1)
     return groups
 
@@ -118,15 +137,8 @@ def day():
     gcal_by_day, gcal_error = _gcal_events_by_day(current, current)
     gcal_events = gcal_by_day.get(current, [])
 
-    scheduled = [t for t in tasks if t.get('scheduled_time')]
     unscheduled = [t for t in tasks if not t.get('scheduled_time')]
-
-    timeline = (
-        [{'kind': 'gcal', 'time': e['time'], 'duration_min': e['duration_min'], 'event': e} for e in gcal_events]
-        + [{'kind': 'task', 'time': _format_time(t['scheduled_time']), 'duration_min': t.get('scheduled_duration_min') or 30,
-            'task': t} for t in scheduled]
-    )
-    timeline.sort(key=lambda x: (x['time'] is None, x['time'] or ''))
+    timeline = _build_timeline(tasks, gcal_events)
 
     return render_template(
         'gtd/day.html',
@@ -322,6 +334,12 @@ def api_create_task():
         is_today_priority=data.get('is_today_priority'),
     )
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
+
+
+@bp.route('/api/gtd/projects')
+def api_projects():
+    projects = task_model.get_projects()
+    return jsonify([{'id': p['id'], 'title': p['title']} for p in projects])
 
 
 @bp.route('/api/gtd/tasks/<int:task_id>', methods=['PATCH'])

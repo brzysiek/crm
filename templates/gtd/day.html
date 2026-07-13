@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
 {% block title %}Dziś — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -56,46 +56,7 @@
 {% if timeline %}
 <h3 style="margin:1.2rem 0 .5rem">Harmonogram dnia</h3>
 <div class="gtd-timeline">
-  {% for item in timeline %}
-  {% if item.kind == 'gcal' %}
-  {% set e = item.event %}
-  <div class="gtd-timeline-row">
-    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}{% if e.duration_min %}<span class="text-muted" style="font-size:.72rem;display:block">{{ e.duration_min }} min</span>{% endif %}</div>
-    <div class="gtd-timeline-card gtd-gcal-card">
-      <strong>{{ e.title }}</strong>
-      <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
-    </div>
-  </div>
-  {% else %}
-  {% set t = item.task %}
-  <div class="gtd-timeline-row" data-task-id="{{ t.id }}">
-    <div class="gtd-timeline-time">{{ t.scheduled_time|hhmm }}<span class="text-muted" style="font-size:.72rem;display:block">{{ t.scheduled_duration_min or 30 }} min</span></div>
-    <div class="gtd-timeline-card {{ row_class(t) }}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
-        <div>
-          <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
-                onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
-          <strong>{{ t.title }}</strong>
-          {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
-          <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}')">✎</button>
-          {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
-        </div>
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          {{ priority_stars(t) }}
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰ Godzina</button>
-          {% if not t.gcal_event_id %}
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ t.id }})">📆 Push</button>
-          {% else %}
-          <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">📆 ✓</span>
-          {% endif %}
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕ Odepnij</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-  {% endfor %}
+  {% for item in timeline %}{{ timeline_item(item) }}{% endfor %}
 </div>
 {% endif %}
 

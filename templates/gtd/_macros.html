@@ -11,7 +11,7 @@
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}')">✎</button>
+              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }})">✎</button>
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes }}</div>{% endif %}
   </td>
@@ -40,6 +40,51 @@
       {% endif %}
     </div>
   </td>
+{% endmacro %}
+
+{% macro timeline_item(item, week_offset=none) %}
+  {% if item.kind == 'gcal' %}
+  {% set e = item.event %}
+  <div class="gtd-timeline-row">
+    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}{% if e.duration_min %}<span class="text-muted" style="font-size:.72rem;display:block">{{ e.duration_min }} min</span>{% endif %}</div>
+    <div class="gtd-timeline-card gtd-gcal-card">
+      <strong>{{ e.title }}</strong>
+      <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
+    </div>
+  </div>
+  {% else %}
+  {% set t = item.task %}
+  <div class="gtd-timeline-row" data-task-id="{{ t.id }}">
+    <div class="gtd-timeline-time">{{ t.scheduled_time|hhmm }}<span class="text-muted" style="font-size:.72rem;display:block">{{ t.scheduled_duration_min or 30 }} min</span></div>
+    <div class="gtd-timeline-card {{ row_class(t) }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div>
+          <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
+                onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
+          <strong>{{ t.title }}</strong>
+          {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
+          <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }})">✎</button>
+          {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
+        </div>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          {{ priority_stars(t) }}
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰ Godzina</button>
+          {% if not t.gcal_event_id %}
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ t.id }})">📆 Push</button>
+          {% else %}
+          <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">📆 ✓</span>
+          {% endif %}
+          {% if week_offset is none %}
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕ Odepnij</button>
+          {% else %}
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdAssignWeek({{ t.id }}, '{{ week_offset }}')">✕ Odepnij dzień</button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 {% endmacro %}
 
 {% macro priority_stars(t) %}

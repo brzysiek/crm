@@ -71,18 +71,29 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
 
 def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
-               'scheduled_date', 'scheduled_time', 'scheduled_duration_min')
+               'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
+               'parent_id')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
+    if 'parent_id' in fields:
+        fields['parent_id'] = fields['parent_id'] or None
     db = get_db()
     try:
         with db.cursor() as cur:
+            old_parent_id = None
+            if 'parent_id' in fields:
+                cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
+                row = cur.fetchone()
+                old_parent_id = row['parent_id'] if row else None
             set_clause = ", ".join(f"{k}=%s" for k in fields)
             cur.execute(
                 f"UPDATE tasks SET {set_clause} WHERE id=%s",
                 (*fields.values(), task_id)
             )
+            if 'parent_id' in fields:
+                _sync_project_status(cur, old_parent_id)
+                _sync_project_status(cur, fields['parent_id'])
         db.commit()
     except Exception:
         db.rollback()

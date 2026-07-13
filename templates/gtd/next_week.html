@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
 {% block title %}Przyszły tydzień — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -58,20 +58,12 @@
 {% for group in day_groups %}
 <div class="gtd-day-section">
 <h3>{{ group.label }}</h3>
-{% if group.gcal_events %}
+{% if group.timeline %}
 <div class="gtd-timeline">
-  {% for e in group.gcal_events %}
-  <div class="gtd-timeline-row">
-    <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}</div>
-    <div class="gtd-timeline-card gtd-gcal-card">
-      <strong>{{ e.title }}</strong>
-      <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
-    </div>
-  </div>
-  {% endfor %}
+  {% for item in group.timeline %}{{ timeline_item(item, 'next') }}{% endfor %}
 </div>
 {% endif %}
-{% if group.tasks %}
+{% if group.unscheduled %}
 <div class="table-wrapper">
 <table class="data-table">
   <thead>
@@ -81,16 +73,17 @@
       <th>Projekt</th>
       <th>Termin</th>
       <th style="width:4.2rem"></th>
-      <th class="col-actions" style="width:220px"></th>
+      <th class="col-actions" style="width:260px"></th>
     </tr>
   </thead>
   <tbody>
-    {% for t in group.tasks %}
+    {% for t in group.unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, week_start=week_start) }}
       <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ group.date.isoformat() }}', '', 30)">⏰ Zablokuj czas</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'next')">✕ Odepnij dzień</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </div>

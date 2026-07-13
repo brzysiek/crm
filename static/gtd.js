@@ -349,19 +349,48 @@ function gtdSubmitTimeBlock() {
 }
 
 /* ── Modal edycji terminu ── */
-function gtdOpenEditTask(taskId, currentDue) {
+let _gtdProjectsCache = null;
+
+function _gtdFillProjectSelect(taskId, currentParentId) {
+  const select = document.getElementById('gtdEditTaskProject');
+  const render = (projects) => {
+    select.innerHTML = '<option value="">— brak —</option>';
+    projects
+      .filter(p => p.id !== taskId)
+      .forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.title;
+        if (currentParentId && p.id === currentParentId) opt.selected = true;
+        select.appendChild(opt);
+      });
+  };
+  if (_gtdProjectsCache) {
+    render(_gtdProjectsCache);
+    return;
+  }
+  fetch(window.API_BASE + '/api/gtd/projects')
+    .then(r => r.json())
+    .then(projects => { _gtdProjectsCache = projects; render(projects); })
+    .catch(() => {});
+}
+
+function gtdOpenEditTask(taskId, currentDue, currentParentId) {
   document.getElementById('gtdEditTaskId').value = taskId;
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
+  _gtdFillProjectSelect(taskId, currentParentId || null);
   document.getElementById('gtdEditTaskModal').classList.add('open');
 }
 
 function gtdSubmitEditTask() {
   const taskId = document.getElementById('gtdEditTaskId').value;
   const due_date = document.getElementById('gtdEditTaskDue').value || null;
+  const parentValue = document.getElementById('gtdEditTaskProject').value;
+  const parent_id = parentValue ? parseInt(parentValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ due_date }),
+    body: JSON.stringify({ due_date, parent_id }),
   })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
