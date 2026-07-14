@@ -386,8 +386,9 @@ function _gtdFillProjectSelect(taskId, currentParentId) {
     .catch(() => {});
 }
 
-function gtdOpenEditTask(taskId, currentDue, currentParentId) {
+function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle) {
   document.getElementById('gtdEditTaskId').value = taskId;
+  document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
   _gtdFillProjectSelect(taskId, currentParentId || null);
   document.getElementById('gtdEditTaskModal').classList.add('open');
@@ -395,13 +396,15 @@ function gtdOpenEditTask(taskId, currentDue, currentParentId) {
 
 function gtdSubmitEditTask() {
   const taskId = document.getElementById('gtdEditTaskId').value;
+  const title = document.getElementById('gtdEditTaskTitle').value.trim();
+  if (!title) { alert('Nazwa zadania nie może być pusta.'); return; }
   const due_date = document.getElementById('gtdEditTaskDue').value || null;
   const parentValue = document.getElementById('gtdEditTaskProject').value;
   const parent_id = parentValue ? parseInt(parentValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ due_date, parent_id }),
+    body: JSON.stringify({ title, due_date, parent_id }),
   })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
