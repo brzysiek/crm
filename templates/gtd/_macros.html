@@ -11,7 +11,7 @@
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson }})">✎</button>
+              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }})">✎</button>
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes }}</div>{% endif %}
   </td>
@@ -64,7 +64,7 @@
           <strong>{{ t.title }}</strong>
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson }})">✎</button>
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }})">✎</button>
           {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
