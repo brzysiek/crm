@@ -1,6 +1,6 @@
 {% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else 'gtd-row-todo') }}{% endmacro %}
 
-{% macro task_cells(t, today=none, week_start=none) %}
+{% macro task_cells(t, today=none, week_start=none, day_actions=false) %}
   <td class="col-checkbox">
     <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
           onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
@@ -36,6 +36,15 @@
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
                 onclick="gtdSetWeekday({{ t.id }}, '{{ week_start.isoformat() }}', {{ loop.index0 }})">{{ wd }}</button>
         {% endfor %}
+      </div>
+      {% elif day_actions %}
+      <div class="term-hover-picker">
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdScheduleTomorrow({{ t.id }})">→ Jutro</button>
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdAssignWeek({{ t.id }}, 'this')">→ Ten tydzień</button>
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdAssignWeek({{ t.id }}, 'next')">→ Przyszły tydzień</button>
       </div>
       {% endif %}
     </div>

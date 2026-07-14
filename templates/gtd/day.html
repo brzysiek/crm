@@ -24,7 +24,7 @@
     <tbody>
       {% for t in unfinished %}
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
-        {{ task_cells(t, today) }}
+        {{ task_cells(t, today, day_actions=true) }}
         <td class="col-actions">
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
             <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
@@ -72,7 +72,7 @@
   <tbody>
     {% for t in priority_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, today) }}
+      {{ task_cells(t, today, day_actions=true) }}
       <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
@@ -112,7 +112,7 @@
   <tbody>
     {% for t in unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, today) }}
+      {{ task_cells(t, today, day_actions=true) }}
       <td>{{ priority_stars(t) }}</td>
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
@@ -122,7 +122,7 @@
           <button type="button" class="btn btn-ghost btn-sm" style="padding:.1rem .4rem" title="Przesuń niżej"
                   {{ 'disabled' if loop.last }}
                   onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'down')">↓</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰ Zablokuj czas</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰ Zaplanuj godzinę</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕</button>
         </div>
       </td>

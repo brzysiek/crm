@@ -226,6 +226,7 @@ def inject_globals():
         'gdrive_pending_count': gdrive_cnt,
         'imports_badge':        cnt + bank_cnt + gdrive_cnt,
         'gtd_inbox_badge':      gtd_inbox_badge,
+        'gtd_tomorrow_iso':     (_dt.now().date() + _timedelta(days=1)).isoformat(),
         'app_name':             app_name,
         'logo_main':            logo_main,
         'logo_thumb':           logo_thumb,

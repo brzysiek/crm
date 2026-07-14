@@ -177,6 +177,20 @@ function gtdScheduleToday(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdScheduleTomorrow(taskId) {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const tomorrow = d.toISOString().slice(0, 10);
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scheduled_date: tomorrow }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdAssignWeek(taskId, week) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_week', {
     method: 'POST',

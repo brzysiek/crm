@@ -4,6 +4,7 @@
 {% block content %}
 {% set gtd_tab_labels = {
   'dzis': '📅 Dziś',
+  'jutro': '📅 Jutro',
   'tydzien': '🗓 Ten tydzień',
   'przyszly_tydzien': '🗓 Przyszły tydzień',
   'inbox': '📥 Inbox',
@@ -24,6 +25,10 @@
       <a href="{{ url_for('gtd.day') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'dzis' }}">
         📅 Dziś
+      </a>
+      <a href="{{ url_for('gtd.day', d=gtd_tomorrow_iso) }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'jutro' }}">
+        📅 Jutro
       </a>
       <a href="{{ url_for('gtd.week') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'tydzien' }}">

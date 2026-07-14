@@ -143,7 +143,7 @@ def day():
 
     return render_template(
         'gtd/day.html',
-        active_tab='dzis',
+        active_tab=('jutro' if current == today + timedelta(days=1) else 'dzis'),
         current_day=current,
         current_day_label=_day_label(current),
         is_today=(current == today),
