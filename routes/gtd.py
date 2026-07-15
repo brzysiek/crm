@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 import models.task as task_model
+import models.gcal_event as gcal_event_model
 
 bp = Blueprint('gtd', __name__)
 
@@ -85,6 +86,11 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     except Exception as e:
         current_app.logger.exception('GTD: błąd pobierania wydarzeń z Google Calendar (calendar_id=%s)', calendar_id)
         return {}, str(e)
+    try:
+        done_ids = gcal_event_model.get_done_event_ids(start, end)
+    except Exception:
+        current_app.logger.exception('GTD: błąd odczytu lokalnie oznaczonych wydarzeń kalendarza jako done')
+        done_ids = set()
     by_day: dict = {}
     for e in raw:
         start_info = e.get('start', {})
@@ -102,10 +108,14 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
             time_label = None
         else:
             continue
+        event_id = e.get('id')
         by_day.setdefault(d, []).append({
+            'id': event_id,
+            'date': d.isoformat(),
             'title': e.get('summary') or '(bez tytułu)',
             'time': time_label,
             'duration_min': duration_min,
+            'is_done': event_id in done_ids,
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
@@ -365,6 +375,20 @@ def api_set_status(task_id):
         return jsonify({'status': 'error', 'message': 'Nieprawidłowy status.'})
     task_model.set_status(task_id, status)
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
+
+
+@bp.route('/api/gtd/gcal_events/<event_id>/done', methods=['POST'])
+def api_gcal_event_done(event_id):
+    data = request.get_json(silent=True) or {}
+    done = bool(data.get('done'))
+    if done:
+        event_date = data.get('event_date')
+        if not event_date:
+            return jsonify({'status': 'error', 'message': 'Brak daty wydarzenia.'})
+        gcal_event_model.mark_done(event_id, event_date)
+    else:
+        gcal_event_model.mark_undone(event_id)
+    return jsonify({'status': 'ok'})
 
 
 @bp.route('/api/gtd/tasks/<int:task_id>/toggle_today', methods=['POST'])

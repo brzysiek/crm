@@ -56,8 +56,10 @@
   {% set e = item.event %}
   <div class="gtd-timeline-row">
     <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}{% if e.duration_min %}<span class="text-muted" style="font-size:.72rem;display:block">{{ e.duration_min }} min</span>{% endif %}</div>
-    <div class="gtd-timeline-card gtd-gcal-card">
-      <strong>{{ e.title }}</strong>
+    <div class="gtd-timeline-card gtd-gcal-card{{ ' gtd-row-done' if e.is_done else '' }}">
+      <span class="gtd-status-badge badge {{ 'badge-green' if e.is_done else 'badge-red' }}"
+            onclick="gtdToggleGcalDone({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ 'false' if e.is_done else 'true' }})">{{ 'DONE' if e.is_done else 'TODO' }}</span>
+      <strong{% if e.is_done %} style="text-decoration:line-through"{% endif %}>{{ e.title }}</strong>
       <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
     </div>
   </div>

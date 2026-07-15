@@ -134,6 +134,17 @@ function gtdToggleDone(taskId, checked, prevStatus) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdToggleGcalDone(eventId, eventDate, done) {
+  fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/done', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_date: eventDate, done }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdToggleStar(taskId, urlSuffix) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/' + urlSuffix, { method: 'POST' })
     .then(r => r.json())
