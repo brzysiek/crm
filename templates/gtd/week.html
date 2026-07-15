@@ -82,8 +82,11 @@
 {% endif %}
 
 {% for group in day_groups %}
-<div class="gtd-day-section">
-<h3>{{ group.label }}</h3>
+<div class="gtd-day-section{{ ' gtd-day-collapsed' if group.date < today else '' }}">
+<h3 class="gtd-day-toggle" onclick="this.closest('.gtd-day-section').classList.toggle('gtd-day-collapsed')">
+  <span class="gtd-day-toggle-icon">▾</span> {{ group.label }}
+</h3>
+<div class="gtd-day-body">
 {% if group.timeline %}
 <div class="gtd-timeline">
   {% for item in group.timeline %}{{ timeline_item(item, 'this') }}{% endfor %}
@@ -120,6 +123,7 @@
 </table>
 </div>
 {% endif %}
+</div>
 </div>
 {% endfor %}
 

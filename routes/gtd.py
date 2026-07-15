@@ -186,6 +186,7 @@ def week():
     return render_template(
         'gtd/week.html',
         active_tab='tydzien',
+        today=today,
         week_start=week_start,
         week_end=week_end,
         week_label=f"{week_start.day} {MONTHS_PL[week_start.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
