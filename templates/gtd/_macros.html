@@ -13,7 +13,7 @@
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
               onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }})">✎</button>
     </div>
-    {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes }}</div>{% endif %}
+    {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes|linkify }}</div>{% endif %}
   </td>
   <td>{% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple">📁 {{ t.project_title }}</a>{% endif %}</td>
   <td>

@@ -135,6 +135,27 @@ def phone_link(value):
     return Markup(f'<a href="tel:{escape(digits)}">{escape(value)}</a>')
 
 
+_URL_RE = re.compile(r'(https?://[^\s<>"\']+|www\.[^\s<>"\']+)')
+
+
+@app.template_filter('linkify')
+def linkify(value):
+    """Zamienia adresy URL w tekście na klikalne linki, escapując resztę tekstu."""
+    if not value:
+        return ''
+    text = str(value)
+    parts = []
+    last = 0
+    for m in _URL_RE.finditer(text):
+        parts.append(escape(text[last:m.start()]))
+        url = m.group(0)
+        href = url if url.startswith('http') else f'https://{url}'
+        parts.append(Markup(f'<a href="{escape(href)}" target="_blank" rel="noopener noreferrer">{escape(url)}</a>'))
+        last = m.end()
+    parts.append(escape(text[last:]))
+    return Markup('').join(parts)
+
+
 @app.template_filter('drive_image_url')
 def drive_image_url(value):
     """Konwertuje link do udostępnionego pliku Google Drive na bezpośredni URL obrazka."""

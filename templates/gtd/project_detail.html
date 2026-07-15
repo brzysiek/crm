@@ -17,7 +17,7 @@
 </div>
 
 {% if project.notes %}
-  <p class="text-muted">{{ project.notes }}</p>
+  <p class="text-muted">{{ project.notes|linkify }}</p>
 {% endif %}
 
 <div class="filter-bar" style="gap:.5rem">
