@@ -139,6 +139,30 @@
   </div>
 </div>
 
+{# ── Modal: przypisanie wydarzenia z kalendarza do projektu ──────────────── #}
+<div id="gtdGcalProjectModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Przypisz spotkanie do projektu</h3>
+      <button onclick="document.getElementById('gtdGcalProjectModal').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="gtdGcalProjectEventId">
+      <input type="hidden" id="gtdGcalProjectEventDate">
+      <div class="agent-confirm-row">
+        <label>Projekt</label>
+        <select id="gtdGcalProjectSelect" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="gtdSubmitGcalProject()">Zapisz</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('gtdGcalProjectModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}

@@ -61,6 +61,14 @@
             onclick="gtdToggleGcalDone({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ 'false' if e.is_done else 'true' }})">{{ 'DONE' if e.is_done else 'TODO' }}</span>
       <strong{% if e.is_done %} style="text-decoration:line-through"{% endif %}>{{ e.title }}</strong>
       <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
+      {% if e.project_title %}
+      <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer"
+            title="Zmień przypisany projekt"
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }})">📁 {{ e.project_title }}</span>
+      {% else %}
+      <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
+              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null)">📁 Przypisz do projektu</button>
+      {% endif %}
     </div>
   </div>
   {% else %}

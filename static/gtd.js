@@ -410,8 +410,8 @@ function gtdSubmitTimeBlock() {
 /* ── Modal edycji terminu ── */
 let _gtdProjectsCache = null;
 
-function _gtdFillProjectSelect(taskId, currentParentId) {
-  const select = document.getElementById('gtdEditTaskProject');
+function _gtdFillProjectSelect(taskId, currentParentId, selectId) {
+  const select = document.getElementById(selectId || 'gtdEditTaskProject');
   const render = (projects) => {
     select.innerHTML = '<option value="">— brak —</option>';
     projects
@@ -453,6 +453,28 @@ function gtdSubmitEditTask() {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, due_date, parent_id }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdOpenGcalProject(eventId, eventDate, currentProjectId) {
+  document.getElementById('gtdGcalProjectEventId').value = eventId;
+  document.getElementById('gtdGcalProjectEventDate').value = eventDate;
+  _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect');
+  document.getElementById('gtdGcalProjectModal').classList.add('open');
+}
+
+function gtdSubmitGcalProject() {
+  const eventId = document.getElementById('gtdGcalProjectEventId').value;
+  const eventDate = document.getElementById('gtdGcalProjectEventDate').value;
+  const projectValue = document.getElementById('gtdGcalProjectSelect').value;
+  const project_id = projectValue ? parseInt(projectValue, 10) : null;
+  fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/project', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_date: eventDate, project_id }),
   })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
