@@ -131,6 +131,18 @@
           <option value="">— brak —</option>
         </select>
       </div>
+      <div class="agent-confirm-row">
+        <label>Kontakt</label>
+        <select id="gtdEditTaskContact" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Firma / klient</label>
+        <select id="gtdEditTaskCompany" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+        </select>
+      </div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-primary" onclick="gtdSubmitEditTask()">Zapisz</button>
@@ -143,7 +155,7 @@
 <div id="gtdGcalProjectModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal">
     <div class="modal-header">
-      <h3>Przypisz spotkanie do projektu</h3>
+      <h3>Przypisz spotkanie</h3>
       <button onclick="document.getElementById('gtdGcalProjectModal').classList.remove('open')" class="modal-close">✕</button>
     </div>
     <div class="modal-body">
@@ -152,6 +164,18 @@
       <div class="agent-confirm-row">
         <label>Projekt</label>
         <select id="gtdGcalProjectSelect" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Kontakt</label>
+        <select id="gtdGcalProjectContact" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Firma / klient</label>
+        <select id="gtdGcalProjectCompany" class="filter-input" style="width:100%">
           <option value="">— brak —</option>
         </select>
       </div>

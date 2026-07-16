@@ -61,6 +61,17 @@ class GoogleCalendarClient:
         """Read-only: zwraca wydarzenia z danego kalendarza (np. 'primary') na dany dzień."""
         return self.get_events(calendar_id, day, day + timedelta(days=1))
 
+    def get_event(self, calendar_id: str, event_id: str) -> dict:
+        """Read-only: pojedyncze wydarzenie po ID (np. do dogrania tytułu wydarzenia
+        przypisanego lokalnie do kontaktu/firmy CRM, bez odpytywania całego zakresu dat)."""
+        resp = requests.get(
+            f'{CALENDAR_API}/calendars/{calendar_id}/events/{event_id}',
+            headers=self._auth_headers(),
+            timeout=TIMEOUT,
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
     def upsert_task_event(self, calendar_id: str, event_id: str | None, title: str,
                            day: date, time_str: str, duration_min: int, notes: str = '') -> dict:
         """Tworzy albo aktualizuje wydarzenie odpowiadające zablokowanemu czasowi zadania."""

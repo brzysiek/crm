@@ -61,6 +61,19 @@ def get_contact_by_id(contact_id: int) -> dict | None:
         return cur.fetchone()
 
 
+def get_names_by_ids(ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    db = get_db()
+    with db.cursor() as cur:
+        placeholders = ','.join(['%s'] * len(ids))
+        cur.execute(
+            f"SELECT id, first_name, last_name FROM crm_contacts WHERE id IN ({placeholders})",
+            tuple(ids)
+        )
+        return {row['id']: f"{row['first_name']} {row['last_name']}".strip() for row in cur.fetchall()}
+
+
 def search_contacts(q: str, company_id: int = None, limit: int = 20) -> list[dict]:
     db = get_db()
     sql = ("SELECT ct.id, ct.first_name, ct.last_name, ct.email, co.name AS company_name "

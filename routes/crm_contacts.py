@@ -1,8 +1,11 @@
 import unicodedata
+from datetime import date, datetime
 from urllib.parse import quote
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 
+import models.gcal_event as gcal_event_model
+import models.task as task_model
 from models.crm_company import (RELATION_LABELS, get_companies_referred_by_company,
                                   get_companies_referred_by_contact,
                                   get_company_by_id, get_company_tags)
@@ -14,6 +17,45 @@ from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, 
 from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
+
+
+def _as_date(value):
+    if isinstance(value, datetime):
+        return value.date()
+    return value
+
+
+def build_gtd_items(contact_id=None, company_id=None):
+    """Zadania/projekty/spotkania przypisane do kontaktu lub firmy CRM — sekcja
+    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy (współdzielone z
+    crm_companies.view_company)."""
+    tasks = task_model.get_tasks_for_crm(contact_id=contact_id, company_id=company_id)
+    events = gcal_event_model.enrich_with_titles(
+        gcal_event_model.get_events_for_crm(contact_id=contact_id, company_id=company_id)
+    )
+
+    items = []
+    for t in tasks:
+        sort_date = _as_date(t['completed_at']) or t['due_date'] or _as_date(t['created_at'])
+        items.append({
+            'kind': 'project' if t['is_project'] else 'task',
+            'title': t['title'],
+            'done': t['status'] == 'done',
+            'date': sort_date,
+            'url': url_for('gtd.project_detail', project_id=t['id']) if t['is_project'] else None,
+        })
+    for e in events:
+        if not e.get('title'):
+            continue
+        items.append({
+            'kind': 'event',
+            'title': e['title'],
+            'done': e['done_at'] is not None,
+            'date': _as_date(e['done_at']) or e['event_date'],
+            'url': None,
+        })
+    items.sort(key=lambda x: x['date'] or date.min, reverse=True)
+    return items
 
 
 def _parse_form(form):
@@ -176,6 +218,7 @@ def view_contact(contact_id):
         business_card=get_business_card(contact_id),
         note_type_labels=NOTE_TYPE_LABELS,
         history_badge_labels=HISTORY_BADGE_LABELS,
+        gtd_items=build_gtd_items(contact_id=contact_id),
     )
 
 

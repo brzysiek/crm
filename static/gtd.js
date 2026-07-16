@@ -434,11 +434,56 @@ function _gtdFillProjectSelect(taskId, currentParentId, selectId) {
     .catch(() => {});
 }
 
-function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle) {
+let _gtdContactsCache = null;
+let _gtdCompaniesCache = null;
+
+function _gtdFillCrmSelects(currentContactId, currentCompanyId, contactSelectId, companySelectId) {
+  const contactSelect = document.getElementById(contactSelectId);
+  const companySelect = document.getElementById(companySelectId);
+  const renderContacts = (contacts) => {
+    contactSelect.innerHTML = '<option value="">— brak —</option>';
+    contacts.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      if (currentContactId && c.id === currentContactId) opt.selected = true;
+      contactSelect.appendChild(opt);
+    });
+  };
+  const renderCompanies = (companies) => {
+    companySelect.innerHTML = '<option value="">— brak —</option>';
+    companies.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      if (currentCompanyId && c.id === currentCompanyId) opt.selected = true;
+      companySelect.appendChild(opt);
+    });
+  };
+  if (_gtdContactsCache) {
+    renderContacts(_gtdContactsCache);
+  } else {
+    fetch(window.API_BASE + '/api/gtd/crm_contacts')
+      .then(r => r.json())
+      .then(contacts => { _gtdContactsCache = contacts; renderContacts(contacts); })
+      .catch(() => {});
+  }
+  if (_gtdCompaniesCache) {
+    renderCompanies(_gtdCompaniesCache);
+  } else {
+    fetch(window.API_BASE + '/api/gtd/crm_companies')
+      .then(r => r.json())
+      .then(companies => { _gtdCompaniesCache = companies; renderCompanies(companies); })
+      .catch(() => {});
+  }
+}
+
+function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId) {
   document.getElementById('gtdEditTaskId').value = taskId;
   document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
   _gtdFillProjectSelect(taskId, currentParentId || null);
+  _gtdFillCrmSelects(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContact', 'gtdEditTaskCompany');
   document.getElementById('gtdEditTaskModal').classList.add('open');
 }
 
@@ -449,10 +494,14 @@ function gtdSubmitEditTask() {
   const due_date = document.getElementById('gtdEditTaskDue').value || null;
   const parentValue = document.getElementById('gtdEditTaskProject').value;
   const parent_id = parentValue ? parseInt(parentValue, 10) : null;
+  const contactValue = document.getElementById('gtdEditTaskContact').value;
+  const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
+  const companyValue = document.getElementById('gtdEditTaskCompany').value;
+  const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, parent_id }),
+    body: JSON.stringify({ title, due_date, parent_id, crm_contact_id, crm_company_id }),
   })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
@@ -489,10 +538,11 @@ function gtdReopenProject(projectId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
-function gtdOpenGcalProject(eventId, eventDate, currentProjectId) {
+function gtdOpenGcalProject(eventId, eventDate, currentProjectId, currentContactId, currentCompanyId) {
   document.getElementById('gtdGcalProjectEventId').value = eventId;
   document.getElementById('gtdGcalProjectEventDate').value = eventDate;
   _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect');
+  _gtdFillCrmSelects(currentContactId || null, currentCompanyId || null, 'gtdGcalProjectContact', 'gtdGcalProjectCompany');
   document.getElementById('gtdGcalProjectModal').classList.add('open');
 }
 
@@ -501,13 +551,23 @@ function gtdSubmitGcalProject() {
   const eventDate = document.getElementById('gtdGcalProjectEventDate').value;
   const projectValue = document.getElementById('gtdGcalProjectSelect').value;
   const project_id = projectValue ? parseInt(projectValue, 10) : null;
-  fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/project', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event_date: eventDate, project_id }),
-  })
-    .then(r => r.json())
-    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+  const contactValue = document.getElementById('gtdGcalProjectContact').value;
+  const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
+  const companyValue = document.getElementById('gtdGcalProjectCompany').value;
+  const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
+  Promise.all([
+    fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_date: eventDate, project_id }),
+    }),
+    fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/crm_link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_date: eventDate, crm_contact_id, crm_company_id }),
+    }),
+  ])
+    .then(() => location.reload())
     .catch(() => alert('Błąd sieci.'));
 }
 

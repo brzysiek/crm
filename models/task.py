@@ -12,10 +12,14 @@ STATUS_LABELS = {
     'done': 'Zrobione',
 }
 
-_LIST_FIELDS = """t.*, p.title AS project_title"""
+_LIST_FIELDS = """t.*, p.title AS project_title,
+                  cc.first_name AS crm_contact_first_name, cc.last_name AS crm_contact_last_name,
+                  cco.name AS crm_company_name, cco.short_name AS crm_company_short_name"""
 
 _LIST_JOINS = """FROM tasks t
-                 LEFT JOIN tasks p ON p.id = t.parent_id"""
+                 LEFT JOIN tasks p ON p.id = t.parent_id
+                 LEFT JOIN crm_contacts cc ON cc.id = t.crm_contact_id
+                 LEFT JOIN crm_companies cco ON cco.id = t.crm_company_id"""
 
 
 def _valid_user_id(user_id: int | None) -> int | None:
@@ -72,12 +76,16 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
 def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
-               'parent_id')
+               'parent_id', 'crm_contact_id', 'crm_company_id')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
     if 'parent_id' in fields:
         fields['parent_id'] = fields['parent_id'] or None
+    if 'crm_contact_id' in fields:
+        fields['crm_contact_id'] = fields['crm_contact_id'] or None
+    if 'crm_company_id' in fields:
+        fields['crm_company_id'] = fields['crm_company_id'] or None
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -659,6 +667,28 @@ def count_inbox() -> int:
     with db.cursor() as cur:
         cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE status='inbox' AND deleted_at IS NULL")
         return cur.fetchone()['cnt']
+
+
+def get_tasks_for_crm(contact_id: int | None = None, company_id: int | None = None) -> list[dict]:
+    """Zadania/projekty przypisane do kontaktu lub firmy CRM — do sekcji
+    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy."""
+    if not contact_id and not company_id:
+        return []
+    db = get_db()
+    with db.cursor() as cur:
+        if contact_id:
+            cur.execute(
+                "SELECT id, title, is_project, status, due_date, completed_at, created_at "
+                "FROM tasks WHERE crm_contact_id=%s AND deleted_at IS NULL ORDER BY created_at DESC",
+                (contact_id,)
+            )
+        else:
+            cur.execute(
+                "SELECT id, title, is_project, status, due_date, completed_at, created_at "
+                "FROM tasks WHERE crm_company_id=%s AND deleted_at IS NULL ORDER BY created_at DESC",
+                (company_id,)
+            )
+        return cur.fetchall()
 
 
 def get_titles_by_ids(ids: list[int]) -> dict[int, str]:

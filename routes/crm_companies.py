@@ -10,6 +10,7 @@ from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
 from models.user import get_active_users
+from routes.crm_contacts import build_gtd_items
 
 bp = Blueprint('crm_companies', __name__, url_prefix='/crm/companies')
 
@@ -231,6 +232,7 @@ def view_company(company_id):
         upload_contact_id=None,
         note_type_labels=NOTE_TYPE_LABELS,
         history_badge_labels=HISTORY_BADGE_LABELS,
+        gtd_items=build_gtd_items(company_id=company_id),
     )
 
 

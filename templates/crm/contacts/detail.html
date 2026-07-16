@@ -177,6 +177,32 @@
       </div>
     </div>
 
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Zadania / Projekty / Spotkania</h4>
+      </div>
+      <div style="padding:.85rem">
+        {% if gtd_items %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Typ</th><th>Nazwa</th><th>Data</th></tr></thead>
+            <tbody>
+              {% for i in gtd_items %}
+              <tr class="{{ 'gtd-row-done' if i.done else '' }}">
+                <td>{{ {'project': '📁 Projekt', 'task': '☑ Zadanie', 'event': '📅 Spotkanie'}[i.kind] }}</td>
+                <td>{% if i.url %}<a href="{{ i.url }}">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %}</td>
+                <td>{{ i.date|ddmmyyyy if i.date else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Brak zadań, projektów ani spotkań przypisanych do tego kontaktu.</p>
+        {% endif %}
+      </div>
+    </div>
+
     <div style="margin-top:1rem">
       {% include 'crm/_activity_feed.html' %}
     </div>

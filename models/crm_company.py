@@ -124,6 +124,19 @@ def get_company_by_nip(nip: str) -> dict | None:
         return cur.fetchone()
 
 
+def get_names_by_ids(ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    db = get_db()
+    with db.cursor() as cur:
+        placeholders = ','.join(['%s'] * len(ids))
+        cur.execute(
+            f"SELECT id, name, short_name FROM crm_companies WHERE id IN ({placeholders})",
+            tuple(ids)
+        )
+        return {row['id']: (row['short_name'] or row['name']) for row in cur.fetchall()}
+
+
 def search_companies(q: str, limit: int = 20) -> list[dict]:
     db = get_db()
     sql = "SELECT id, name, short_name, city, nip, favicon_url FROM crm_companies WHERE archived_at IS NULL"

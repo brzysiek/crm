@@ -10,8 +10,10 @@
       {{ t.title }}
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
+      {% if t.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</span>{% endif %}
+      {% if t.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</span>{% endif %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }})">✎</button>
+              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">✎</button>
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes|linkify }}</div>{% endif %}
   </td>
@@ -64,10 +66,22 @@
       {% if e.project_title %}
       <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer"
             title="Zmień przypisany projekt"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }})">📁 {{ e.project_title }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">📁 {{ e.project_title }}</span>
       {% else %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
-              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null)">📁 Przypisz do projektu</button>
+              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">📁 Przypisz do projektu</button>
+      {% endif %}
+      {% if e.crm_contact_name %}
+      <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id }}, {{ e.crm_company_id or 'null' }})">👤 {{ e.crm_contact_name }}</span>
+      {% endif %}
+      {% if e.crm_company_name %}
+      <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id }})">🏢 {{ e.crm_company_name }}</span>
+      {% endif %}
+      {% if not e.crm_contact_name and not e.crm_company_name %}
+      <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
+              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">👤 Przypisz klienta</button>
       {% endif %}
     </div>
   </div>
@@ -82,8 +96,10 @@
                 onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
           <strong>{{ t.title }}</strong>
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
+          {% if t.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</span>{% endif %}
+          {% if t.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</span>{% endif %}
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }})">✎</button>
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">✎</button>
           {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">

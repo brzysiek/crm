@@ -5,6 +5,8 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 import models.task as task_model
 import models.gcal_event as gcal_event_model
+import models.crm_contact as crm_contact_model
+import models.crm_company as crm_company_model
 
 bp = Blueprint('gtd', __name__)
 
@@ -46,12 +48,16 @@ def _build_timeline(tasks: list[dict], gcal_events: list[dict]) -> list[dict]:
     return timeline
 
 
-def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = None) -> list[dict]:
+def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = None,
+                 exclude_from_timeline: set | None = None) -> list[dict]:
     """Dzieli zadania zaplanowane na konkretne dni w danym tygodniu (plus wydarzenia
     z Google Calendar, jeśli podano) na sekcje dzień-po-dniu — tylko dni, na które
     faktycznie coś zaplanowano lub coś jest w kalendarzu. Każdy dzień dostaje wspólny
-    harmonogram godzinowy (`timeline`) i listę zadań bez konkretnej godziny (`unscheduled`)."""
+    harmonogram godzinowy (`timeline`) i listę zadań bez konkretnej godziny (`unscheduled`).
+    `exclude_from_timeline` pomija w harmonogramie zadania, które są już pokazane
+    w sekcji „Priorytety tygodnia” (żeby nie dublować widoku)."""
     gcal_by_day = gcal_by_day or {}
+    exclude_from_timeline = exclude_from_timeline or set()
     scheduled = task_model.get_scheduled_tasks_between(week_start, week_end)
     groups = []
     d = week_start
@@ -62,7 +68,8 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
             groups.append({
                 'date': d,
                 'label': _day_label(d),
-                'timeline': _build_timeline(day_tasks, day_events),
+                'timeline': _build_timeline(
+                    [t for t in day_tasks if t['id'] not in exclude_from_timeline], day_events),
                 'unscheduled': [t for t in day_tasks if not t.get('scheduled_time')],
             })
         d += timedelta(days=1)
@@ -93,6 +100,10 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         event_meta = {}
     project_ids = {m['project_id'] for m in event_meta.values() if m.get('project_id')}
     project_titles = task_model.get_titles_by_ids(list(project_ids)) if project_ids else {}
+    contact_ids = {m['crm_contact_id'] for m in event_meta.values() if m.get('crm_contact_id')}
+    company_ids = {m['crm_company_id'] for m in event_meta.values() if m.get('crm_company_id')}
+    contact_names = crm_contact_model.get_names_by_ids(list(contact_ids)) if contact_ids else {}
+    company_names = crm_company_model.get_names_by_ids(list(company_ids)) if company_ids else {}
     by_day: dict = {}
     for e in raw:
         start_info = e.get('start', {})
@@ -113,6 +124,8 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         event_id = e.get('id')
         meta = event_meta.get(event_id, {})
         project_id = meta.get('project_id')
+        crm_contact_id = meta.get('crm_contact_id')
+        crm_company_id = meta.get('crm_company_id')
         by_day.setdefault(d, []).append({
             'id': event_id,
             'date': d.isoformat(),
@@ -122,6 +135,10 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
             'is_done': meta.get('is_done', False),
             'project_id': project_id,
             'project_title': project_titles.get(project_id) if project_id else None,
+            'crm_contact_id': crm_contact_id,
+            'crm_contact_name': contact_names.get(crm_contact_id) if crm_contact_id else None,
+            'crm_company_id': crm_company_id,
+            'crm_company_name': company_names.get(crm_company_id) if crm_company_id else None,
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
@@ -154,8 +171,9 @@ def day():
     gcal_events = gcal_by_day.get(current, [])
 
     unscheduled = [t for t in tasks if not t.get('scheduled_time')]
-    timeline = _build_timeline(tasks, gcal_events)
     priority_tasks = task_model.get_today_priority_tasks(current)
+    priority_ids = {t['id'] for t in priority_tasks}
+    timeline = _build_timeline([t for t in tasks if t['id'] not in priority_ids], gcal_events)
 
     return render_template(
         'gtd/day.html',
@@ -187,7 +205,8 @@ def week():
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
     unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
     gcal_by_day, gcal_error = _gcal_events_by_day(week_start, week_end)
-    day_groups = _day_groups(week_start, week_end, gcal_by_day)
+    day_groups = _day_groups(week_start, week_end, gcal_by_day,
+                              exclude_from_timeline={t['id'] for t in priority_tasks})
 
     return render_template(
         'gtd/week.html',
@@ -212,7 +231,8 @@ def next_week():
     priority_tasks = task_model.get_week_priority_tasks(next_monday, week_end)
     bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
     gcal_by_day, gcal_error = _gcal_events_by_day(next_monday, week_end)
-    day_groups = _day_groups(next_monday, week_end, gcal_by_day)
+    day_groups = _day_groups(next_monday, week_end, gcal_by_day,
+                              exclude_from_timeline={t['id'] for t in priority_tasks})
 
     return render_template(
         'gtd/next_week.html',
@@ -422,6 +442,36 @@ def api_gcal_event_project(event_id):
     project_id = data.get('project_id') or None
     gcal_event_model.set_project(event_id, event_date, project_id)
     return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/gcal_events/<event_id>/crm_link', methods=['POST'])
+def api_gcal_event_crm_link(event_id):
+    data = request.get_json(silent=True) or {}
+    event_date = data.get('event_date')
+    if not event_date:
+        return jsonify({'status': 'error', 'message': 'Brak daty wydarzenia.'})
+    contact_id = data.get('crm_contact_id') or None
+    company_id = data.get('crm_company_id') or None
+    gcal_event_model.set_crm_link(event_id, event_date, contact_id, company_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/crm_contacts')
+def api_gtd_crm_contacts():
+    contacts = crm_contact_model.get_all_contacts()
+    return jsonify([
+        {'id': c['id'], 'name': f"{c['first_name']} {c['last_name']}".strip()}
+        for c in contacts
+    ])
+
+
+@bp.route('/api/gtd/crm_companies')
+def api_gtd_crm_companies():
+    companies = crm_company_model.get_all_companies()
+    return jsonify([
+        {'id': c['id'], 'name': c.get('short_name') or c['name']}
+        for c in companies
+    ])
 
 
 @bp.route('/api/gtd/tasks/<int:project_id>/open_subtasks')
