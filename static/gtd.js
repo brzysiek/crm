@@ -262,6 +262,29 @@ function gtdDeleteTask(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdRestoreTask(taskId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/restore', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdPermanentlyDeleteTask(taskId) {
+  if (!confirm('Usunąć trwale? Tej operacji nie można cofnąć.')) return;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/permanent', { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdToggleArchiveProject(projectId) {
+  const row = document.querySelector('.gtd-archive-project-row[data-project-id="' + projectId + '"]');
+  if (row) row.classList.toggle('gtd-archive-expanded');
+  document.querySelectorAll('.gtd-archive-subrow[data-project-id="' + projectId + '"]').forEach(function (tr) {
+    tr.classList.toggle('gtd-archive-visible');
+  });
+}
+
 function gtdAddProject(inputId) {
   const input = document.getElementById(inputId);
   const title = input.value.trim();

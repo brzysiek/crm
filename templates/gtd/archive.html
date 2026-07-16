@@ -1,0 +1,115 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import task_cells, row_class %}
+{% block title %}Archiwum — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="page-header">
+  <h1>Archiwum</h1>
+</div>
+
+<h3 style="margin:.5rem 0">Zakończone</h3>
+{% if not completed_items %}
+  <p class="text-muted">Brak zakończonych zadań i projektów.</p>
+{% else %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie / Projekt</th>
+      <th>Projekt</th>
+      <th>Termin</th>
+      <th class="col-actions" style="width:140px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in completed_items %}
+      {% if item.kind == 'task' %}
+      {% set t = item.task %}
+      <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+        {{ task_cells(t) }}
+        <td class="col-actions">
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">↺ Cofnij</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      {% set p = item.project %}
+      <tr data-project-id="{{ p.id }}" class="gtd-archive-project-row{{ ' gtd-row-done' if p.status == 'done' else '' }}"
+          onclick="gtdToggleArchiveProject({{ p.id }})">
+        <td class="col-checkbox">
+          <span class="gtd-archive-toggle-icon">▸</span>
+        </td>
+        <td>
+          <div style="font-weight:600">
+            {{ p.title }}
+            <span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>
+          </div>
+        </td>
+        <td>—</td>
+        <td><span class="badge {{ 'badge-green' if p.status == 'done' else 'badge-gray' }}">{{ p.subtask_done }}/{{ p.subtask_total }}</span></td>
+        <td class="col-actions" onclick="event.stopPropagation()">
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+            <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" class="btn btn-outline btn-sm">Otwórz →</a>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ p.id }})">🗑</button>
+          </div>
+        </td>
+      </tr>
+      {% for st in p.completed_subtasks %}
+      <tr data-task-id="{{ st.id }}" data-project-id="{{ p.id }}" class="gtd-archive-subrow gtd-row-done">
+        {{ task_cells(st) }}
+        <td class="col-actions">
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ st.id }}, 'next')">↺ Cofnij</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ st.id }})">🗑</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<h3 style="margin:1.2rem 0 .5rem">Usunięte</h3>
+{% if not deleted_tasks %}
+  <p class="text-muted">Brak usuniętych zadań i projektów.</p>
+{% else %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie / Projekt</th>
+      <th>Usunięto</th>
+      <th class="col-actions" style="width:200px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in deleted_tasks %}
+    <tr data-task-id="{{ t.id }}">
+      <td class="col-checkbox"></td>
+      <td>
+        <div style="font-weight:600;text-decoration:line-through">
+          {{ t.title }}
+          {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
+        </div>
+      </td>
+      <td>{{ t.deleted_at|ddmmyyyy }}</td>
+      <td class="col-actions">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdRestoreTask({{ t.id }})">↺ Przywróć</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdPermanentlyDeleteTask({{ t.id }})">🗑 Usuń na zawsze</button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

@@ -12,7 +12,7 @@
   'projekty': '📁 Projekty',
   'waiting': '⏳ Czeka na',
   'someday': '💤 Kiedyś/może',
-  'ukonczone': '✅ Ukończone',
+  'archiwum': '🗄 Archiwum',
 } %}
 <div class="settings-layout">
 
@@ -58,9 +58,9 @@
          class="settings-nav-item {{ 'active' if active_tab == 'someday' }}">
         💤 Kiedyś/może
       </a>
-      <a href="{{ url_for('gtd.completed') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'ukonczone' }}">
-        ✅ Ukończone
+      <a href="{{ url_for('gtd.archive') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'archiwum' }}">
+        🗄 Archiwum
       </a>
     </nav>
   </aside>

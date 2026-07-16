@@ -253,12 +253,15 @@ def waiting():
                             tasks=task_model.get_waiting_tasks())
 
 
-# ── Ukończone ────────────────────────────────────────────────────────────────
+# ── Archiwum ─────────────────────────────────────────────────────────────────
 
-@bp.route('/gtd/ukonczone')
-def completed():
-    return render_template('gtd/completed.html', active_tab='ukonczone',
-                            tasks=task_model.get_completed_tasks())
+@bp.route('/gtd/archiwum')
+def archive():
+    return render_template(
+        'gtd/archive.html', active_tab='archiwum',
+        completed_items=task_model.get_archive_completed(),
+        deleted_tasks=task_model.get_deleted_tasks(),
+    )
 
 
 # ── Kiedyś/może ──────────────────────────────────────────────────────────────
@@ -365,6 +368,18 @@ def api_update_task(task_id):
 @bp.route('/api/gtd/tasks/<int:task_id>', methods=['DELETE'])
 def api_delete_task(task_id):
     task_model.delete_task(task_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/tasks/<int:task_id>/restore', methods=['POST'])
+def api_restore_task(task_id):
+    task_model.restore_task(task_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/tasks/<int:task_id>/permanent', methods=['DELETE'])
+def api_permanently_delete_task(task_id):
+    task_model.permanently_delete_task(task_id)
     return jsonify({'status': 'ok'})
 
 

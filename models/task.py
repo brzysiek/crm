@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from database import get_db
 
@@ -110,7 +110,7 @@ def _sync_project_status(cur, parent_id: int | None) -> None:
     if not parent or not parent['is_project']:
         return
     cur.execute(
-        "SELECT COUNT(*) AS total, SUM(status='done') AS done FROM tasks WHERE parent_id=%s",
+        "SELECT COUNT(*) AS total, SUM(status='done') AS done FROM tasks WHERE parent_id=%s AND deleted_at IS NULL",
         (parent_id,)
     )
     counts = cur.fetchone()
@@ -123,6 +123,9 @@ def _sync_project_status(cur, parent_id: int | None) -> None:
 
 
 def delete_task(task_id: int) -> None:
+    """Miękkie usunięcie — zadanie trafia do Archiwum → Usunięte, skąd można je
+    przywrócić lub skasować trwale. Podzadania projektu zostają odłączone (jak dawniej),
+    nie są usuwane razem z nim."""
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -130,8 +133,35 @@ def delete_task(task_id: int) -> None:
             row = cur.fetchone()
             parent_id = row['parent_id'] if row else None
             cur.execute("UPDATE tasks SET parent_id=NULL WHERE parent_id=%s", (task_id,))
-            cur.execute("DELETE FROM tasks WHERE id=%s", (task_id,))
+            cur.execute("UPDATE tasks SET deleted_at=NOW() WHERE id=%s", (task_id,))
             _sync_project_status(cur, parent_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def restore_task(task_id: int) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
+            row = cur.fetchone()
+            parent_id = row['parent_id'] if row else None
+            cur.execute("UPDATE tasks SET deleted_at=NULL WHERE id=%s", (task_id,))
+            _sync_project_status(cur, parent_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def permanently_delete_task(task_id: int) -> None:
+    """Trwałe skasowanie — dozwolone tylko dla pozycji już miękko usuniętych."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM tasks WHERE id=%s AND deleted_at IS NOT NULL", (task_id,))
         db.commit()
     except Exception:
         db.rollback()
@@ -308,7 +338,7 @@ def get_inbox_tasks() -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='inbox' "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='inbox' AND t.deleted_at IS NULL "
             f"ORDER BY t.created_at DESC, t.id DESC"
         )
         return cur.fetchall()
@@ -316,7 +346,7 @@ def get_inbox_tasks() -> list[dict]:
 
 def get_next_actions(project_id: int | None = None) -> list[dict]:
     db = get_db()
-    sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='next' AND t.is_project=0"
+    sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='next' AND t.is_project=0 AND t.deleted_at IS NULL"
     params = []
     if project_id:
         sql += " AND t.parent_id=%s"
@@ -331,7 +361,7 @@ def get_waiting_tasks() -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='waiting' "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='waiting' AND t.deleted_at IS NULL "
             f"ORDER BY t.updated_at DESC, t.id DESC"
         )
         return cur.fetchall()
@@ -341,7 +371,7 @@ def get_someday_tasks() -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='someday' "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='someday' AND t.deleted_at IS NULL "
             f"ORDER BY t.created_at DESC, t.id DESC"
         )
         return cur.fetchall()
@@ -349,7 +379,7 @@ def get_someday_tasks() -> list[dict]:
 
 def get_projects(include_done: bool = False) -> list[dict]:
     db = get_db()
-    sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1"
+    sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1 AND t.deleted_at IS NULL"
     if not include_done:
         sql += " AND t.status != 'done'"
     sql += " ORDER BY t.created_at DESC, t.id DESC"
@@ -359,7 +389,7 @@ def get_projects(include_done: bool = False) -> list[dict]:
         for proj in projects:
             cur.execute(
                 "SELECT COUNT(*) AS total, SUM(status='done') AS done "
-                "FROM tasks WHERE parent_id=%s",
+                "FROM tasks WHERE parent_id=%s AND deleted_at IS NULL",
                 (proj['id'],)
             )
             counts = cur.fetchone()
@@ -372,7 +402,7 @@ def get_project_subtasks(project_id: int) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s AND t.deleted_at IS NULL "
             f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id ASC",
             (project_id,)
         )
@@ -383,7 +413,7 @@ def get_tasks_for_day(day: date) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.scheduled_date=%s "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.scheduled_date=%s AND t.deleted_at IS NULL "
             f"ORDER BY t.scheduled_time IS NULL, t.scheduled_time ASC, "
             f"t.day_order ASC, t.is_today_priority DESC, t.id ASC",
             (day,)
@@ -400,7 +430,7 @@ def move_task_in_day(task_id: int, day: date, direction: str) -> None:
         with db.cursor() as cur:
             cur.execute(
                 "SELECT id FROM tasks WHERE scheduled_date=%s AND scheduled_time IS NULL "
-                "ORDER BY day_order ASC, is_today_priority DESC, id ASC",
+                "AND deleted_at IS NULL ORDER BY day_order ASC, is_today_priority DESC, id ASC",
                 (day,)
             )
             ids = [row['id'] for row in cur.fetchall()]
@@ -427,7 +457,7 @@ def get_unfinished_before(day: date, limit: int = 20) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
-            f"WHERE t.scheduled_date < %s AND t.status != 'done' "
+            f"WHERE t.scheduled_date < %s AND t.status != 'done' AND t.deleted_at IS NULL "
             f"ORDER BY t.scheduled_date DESC, t.id DESC LIMIT %s",
             (day, limit)
         )
@@ -446,7 +476,7 @@ def get_week_priority_tasks(monday: date, sunday: date, include_unassigned: bool
         if include_unassigned:
             clause = f"({clause} OR (t.planned_week IS NULL AND t.scheduled_date IS NULL))"
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND {clause} "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND t.deleted_at IS NULL AND {clause} "
             f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             tuple(params)
         )
@@ -460,7 +490,7 @@ def get_unfinished_weeks_before(monday: date, limit: int = 20) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
-            f"WHERE t.planned_week < %s AND t.status != 'done' "
+            f"WHERE t.planned_week < %s AND t.status != 'done' AND t.deleted_at IS NULL "
             f"ORDER BY t.planned_week DESC, t.id DESC LIMIT %s",
             (monday, limit)
         )
@@ -473,19 +503,65 @@ def get_week_bucket_tasks(monday: date) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_week=%s "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_week=%s AND t.deleted_at IS NULL "
             f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             (monday,)
         )
         return cur.fetchall()
 
 
-def get_completed_tasks(limit: int = 200) -> list[dict]:
+def get_archive_completed(limit: int = 300) -> list[dict]:
+    """Lista dla Archiwum → Zakończone: samodzielne ukończone zadania oraz WSZYSTKIE
+    projekty (z licznikiem podzadań X/Y, nawet 0/N), posortowane razem po ostatniej
+    aktywności (data ukończenia zadania / projektu, albo — dla projektów w trakcie —
+    data ukończenia ich najnowszego podzadania)."""
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='done' "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=0 AND t.parent_id IS NULL "
+            f"AND t.status='done' AND t.deleted_at IS NULL "
             f"ORDER BY t.completed_at DESC, t.id DESC LIMIT %s",
+            (limit,)
+        )
+        tasks = cur.fetchall()
+
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1 AND t.deleted_at IS NULL "
+            f"ORDER BY t.created_at DESC, t.id DESC"
+        )
+        projects = cur.fetchall()
+        for proj in projects:
+            cur.execute(
+                "SELECT COUNT(*) AS total, SUM(status='done') AS done, MAX(completed_at) AS last_done "
+                "FROM tasks WHERE parent_id=%s AND deleted_at IS NULL",
+                (proj['id'],)
+            )
+            counts = cur.fetchone()
+            proj['subtask_total'] = counts['total'] or 0
+            proj['subtask_done'] = counts['done'] or 0
+            proj['sort_key'] = counts['last_done'] or proj['completed_at'] or proj['created_at']
+            if proj['subtask_done']:
+                cur.execute(
+                    f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s AND t.status='done' "
+                    f"AND t.deleted_at IS NULL ORDER BY t.completed_at DESC, t.id DESC",
+                    (proj['id'],)
+                )
+                proj['completed_subtasks'] = cur.fetchall()
+            else:
+                proj['completed_subtasks'] = []
+
+        items = [{'kind': 'task', 'sort_key': t['completed_at'], 'task': t} for t in tasks]
+        items += [{'kind': 'project', 'sort_key': p['sort_key'], 'project': p} for p in projects]
+        items.sort(key=lambda x: x['sort_key'] or datetime.min, reverse=True)
+        return items[:limit]
+
+
+def get_deleted_tasks(limit: int = 300) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.deleted_at IS NOT NULL "
+            f"ORDER BY t.deleted_at DESC, t.id DESC LIMIT %s",
             (limit,)
         )
         return cur.fetchall()
@@ -496,7 +572,7 @@ def get_scheduled_tasks_between(start: date, end: date) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
-            f"WHERE t.scheduled_date BETWEEN %s AND %s "
+            f"WHERE t.scheduled_date BETWEEN %s AND %s AND t.deleted_at IS NULL "
             f"ORDER BY t.scheduled_date ASC, t.scheduled_time IS NULL, t.scheduled_time ASC",
             (start, end)
         )
@@ -510,7 +586,7 @@ def get_today_priority_tasks(day: date) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
-            f"WHERE t.is_today_priority=1 AND t.scheduled_date=%s "
+            f"WHERE t.is_today_priority=1 AND t.scheduled_date=%s AND t.deleted_at IS NULL "
             f"ORDER BY (t.status='done'), t.scheduled_time IS NULL, t.scheduled_time ASC, t.id DESC",
             (day,)
         )
@@ -521,7 +597,8 @@ def count_today_priority(day: date) -> int:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            "SELECT COUNT(*) AS cnt FROM tasks WHERE scheduled_date=%s AND is_today_priority=1 AND status != 'done'",
+            "SELECT COUNT(*) AS cnt FROM tasks WHERE scheduled_date=%s AND is_today_priority=1 "
+            "AND status != 'done' AND deleted_at IS NULL",
             (day,)
         )
         return cur.fetchone()['cnt']
@@ -535,7 +612,8 @@ def count_week_priority(monday: date, sunday: date, include_unassigned: bool = F
         if include_unassigned:
             clause = f"({clause} OR (planned_week IS NULL AND scheduled_date IS NULL))"
         cur.execute(
-            f"SELECT COUNT(*) AS cnt FROM tasks WHERE is_week_priority=1 AND status != 'done' AND {clause}",
+            f"SELECT COUNT(*) AS cnt FROM tasks WHERE is_week_priority=1 AND status != 'done' "
+            f"AND deleted_at IS NULL AND {clause}",
             tuple(params)
         )
         return cur.fetchone()['cnt']
@@ -544,5 +622,5 @@ def count_week_priority(monday: date, sunday: date, include_unassigned: bool = F
 def count_inbox() -> int:
     db = get_db()
     with db.cursor() as cur:
-        cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE status='inbox'")
+        cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE status='inbox' AND deleted_at IS NULL")
         return cur.fetchone()['cnt']
