@@ -101,8 +101,10 @@ def update_task(task_id: int, data: dict) -> None:
 
 
 def _sync_project_status(cur, parent_id: int | None) -> None:
-    """Projekt kończy się automatycznie, gdy wszystkie jego podzadania są zrobione;
-    odnawia się automatycznie, jeśli któreś znów przestanie być zrobione."""
+    """Projekt kończy się automatycznie, gdy wszystkie jego podzadania są zrobione
+    i nie ma przypisanych niezakończonych spotkań z kalendarza; odnawia się automatycznie,
+    jeśli któreś zadanie znów przestanie być zrobione albo pojawi się nowe niezakończone
+    spotkanie przypisane do projektu."""
     if not parent_id:
         return
     cur.execute("SELECT is_project, status FROM tasks WHERE id=%s", (parent_id,))
@@ -116,10 +118,33 @@ def _sync_project_status(cur, parent_id: int | None) -> None:
     counts = cur.fetchone()
     total = counts['total'] or 0
     done = counts['done'] or 0
-    if total > 0 and done == total and parent['status'] != 'done':
+    try:
+        cur.execute(
+            "SELECT 1 FROM gcal_event_done WHERE project_id=%s AND done_at IS NULL LIMIT 1",
+            (parent_id,)
+        )
+        has_pending_meeting = cur.fetchone() is not None
+    except Exception:
+        has_pending_meeting = False
+    if total > 0 and done == total and not has_pending_meeting and parent['status'] != 'done':
         cur.execute("UPDATE tasks SET status='done', completed_at=NOW() WHERE id=%s", (parent_id,))
-    elif parent['status'] == 'done' and done < total:
+    elif parent['status'] == 'done' and (done < total or has_pending_meeting):
         cur.execute("UPDATE tasks SET status='next', completed_at=NULL WHERE id=%s", (parent_id,))
+
+
+def sync_project_after_calendar_change(project_id: int | None) -> None:
+    """Przelicza automatyczny status projektu po zmianie powiązanego wydarzenia z
+    kalendarza (oznaczenie zrobione/niezrobione albo przypisanie/odpięcie projektu)."""
+    if not project_id:
+        return
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            _sync_project_status(cur, project_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def delete_task(task_id: int) -> None:
@@ -168,15 +193,28 @@ def permanently_delete_task(task_id: int) -> None:
         raise
 
 
-def set_status(task_id: int, status: str) -> None:
+def set_status(task_id: int, status: str) -> bool:
+    """Zwraca True, jeśli zmiana się powiodła; False, jeśli została zablokowana
+    (np. projekt nie może zostać ręcznie oznaczony jako zakończony, dopóki ma
+    przypisane niezakończone spotkanie z kalendarza)."""
     if status not in VALID_STATUSES:
-        return
+        return False
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
+            cur.execute("SELECT parent_id, is_project FROM tasks WHERE id=%s", (task_id,))
             row = cur.fetchone()
             parent_id = row['parent_id'] if row else None
+            if status == 'done' and row and row['is_project']:
+                try:
+                    cur.execute(
+                        "SELECT 1 FROM gcal_event_done WHERE project_id=%s AND done_at IS NULL LIMIT 1",
+                        (task_id,)
+                    )
+                    if cur.fetchone() is not None:
+                        return False
+                except Exception:
+                    pass
             if status == 'done':
                 cur.execute(
                     "UPDATE tasks SET status=%s, completed_at=NOW() WHERE id=%s",
@@ -189,6 +227,7 @@ def set_status(task_id: int, status: str) -> None:
                 )
             _sync_project_status(cur, parent_id)
         db.commit()
+        return True
     except Exception:
         db.rollback()
         raise
@@ -511,10 +550,14 @@ def get_week_bucket_tasks(monday: date) -> list[dict]:
 
 
 def get_archive_completed(limit: int = 300) -> list[dict]:
-    """Lista dla Archiwum → Zakończone: samodzielne ukończone zadania oraz WSZYSTKIE
-    projekty (z licznikiem podzadań X/Y, nawet 0/N), posortowane razem po ostatniej
-    aktywności (data ukończenia zadania / projektu, albo — dla projektów w trakcie —
-    data ukończenia ich najnowszego podzadania)."""
+    """Lista dla Archiwum → Zakończone: samodzielne ukończone zadania oraz projekty.
+    Projekt trafia tu tylko, gdy jest ręcznie/automatycznie oznaczony jako 'done'
+    (wtedy pokazuje się na zielono), albo ma co najmniej jedno ukończone podzadanie
+    (wtedy na biało, w trakcie). Puste projekty (bez podzadań) i te z samymi
+    nieukończonymi zadaniami nie trafiają tu, chyba że są oznaczone jako 'done'.
+    Wszystko posortowane razem po ostatniej aktywności (data ukończenia zadania /
+    projektu, albo — dla projektów w trakcie — data ukończenia ich najnowszego
+    podzadania)."""
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
@@ -529,18 +572,23 @@ def get_archive_completed(limit: int = 300) -> list[dict]:
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1 AND t.deleted_at IS NULL "
             f"ORDER BY t.created_at DESC, t.id DESC"
         )
-        projects = cur.fetchall()
-        for proj in projects:
+        all_projects = cur.fetchall()
+        projects = []
+        for proj in all_projects:
             cur.execute(
                 "SELECT COUNT(*) AS total, SUM(status='done') AS done, MAX(completed_at) AS last_done "
                 "FROM tasks WHERE parent_id=%s AND deleted_at IS NULL",
                 (proj['id'],)
             )
             counts = cur.fetchone()
-            proj['subtask_total'] = counts['total'] or 0
-            proj['subtask_done'] = counts['done'] or 0
+            total = counts['total'] or 0
+            done = counts['done'] or 0
+            if proj['status'] != 'done' and done == 0:
+                continue  # ani ukończony ręcznie/automatycznie, ani ma ukończone podzadania — pomijamy
+            proj['subtask_total'] = total
+            proj['subtask_done'] = done
             proj['sort_key'] = counts['last_done'] or proj['completed_at'] or proj['created_at']
-            if proj['subtask_done']:
+            if done:
                 cur.execute(
                     f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s AND t.status='done' "
                     f"AND t.deleted_at IS NULL ORDER BY t.completed_at DESC, t.id DESC",
@@ -549,6 +597,7 @@ def get_archive_completed(limit: int = 300) -> list[dict]:
                 proj['completed_subtasks'] = cur.fetchall()
             else:
                 proj['completed_subtasks'] = []
+            projects.append(proj)
 
         items = [{'kind': 'task', 'sort_key': t['completed_at'], 'task': t} for t in tasks]
         items += [{'kind': 'project', 'sort_key': p['sort_key'], 'project': p} for p in projects]
@@ -624,3 +673,13 @@ def count_inbox() -> int:
     with db.cursor() as cur:
         cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE status='inbox' AND deleted_at IS NULL")
         return cur.fetchone()['cnt']
+
+
+def get_titles_by_ids(ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    db = get_db()
+    with db.cursor() as cur:
+        placeholders = ','.join(['%s'] * len(ids))
+        cur.execute(f"SELECT id, title FROM tasks WHERE id IN ({placeholders})", tuple(ids))
+        return {row['id']: row['title'] for row in cur.fetchall()}

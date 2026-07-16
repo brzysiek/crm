@@ -87,10 +87,12 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         current_app.logger.exception('GTD: błąd pobierania wydarzeń z Google Calendar (calendar_id=%s)', calendar_id)
         return {}, str(e)
     try:
-        done_ids = gcal_event_model.get_done_event_ids(start, end)
+        event_meta = gcal_event_model.get_event_meta(start, end)
     except Exception:
-        current_app.logger.exception('GTD: błąd odczytu lokalnie oznaczonych wydarzeń kalendarza jako done')
-        done_ids = set()
+        current_app.logger.exception('GTD: błąd odczytu lokalnych metadanych wydarzeń kalendarza')
+        event_meta = {}
+    project_ids = {m['project_id'] for m in event_meta.values() if m.get('project_id')}
+    project_titles = task_model.get_titles_by_ids(list(project_ids)) if project_ids else {}
     by_day: dict = {}
     for e in raw:
         start_info = e.get('start', {})
@@ -109,13 +111,17 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         else:
             continue
         event_id = e.get('id')
+        meta = event_meta.get(event_id, {})
+        project_id = meta.get('project_id')
         by_day.setdefault(d, []).append({
             'id': event_id,
             'date': d.isoformat(),
             'title': e.get('summary') or '(bez tytułu)',
             'time': time_label,
             'duration_min': duration_min,
-            'is_done': event_id in done_ids,
+            'is_done': meta.get('is_done', False),
+            'project_id': project_id,
+            'project_title': project_titles.get(project_id) if project_id else None,
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
@@ -389,7 +395,12 @@ def api_set_status(task_id):
     status = data.get('status', '')
     if status not in task_model.VALID_STATUSES:
         return jsonify({'status': 'error', 'message': 'Nieprawidłowy status.'})
-    task_model.set_status(task_id, status)
+    ok = task_model.set_status(task_id, status)
+    if not ok:
+        return jsonify({
+            'status': 'error',
+            'message': 'Projekt ma przypisane niezakończone spotkanie z kalendarza — najpierw oznacz je jako zrobione.',
+        })
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
 
@@ -404,6 +415,21 @@ def api_gcal_event_done(event_id):
         gcal_event_model.mark_done(event_id, event_date)
     else:
         gcal_event_model.mark_undone(event_id)
+    task_model.sync_project_after_calendar_change(gcal_event_model.get_project_id(event_id))
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/gcal_events/<event_id>/project', methods=['POST'])
+def api_gcal_event_project(event_id):
+    data = request.get_json(silent=True) or {}
+    event_date = data.get('event_date')
+    if not event_date:
+        return jsonify({'status': 'error', 'message': 'Brak daty wydarzenia.'})
+    project_id = data.get('project_id') or None
+    old_project_id = gcal_event_model.get_project_id(event_id)
+    gcal_event_model.set_project(event_id, event_date, project_id)
+    task_model.sync_project_after_calendar_change(old_project_id)
+    task_model.sync_project_after_calendar_change(project_id)
     return jsonify({'status': 'ok'})
 
 
