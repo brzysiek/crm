@@ -437,44 +437,43 @@ function _gtdFillProjectSelect(taskId, currentParentId, selectId) {
 let _gtdContactsCache = null;
 let _gtdCompaniesCache = null;
 
-function _gtdFillCrmSelects(currentContactId, currentCompanyId, contactSelectId, companySelectId) {
-  const contactSelect = document.getElementById(contactSelectId);
-  const companySelect = document.getElementById(companySelectId);
-  const renderContacts = (contacts) => {
-    contactSelect.innerHTML = '<option value="">— brak —</option>';
-    contacts.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
-      if (currentContactId && c.id === currentContactId) opt.selected = true;
-      contactSelect.appendChild(opt);
-    });
-  };
-  const renderCompanies = (companies) => {
-    companySelect.innerHTML = '<option value="">— brak —</option>';
-    companies.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
-      if (currentCompanyId && c.id === currentCompanyId) opt.selected = true;
-      companySelect.appendChild(opt);
-    });
-  };
-  if (_gtdContactsCache) {
-    renderContacts(_gtdContactsCache);
+/* ── Wyszukiwarki kontaktu/firmy CRM w modalach GTD (entity-picker z app.js) ──
+   Same widget as CRM's own contact/company search — resolves the currently
+   assigned id to a display name (from a cached full list) to prefill the
+   "selected" chip when a modal reopens; actual search-as-you-type hits the
+   existing CRM search endpoints via initEntityPicker itself. */
+function _gtdSetCrmPickers(currentContactId, currentCompanyId, contactPickerId, companyPickerId) {
+  if (!currentContactId) {
+    clearEntityPicker(contactPickerId);
   } else {
-    fetch(window.API_BASE + '/api/gtd/crm_contacts')
-      .then(r => r.json())
-      .then(contacts => { _gtdContactsCache = contacts; renderContacts(contacts); })
-      .catch(() => {});
+    const apply = (contacts) => {
+      const item = contacts.find(c => c.id === currentContactId);
+      selectEntityPicker(contactPickerId, currentContactId, item ? item.name : ('Kontakt #' + currentContactId));
+    };
+    if (_gtdContactsCache) {
+      apply(_gtdContactsCache);
+    } else {
+      fetch(window.API_BASE + '/api/gtd/crm_contacts')
+        .then(r => r.json())
+        .then(contacts => { _gtdContactsCache = contacts; apply(contacts); })
+        .catch(() => {});
+    }
   }
-  if (_gtdCompaniesCache) {
-    renderCompanies(_gtdCompaniesCache);
+  if (!currentCompanyId) {
+    clearEntityPicker(companyPickerId);
   } else {
-    fetch(window.API_BASE + '/api/gtd/crm_companies')
-      .then(r => r.json())
-      .then(companies => { _gtdCompaniesCache = companies; renderCompanies(companies); })
-      .catch(() => {});
+    const apply = (companies) => {
+      const item = companies.find(c => c.id === currentCompanyId);
+      selectEntityPicker(companyPickerId, currentCompanyId, item ? item.name : ('Firma #' + currentCompanyId));
+    };
+    if (_gtdCompaniesCache) {
+      apply(_gtdCompaniesCache);
+    } else {
+      fetch(window.API_BASE + '/api/gtd/crm_companies')
+        .then(r => r.json())
+        .then(companies => { _gtdCompaniesCache = companies; apply(companies); })
+        .catch(() => {});
+    }
   }
 }
 
@@ -483,7 +482,7 @@ function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, curr
   document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
   _gtdFillProjectSelect(taskId, currentParentId || null);
-  _gtdFillCrmSelects(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContact', 'gtdEditTaskCompany');
+  _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
   document.getElementById('gtdEditTaskModal').classList.add('open');
 }
 
@@ -494,9 +493,9 @@ function gtdSubmitEditTask() {
   const due_date = document.getElementById('gtdEditTaskDue').value || null;
   const parentValue = document.getElementById('gtdEditTaskProject').value;
   const parent_id = parentValue ? parseInt(parentValue, 10) : null;
-  const contactValue = document.getElementById('gtdEditTaskContact').value;
+  const contactValue = document.getElementById('gtdEditTaskContactPicker-hidden').value;
   const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
-  const companyValue = document.getElementById('gtdEditTaskCompany').value;
+  const companyValue = document.getElementById('gtdEditTaskCompanyPicker-hidden').value;
   const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
@@ -542,7 +541,7 @@ function gtdOpenGcalProject(eventId, eventDate, currentProjectId, currentContact
   document.getElementById('gtdGcalProjectEventId').value = eventId;
   document.getElementById('gtdGcalProjectEventDate').value = eventDate;
   _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect');
-  _gtdFillCrmSelects(currentContactId || null, currentCompanyId || null, 'gtdGcalProjectContact', 'gtdGcalProjectCompany');
+  _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdGcalProjectContactPicker', 'gtdGcalProjectCompanyPicker');
   document.getElementById('gtdGcalProjectModal').classList.add('open');
 }
 
@@ -551,9 +550,9 @@ function gtdSubmitGcalProject() {
   const eventDate = document.getElementById('gtdGcalProjectEventDate').value;
   const projectValue = document.getElementById('gtdGcalProjectSelect').value;
   const project_id = projectValue ? parseInt(projectValue, 10) : null;
-  const contactValue = document.getElementById('gtdGcalProjectContact').value;
+  const contactValue = document.getElementById('gtdGcalProjectContactPicker-hidden').value;
   const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
-  const companyValue = document.getElementById('gtdGcalProjectCompany').value;
+  const companyValue = document.getElementById('gtdGcalProjectCompanyPicker-hidden').value;
   const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
   Promise.all([
     fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/project', {
@@ -587,4 +586,13 @@ function gtdSetWeekday(taskId, weekStartIso, dayIndex) {
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
+}
+
+/* ── Init wyszukiwarek CRM w modalach GTD (elementy z _layout.html, obecne na
+   każdej stronie GTD) — initEntityPicker pochodzi z app.js, ładowanego wcześniej. */
+if (document.getElementById('gtdEditTaskContactPicker')) {
+  initEntityPicker('gtdEditTaskContactPicker', '/api/crm/contacts/search');
+  initEntityPicker('gtdEditTaskCompanyPicker', '/api/crm/companies/search');
+  initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search');
+  initEntityPicker('gtdGcalProjectCompanyPicker', '/api/crm/companies/search');
 }
