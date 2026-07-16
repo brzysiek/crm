@@ -21,7 +21,8 @@
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToWeek('next', 'gtdNextWeekAddInput')">+ Dodaj do przyszłego tygodnia</button>
 </div>
 
-<h3 style="margin:.5rem 0">Priorytety tygodnia</h3>
+<div class="gtd-priority-panel">
+<h3><span class="gtd-priority-star">★</span> Priorytety tygodnia</h3>
 {% if not priority_tasks %}
   <p class="text-muted">Brak oznaczonych priorytetów przyszłego tygodnia. Oznacz gwiazdką zadania poniżej.</p>
 {% else %}
@@ -54,6 +55,7 @@
 </table>
 </div>
 {% endif %}
+</div>
 
 {% for group in day_groups %}
 <div class="gtd-day-section">
