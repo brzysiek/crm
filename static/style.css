@@ -2348,3 +2348,78 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   height: .25rem;
 }
 .term-cell:hover .term-hover-picker { display: flex; }
+
+/* ── CRM: blueprint-grid backdrop + glass surfaces (Fluxa) ─────────────────── */
+.crm-fluxa { position: relative; }
+.crm-fluxa::before {
+  content: '';
+  position: absolute;
+  top: -24px; left: -24px; right: -24px;
+  height: 220px;
+  background-image:
+    linear-gradient(rgba(2, 6, 23, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(2, 6, 23, .05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+  mask-image: linear-gradient(to bottom, black, transparent);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.crm-fluxa .filter-bar {
+  background: rgba(255, 255, 255, .85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: box-shadow var(--speed) var(--curve), border-color var(--speed) var(--curve);
+}
+.crm-fluxa .filter-bar:focus-within {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.crm-fluxa .inv-section {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--speed) var(--curve);
+}
+.crm-fluxa .inv-section:hover { box-shadow: var(--shadow-lg); }
+
+.crm-fluxa .chart-header h2 {
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.crm-fluxa .kanban-column {
+  background: rgba(255, 255, 255, .85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.crm-fluxa .kanban-column-header { background: rgba(255, 255, 255, .45); }
+
+/* Miesiąc bieżący w planie przychodów — sztandarowy navy-card akcent (jak GTD priorytety) */
+.crm-fluxa .kanban-column-current {
+  position: relative;
+  background: linear-gradient(135deg, #0b2da8 0%, #071855 100%);
+  border: none;
+  box-shadow: var(--shadow-navy);
+  overflow: hidden;
+}
+.crm-fluxa .kanban-column-current::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(103, 232, 249, .3), transparent 70%);
+  pointer-events: none;
+}
+.crm-fluxa .kanban-column-current .kanban-column-header {
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, .18);
+}
+.crm-fluxa .kanban-column-current .kanban-column-name,
+.crm-fluxa .kanban-column-current .kanban-column-total { color: #fff; }
+.crm-fluxa .kanban-column-current .kanban-card { background: rgba(255, 255, 255, .95); }
