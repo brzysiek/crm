@@ -54,8 +54,9 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
     z Google Calendar, jeśli podano) na sekcje dzień-po-dniu — tylko dni, na które
     faktycznie coś zaplanowano lub coś jest w kalendarzu. Każdy dzień dostaje wspólny
     harmonogram godzinowy (`timeline`) i listę zadań bez konkretnej godziny (`unscheduled`).
-    `exclude_from_timeline` pomija w harmonogramie zadania, które są już pokazane
-    w sekcji „Priorytety tygodnia” (żeby nie dublować widoku)."""
+    `exclude_from_timeline` pomija zarówno w harmonogramie, jak i w liście „bez
+    godziny” zadania, które są już pokazane w sekcji „Priorytety tygodnia”
+    (żeby nie dublować widoku)."""
     gcal_by_day = gcal_by_day or {}
     exclude_from_timeline = exclude_from_timeline or set()
     scheduled = task_model.get_scheduled_tasks_between(week_start, week_end)
@@ -70,7 +71,8 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
                 'label': _day_label(d),
                 'timeline': _build_timeline(
                     [t for t in day_tasks if t['id'] not in exclude_from_timeline], day_events),
-                'unscheduled': [t for t in day_tasks if not t.get('scheduled_time')],
+                'unscheduled': [t for t in day_tasks
+                                if not t.get('scheduled_time') and t['id'] not in exclude_from_timeline],
             })
         d += timedelta(days=1)
     return groups
@@ -170,9 +172,9 @@ def day():
     gcal_by_day, gcal_error = _gcal_events_by_day(current, current)
     gcal_events = gcal_by_day.get(current, [])
 
-    unscheduled = [t for t in tasks if not t.get('scheduled_time')]
     priority_tasks = task_model.get_today_priority_tasks(current)
     priority_ids = {t['id'] for t in priority_tasks}
+    unscheduled = [t for t in tasks if not t.get('scheduled_time') and t['id'] not in priority_ids]
     timeline = _build_timeline([t for t in tasks if t['id'] not in priority_ids], gcal_events)
 
     return render_template(
