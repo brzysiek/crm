@@ -53,6 +53,11 @@
         <td class="col-actions" onclick="event.stopPropagation()">
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
             <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" class="btn btn-outline btn-sm">Otwórz →</a>
+            {% if p.status == 'done' %}
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdReopenProject({{ p.id }})">↺ Otwórz ponownie</button>
+            {% else %}
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ p.id }})">✓ Zakończ</button>
+            {% endif %}
             <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ p.id }})">🗑</button>
           </div>
         </td>

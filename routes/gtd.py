@@ -395,12 +395,7 @@ def api_set_status(task_id):
     status = data.get('status', '')
     if status not in task_model.VALID_STATUSES:
         return jsonify({'status': 'error', 'message': 'Nieprawidłowy status.'})
-    ok = task_model.set_status(task_id, status)
-    if not ok:
-        return jsonify({
-            'status': 'error',
-            'message': 'Projekt ma przypisane niezakończone spotkanie z kalendarza — najpierw oznacz je jako zrobione.',
-        })
+    task_model.set_status(task_id, status)
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
 
@@ -415,7 +410,6 @@ def api_gcal_event_done(event_id):
         gcal_event_model.mark_done(event_id, event_date)
     else:
         gcal_event_model.mark_undone(event_id)
-    task_model.sync_project_after_calendar_change(gcal_event_model.get_project_id(event_id))
     return jsonify({'status': 'ok'})
 
 
@@ -426,10 +420,32 @@ def api_gcal_event_project(event_id):
     if not event_date:
         return jsonify({'status': 'error', 'message': 'Brak daty wydarzenia.'})
     project_id = data.get('project_id') or None
-    old_project_id = gcal_event_model.get_project_id(event_id)
     gcal_event_model.set_project(event_id, event_date, project_id)
-    task_model.sync_project_after_calendar_change(old_project_id)
-    task_model.sync_project_after_calendar_change(project_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/tasks/<int:project_id>/open_subtasks')
+def api_open_subtasks(project_id):
+    tasks = task_model.get_open_subtasks(project_id)
+    return jsonify({'status': 'ok', 'tasks': tasks})
+
+
+@bp.route('/api/gtd/tasks/<int:project_id>/close_project', methods=['POST'])
+def api_close_project(project_id):
+    data = request.get_json(silent=True) or {}
+    close_subtasks = bool(data.get('close_subtasks'))
+    ok = task_model.close_project(project_id, close_subtasks)
+    if not ok:
+        return jsonify({
+            'status': 'error',
+            'message': 'Projekt ma przypisane niezakończone spotkanie z kalendarza — najpierw oznacz je jako zrobione albo odepnij od projektu.',
+        })
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/tasks/<int:project_id>/reopen_project', methods=['POST'])
+def api_reopen_project(project_id):
+    task_model.reopen_project(project_id)
     return jsonify({'status': 'ok'})
 
 

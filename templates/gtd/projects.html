@@ -46,7 +46,7 @@
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
           <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.project_detail', project_id=p.id) }}">Otwórz</a>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ p.id }}, 'done')">✓ Zakończ</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ p.id }})">✓ Zakończ</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ p.id }}, {{ p.title|tojson|forceescape }})">✎</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteProject({{ p.id }})">🗑</button>
         </div>

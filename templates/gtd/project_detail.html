@@ -11,9 +11,9 @@
   <div class="header-actions">
     <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.projects') }}">← Projekty</a>
     {% if project.status == 'done' %}
-    <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ project.id }}, 'next')">↺ Wznów projekt</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdReopenProject({{ project.id }})">↺ Otwórz ponownie</button>
     {% else %}
-    <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ project.id }}, 'done')">✓ Zakończ projekt</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ project.id }})">✓ Zakończ projekt</button>
     {% endif %}
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ project.id }}, {{ project.title|tojson|forceescape }})">✎ Zmień nazwę</button>
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdFlattenProject({{ project.id }})">Cofnij do zwykłego zadania</button>

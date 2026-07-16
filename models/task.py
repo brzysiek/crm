@@ -81,70 +81,78 @@ def update_task(task_id: int, data: dict) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
-            old_parent_id = None
-            if 'parent_id' in fields:
-                cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
-                row = cur.fetchone()
-                old_parent_id = row['parent_id'] if row else None
             set_clause = ", ".join(f"{k}=%s" for k in fields)
             cur.execute(
                 f"UPDATE tasks SET {set_clause} WHERE id=%s",
                 (*fields.values(), task_id)
             )
-            if 'parent_id' in fields:
-                _sync_project_status(cur, old_parent_id)
-                _sync_project_status(cur, fields['parent_id'])
         db.commit()
     except Exception:
         db.rollback()
         raise
 
 
-def _sync_project_status(cur, parent_id: int | None) -> None:
-    """Projekt kończy się automatycznie, gdy wszystkie jego podzadania są zrobione
-    i nie ma przypisanych niezakończonych spotkań z kalendarza; odnawia się automatycznie,
-    jeśli któreś zadanie znów przestanie być zrobione albo pojawi się nowe niezakończone
-    spotkanie przypisane do projektu."""
-    if not parent_id:
-        return
-    cur.execute("SELECT is_project, status FROM tasks WHERE id=%s", (parent_id,))
-    parent = cur.fetchone()
-    if not parent or not parent['is_project']:
-        return
-    cur.execute(
-        "SELECT COUNT(*) AS total, SUM(status='done') AS done FROM tasks WHERE parent_id=%s AND deleted_at IS NULL",
-        (parent_id,)
-    )
-    counts = cur.fetchone()
-    total = counts['total'] or 0
-    done = counts['done'] or 0
-    try:
-        cur.execute(
-            "SELECT 1 FROM gcal_event_done WHERE project_id=%s AND done_at IS NULL LIMIT 1",
-            (parent_id,)
-        )
-        has_pending_meeting = cur.fetchone() is not None
-    except Exception:
-        has_pending_meeting = False
-    if total > 0 and done == total and not has_pending_meeting and parent['status'] != 'done':
-        cur.execute("UPDATE tasks SET status='done', completed_at=NOW() WHERE id=%s", (parent_id,))
-    elif parent['status'] == 'done' and (done < total or has_pending_meeting):
-        cur.execute("UPDATE tasks SET status='next', completed_at=NULL WHERE id=%s", (parent_id,))
-
-
-def sync_project_after_calendar_change(project_id: int | None) -> None:
-    """Przelicza automatyczny status projektu po zmianie powiązanego wydarzenia z
-    kalendarza (oznaczenie zrobione/niezrobione albo przypisanie/odpięcie projektu)."""
-    if not project_id:
-        return
+def close_project(project_id: int, close_subtasks: bool = False) -> bool:
+    """Ręcznie zamyka projekt — projekty nigdy nie zamykają się automatycznie.
+    Zwraca False, jeśli projekt ma przypisane niezakończone spotkanie z kalendarza
+    (wtedy zamknięcie jest zablokowane, dopóki spotkanie nie zostanie oznaczone
+    jako zrobione albo odpięte od projektu). Gdy close_subtasks=True, wszystkie
+    wciąż otwarte podzadania zostają zamknięte razem z projektem."""
     db = get_db()
     try:
         with db.cursor() as cur:
-            _sync_project_status(cur, project_id)
+            try:
+                cur.execute(
+                    "SELECT 1 FROM gcal_event_done WHERE project_id=%s AND done_at IS NULL LIMIT 1",
+                    (project_id,)
+                )
+                if cur.fetchone() is not None:
+                    return False
+            except Exception:
+                pass
+            if close_subtasks:
+                cur.execute(
+                    "UPDATE tasks SET status='done', completed_at=NOW() "
+                    "WHERE parent_id=%s AND deleted_at IS NULL AND status != 'done'",
+                    (project_id,)
+                )
+            cur.execute(
+                "UPDATE tasks SET status='done', completed_at=NOW() WHERE id=%s",
+                (project_id,)
+            )
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        raise
+
+
+def reopen_project(project_id: int) -> None:
+    """Ręcznie otwiera ponownie zamknięty projekt (nie dotyka statusu podzadań)."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE tasks SET status='next', completed_at=NULL WHERE id=%s",
+                (project_id,)
+            )
         db.commit()
     except Exception:
         db.rollback()
         raise
+
+
+def get_open_subtasks(project_id: int) -> list[dict]:
+    """Otwarte (nieukończone, nieusunięte) podzadania projektu — do okna
+    potwierdzenia przy zamykaniu projektu."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, title FROM tasks WHERE parent_id=%s AND deleted_at IS NULL "
+            "AND status != 'done' ORDER BY created_at",
+            (project_id,)
+        )
+        return cur.fetchall()
 
 
 def delete_task(task_id: int) -> None:
@@ -154,12 +162,8 @@ def delete_task(task_id: int) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
-            row = cur.fetchone()
-            parent_id = row['parent_id'] if row else None
             cur.execute("UPDATE tasks SET parent_id=NULL WHERE parent_id=%s", (task_id,))
             cur.execute("UPDATE tasks SET deleted_at=NOW() WHERE id=%s", (task_id,))
-            _sync_project_status(cur, parent_id)
         db.commit()
     except Exception:
         db.rollback()
@@ -170,11 +174,7 @@ def restore_task(task_id: int) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("SELECT parent_id FROM tasks WHERE id=%s", (task_id,))
-            row = cur.fetchone()
-            parent_id = row['parent_id'] if row else None
             cur.execute("UPDATE tasks SET deleted_at=NULL WHERE id=%s", (task_id,))
-            _sync_project_status(cur, parent_id)
         db.commit()
     except Exception:
         db.rollback()
@@ -194,27 +194,14 @@ def permanently_delete_task(task_id: int) -> None:
 
 
 def set_status(task_id: int, status: str) -> bool:
-    """Zwraca True, jeśli zmiana się powiodła; False, jeśli została zablokowana
-    (np. projekt nie może zostać ręcznie oznaczony jako zakończony, dopóki ma
-    przypisane niezakończone spotkanie z kalendarza)."""
+    """Ustawia status zwykłego zadania. Do zamykania/otwierania projektów służą
+    dedykowane close_project()/reopen_project() (uwzględniają otwarte podzadania
+    i przypisane spotkania z kalendarza)."""
     if status not in VALID_STATUSES:
         return False
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("SELECT parent_id, is_project FROM tasks WHERE id=%s", (task_id,))
-            row = cur.fetchone()
-            parent_id = row['parent_id'] if row else None
-            if status == 'done' and row and row['is_project']:
-                try:
-                    cur.execute(
-                        "SELECT 1 FROM gcal_event_done WHERE project_id=%s AND done_at IS NULL LIMIT 1",
-                        (task_id,)
-                    )
-                    if cur.fetchone() is not None:
-                        return False
-                except Exception:
-                    pass
             if status == 'done':
                 cur.execute(
                     "UPDATE tasks SET status=%s, completed_at=NOW() WHERE id=%s",
@@ -225,7 +212,6 @@ def set_status(task_id: int, status: str) -> bool:
                     "UPDATE tasks SET status=%s, completed_at=NULL WHERE id=%s",
                     (status, task_id)
                 )
-            _sync_project_status(cur, parent_id)
         db.commit()
         return True
     except Exception:

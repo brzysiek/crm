@@ -459,6 +459,36 @@ function gtdSubmitEditTask() {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdCloseProject(projectId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + projectId + '/open_subtasks')
+    .then(r => r.json())
+    .then(data => {
+      const openTasks = data.tasks || [];
+      let closeSubtasks = false;
+      if (openTasks.length) {
+        const list = openTasks.map(t => '- ' + t.title).join('\n');
+        closeSubtasks = confirm(
+          'Projekt ma otwarte zadania:\n\n' + list + '\n\nCzy zamknąć je automatycznie razem z projektem?'
+        );
+      }
+      return fetch(window.API_BASE + '/api/gtd/tasks/' + projectId + '/close_project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ close_subtasks: closeSubtasks }),
+      });
+    })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdReopenProject(projectId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + projectId + '/reopen_project', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdOpenGcalProject(eventId, eventDate, currentProjectId) {
   document.getElementById('gtdGcalProjectEventId').value = eventId;
   document.getElementById('gtdGcalProjectEventDate').value = eventDate;
