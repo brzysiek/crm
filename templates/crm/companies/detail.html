@@ -31,7 +31,7 @@
 <div class="detail-grid detail-grid-narrow-left">
   <div>
 
-    <div class="inv-section">
+    <div class="inv-section inv-section-navy">
       <h4>Dane firmy</h4>
       <dl class="inv-dl">
         <dt>Opis</dt><dd>{{ company.description or '—' }}</dd>
@@ -106,7 +106,7 @@
 
   <div>
 
-    <div class="inv-section">
+    <div class="inv-section inv-section-navy">
       <div class="inv-section-header">
         <h4>Kontakty</h4>
         <a href="{{ url_for('crm_contacts.new_contact', company_id=company.id) }}" class="btn btn-outline btn-sm">+ Dodaj kontakt</a>

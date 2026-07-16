@@ -98,7 +98,7 @@
       · <a href="{{ url_for('expenses.list_expenses', month=month) }}">szczegóły</a>
     </div>
   </div>
-  <div class="kpi-card {% if balance >= 0 %}kpi-green{% else %}kpi-alert{% endif %}">
+  <div class="kpi-card kpi-card-navy">
     <div class="kpi-label">= Bilans miesiąca</div>
     <div class="kpi-value {% if balance >= 0 %}kpi-value-pos{% else %}kpi-value-neg{% endif %}">
       {% if balance > 0 %}+{% endif %}{{ balance|pln }}
