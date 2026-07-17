@@ -22,10 +22,8 @@
   <td class="col-actions nowrap">
     <button type="button" class="action-btn" title="{{ 'Odznacz jako ważny' if p.is_important else 'Oznacz jako ważny' }}"
             onclick="gtdToggleStar({{ p.id }}, 'toggle_important')">{{ '★' if p.is_important else '☆' }}</button>
-    <a class="action-btn" href="{{ url_for('gtd.project_detail', project_id=p.id) }}" title="Otwórz">📂</a>
-    <button type="button" class="action-btn" title="Przypisz klienta / kontakt"
-            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }})">🔗</button>
-    <button type="button" class="action-btn" title="Zmień nazwę" onclick="gtdRenameProject({{ p.id }}, {{ p.title|tojson|forceescape }})">✎</button>
+    <button type="button" class="action-btn" title="Edytuj projekt"
+            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }})">✎</button>
     <button type="button" class="action-btn" title="Zakończ projekt" onclick="gtdCloseProject({{ p.id }})">✓</button>
     <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdDeleteProject({{ p.id }})">🗑</button>
   </td>
