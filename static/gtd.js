@@ -202,11 +202,12 @@ function gtdScheduleTomorrow(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
-function gtdAssignWeek(taskId, week) {
+function gtdAssignWeek(taskId, weekOrMonday) {
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(weekOrMonday);
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_week', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ week }),
+    body: JSON.stringify(isDate ? { monday: weekOrMonday } : { week: weekOrMonday }),
   })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
@@ -215,6 +216,24 @@ function gtdAssignWeek(taskId, week) {
 
 function gtdClearWeek(taskId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/clear_week', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdAssignMonth(taskId, monthStart) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_month', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ month: monthStart }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdClearMonth(taskId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/clear_month', { method: 'POST' })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
@@ -350,7 +369,7 @@ function gtdAddToDay(dayIso, inputId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
-function gtdAddToWeek(week, inputId) {
+function gtdAddToWeek(monday, inputId) {
   const input = document.getElementById(inputId);
   const title = input.value.trim();
   if (!title) return;
@@ -365,7 +384,33 @@ function gtdAddToWeek(week, inputId) {
       return fetch(window.API_BASE + '/api/gtd/tasks/' + data.task.id + '/assign_week', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ week }),
+        body: JSON.stringify({ monday }),
+      }).then(r => r.json());
+    })
+    .then(result => {
+      if (!result) return;
+      if (result.status === 'ok') location.reload();
+      else alert(result.message || 'Błąd.');
+    })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdAddToMonth(monthStart, inputId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'next' }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return null; }
+      return fetch(window.API_BASE + '/api/gtd/tasks/' + data.task.id + '/assign_month', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: monthStart }),
       }).then(r => r.json());
     })
     .then(result => {

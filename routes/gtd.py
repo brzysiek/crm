@@ -1,3 +1,4 @@
+import calendar
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -33,6 +34,19 @@ def _day_label(d: date) -> str:
 def _week_range(d: date) -> tuple[date, date]:
     monday = d - timedelta(days=d.weekday())
     return monday, monday + timedelta(days=6)
+
+
+def _month_range(d: date) -> tuple[date, date]:
+    start = d.replace(day=1)
+    last_day = calendar.monthrange(start.year, start.month)[1]
+    return start, start.replace(day=last_day)
+
+
+def _add_months(d: date, n: int) -> date:
+    month_index = d.month - 1 + n
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, 1)
 
 
 def _build_timeline(tasks: list[dict], gcal_events: list[dict]) -> list[dict]:
@@ -205,8 +219,12 @@ def day():
 @bp.route('/gtd/tydzien')
 def week():
     today = date.today()
-    week_start, week_end = _week_range(today)
-    priority_tasks = task_model.get_week_priority_tasks(week_start, week_end, include_unassigned=True)
+    ref_day = _parse_date(request.args.get('start'), today)
+    week_start, week_end = _week_range(ref_day)
+    current_week_start = _week_range(today)[0]
+    is_current_week = (week_start == current_week_start)
+
+    priority_tasks = task_model.get_week_priority_tasks(week_start, week_end, include_unassigned=is_current_week)
     bucket_tasks = task_model.get_week_bucket_tasks(week_start)
     unfinished_weeks = task_model.get_unfinished_weeks_before(week_start)
     gcal_by_day, gcal_error = _gcal_events_by_day(week_start, week_end)
@@ -219,36 +237,53 @@ def week():
         today=today,
         week_start=week_start,
         week_end=week_end,
+        is_current_week=is_current_week,
+        prev_week_start=(week_start - timedelta(days=7)).isoformat(),
+        next_week_start=(week_start + timedelta(days=7)).isoformat(),
+        current_week_start_iso=current_week_start.isoformat(),
         week_label=f"{week_start.day} {MONTHS_PL[week_start.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
         priority_tasks=priority_tasks,
         bucket_tasks=bucket_tasks,
         unfinished_weeks=unfinished_weeks,
         day_groups=day_groups,
-        week_star_count=task_model.count_week_priority(week_start, week_end, include_unassigned=True),
+        week_star_count=task_model.count_week_priority(week_start, week_end, include_unassigned=is_current_week),
         gcal_error=gcal_error,
     )
 
 
-@bp.route('/gtd/przyszly-tydzien')
-def next_week():
-    next_monday = _week_range(date.today())[0] + timedelta(days=7)
-    week_end = next_monday + timedelta(days=6)
-    priority_tasks = task_model.get_week_priority_tasks(next_monday, week_end)
-    bucket_tasks = task_model.get_week_bucket_tasks(next_monday)
-    gcal_by_day, gcal_error = _gcal_events_by_day(next_monday, week_end)
-    day_groups = _day_groups(next_monday, week_end, gcal_by_day,
+# ── Widok miesiąca ───────────────────────────────────────────────────────────
+
+@bp.route('/gtd/miesiac')
+def month():
+    today = date.today()
+    ref_day = _parse_date(request.args.get('start'), today)
+    month_start, month_end = _month_range(ref_day)
+    current_month_start = _month_range(today)[0]
+    is_current_month = (month_start == current_month_start)
+
+    priority_tasks = task_model.get_month_priority_tasks(month_start, month_end, include_unassigned=is_current_month)
+    bucket_tasks = task_model.get_month_bucket_tasks(month_start)
+    unfinished_months = task_model.get_unfinished_months_before(month_start)
+    gcal_by_day, gcal_error = _gcal_events_by_day(month_start, month_end)
+    day_groups = _day_groups(month_start, month_end, gcal_by_day,
                               exclude_from_timeline={t['id'] for t in priority_tasks})
 
     return render_template(
-        'gtd/next_week.html',
-        active_tab='przyszly_tydzien',
-        week_start=next_monday,
-        week_end=week_end,
-        week_label=f"{next_monday.day} {MONTHS_PL[next_monday.month]} – {week_end.day} {MONTHS_PL[week_end.month]} {week_end.year}",
+        'gtd/month.html',
+        active_tab='miesiac',
+        today=today,
+        month_start=month_start,
+        month_end=month_end,
+        is_current_month=is_current_month,
+        prev_month_start=_add_months(month_start, -1).isoformat(),
+        next_month_start=_add_months(month_start, 1).isoformat(),
+        current_month_start_iso=current_month_start.isoformat(),
+        month_label=f"{MONTHS_PL[month_start.month].capitalize()} {month_start.year}",
         priority_tasks=priority_tasks,
         bucket_tasks=bucket_tasks,
+        unfinished_months=unfinished_months,
         day_groups=day_groups,
-        week_star_count=task_model.count_week_priority(next_monday, week_end),
+        month_star_count=task_model.count_month_priority(month_start, month_end, include_unassigned=is_current_month),
         gcal_error=gcal_error,
     )
 
@@ -558,19 +593,51 @@ def api_move_task(task_id):
 @bp.route('/api/gtd/tasks/<int:task_id>/assign_week', methods=['POST'])
 def api_assign_week(task_id):
     data = request.get_json(silent=True) or {}
+    monday_str = data.get('monday')
     week = data.get('week')
-    if week not in ('this', 'next'):
+    if monday_str:
+        try:
+            monday = _week_range(datetime.strptime(monday_str, '%Y-%m-%d').date())[0]
+        except ValueError:
+            return jsonify({'status': 'error', 'message': 'Nieprawidłowa data.'})
+    elif week in ('this', 'next'):
+        base = _week_range(date.today())[0]
+        monday = base + (timedelta(weeks=1) if week == 'next' else timedelta())
+    else:
         return jsonify({'status': 'error', 'message': 'Nieprawidłowy tydzień.'})
     task = task_model.get_task(task_id)
     if task and task.get('gcal_event_id'):
         _try_gcal_delete(task)
-    task_model.assign_week(task_id, 0 if week == 'this' else 1)
+    task_model.assign_week(task_id, monday)
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
 
 @bp.route('/api/gtd/tasks/<int:task_id>/clear_week', methods=['POST'])
 def api_clear_week(task_id):
     task_model.clear_week(task_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/tasks/<int:task_id>/assign_month', methods=['POST'])
+def api_assign_month(task_id):
+    data = request.get_json(silent=True) or {}
+    month_str = data.get('month')
+    if not month_str:
+        return jsonify({'status': 'error', 'message': 'Brak miesiąca.'})
+    try:
+        month_start = _month_range(datetime.strptime(month_str, '%Y-%m-%d').date())[0]
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowa data.'})
+    task = task_model.get_task(task_id)
+    if task and task.get('gcal_event_id'):
+        _try_gcal_delete(task)
+    task_model.assign_month(task_id, month_start)
+    return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
+
+
+@bp.route('/api/gtd/tasks/<int:task_id>/clear_month', methods=['POST'])
+def api_clear_month(task_id):
+    task_model.clear_month(task_id)
     return jsonify({'status': 'ok'})
 
 

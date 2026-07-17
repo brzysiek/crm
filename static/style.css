@@ -346,6 +346,16 @@ a:hover { text-decoration: underline; }
   color: var(--text-primary);
 }
 
+.gtd-period-nav {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+.gtd-period-nav h1 {
+  margin: 0;
+}
+
 .header-actions { display: flex; gap: .5rem; align-items: center; }
 
 .text-muted { color: var(--text-muted); font-weight: 400; }
@@ -627,6 +637,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
   color: var(--text-muted);
   cursor: pointer;
   font-size: 1rem;
+  text-decoration: none;
   transition: background var(--speed) var(--curve), color var(--speed) var(--curve);
 }
 .action-btn:hover { background: var(--surface-secondary); color: var(--primary); }

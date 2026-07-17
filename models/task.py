@@ -277,13 +277,13 @@ def toggle_project_important(task_id: int) -> bool:
 def schedule_task(task_id: int, scheduled_date: str | None, scheduled_time: str | None = None,
                    scheduled_duration_min: int | None = None) -> None:
     """Ustawia konkretny dzień/godzinę. Zadanie 'wychodzi' z Inbox (status next) i traci
-    ewentualne przypisanie do luźnego bloku tygodniowego — dzień jest bardziej konkretny."""
+    ewentualne przypisanie do luźnego bloku tygodniowego/miesięcznego — dzień jest bardziej konkretny."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE tasks SET scheduled_date=%s, scheduled_time=%s, scheduled_duration_min=%s,
-                   planned_week=NULL, status=IF(status='inbox','next',status) WHERE id=%s""",
+                   planned_week=NULL, planned_month=NULL, status=IF(status='inbox','next',status) WHERE id=%s""",
                 (scheduled_date or None, scheduled_time or None, scheduled_duration_min or None, task_id)
             )
         db.commit()
@@ -292,22 +292,16 @@ def schedule_task(task_id: int, scheduled_date: str | None, scheduled_time: str 
         raise
 
 
-def _monday_of(d: date, week_offset: int) -> date:
-    monday = d - timedelta(days=d.weekday())
-    return monday + timedelta(weeks=week_offset)
-
-
-def assign_week(task_id: int, week_offset: int) -> date:
-    """Przypisuje zadanie do luźnego bloku tygodniowego (0 = ten tydzień, 1 = przyszły)
+def assign_week(task_id: int, monday: date) -> date:
+    """Przypisuje zadanie do luźnego bloku tygodniowego (poniedziałek danego tygodnia)
     — bez konkretnego dnia. Zadanie wychodzi z Inbox i traci ewentualne zaplanowanie
-    na konkretny dzień (blok tygodniowy i konkretny dzień się wykluczają)."""
-    monday = _monday_of(date.today(), week_offset)
+    na konkretny dzień lub blok miesięczny (wzajemnie się wykluczają)."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                """UPDATE tasks SET planned_week=%s, scheduled_date=NULL, scheduled_time=NULL,
-                   scheduled_duration_min=NULL, gcal_event_id=NULL,
+                """UPDATE tasks SET planned_week=%s, planned_month=NULL, scheduled_date=NULL,
+                   scheduled_time=NULL, scheduled_duration_min=NULL, gcal_event_id=NULL,
                    status=IF(status='inbox','next',status) WHERE id=%s""",
                 (monday, task_id)
             )
@@ -323,6 +317,37 @@ def clear_week(task_id: int) -> None:
     try:
         with db.cursor() as cur:
             cur.execute("UPDATE tasks SET planned_week=NULL WHERE id=%s", (task_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def assign_month(task_id: int, month_start: date) -> date:
+    """Przypisuje zadanie do luźnego bloku miesięcznego (pierwszy dzień danego miesiąca)
+    — bez konkretnego dnia/tygodnia. Zadanie wychodzi z Inbox i traci ewentualne
+    zaplanowanie na konkretny dzień lub blok tygodniowy (wzajemnie się wykluczają)."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """UPDATE tasks SET planned_month=%s, planned_week=NULL, scheduled_date=NULL,
+                   scheduled_time=NULL, scheduled_duration_min=NULL, gcal_event_id=NULL,
+                   status=IF(status='inbox','next',status) WHERE id=%s""",
+                (month_start, task_id)
+            )
+        db.commit()
+        return month_start
+    except Exception:
+        db.rollback()
+        raise
+
+
+def clear_month(task_id: int) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE tasks SET planned_month=NULL WHERE id=%s", (task_id,))
         db.commit()
     except Exception:
         db.rollback()
@@ -559,6 +584,53 @@ def get_week_bucket_tasks(monday: date) -> list[dict]:
         return cur.fetchall()
 
 
+def get_month_priority_tasks(month_start: date, month_end: date, include_unassigned: bool = False) -> list[dict]:
+    """Priorytety (gwiazdka tygodnia) należące do danego miesiąca — blok tygodniowy/
+    miesięczny lub konkretny dzień mieszczący się w zakresie miesiąca. Analogiczne do
+    get_week_priority_tasks, tylko w skali miesiąca (bez osobnej flagi priorytetu)."""
+    db = get_db()
+    with db.cursor() as cur:
+        clause = ("(t.planned_month=%s OR (t.planned_week BETWEEN %s AND %s) "
+                   "OR (t.scheduled_date BETWEEN %s AND %s))")
+        params = [month_start, month_start, month_end, month_start, month_end]
+        if include_unassigned:
+            clause = (f"({clause} OR (t.planned_week IS NULL AND t.planned_month IS NULL "
+                      f"AND t.scheduled_date IS NULL))")
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND t.deleted_at IS NULL AND {clause} "
+            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            tuple(params)
+        )
+        return cur.fetchall()
+
+
+def get_unfinished_months_before(month_start: date, limit: int = 20) -> list[dict]:
+    """Zadania z blokiem miesięcznym sprzed `month_start`, wciąż nieukończone — do sekcji
+    przeglądu na stronie 'Miesiąc', nigdy nie przenoszone automatycznie (jak przy dniach/tygodniach)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
+            f"WHERE t.planned_month < %s AND t.status != 'done' AND t.deleted_at IS NULL "
+            f"ORDER BY t.planned_month DESC, t.id DESC LIMIT %s",
+            (month_start, limit)
+        )
+        return cur.fetchall()
+
+
+def get_month_bucket_tasks(month_start: date) -> list[dict]:
+    """Zadania przypisane do luźnego bloku miesięcznego (bez konkretnego dnia/tygodnia).
+    Zadania zrobione zostają widoczne (nie znikają z widoku miesiąca)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_month=%s AND t.deleted_at IS NULL "
+            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            (month_start,)
+        )
+        return cur.fetchall()
+
+
 def get_archive_completed(limit: int = 300) -> list[dict]:
     """Lista dla Archiwum → Zakończone: samodzielne ukończone zadania oraz projekty.
     Projekt trafia tu tylko, gdy jest ręcznie/automatycznie oznaczony jako 'done'
@@ -670,6 +742,23 @@ def count_week_priority(monday: date, sunday: date, include_unassigned: bool = F
         params = [monday, monday, sunday]
         if include_unassigned:
             clause = f"({clause} OR (planned_week IS NULL AND scheduled_date IS NULL))"
+        cur.execute(
+            f"SELECT COUNT(*) AS cnt FROM tasks WHERE is_week_priority=1 AND status != 'done' "
+            f"AND deleted_at IS NULL AND {clause}",
+            tuple(params)
+        )
+        return cur.fetchone()['cnt']
+
+
+def count_month_priority(month_start: date, month_end: date, include_unassigned: bool = False) -> int:
+    db = get_db()
+    with db.cursor() as cur:
+        clause = ("(planned_month=%s OR (planned_week BETWEEN %s AND %s) "
+                   "OR (scheduled_date BETWEEN %s AND %s))")
+        params = [month_start, month_start, month_end, month_start, month_end]
+        if include_unassigned:
+            clause = (f"({clause} OR (planned_week IS NULL AND planned_month IS NULL "
+                      f"AND scheduled_date IS NULL))")
         cur.execute(
             f"SELECT COUNT(*) AS cnt FROM tasks WHERE is_week_priority=1 AND status != 'done' "
             f"AND deleted_at IS NULL AND {clause}",

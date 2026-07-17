@@ -429,6 +429,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     scheduled_duration_min INT NULL,
     day_order              INT NOT NULL DEFAULT 0,
     planned_week           DATE NULL,
+    planned_month          DATE NULL,
     gcal_event_id          VARCHAR(255) NULL,
     is_today_priority      TINYINT(1) NOT NULL DEFAULT 0,
     is_week_priority       TINYINT(1) NOT NULL DEFAULT 0,
@@ -441,5 +442,6 @@ CREATE TABLE IF NOT EXISTS tasks (
     KEY idx_status (status),
     KEY idx_parent (parent_id),
     KEY idx_scheduled_date (scheduled_date),
-    KEY idx_planned_week (planned_week)
+    KEY idx_planned_week (planned_week),
+    KEY idx_planned_month (planned_month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

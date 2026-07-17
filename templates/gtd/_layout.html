@@ -5,8 +5,8 @@
 {% set gtd_tab_labels = {
   'dzis': '📅 Dziś',
   'jutro': '📅 Jutro',
-  'tydzien': '🗓 Ten tydzień',
-  'przyszly_tydzien': '🗓 Przyszły tydzień',
+  'tydzien': '🗓 Tydzień',
+  'miesiac': '📆 Miesiąc',
   'inbox': '📥 Inbox',
   'next': '▶ Next actions',
   'projekty': '📁 Projekty',
@@ -32,11 +32,11 @@
       </a>
       <a href="{{ url_for('gtd.week') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'tydzien' }}">
-        🗓 Ten tydzień
+        🗓 Tydzień
       </a>
-      <a href="{{ url_for('gtd.next_week') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'przyszly_tydzien' }}">
-        🗓 Przyszły tydzień
+      <a href="{{ url_for('gtd.month') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'miesiac' }}">
+        📆 Miesiąc
       </a>
       <a href="{{ url_for('gtd.inbox') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'inbox' }}">

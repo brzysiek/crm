@@ -72,9 +72,9 @@
         <a href="{{ url_for('gtd.day') }}"
            class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.day' else '' }}">📅 Dziś</a>
         <a href="{{ url_for('gtd.week') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.week' else '' }}">🗓 Ten tydzień</a>
-        <a href="{{ url_for('gtd.next_week') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.next_week' else '' }}">🗓 Przyszły tydzień</a>
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.week' else '' }}">🗓 Tydzień</a>
+        <a href="{{ url_for('gtd.month') }}"
+           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.month' else '' }}">📆 Miesiąc</a>
         <a href="{{ url_for('gtd.inbox') }}"
            class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.inbox' else '' }}">
           📥 Inbox

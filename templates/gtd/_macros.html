@@ -60,7 +60,10 @@
         {% if t.planned_week %}
           <span class="badge badge-blue" title="Blok tygodniowy">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</span>
         {% endif %}
-        {% if not t.due_date and not t.scheduled_date and not t.planned_week %}<span class="text-muted" style="font-size:.78rem">—</span>{% endif %}
+        {% if t.planned_month %}
+          <span class="badge badge-blue" title="Blok miesięczny">📆 {{ t.planned_month|ddmmyyyy }}</span>
+        {% endif %}
+        {% if not t.due_date and not t.scheduled_date and not t.planned_week and not t.planned_month %}<span class="text-muted" style="font-size:.78rem">—</span>{% endif %}
       </span>
       {% if week_start %}
       <div class="term-hover-picker">
@@ -83,7 +86,7 @@
   </td>
 {% endmacro %}
 
-{% macro timeline_item(item, week_offset=none) %}
+{% macro timeline_item(item, week_start=none, month_start=none) %}
   {% if item.kind == 'gcal' %}
   {% set e = item.event %}
   <div class="gtd-timeline-row">
@@ -140,10 +143,12 @@
           {% else %}
           <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">📆 ✓</span>
           {% endif %}
-          {% if week_offset is none %}
-          <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
+          {% if week_start %}
+          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignWeek({{ t.id }}, '{{ week_start.isoformat() }}')">✕</button>
+          {% elif month_start %}
+          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">✕</button>
           {% else %}
-          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignWeek({{ t.id }}, '{{ week_offset }}')">✕</button>
+          <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
           {% endif %}
         </div>
       </div>
