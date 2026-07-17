@@ -464,7 +464,7 @@ def get_tasks_for_day(day: date) -> list[dict]:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.scheduled_date=%s AND t.deleted_at IS NULL "
             f"ORDER BY t.scheduled_time IS NULL, t.scheduled_time ASC, "
-            f"t.day_order ASC, t.is_today_priority DESC, t.id ASC",
+            f"(t.status='done'), t.day_order ASC, t.is_today_priority DESC, t.id ASC",
             (day,)
         )
         return cur.fetchall()
@@ -479,7 +479,7 @@ def move_task_in_day(task_id: int, day: date, direction: str) -> None:
         with db.cursor() as cur:
             cur.execute(
                 "SELECT id FROM tasks WHERE scheduled_date=%s AND scheduled_time IS NULL "
-                "AND deleted_at IS NULL ORDER BY day_order ASC, is_today_priority DESC, id ASC",
+                "AND deleted_at IS NULL ORDER BY (status='done'), day_order ASC, is_today_priority DESC, id ASC",
                 (day,)
             )
             ids = [row['id'] for row in cur.fetchall()]

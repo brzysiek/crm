@@ -2234,18 +2234,19 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-card);
-  padding: .9rem 1rem 1rem;
+  padding: 0 1rem 1rem;
   margin: 1rem 0;
+  overflow: hidden;
 }
 .gtd-day-section h3 {
-  margin: 0 0 .7rem;
-  padding-bottom: .5rem;
-  border-bottom: 1px solid var(--border);
+  margin: 0 -1rem .8rem;
+  padding: .65rem 1.15rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-800) 100%);
   font-size: .8rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: #fff;
 }
 .gtd-day-section .gtd-timeline { margin-bottom: .8rem; }
 .gtd-day-section .data-table { margin-bottom: 0; }
@@ -2306,7 +2307,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   font-size: .7rem;
   transition: transform .15s;
 }
-.gtd-day-section.gtd-day-collapsed h3 { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.gtd-day-section.gtd-day-collapsed h3 { margin-bottom: 0; }
 .gtd-day-section.gtd-day-collapsed .gtd-day-toggle-icon { transform: rotate(-90deg); }
 .gtd-day-section.gtd-day-collapsed .gtd-day-body { display: none; }
 
