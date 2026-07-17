@@ -2316,14 +2316,28 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   box-shadow: none;
 }
 
-/* ── GTD: separator tygodni w widoku miesiąca ──────────────────────────────── */
-.gtd-week-divider {
+/* ── GTD: sekcje tygodni (zwijalne) w widoku miesiąca ──────────────────────── */
+.gtd-week-section {
+  margin: 1.8rem 0;
+}
+.gtd-week-section:first-child { margin-top: .4rem; }
+.gtd-week-header {
   display: flex;
   align-items: center;
-  gap: .75rem;
-  margin: 1.8rem 0 .7rem;
+  gap: .6rem;
+  cursor: pointer;
+  user-select: none;
+  padding: .3rem 0;
 }
-.gtd-week-divider:first-child { margin-top: .4rem; }
+.gtd-week-toggle-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: .7rem;
+  color: var(--text-muted);
+  transition: transform .15s;
+}
+.gtd-week-section.gtd-week-collapsed .gtd-week-toggle-icon { transform: rotate(-90deg); }
+.gtd-week-section.gtd-week-collapsed .gtd-week-body { display: none; }
 .gtd-week-divider-line {
   flex: 1;
   height: 1px;
@@ -2346,6 +2360,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   white-space: nowrap;
 }
 .gtd-week-divider-label:hover { background: var(--primary-800); }
+.gtd-week-body { margin-top: .7rem; }
 
 .gtd-day-toggle {
   cursor: pointer;

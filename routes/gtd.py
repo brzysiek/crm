@@ -267,11 +267,18 @@ def month():
     gcal_by_day, gcal_error = _gcal_events_by_day(month_start, month_end)
     day_groups = _day_groups(month_start, month_end, gcal_by_day,
                               exclude_from_timeline={t['id'] for t in priority_tasks})
+    weeks = []
     for group in day_groups:
         ws, we = _week_range(group['date'])
-        group['week_start'] = ws
-        group['week_label'] = (f"Tydzień {ws.isocalendar()[1]} · {ws.day} {MONTHS_PL[ws.month]}"
-                                f" – {we.day} {MONTHS_PL[we.month]}")
+        if not weeks or weeks[-1]['week_start'] != ws:
+            weeks.append({
+                'week_start': ws,
+                'week_label': (f"Tydzień {ws.isocalendar()[1]} · {ws.day} {MONTHS_PL[ws.month]}"
+                                f" – {we.day} {MONTHS_PL[we.month]}"),
+                'is_past': we < today,
+                'days': [],
+            })
+        weeks[-1]['days'].append(group)
 
     return render_template(
         'gtd/month.html',
@@ -287,7 +294,7 @@ def month():
         priority_tasks=priority_tasks,
         bucket_tasks=bucket_tasks,
         unfinished_months=unfinished_months,
-        day_groups=day_groups,
+        weeks=weeks,
         month_star_count=task_model.count_month_priority(month_start, month_end, include_unassigned=is_current_month),
         gcal_error=gcal_error,
     )

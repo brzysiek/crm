@@ -86,14 +86,15 @@
 {% endif %}
 </div>
 
-{% for group in day_groups %}
-{% if loop.first or group.week_start != loop.previtem.week_start %}
-<div class="gtd-week-divider">
-  <span class="gtd-week-divider-line"></span>
-  <a class="gtd-week-divider-label" href="{{ url_for('gtd.week', start=group.week_start.isoformat()) }}">🗓 {{ group.week_label }}</a>
+{% for week in weeks %}
+<div class="gtd-week-section{{ ' gtd-week-collapsed' if week.is_past else '' }}">
+<div class="gtd-week-header" onclick="this.closest('.gtd-week-section').classList.toggle('gtd-week-collapsed')">
+  <span class="gtd-week-toggle-icon">▾</span>
+  <a class="gtd-week-divider-label" href="{{ url_for('gtd.week', start=week.week_start.isoformat()) }}" onclick="event.stopPropagation()">🗓 {{ week.week_label }}</a>
   <span class="gtd-week-divider-line"></span>
 </div>
-{% endif %}
+<div class="gtd-week-body">
+{% for group in week.days %}
 <div class="gtd-day-section{{ ' gtd-day-collapsed' if group.date < today else '' }}">
 <h3 class="gtd-day-toggle" onclick="this.closest('.gtd-day-section').classList.toggle('gtd-day-collapsed')">
   <span class="gtd-day-toggle-icon">▾</span> {{ group.label }}
@@ -134,6 +135,9 @@
 </table>
 </div>
 {% endif %}
+</div>
+</div>
+{% endfor %}
 </div>
 </div>
 {% endfor %}
