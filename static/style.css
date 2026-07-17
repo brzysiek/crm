@@ -2316,6 +2316,37 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   box-shadow: none;
 }
 
+/* ── GTD: separator tygodni w widoku miesiąca ──────────────────────────────── */
+.gtd-week-divider {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: 1.8rem 0 .7rem;
+}
+.gtd-week-divider:first-child { margin-top: .4rem; }
+.gtd-week-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.gtd-week-divider-label {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .8rem;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gtd-week-divider-label:hover { background: var(--primary-800); }
+
 .gtd-day-toggle {
   cursor: pointer;
   user-select: none;

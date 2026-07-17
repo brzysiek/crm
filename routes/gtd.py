@@ -267,6 +267,11 @@ def month():
     gcal_by_day, gcal_error = _gcal_events_by_day(month_start, month_end)
     day_groups = _day_groups(month_start, month_end, gcal_by_day,
                               exclude_from_timeline={t['id'] for t in priority_tasks})
+    for group in day_groups:
+        ws, we = _week_range(group['date'])
+        group['week_start'] = ws
+        group['week_label'] = (f"Tydzień {ws.isocalendar()[1]} · {ws.day} {MONTHS_PL[ws.month]}"
+                                f" – {we.day} {MONTHS_PL[we.month]}")
 
     return render_template(
         'gtd/month.html',
