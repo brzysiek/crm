@@ -1040,7 +1040,7 @@ async function quickCreateCompany() {
  * <input type="hidden" id="{pickerId}-hidden"> i opcjonalnie
  * <div id="{pickerId}-selected"> (gdy wartość już wybrana).
  */
-function initEntityPicker(pickerId, searchUrl) {
+function initEntityPicker(pickerId, searchUrl, onSelect) {
   const root = document.getElementById(pickerId);
   const input = document.getElementById(pickerId + '-input');
   const results = document.getElementById(pickerId + '-results');
@@ -1078,6 +1078,7 @@ function initEntityPicker(pickerId, searchUrl) {
           const it = lastItems[parseInt(el.dataset.i, 10)];
           const label = it.name || ((it.first_name || '') + ' ' + (it.last_name || '')).trim();
           selectEntityPicker(pickerId, it.id, label);
+          if (onSelect) onSelect(it);
         };
       });
     }, 250);

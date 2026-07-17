@@ -76,7 +76,7 @@ def get_names_by_ids(ids: list[int]) -> dict[int, str]:
 
 def search_contacts(q: str, company_id: int = None, limit: int = 20) -> list[dict]:
     db = get_db()
-    sql = ("SELECT ct.id, ct.first_name, ct.last_name, ct.email, co.name AS company_name "
+    sql = ("SELECT ct.id, ct.first_name, ct.last_name, ct.email, ct.company_id, co.name AS company_name "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
            "WHERE ct.archived_at IS NULL")
     params = []

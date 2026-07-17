@@ -588,11 +588,21 @@ function gtdSetWeekday(taskId, weekStartIso, dayIndex) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+/* Po wybraniu kontaktu w pickerze, jeśli kontakt ma przypisaną firmę, automatycznie
+   uzupełnij też picker firmy — kontakt i klient mają iść w parze. */
+function _gtdAutoFillCompanyFromContact(contact, companyPickerId) {
+  if (contact.company_id) {
+    selectEntityPicker(companyPickerId, contact.company_id, contact.company_name || ('Firma #' + contact.company_id));
+  }
+}
+
 /* ── Init wyszukiwarek CRM w modalach GTD (elementy z _layout.html, obecne na
    każdej stronie GTD) — initEntityPicker pochodzi z app.js, ładowanego wcześniej. */
 if (document.getElementById('gtdEditTaskContactPicker')) {
-  initEntityPicker('gtdEditTaskContactPicker', '/api/crm/contacts/search');
+  initEntityPicker('gtdEditTaskContactPicker', '/api/crm/contacts/search',
+    it => _gtdAutoFillCompanyFromContact(it, 'gtdEditTaskCompanyPicker'));
   initEntityPicker('gtdEditTaskCompanyPicker', '/api/crm/companies/search');
-  initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search');
+  initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search',
+    it => _gtdAutoFillCompanyFromContact(it, 'gtdGcalProjectCompanyPicker'));
   initEntityPicker('gtdGcalProjectCompanyPicker', '/api/crm/companies/search');
 }
