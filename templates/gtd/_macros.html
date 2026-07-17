@@ -1,5 +1,37 @@
 {% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else 'gtd-row-todo') }}{% endmacro %}
 
+{% macro project_row(p) %}
+<tr>
+  <td>
+    <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600">{{ p.title }}</a>
+    {% if p.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ p.due_date|ddmmyyyy }}</span>{% endif %}
+    {% if p.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ p.crm_contact_first_name }} {{ p.crm_contact_last_name }}</span>{% endif %}
+    {% if p.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ p.crm_company_short_name or p.crm_company_name }}</span>{% endif %}
+  </td>
+  <td style="min-width:180px">
+    {% if p.subtask_total %}
+    <div class="progress-wrap">
+      <div class="progress-bar {{ 'prog-green' if p.subtask_done == p.subtask_total else 'prog-yellow' }}"
+           style="width:{{ (p.subtask_done / p.subtask_total * 100)|round|int }}%"></div>
+    </div>
+    <span class="text-muted" style="font-size:.78rem">{{ p.subtask_done }}/{{ p.subtask_total }} podzadań</span>
+    {% else %}
+    <span class="text-muted" style="font-size:.8rem">Brak podzadań</span>
+    {% endif %}
+  </td>
+  <td class="col-actions nowrap">
+    <button type="button" class="action-btn" title="{{ 'Odznacz jako ważny' if p.is_important else 'Oznacz jako ważny' }}"
+            onclick="gtdToggleStar({{ p.id }}, 'toggle_important')">{{ '★' if p.is_important else '☆' }}</button>
+    <a class="action-btn" href="{{ url_for('gtd.project_detail', project_id=p.id) }}" title="Otwórz">📂</a>
+    <button type="button" class="action-btn" title="Przypisz klienta / kontakt"
+            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }})">🔗</button>
+    <button type="button" class="action-btn" title="Zmień nazwę" onclick="gtdRenameProject({{ p.id }}, {{ p.title|tojson|forceescape }})">✎</button>
+    <button type="button" class="action-btn" title="Zakończ projekt" onclick="gtdCloseProject({{ p.id }})">✓</button>
+    <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdDeleteProject({{ p.id }})">🗑</button>
+  </td>
+</tr>
+{% endmacro %}
+
 {% macro task_cells(t, today=none, week_start=none, day_actions=false) %}
   <td class="col-checkbox">
     <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"

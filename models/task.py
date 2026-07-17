@@ -258,6 +258,22 @@ def toggle_week_priority(task_id: int) -> bool:
         raise
 
 
+def toggle_project_important(task_id: int) -> bool:
+    """Przełącza flagę "Ważne" projektu. Zwraca nowy stan (True/False)."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("SELECT is_important FROM tasks WHERE id=%s", (task_id,))
+            row = cur.fetchone()
+            new_val = 0 if (row and row['is_important']) else 1
+            cur.execute("UPDATE tasks SET is_important=%s WHERE id=%s", (new_val, task_id))
+        db.commit()
+        return bool(new_val)
+    except Exception:
+        db.rollback()
+        raise
+
+
 def schedule_task(task_id: int, scheduled_date: str | None, scheduled_time: str | None = None,
                    scheduled_duration_min: int | None = None) -> None:
     """Ustawia konkretny dzień/godzinę. Zadanie 'wychodzi' z Inbox (status next) i traci
@@ -415,7 +431,7 @@ def get_projects(include_done: bool = False) -> list[dict]:
     sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1 AND t.deleted_at IS NULL"
     if not include_done:
         sql += " AND t.status != 'done'"
-    sql += " ORDER BY t.created_at DESC, t.id DESC"
+    sql += " ORDER BY t.is_important DESC, t.created_at DESC, t.id DESC"
     with db.cursor() as cur:
         cur.execute(sql)
         projects = cur.fetchall()

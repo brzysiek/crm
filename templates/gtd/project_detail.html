@@ -5,6 +5,9 @@
 {% block gtd_content %}
 <div class="page-header">
   <h1>
+    <button type="button" class="star-toggle {{ 'starred' if project.is_important }}"
+            title="{{ 'Usuń z ważnych' if project.is_important else 'Oznacz jako ważny' }}"
+            onclick="gtdToggleStar({{ project.id }}, 'toggle_important')">{{ '★' if project.is_important else '☆' }}</button>
     📁 {{ project.title }}
     {% if project.status == 'done' %}<span class="badge badge-green" style="margin-left:.4rem">zakończony</span>{% endif %}
     {% if project.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</span>{% endif %}

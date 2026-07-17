@@ -1,4 +1,5 @@
 {% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import project_row %}
 {% block title %}Projekty — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -16,45 +17,44 @@
 {% if not projects %}
   <p class="text-muted">Brak aktywnych projektów. Dodaj nowy powyżej albo zamień zadanie w projekt z poziomu Inbox lub Next actions.</p>
 {% else %}
+{% set important_projects = projects|selectattr('is_important')|list %}
+{% set other_projects = projects|rejectattr('is_important')|list %}
+
+{% if important_projects %}
+<div class="gtd-priority-panel">
+<h3><span class="gtd-priority-star">★</span> Ważne projekty</h3>
 <div class="table-wrapper">
 <table class="data-table">
   <thead>
     <tr>
       <th>Projekt</th>
       <th>Postęp</th>
-      <th class="col-actions" style="width:200px"></th>
+      <th class="col-actions" style="width:230px"></th>
     </tr>
   </thead>
   <tbody>
-    {% for p in projects %}
-    <tr>
-      <td>
-        <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600">{{ p.title }}</a>
-        {% if p.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ p.due_date|ddmmyyyy }}</span>{% endif %}
-      </td>
-      <td style="min-width:180px">
-        {% if p.subtask_total %}
-        <div class="progress-wrap">
-          <div class="progress-bar {{ 'prog-green' if p.subtask_done == p.subtask_total else 'prog-yellow' }}"
-               style="width:{{ (p.subtask_done / p.subtask_total * 100)|round|int }}%"></div>
-        </div>
-        <span class="text-muted" style="font-size:.78rem">{{ p.subtask_done }}/{{ p.subtask_total }} podzadań</span>
-        {% else %}
-        <span class="text-muted" style="font-size:.8rem">Brak podzadań</span>
-        {% endif %}
-      </td>
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.project_detail', project_id=p.id) }}">Otwórz</a>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ p.id }})">✓ Zakończ</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ p.id }}, {{ p.title|tojson|forceescape }})">✎</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteProject({{ p.id }})">🗑</button>
-        </div>
-      </td>
-    </tr>
-    {% endfor %}
+    {% for p in important_projects %}{{ project_row(p) }}{% endfor %}
   </tbody>
 </table>
 </div>
+</div>
+{% endif %}
+
+{% if other_projects %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Projekt</th>
+      <th>Postęp</th>
+      <th class="col-actions" style="width:230px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in other_projects %}{{ project_row(p) }}{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}

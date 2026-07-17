@@ -513,6 +513,12 @@ def api_toggle_week(task_id):
     return jsonify({'status': 'ok', 'is_week_priority': new_val})
 
 
+@bp.route('/api/gtd/tasks/<int:task_id>/toggle_important', methods=['POST'])
+def api_toggle_important(task_id):
+    new_val = task_model.toggle_project_important(task_id)
+    return jsonify({'status': 'ok', 'is_important': new_val})
+
+
 @bp.route('/api/gtd/tasks/<int:task_id>/schedule', methods=['POST'])
 def api_schedule(task_id):
     data = request.get_json(silent=True) or {}
