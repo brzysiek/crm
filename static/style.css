@@ -2248,6 +2248,16 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   text-transform: uppercase;
   color: #fff;
 }
+.gtd-day-done-count {
+  margin-left: auto;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  background: rgba(255, 255, 255, .18);
+  padding: .15rem .55rem;
+  border-radius: 999px;
+}
 .gtd-day-section .gtd-timeline { margin-bottom: .8rem; }
 .gtd-day-section .data-table { margin-bottom: 0; }
 

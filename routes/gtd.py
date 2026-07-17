@@ -66,9 +66,12 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
         day_tasks = [t for t in scheduled if t['scheduled_date'] == d]
         day_events = gcal_by_day.get(d, [])
         if day_tasks or day_events:
+            done_count = sum(1 for t in day_tasks if t['status'] == 'done') + sum(1 for e in day_events if e['is_done'])
             groups.append({
                 'date': d,
                 'label': _day_label(d),
+                'done_count': done_count,
+                'total_count': len(day_tasks) + len(day_events),
                 'timeline': _build_timeline(
                     [t for t in day_tasks if t['id'] not in exclude_from_timeline], day_events),
                 'unscheduled': [t for t in day_tasks

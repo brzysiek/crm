@@ -57,7 +57,7 @@
 
 {% for group in day_groups %}
 <div class="gtd-day-section">
-<h3>{{ group.label }}</h3>
+<h3>{{ group.label }} <span class="gtd-day-done-count">{{ group.done_count }}/{{ group.total_count }}</span></h3>
 {% if group.timeline %}
 <div class="gtd-timeline">
   {% for item in group.timeline %}{{ timeline_item(item, 'next') }}{% endfor %}
