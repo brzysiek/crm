@@ -19,24 +19,22 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:340px">Przetwórz</th>
+      <th class="col-actions" style="width:250px">Przetwórz</th>
     </tr>
   </thead>
   <tbody>
     {% for t in tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t) }}
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">▶ Next</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">📆 Dziś</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'this')">🗓 Ten tydzień</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'next')">🗓 Przyszły tydzień</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetWaiting({{ t.id }})">⏳ Czeka</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤 Kiedyś</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdConvertToProject({{ t.id }})">📁 Projekt</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-        </div>
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn" title="Next" onclick="gtdSetStatus({{ t.id }}, 'next')">▶</button>
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
+        <button type="button" class="action-btn" title="Ten tydzień" onclick="gtdAssignWeek({{ t.id }}, 'this')">🗓</button>
+        <button type="button" class="action-btn" title="Przyszły tydzień" onclick="gtdAssignWeek({{ t.id }}, 'next')">🗓⁺</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
+        <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤</button>
+        <button type="button" class="action-btn" title="Zamień w projekt" onclick="gtdConvertToProject({{ t.id }})">📁</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}

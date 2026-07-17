@@ -132,18 +132,18 @@
                   onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">✎</button>
           {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
         </div>
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           {{ priority_stars(t) }}
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰ Godzina</button>
+          <button type="button" class="action-btn" title="Zmień godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰</button>
           {% if not t.gcal_event_id %}
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ t.id }})">📆 Push</button>
+          <button type="button" class="action-btn" title="Wyślij do Google Calendar" onclick="gtdGcalPush({{ t.id }})">📆</button>
           {% else %}
           <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">📆 ✓</span>
           {% endif %}
           {% if week_offset is none %}
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕ Odepnij</button>
+          <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
           {% else %}
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdAssignWeek({{ t.id }}, '{{ week_offset }}')">✕ Odepnij dzień</button>
+          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignWeek({{ t.id }}, '{{ week_offset }}')">✕</button>
           {% endif %}
         </div>
       </div>
@@ -153,10 +153,6 @@
 {% endmacro %}
 
 {% macro priority_stars(t) %}
-  <span style="display:inline-flex;gap:.1rem;white-space:nowrap">
-    <button type="button" class="btn-ghost btn-sm" style="font-size:1rem;line-height:1;padding:.2rem .3rem"
-            title="Priorytet dnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_today')">{{ '★' if t.is_today_priority else '☆' }}</button>
-    <button type="button" class="btn-ghost btn-sm" style="font-size:1rem;line-height:1;padding:.2rem .3rem"
-            title="Priorytet tygodnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_week')">{{ '⚑' if t.is_week_priority else '⚐' }}</button>
-  </span>
+  <button type="button" class="action-btn" title="Priorytet dnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_today')">{{ '★' if t.is_today_priority else '☆' }}</button>
+  <button type="button" class="action-btn" title="Priorytet tygodnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_week')">{{ '⚑' if t.is_week_priority else '⚐' }}</button>
 {% endmacro %}

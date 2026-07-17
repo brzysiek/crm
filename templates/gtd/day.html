@@ -25,12 +25,10 @@
       {% for t in unfinished %}
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
         {{ task_cells(t, today, day_actions=true) }}
-        <td class="col-actions">
-          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-            <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
-            <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤 Kiedyś</button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-          </div>
+        <td class="col-actions nowrap">
+          <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
+          <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </td>
       </tr>
       {% endfor %}
@@ -74,11 +72,9 @@
     {% for t in priority_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, today, day_actions=true) }}
-      <td>{{ priority_stars(t) }}</td>
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-        </div>
+      <td class="nowrap">{{ priority_stars(t) }}</td>
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}
@@ -108,25 +104,23 @@
       <th>Projekt</th>
       <th>Termin</th>
       <th style="width:4.2rem" title="Priorytety"></th>
-      <th class="col-actions" style="width:180px"></th>
+      <th class="col-actions" style="width:160px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, today, day_actions=true) }}
-      <td>{{ priority_stars(t) }}</td>
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-ghost btn-sm" style="padding:.1rem .4rem" title="Przesuń wyżej"
-                  {{ 'disabled' if loop.first }}
-                  onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'up')">↑</button>
-          <button type="button" class="btn btn-ghost btn-sm" style="padding:.1rem .4rem" title="Przesuń niżej"
-                  {{ 'disabled' if loop.last }}
-                  onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'down')">↓</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰ Zaplanuj godzinę</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdUnschedule({{ t.id }})">✕</button>
-        </div>
+      <td class="nowrap">{{ priority_stars(t) }}</td>
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn" title="Przesuń wyżej"
+                {{ 'disabled' if loop.first }}
+                onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'up')">↑</button>
+        <button type="button" class="action-btn" title="Przesuń niżej"
+                {{ 'disabled' if loop.last }}
+                onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'down')">↓</button>
+        <button type="button" class="action-btn" title="Zaplanuj godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
       </td>
     </tr>
     {% endfor %}

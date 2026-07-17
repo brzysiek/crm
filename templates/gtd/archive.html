@@ -19,7 +19,7 @@
       <th>Zadanie / Projekt</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:140px"></th>
+      <th class="col-actions" style="width:150px"></th>
     </tr>
   </thead>
   <tbody>
@@ -28,11 +28,9 @@
       {% set t = item.task %}
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
         {{ task_cells(t) }}
-        <td class="col-actions">
-          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-            <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">↺ Cofnij</button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-          </div>
+        <td class="col-actions nowrap">
+          <button type="button" class="action-btn" title="Cofnij do Next" onclick="gtdSetStatus({{ t.id }}, 'next')">↺</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </td>
       </tr>
       {% else %}
@@ -43,33 +41,28 @@
           <span class="gtd-archive-toggle-icon">▸</span>
         </td>
         <td>
-          <div style="font-weight:600">
+          <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600" onclick="event.stopPropagation()">
             {{ p.title }}
-            <span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>
-          </div>
+          </a>
+          <span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>
         </td>
         <td>—</td>
         <td><span class="badge {{ 'badge-green' if p.status == 'done' else 'badge-gray' }}">{{ p.subtask_done }}/{{ p.subtask_total }}</span></td>
-        <td class="col-actions" onclick="event.stopPropagation()">
-          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-            <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" class="btn btn-outline btn-sm">Otwórz →</a>
-            {% if p.status == 'done' %}
-            <button type="button" class="btn btn-outline btn-sm" onclick="gtdReopenProject({{ p.id }})">↺ Otwórz ponownie</button>
-            {% else %}
-            <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ p.id }})">✓ Zakończ</button>
-            {% endif %}
-            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ p.id }})">🗑</button>
-          </div>
+        <td class="col-actions nowrap" onclick="event.stopPropagation()">
+          {% if p.status == 'done' %}
+          <button type="button" class="action-btn" title="Otwórz ponownie" onclick="gtdReopenProject({{ p.id }})">↺</button>
+          {% else %}
+          <button type="button" class="action-btn" title="Zakończ" onclick="gtdCloseProject({{ p.id }})">✓</button>
+          {% endif %}
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ p.id }})">🗑</button>
         </td>
       </tr>
       {% for st in p.completed_subtasks %}
       <tr data-task-id="{{ st.id }}" data-project-id="{{ p.id }}" class="gtd-archive-subrow gtd-row-done">
         {{ task_cells(st) }}
-        <td class="col-actions">
-          <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-            <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ st.id }}, 'next')">↺ Cofnij</button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ st.id }})">🗑</button>
-          </div>
+        <td class="col-actions nowrap">
+          <button type="button" class="action-btn" title="Cofnij do Next" onclick="gtdSetStatus({{ st.id }}, 'next')">↺</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ st.id }})">🗑</button>
         </td>
       </tr>
       {% endfor %}
@@ -91,7 +84,7 @@
       <th class="col-checkbox"></th>
       <th>Zadanie / Projekt</th>
       <th>Usunięto</th>
-      <th class="col-actions" style="width:200px"></th>
+      <th class="col-actions" style="width:80px"></th>
     </tr>
   </thead>
   <tbody>
@@ -105,11 +98,9 @@
         </div>
       </td>
       <td>{{ t.deleted_at|ddmmyyyy }}</td>
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdRestoreTask({{ t.id }})">↺ Przywróć</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdPermanentlyDeleteTask({{ t.id }})">🗑 Usuń na zawsze</button>
-        </div>
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn" title="Przywróć" onclick="gtdRestoreTask({{ t.id }})">↺</button>
+        <button type="button" class="action-btn action-danger" title="Usuń na zawsze" onclick="gtdPermanentlyDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}

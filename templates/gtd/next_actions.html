@@ -28,22 +28,20 @@
       <th>Projekt</th>
       <th>Termin</th>
       <th style="width:4.2rem" title="Priorytety"></th>
-      <th class="col-actions" style="width:220px"></th>
+      <th class="col-actions" style="width:180px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t) }}
-      <td>{{ priority_stars(t) }}</td>
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'this')">🗓 Ten tydz.</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdAssignWeek({{ t.id }}, 'next')">🗓 Przyszły tydz.</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-        </div>
+      <td class="nowrap">{{ priority_stars(t) }}</td>
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
+        <button type="button" class="action-btn" title="Ten tydzień" onclick="gtdAssignWeek({{ t.id }}, 'this')">🗓</button>
+        <button type="button" class="action-btn" title="Przyszły tydzień" onclick="gtdAssignWeek({{ t.id }}, 'next')">🗓⁺</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}

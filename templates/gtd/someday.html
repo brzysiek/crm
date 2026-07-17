@@ -18,18 +18,16 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:200px"></th>
+      <th class="col-actions" style="width:80px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t) }}
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetStatus({{ t.id }}, 'next')">▶ Aktywuj</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-        </div>
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn" title="Aktywuj" onclick="gtdSetStatus({{ t.id }}, 'next')">▶</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}
