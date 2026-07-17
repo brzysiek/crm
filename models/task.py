@@ -94,6 +94,16 @@ def update_task(task_id: int, data: dict) -> None:
                 f"UPDATE tasks SET {set_clause} WHERE id=%s",
                 (*fields.values(), task_id)
             )
+            client_fields = {k: fields[k] for k in ('crm_contact_id', 'crm_company_id') if k in fields}
+            if client_fields:
+                cur.execute("SELECT is_project FROM tasks WHERE id=%s", (task_id,))
+                row = cur.fetchone()
+                if row and row['is_project']:
+                    child_set_clause = ", ".join(f"{k}=%s" for k in client_fields)
+                    cur.execute(
+                        f"UPDATE tasks SET {child_set_clause} WHERE parent_id=%s AND deleted_at IS NULL",
+                        (*client_fields.values(), task_id)
+                    )
         db.commit()
     except Exception:
         db.rollback()
