@@ -91,10 +91,15 @@
   {% set e = item.event %}
   <div class="gtd-timeline-row">
     <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}{% if e.duration_min %}<span class="text-muted" style="font-size:.72rem;display:block">{{ e.duration_min }} min</span>{% endif %}</div>
-    <div class="gtd-timeline-card gtd-gcal-card{{ ' gtd-row-done' if e.is_done else '' }}">
+    <div class="gtd-timeline-card gtd-gcal-card{{ ' gtd-row-done' if e.is_done else '' }}{{ ' gtd-row-declined' if e.is_declined else '' }}">
+      {% if e.is_declined %}
+      <span class="gtd-status-badge badge badge-red gtd-status-badge-disabled" title="Odrzucone spotkanie — nie można zmienić statusu">TODO</span>
+      {% else %}
       <span class="gtd-status-badge badge {{ 'badge-green' if e.is_done else 'badge-red' }}"
             onclick="gtdToggleGcalDone({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ 'false' if e.is_done else 'true' }})">{{ 'DONE' if e.is_done else 'TODO' }}</span>
-      <strong{% if e.is_done %} style="text-decoration:line-through"{% endif %}>{{ e.title }}</strong>
+      {% endif %}
+      <strong{% if e.is_done or e.is_declined %} style="text-decoration:line-through"{% endif %}>{{ e.title }}</strong>
+      {% if e.is_declined %}<span class="badge badge-red" style="margin-left:.4rem" title="Odrzucone w Google Calendar">✕ odrzucone</span>{% endif %}
       <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
       {% if e.project_title %}
       <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer"

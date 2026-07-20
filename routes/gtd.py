@@ -145,13 +145,16 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         project_id = meta.get('project_id')
         crm_contact_id = meta.get('crm_contact_id')
         crm_company_id = meta.get('crm_company_id')
+        self_attendee = next((a for a in e.get('attendees') or [] if a.get('self')), None)
+        is_declined = e.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
         by_day.setdefault(d, []).append({
             'id': event_id,
             'date': d.isoformat(),
-            'title': e.get('summary') or '(bez tytułu)',
+            'title': e.get('summary') or ('🔒 Wydarzenie prywatne' if e.get('visibility') == 'private' else '(bez tytułu)'),
             'time': time_label,
             'duration_min': duration_min,
             'is_done': meta.get('is_done', False),
+            'is_declined': is_declined,
             'project_id': project_id,
             'project_title': project_titles.get(project_id) if project_id else None,
             'crm_contact_id': crm_contact_id,
@@ -475,6 +478,13 @@ def api_set_status(task_id):
 def api_gcal_event_done(event_id):
     data = request.get_json(silent=True) or {}
     done = bool(data.get('done'))
+    client, calendar_id = _gcal_read_client_and_calendar()
+    if client:
+        event = client.get_event(calendar_id, event_id)
+        self_attendee = next((a for a in event.get('attendees') or [] if a.get('self')), None)
+        is_declined = event.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
+        if is_declined:
+            return jsonify({'status': 'error', 'message': 'Nie można zmienić statusu odrzuconego spotkania.'})
     if done:
         event_date = data.get('event_date')
         if not event_date:

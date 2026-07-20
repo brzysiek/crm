@@ -2239,6 +2239,14 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   border-left-color: var(--success);
   background: var(--success-bg);
 }
+.gtd-timeline-card.gtd-gcal-card.gtd-row-declined {
+  border-left-color: var(--error);
+  background: var(--error-bg);
+}
+.gtd-status-badge-disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
 
 .gtd-day-section {
   border: 1px solid var(--border);
