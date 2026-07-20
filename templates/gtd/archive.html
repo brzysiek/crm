@@ -36,7 +36,7 @@
       {% else %}
       {% set p = item.project %}
       <tr data-project-id="{{ p.id }}" class="gtd-archive-project-row{{ ' gtd-row-done' if p.status == 'done' else '' }}"
-          onclick="gtdToggleArchiveProject({{ p.id }})">
+          title="Rozwiń/zwiń podzadania" onclick="gtdToggleArchiveProject({{ p.id }})">
         <td class="col-checkbox">
           <span class="gtd-archive-toggle-icon">▸</span>
         </td>
