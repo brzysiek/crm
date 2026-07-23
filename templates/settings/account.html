@@ -1,0 +1,34 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<h2>Moje konto</h2>
+
+<div class="settings-section">
+  <h3>Dane konta</h3>
+  <p class="text-muted">
+    Login: <code>{{ user.username }}</code><br>
+    Imię i nazwisko: {{ user.full_name }}
+  </p>
+</div>
+
+{# ── Zmiana hasła ──────────────────────────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Zmień hasło</h3>
+  <form method="post" action="{{ url_for('settings.account') }}">
+    <div class="form-group">
+      <label for="new_password">Nowe hasło</label>
+      <input type="password" id="new_password" name="new_password" required
+             autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label for="new_password2">Powtórz nowe hasło</label>
+      <input type="password" id="new_password2" name="new_password2" required
+             autocomplete="new-password">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zmień hasło</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

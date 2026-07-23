@@ -1,5 +1,5 @@
 from flask import (Blueprint, flash, redirect,
-                   render_template, request, url_for)
+                   render_template, request, session, url_for)
 
 from models.settings import get_all_settings
 
@@ -9,6 +9,27 @@ bp = Blueprint('settings', __name__, url_prefix='/settings')
 @bp.route('/')
 def index():
     return redirect(url_for('settings.general'))
+
+
+@bp.route('/account', methods=['GET', 'POST'])
+def account():
+    from models.user import change_password, get_user_by_id
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        new_password2 = request.form.get('new_password2', '')
+
+        if not new_password:
+            flash('Nowe hasło nie może być puste.', 'error')
+        elif new_password != new_password2:
+            flash('Hasła nie są identyczne.', 'error')
+        else:
+            change_password(session['user_id'], new_password)
+            flash('Hasło zostało zmienione.', 'success')
+        return redirect(url_for('settings.account'))
+
+    user = get_user_by_id(session['user_id'])
+    return render_template('settings/account.html', active_tab='account', user=user)
 
 
 @bp.route('/general', methods=['GET', 'POST'])
