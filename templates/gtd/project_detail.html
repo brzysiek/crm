@@ -59,6 +59,7 @@
       {{ task_cells(t) }}
       <td class="col-actions">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
           <button type="button" class="btn btn-outline btn-sm" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
           <button type="button" class="btn btn-ghost btn-sm" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
         </div>
