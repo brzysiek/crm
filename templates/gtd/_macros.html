@@ -75,6 +75,8 @@
       {% elif day_actions %}
       <div class="term-hover-picker">
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
                 onclick="gtdScheduleTomorrow({{ t.id }})">→ Jutro</button>
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
                 onclick="gtdAssignWeek({{ t.id }}, 'this')">→ Ten tydzień</button>
