@@ -121,6 +121,8 @@
       <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
               onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">👤 Przypisz klienta</button>
       {% endif %}
+      <button type="button" class="action-btn" style="margin-left:.4rem" title="Priorytet dnia"
+              onclick="gtdToggleGcalStar({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }})">{{ '★' if e.is_today_priority else '☆' }}</button>
     </div>
   </div>
   {% else %}

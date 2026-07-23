@@ -155,6 +155,7 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
             'duration_min': duration_min,
             'is_done': meta.get('is_done', False),
             'is_declined': is_declined,
+            'is_today_priority': meta.get('is_today_priority', False),
             'project_id': project_id,
             'project_title': project_titles.get(project_id) if project_id else None,
             'crm_contact_id': crm_contact_id,
@@ -211,7 +212,7 @@ def day():
         unscheduled=unscheduled,
         unfinished=unfinished,
         priority_tasks=priority_tasks,
-        today_star_count=task_model.count_today_priority(current),
+        today_star_count=task_model.count_today_priority(current) + gcal_event_model.count_today_priority(current),
         timeline=timeline,
         gcal_error=gcal_error,
     )
@@ -493,6 +494,16 @@ def api_gcal_event_done(event_id):
     else:
         gcal_event_model.mark_undone(event_id)
     return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/gcal_events/<event_id>/toggle_today', methods=['POST'])
+def api_gcal_event_toggle_today(event_id):
+    data = request.get_json(silent=True) or {}
+    event_date = data.get('event_date')
+    if not event_date:
+        return jsonify({'status': 'error', 'message': 'Brak daty wydarzenia.'})
+    new_val = gcal_event_model.toggle_today_priority(event_id, event_date)
+    return jsonify({'status': 'ok', 'is_today_priority': new_val})
 
 
 @bp.route('/api/gtd/gcal_events/<event_id>/project', methods=['POST'])

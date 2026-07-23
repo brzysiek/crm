@@ -4,18 +4,19 @@ from database import get_db
 
 
 def get_event_meta(start_date: date, end_date: date) -> dict:
-    """Zwraca event_id -> {'is_done', 'project_id', 'crm_contact_id', 'crm_company_id'}
-    dla zakresu dat."""
+    """Zwraca event_id -> {'is_done', 'is_today_priority', 'project_id',
+    'crm_contact_id', 'crm_company_id'} dla zakresu dat."""
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            "SELECT event_id, done_at, project_id, crm_contact_id, crm_company_id "
+            "SELECT event_id, done_at, is_today_priority, project_id, crm_contact_id, crm_company_id "
             "FROM gcal_event_done WHERE event_date BETWEEN %s AND %s",
             (start_date, end_date)
         )
         return {
             row['event_id']: {
                 'is_done': row['done_at'] is not None,
+                'is_today_priority': bool(row['is_today_priority']),
                 'project_id': row['project_id'],
                 'crm_contact_id': row['crm_contact_id'],
                 'crm_company_id': row['crm_company_id'],
@@ -56,6 +57,36 @@ def mark_undone(event_id: str) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+def toggle_today_priority(event_id: str, event_date: str) -> bool:
+    """Przełącza gwiazdkę „priorytet dnia” dla wydarzenia z kalendarza. Zwraca nowy stan."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("SELECT is_today_priority FROM gcal_event_done WHERE event_id=%s", (event_id,))
+            row = cur.fetchone()
+            new_val = 0 if (row and row['is_today_priority']) else 1
+            cur.execute(
+                """INSERT INTO gcal_event_done (event_id, event_date, is_today_priority) VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE event_date=VALUES(event_date), is_today_priority=VALUES(is_today_priority)""",
+                (event_id, event_date, new_val)
+            )
+        db.commit()
+        return bool(new_val)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def count_today_priority(day: date) -> int:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) AS cnt FROM gcal_event_done WHERE event_date=%s AND is_today_priority=1",
+            (day,)
+        )
+        return cur.fetchone()['cnt']
 
 
 def set_project(event_id: str, event_date: str, project_id: int | None) -> None:

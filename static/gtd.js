@@ -145,6 +145,17 @@ function gtdToggleGcalDone(eventId, eventDate, done) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdToggleGcalStar(eventId, eventDate) {
+  fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/toggle_today', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_date: eventDate }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdToggleStar(taskId, urlSuffix) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/' + urlSuffix, { method: 'POST' })
     .then(r => r.json())
