@@ -46,6 +46,16 @@
     </div>
   </div>
 
+  <div class="form-group">
+    <label for="deal_type">Typ</label>
+    {% set cur_deal_type = deal.deal_type if deal.deal_type is defined else 'inne' %}
+    <select id="deal_type" name="deal_type">
+      {% for val, label in deal_type_labels.items() %}
+        <option value="{{ val }}" {{ 'selected' if cur_deal_type == val }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
   <div class="form-grid form-grid-2">
     <div class="form-group">
       <label for="start_date">Data rozpoczęcia</label>

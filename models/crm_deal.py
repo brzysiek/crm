@@ -13,14 +13,24 @@ STAGE_BADGE_CLASSES = {
 
 KANBAN_DEFAULT_HIDDEN_STAGES = ['completed', 'lost', 'unqualified']
 
+DEAL_TYPE_LABELS = {
+    'szkolenie': 'Szkolenie', 'ma': 'M&A', 'warsztaty': 'Warsztaty',
+    'prowizja': 'Prowizja', 'partnerstwo': 'Partnerstwo', 'inne': 'Inne',
+}
+
+DEAL_TYPE_BADGE_CLASSES = {
+    'szkolenie': 'badge-blue', 'ma': 'badge-purple', 'warsztaty': 'badge-green',
+    'prowizja': 'badge-yellow', 'partnerstwo': 'badge-lime', 'inne': 'badge-gray',
+}
+
 FIELD_LABELS = {
     'name': 'Nazwa', 'description': 'Opis', 'amount': 'Kwota', 'stage': 'Etap',
-    'start_date': 'Data rozpoczęcia', 'end_date': 'Data zakończenia',
+    'deal_type': 'Typ', 'start_date': 'Data rozpoczęcia', 'end_date': 'Data zakończenia',
 }
 
 
 def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
-                   search: str = None, stage: str = None,
+                   search: str = None, stage: str = None, deal_type: str = None,
                    company_id: int = None, contact_id: int = None) -> list[dict]:
     allowed_sort = {'name', 'amount', 'stage', 'start_date', 'end_date', 'created_at'}
     if sort not in allowed_sort:
@@ -37,6 +47,9 @@ def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
     if stage:
         sql += " AND d.stage = %s"
         params.append(stage)
+    if deal_type:
+        sql += " AND d.deal_type = %s"
+        params.append(deal_type)
     if company_id:
         sql += " AND d.company_id = %s"
         params.append(company_id)
@@ -75,13 +88,13 @@ def create_deal(data: dict, user_id: int | None) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_deals
-                   (name, description, amount, company_id, contact_id, stage,
+                   (name, description, amount, company_id, contact_id, stage, deal_type,
                     start_date, end_date, owner_user_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['name'], data.get('description') or None, data.get('amount') or None,
                     data.get('company_id') or None, data.get('contact_id') or None,
-                    data.get('stage', 'new'), data.get('start_date') or None,
+                    data.get('stage', 'new'), data.get('deal_type', 'inne'), data.get('start_date') or None,
                     data.get('end_date') or None, data.get('owner_user_id') or None,
                 )
             )
@@ -102,12 +115,12 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
             cur.execute(
                 """UPDATE crm_deals SET
                    name=%s, description=%s, amount=%s, company_id=%s, contact_id=%s,
-                   stage=%s, start_date=%s, end_date=%s, owner_user_id=%s
+                   stage=%s, deal_type=%s, start_date=%s, end_date=%s, owner_user_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('description') or None, data.get('amount') or None,
                     data.get('company_id') or None, data.get('contact_id') or None,
-                    data.get('stage', 'new'), data.get('start_date') or None,
+                    data.get('stage', 'new'), data.get('deal_type', 'inne'), data.get('start_date') or None,
                     data.get('end_date') or None, data.get('owner_user_id') or None,
                     deal_id,
                 )
@@ -121,6 +134,8 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
         new_disp = dict(data)
         old_disp['stage'] = STAGE_LABELS.get(old.get('stage'), old.get('stage'))
         new_disp['stage'] = STAGE_LABELS.get(data.get('stage'), data.get('stage'))
+        old_disp['deal_type'] = DEAL_TYPE_LABELS.get(old.get('deal_type'), old.get('deal_type'))
+        new_disp['deal_type'] = DEAL_TYPE_LABELS.get(data.get('deal_type'), data.get('deal_type'))
         summary = build_diff_summary(old_disp, new_disp, FIELD_LABELS)
         if summary:
             log_history('deal', deal_id, user_id, 'update', summary)

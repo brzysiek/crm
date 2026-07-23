@@ -11,7 +11,7 @@
       <button type="button" class="btn btn-outline" id="deals-view-kanban">▦ Kanban</button>
     </div>
     {{ m.col_toggle('deals-col-btn', 'deals-col-menu', [
-      ('stage', 'Etap'), ('amount', 'Kwota'), ('company_name', 'Firma'),
+      ('stage', 'Etap'), ('deal_type', 'Typ'), ('amount', 'Kwota'), ('company_name', 'Firma'),
       ('contact_name', 'Kontakt'), ('start_date', 'Rozpoczęcie'), ('end_date', 'Zakończenie'),
     ]) }}
     <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">+ Dodaj deal</a>
@@ -27,6 +27,12 @@
       <option value="{{ val }}" {{ 'selected' if filters.stage == val }}>{{ label }}</option>
     {% endfor %}
   </select>
+  <select name="deal_type" class="filter-select">
+    <option value="">Wszystkie typy</option>
+    {% for val, label in deal_type_labels.items() %}
+      <option value="{{ val }}" {{ 'selected' if filters.deal_type == val }}>{{ label }}</option>
+    {% endfor %}
+  </select>
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
@@ -39,6 +45,7 @@
       <tr>
         {{ m.sort_th('Nazwa', 'name', sort, direction, 'crm_deals.list_deals') }}
         {{ m.sort_th('Etap', 'stage', sort, direction, 'crm_deals.list_deals', 'stage') }}
+        <th data-col="deal_type">Typ</th>
         {{ m.sort_th('Kwota', 'amount', sort, direction, 'crm_deals.list_deals', 'amount') }}
         <th data-col="company_name">Firma</th>
         <th data-col="contact_name">Kontakt</th>
@@ -54,6 +61,11 @@
         <td data-col="stage">
           <span class="badge {{ stage_badge_classes[d.stage] }}">
             {{ stage_labels[d.stage] }}
+          </span>
+        </td>
+        <td data-col="deal_type">
+          <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">
+            {{ deal_type_labels[d.deal_type] }}
           </span>
         </td>
         <td data-col="amount" class="text-right nowrap">{{ d.amount|pln if d.amount is not none else '—' }}</td>
@@ -111,6 +123,7 @@
             {% if d.company_id %}
             <div class="kanban-card-sub">{{ d.company_short_name or d.company_name }}</div>
             {% endif %}
+            <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
             <div class="kanban-card-amount">{{ d.amount|pln if d.amount is not none else '—' }}</div>
           </a>
           {% endfor %}

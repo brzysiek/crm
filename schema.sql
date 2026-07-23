@@ -313,6 +313,7 @@ CREATE TABLE IF NOT EXISTS crm_deals (
     company_id     INT NULL,
     contact_id     INT NULL,
     stage          ENUM('new','in_progress','won','in_delivery','completed','someday','lost','unqualified') DEFAULT 'new',
+    deal_type      ENUM('szkolenie','ma','warsztaty','prowizja','partnerstwo','inne') NOT NULL DEFAULT 'inne',
     start_date     DATE,
     end_date       DATE,
     owner_user_id  INT NULL,

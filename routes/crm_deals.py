@@ -2,7 +2,8 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
-from models.crm_deal import (KANBAN_DEFAULT_HIDDEN_STAGES, STAGE_BADGE_CLASSES, STAGE_LABELS,
+from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, KANBAN_DEFAULT_HIDDEN_STAGES,
+                              STAGE_BADGE_CLASSES, STAGE_LABELS,
                               create_deal, delete_deal, get_all_deals, get_deal_by_id, update_deal)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
@@ -25,6 +26,7 @@ def _parse_form(form):
         'company_id': form.get('company_id', type=int),
         'contact_id': form.get('contact_id', type=int),
         'stage': form.get('stage', 'new'),
+        'deal_type': form.get('deal_type', 'inne'),
         'start_date': form.get('start_date', '').strip() or None,
         'end_date': form.get('end_date', '').strip() or None,
         'owner_user_id': form.get('owner_user_id', type=int),
@@ -44,11 +46,14 @@ def list_deals():
     direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
     stage = request.args.get('stage', '')
+    deal_type = request.args.get('deal_type', '')
 
-    deals = get_all_deals(sort=sort, direction=direction, search=search or None, stage=stage or None)
+    deals = get_all_deals(sort=sort, direction=direction, search=search or None,
+                           stage=stage or None, deal_type=deal_type or None)
     return render_template('crm/deals/list.html',
         active_tab='deals', deals=deals, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
-        sort=sort, direction=direction, filters={'search': search, 'stage': stage},
+        deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
+        sort=sort, direction=direction, filters={'search': search, 'stage': stage, 'deal_type': deal_type},
         kanban_default_hidden_stages=KANBAN_DEFAULT_HIDDEN_STAGES,
     )
 
@@ -71,6 +76,7 @@ def new_deal():
                 flash(e, 'error')
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+                deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
                 prefill_company=None, prefill_contact=None,
                 action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
@@ -86,6 +92,7 @@ def new_deal():
         deal['contact_id'] = contact_id
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+        deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
         prefill_company=prefill_company, prefill_contact=prefill_contact,
         action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
@@ -107,6 +114,7 @@ def edit_deal(deal_id):
                 flash(e, 'error')
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+                deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
                 prefill_company=None, prefill_contact=None,
                 action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
@@ -119,6 +127,7 @@ def edit_deal(deal_id):
     prefill_contact = get_contact_by_id(deal['contact_id']) if deal.get('contact_id') else None
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+        deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
         prefill_company=prefill_company, prefill_contact=prefill_contact,
         action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
@@ -138,6 +147,7 @@ def view_deal(deal_id):
 
     return render_template('crm/deals/detail.html',
         active_tab='deals', deal=deal, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+        deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
         notes=notes,
         history=get_history('deal', deal_id),
         add_note_url=url_for('crm_deals.add_note_view', deal_id=deal_id),

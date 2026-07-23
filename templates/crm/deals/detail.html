@@ -8,6 +8,9 @@
       <span class="badge {{ stage_badge_classes[deal.stage] }}">
         {{ stage_labels[deal.stage] }}
       </span>
+      <span class="badge {{ deal_type_badge_classes[deal.deal_type] }}">
+        {{ deal_type_labels[deal.deal_type] }}
+      </span>
     </h1>
     {% if deal.amount is not none %}<div class="detail-subtitle">{{ deal.amount|pln }}</div>{% endif %}
   </div>
@@ -29,6 +32,8 @@
       <dl class="inv-dl">
         <dt>Etap</dt>
         <dd><span class="badge {{ stage_badge_classes[deal.stage] }}">{{ stage_labels[deal.stage] }}</span></dd>
+        <dt>Typ</dt>
+        <dd><span class="badge {{ deal_type_badge_classes[deal.deal_type] }}">{{ deal_type_labels[deal.deal_type] }}</span></dd>
         <dt>Firma</dt>
         <dd>{% if deal.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=deal.company_id) }}">{{ deal.company_short_name or deal.company_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Kontakt</dt>
