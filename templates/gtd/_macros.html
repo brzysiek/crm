@@ -52,16 +52,17 @@
     <div class="term-cell">
       <span>
         {% if t.due_date %}
-          <span class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}">{{ t.due_date|ddmmyyyy }}</span>
+          <a class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}"
+             href="{{ url_for('gtd.day', d=t.due_date.isoformat()) }}">{{ t.due_date|ddmmyyyy }}</a>
         {% endif %}
         {% if t.scheduled_date %}
-          <span class="badge badge-green">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</span>
+          <a class="badge badge-green" href="{{ url_for('gtd.day', d=t.scheduled_date.isoformat()) }}">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</a>
         {% endif %}
         {% if t.planned_week %}
-          <span class="badge badge-blue" title="Blok tygodniowy">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</span>
+          <a class="badge badge-blue" title="Blok tygodniowy" href="{{ url_for('gtd.week', start=t.planned_week.isoformat()) }}">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</a>
         {% endif %}
         {% if t.planned_month %}
-          <span class="badge badge-blue" title="Blok miesięczny">📆 {{ t.planned_month|ddmmyyyy }}</span>
+          <a class="badge badge-blue" title="Blok miesięczny" href="{{ url_for('gtd.month', start=t.planned_month.isoformat()) }}">📆 {{ t.planned_month|ddmmyyyy }}</a>
         {% endif %}
         {% if not t.due_date and not t.scheduled_date and not t.planned_week and not t.planned_month %}<span class="text-muted" style="font-size:.78rem">—</span>{% endif %}
       </span>

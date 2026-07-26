@@ -87,7 +87,7 @@
     {% for e in events %}
     <tr class="{{ 'gtd-row-done' if e.done_at else '' }}">
       <td>📅 {{ e.title }}</td>
-      <td>{{ e.event_date|ddmmyyyy }}</td>
+      <td><a href="{{ url_for('gtd.day', d=e.event_date.isoformat()) }}">{{ e.event_date|ddmmyyyy }}</a></td>
     </tr>
     {% endfor %}
   </tbody>
