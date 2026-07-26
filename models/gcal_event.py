@@ -155,14 +155,15 @@ def get_events_for_crm(contact_id: int | None = None, company_id: int | None = N
 
 
 def get_events_for_project(project_id: int) -> list[dict]:
-    """Surowe metadane wydarzeń kalendarza przypisanych do projektu GTD (bez
-    tytułu — patrz enrich_with_titles) — do sekcji „Wydarzenia" na stronie projektu."""
+    """Metadane wydarzeń kalendarza przypisanych do projektu GTD — do zbudowania
+    edytowalnego harmonogramu na stronie projektu (patrz routes.gtd._project_gcal_day_groups)."""
     if not project_id:
         return []
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            "SELECT event_id, event_date, done_at FROM gcal_event_done "
+            "SELECT event_id, event_date, done_at, is_today_priority, "
+            "crm_contact_id, crm_company_id FROM gcal_event_done "
             "WHERE project_id=%s ORDER BY event_date DESC",
             (project_id,)
         )

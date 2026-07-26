@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, row_class %}
+{% from 'gtd/_macros.html' import task_cells, row_class, timeline_item %}
 {% block title %}{{ project.title }} — Projekt — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -72,26 +72,21 @@
 {% endif %}
 
 <h2 style="margin-top:1.5rem">Wydarzenia</h2>
-{% if not events %}
+{% if not gcal_day_groups %}
   <p class="text-muted">Brak wydarzeń z kalendarza przypisanych do tego projektu.</p>
 {% else %}
-<div class="table-wrapper">
-<table class="data-table">
-  <thead>
-    <tr>
-      <th>Wydarzenie</th>
-      <th>Data</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for e in events %}
-    <tr class="{{ 'gtd-row-done' if e.done_at else '' }}">
-      <td>📅 {{ e.title }}</td>
-      <td><a href="{{ url_for('gtd.day', d=e.event_date.isoformat()) }}">{{ e.event_date|ddmmyyyy }}</a></td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% for group in gcal_day_groups %}
+<div class="gtd-day-section">
+  <h3 class="gtd-day-toggle" onclick="this.closest('.gtd-day-section').classList.toggle('gtd-day-collapsed')">
+    <span class="gtd-day-toggle-icon">▾</span>
+    <a href="{{ url_for('gtd.day', d=group.date.isoformat()) }}" onclick="event.stopPropagation()">{{ group.label }}</a>
+  </h3>
+  <div class="gtd-day-body">
+    <div class="gtd-timeline">
+      {% for item in group.timeline %}{{ timeline_item(item) }}{% endfor %}
+    </div>
+  </div>
 </div>
+{% endfor %}
 {% endif %}
 {% endblock %}

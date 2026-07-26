@@ -98,6 +98,36 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
 WARSAW_TZ = ZoneInfo('Europe/Warsaw')
 
 
+def _parse_gcal_raw_event(e: dict) -> dict | None:
+    """Wyciąga datę/godzinę/czas trwania/status odrzucenia z surowego wydarzenia
+    Google Calendar — współdzielone między widokiem dnia/tygodnia/miesiąca
+    a harmonogramem wydarzeń na stronie projektu."""
+    start_info = e.get('start', {})
+    end_info = e.get('end', {})
+    duration_min = None
+    if start_info.get('dateTime'):
+        dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
+        d = dt.date()
+        time_label = dt.strftime('%H:%M')
+        if end_info.get('dateTime'):
+            end_dt = datetime.fromisoformat(end_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
+            duration_min = max(0, int((end_dt - dt).total_seconds()) // 60)
+    elif start_info.get('date'):
+        d = datetime.strptime(start_info['date'], '%Y-%m-%d').date()
+        time_label = None
+    else:
+        return None
+    self_attendee = next((a for a in e.get('attendees') or [] if a.get('self')), None)
+    is_declined = e.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
+    return {
+        'date': d,
+        'time': time_label,
+        'duration_min': duration_min,
+        'is_declined': is_declined,
+        'title': e.get('summary') or ('🔒 Wydarzenie prywatne' if e.get('visibility') == 'private' else '(bez tytułu)'),
+    }
+
+
 def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     """Read-only: wydarzenia z Google Calendar w przedziale [start, end] (włącznie),
     pogrupowane po dniu. Zwraca ({}, None) jeśli integracja nie jest skonfigurowana.
@@ -125,36 +155,22 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     company_names = crm_company_model.get_names_by_ids(list(company_ids)) if company_ids else {}
     by_day: dict = {}
     for e in raw:
-        start_info = e.get('start', {})
-        end_info = e.get('end', {})
-        duration_min = None
-        if start_info.get('dateTime'):
-            dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
-            d = dt.date()
-            time_label = dt.strftime('%H:%M')
-            if end_info.get('dateTime'):
-                end_dt = datetime.fromisoformat(end_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
-                duration_min = max(0, int((end_dt - dt).total_seconds()) // 60)
-        elif start_info.get('date'):
-            d = datetime.strptime(start_info['date'], '%Y-%m-%d').date()
-            time_label = None
-        else:
+        parsed = _parse_gcal_raw_event(e)
+        if not parsed:
             continue
         event_id = e.get('id')
         meta = event_meta.get(event_id, {})
         project_id = meta.get('project_id')
         crm_contact_id = meta.get('crm_contact_id')
         crm_company_id = meta.get('crm_company_id')
-        self_attendee = next((a for a in e.get('attendees') or [] if a.get('self')), None)
-        is_declined = e.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
-        by_day.setdefault(d, []).append({
+        by_day.setdefault(parsed['date'], []).append({
             'id': event_id,
-            'date': d.isoformat(),
-            'title': e.get('summary') or ('🔒 Wydarzenie prywatne' if e.get('visibility') == 'private' else '(bez tytułu)'),
-            'time': time_label,
-            'duration_min': duration_min,
+            'date': parsed['date'].isoformat(),
+            'title': parsed['title'],
+            'time': parsed['time'],
+            'duration_min': parsed['duration_min'],
             'is_done': meta.get('is_done', False),
-            'is_declined': is_declined,
+            'is_declined': parsed['is_declined'],
             'is_today_priority': meta.get('is_today_priority', False),
             'project_id': project_id,
             'project_title': project_titles.get(project_id) if project_id else None,
@@ -166,6 +182,56 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
     return by_day, None
+
+
+def _project_gcal_day_groups(project: dict) -> list[dict]:
+    """Wydarzenia z kalendarza przypisane do projektu, pogrupowane dzień-po-dniu
+    w tym samym formacie co widok dnia — żeby dało się je edytować identycznie
+    (status, priorytet dnia, przypisanie klienta) bezpośrednio na stronie projektu."""
+    rows = gcal_event_model.get_events_for_project(project['id'])
+    if not rows:
+        return []
+    client, calendar_id = _gcal_read_client_and_calendar()
+    if not client:
+        return []
+    contact_ids = {r['crm_contact_id'] for r in rows if r.get('crm_contact_id')}
+    company_ids = {r['crm_company_id'] for r in rows if r.get('crm_company_id')}
+    contact_names = crm_contact_model.get_names_by_ids(list(contact_ids)) if contact_ids else {}
+    company_names = crm_company_model.get_names_by_ids(list(company_ids)) if company_ids else {}
+
+    by_day: dict = {}
+    for r in rows:
+        try:
+            raw = client.get_event(calendar_id, r['event_id'])
+        except Exception:
+            continue
+        parsed = _parse_gcal_raw_event(raw)
+        if not parsed:
+            continue
+        crm_contact_id = r.get('crm_contact_id')
+        crm_company_id = r.get('crm_company_id')
+        by_day.setdefault(parsed['date'], []).append({
+            'id': r['event_id'],
+            'date': parsed['date'].isoformat(),
+            'title': parsed['title'],
+            'time': parsed['time'],
+            'duration_min': parsed['duration_min'],
+            'is_done': r['done_at'] is not None,
+            'is_declined': parsed['is_declined'],
+            'is_today_priority': bool(r.get('is_today_priority')),
+            'project_id': project['id'],
+            'project_title': project['title'],
+            'crm_contact_id': crm_contact_id,
+            'crm_contact_name': contact_names.get(crm_contact_id) if crm_contact_id else None,
+            'crm_company_id': crm_company_id,
+            'crm_company_name': company_names.get(crm_company_id) if crm_company_id else None,
+        })
+
+    groups = []
+    for d in sorted(by_day.keys(), reverse=True):
+        events = sorted(by_day[d], key=lambda e: (e['time'] is None, e['time'] or ''))
+        groups.append({'date': d, 'label': _day_label(d), 'timeline': _build_timeline([], events)})
+    return groups
 
 
 def _format_time(value) -> str:
@@ -367,16 +433,10 @@ def project_detail(project_id):
     project = task_model.get_task(project_id)
     if not project or not project['is_project']:
         return redirect(url_for('gtd.projects'))
-    events = [
-        e for e in gcal_event_model.enrich_with_titles(
-            gcal_event_model.get_events_for_project(project_id)
-        )
-        if e.get('title')
-    ]
     return render_template(
         'gtd/project_detail.html', active_tab='projekty',
         project=project, subtasks=task_model.get_project_subtasks(project_id),
-        events=events,
+        gcal_day_groups=_project_gcal_day_groups(project),
     )
 
 
