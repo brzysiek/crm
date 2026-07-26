@@ -154,6 +154,21 @@ def get_events_for_crm(contact_id: int | None = None, company_id: int | None = N
         return cur.fetchall()
 
 
+def get_events_for_project(project_id: int) -> list[dict]:
+    """Surowe metadane wydarzeń kalendarza przypisanych do projektu GTD (bez
+    tytułu — patrz enrich_with_titles) — do sekcji „Wydarzenia" na stronie projektu."""
+    if not project_id:
+        return []
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT event_id, event_date, done_at FROM gcal_event_done "
+            "WHERE project_id=%s ORDER BY event_date DESC",
+            (project_id,)
+        )
+        return cur.fetchall()
+
+
 def enrich_with_titles(events: list[dict]) -> list[dict]:
     """Dogrywa tytuł wydarzenia z Google Calendar — nie przechowujemy go lokalnie,
     tylko metadane (patrz nagłówek modułu). Ciche pominięcie błędu per-wydarzenie

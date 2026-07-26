@@ -367,9 +367,16 @@ def project_detail(project_id):
     project = task_model.get_task(project_id)
     if not project or not project['is_project']:
         return redirect(url_for('gtd.projects'))
+    events = [
+        e for e in gcal_event_model.enrich_with_titles(
+            gcal_event_model.get_events_for_project(project_id)
+        )
+        if e.get('title')
+    ]
     return render_template(
         'gtd/project_detail.html', active_tab='projekty',
         project=project, subtasks=task_model.get_project_subtasks(project_id),
+        events=events,
     )
 
 
