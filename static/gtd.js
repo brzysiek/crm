@@ -17,7 +17,7 @@
     quickInput.value = '';
     quickInput.focus();
     if (document.getElementById('gtdInboxList')) {
-      location.reload();
+      gtdRefreshContent();
     } else {
       showStatus('Dodano do Inbox ✓', false);
     }
@@ -120,6 +120,28 @@
     if (!recording) startRecording(); else stopRecording();
   });
 })();
+
+/* ── Odświeżenie treści strony GTD bez przeładowania (po dodaniu zadania) ──
+   Pobiera aktualny widok przez fetch, podmienia #gtdContent świeżo wyrenderowaną
+   treścią z serwera (ta sama logika co przy zwykłym GET, więc listy/liczniki
+   zostają poprawnie przeliczone) i, jeśli podano, ustawia focus z powrotem
+   w polu dodawania, żeby można było od razu wpisać kolejne zadanie. */
+function gtdRefreshContent(focusInputId) {
+  const container = document.getElementById('gtdContent');
+  if (!container) { location.reload(); return; }
+  fetch(window.location.href)
+    .then(r => r.text())
+    .then(html => {
+      const fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('gtdContent');
+      if (!fresh) { location.reload(); return; }
+      container.innerHTML = fresh.innerHTML;
+      if (focusInputId) {
+        const input = document.getElementById(focusInputId);
+        if (input) input.focus();
+      }
+    })
+    .catch(() => location.reload());
+}
 
 /* ── Akcje na zadaniach (używane przez onclick w widokach listy) ── */
 function gtdToggleDone(taskId, checked, prevStatus) {
@@ -325,7 +347,7 @@ function gtdAddProject(inputId) {
     body: JSON.stringify({ title, is_project: true, status: 'next' }),
   })
     .then(r => r.json())
-    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
 }
 
@@ -362,7 +384,7 @@ function gtdAddSubtask(projectId, inputId) {
     body: JSON.stringify({ title, parent_id: projectId, status: 'next' }),
   })
     .then(r => r.json())
-    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
 }
 
@@ -376,7 +398,7 @@ function gtdAddToDay(dayIso, inputId) {
     body: JSON.stringify({ title, status: 'next', scheduled_date: dayIso }),
   })
     .then(r => r.json())
-    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
 }
 
@@ -400,7 +422,7 @@ function gtdAddToWeek(monday, inputId) {
     })
     .then(result => {
       if (!result) return;
-      if (result.status === 'ok') location.reload();
+      if (result.status === 'ok') gtdRefreshContent(inputId);
       else alert(result.message || 'Błąd.');
     })
     .catch(() => alert('Błąd sieci.'));
@@ -426,7 +448,7 @@ function gtdAddToMonth(monthStart, inputId) {
     })
     .then(result => {
       if (!result) return;
-      if (result.status === 'ok') location.reload();
+      if (result.status === 'ok') gtdRefreshContent(inputId);
       else alert(result.message || 'Błąd.');
     })
     .catch(() => alert('Błąd sieci.'));
