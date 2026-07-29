@@ -141,6 +141,21 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
             log_history('deal', deal_id, user_id, 'update', summary)
 
 
+def update_deal_stage(deal_id: int, stage: str, user_id: int | None) -> None:
+    old = get_deal_by_id(deal_id)
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_deals SET stage=%s WHERE id=%s", (stage, deal_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if old and old.get('stage') != stage:
+        log_history('deal', deal_id, user_id, 'update',
+                     f"Etap: „{STAGE_LABELS.get(old.get('stage'), old.get('stage'))}” → „{STAGE_LABELS.get(stage, stage)}”.")
+
+
 def delete_deal(deal_id: int, user_id: int | None) -> None:
     deal = get_deal_by_id(deal_id)
     db = get_db()

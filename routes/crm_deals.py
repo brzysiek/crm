@@ -1,10 +1,11 @@
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
 from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, KANBAN_DEFAULT_HIDDEN_STAGES,
                               STAGE_BADGE_CLASSES, STAGE_LABELS,
-                              create_deal, delete_deal, get_all_deals, get_deal_by_id, update_deal)
+                              create_deal, delete_deal, get_all_deals, get_deal_by_id, update_deal,
+                              update_deal_stage)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
@@ -157,6 +158,19 @@ def view_deal(deal_id):
         note_type_labels=NOTE_TYPE_LABELS,
         history_badge_labels=HISTORY_BADGE_LABELS,
     )
+
+
+@bp.route('/<int:deal_id>/stage', methods=['POST'])
+def api_set_stage(deal_id):
+    data = request.get_json(silent=True) or {}
+    stage = data.get('stage', '')
+    if stage not in STAGE_LABELS:
+        return jsonify({'status': 'error', 'message': 'Nieprawidłowy etap.'}), 400
+    update_deal_stage(deal_id, stage, session.get('user_id'))
+    return jsonify({
+        'status': 'ok', 'stage': stage,
+        'label': STAGE_LABELS[stage], 'badge_class': STAGE_BADGE_CLASSES[stage],
+    })
 
 
 @bp.route('/<int:deal_id>/delete', methods=['POST'])

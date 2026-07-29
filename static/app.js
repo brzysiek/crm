@@ -1392,3 +1392,156 @@ function initKanbanStageToggle(defaultHidden) {
     })
     .catch(() => {});
 }
+
+/* ── CRM: zmiana etapu deala z popupu po kliknięciu w badge (widok listy) ───── */
+function initDealStagePicker() {
+  const table = document.getElementById('deals-table');
+  if (!table) return;
+
+  let openMenu = null;
+
+  function closeOpenMenu() {
+    if (openMenu) openMenu.classList.remove('open');
+    openMenu = null;
+  }
+
+  table.addEventListener('click', e => {
+    const trigger = e.target.closest('.stage-picker-trigger');
+    const item = e.target.closest('.stage-picker-item');
+
+    if (trigger) {
+      e.stopPropagation();
+      const picker = trigger.closest('.stage-picker');
+      const menu = picker.querySelector('.stage-picker-menu');
+      if (menu === openMenu) {
+        closeOpenMenu();
+      } else {
+        closeOpenMenu();
+        menu.classList.add('open');
+        openMenu = menu;
+      }
+      return;
+    }
+
+    if (item) {
+      e.stopPropagation();
+      const picker = item.closest('.stage-picker');
+      const dealId = picker.dataset.dealId;
+      const stage = item.dataset.stage;
+      const menu = picker.querySelector('.stage-picker-menu');
+      const btn = picker.querySelector('.stage-picker-trigger');
+      if (item.classList.contains('active')) { closeOpenMenu(); return; }
+
+      fetch(window.API_BASE + '/crm/deals/' + dealId + '/stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status !== 'ok') { alert(data.message || 'Nie udało się zmienić etapu.'); return; }
+          btn.className = 'badge ' + data.badge_class + ' badge-btn stage-picker-trigger';
+          btn.textContent = data.label;
+          menu.querySelectorAll('.stage-picker-item').forEach(it => {
+            it.classList.toggle('active', it.dataset.stage === stage);
+          });
+        })
+        .catch(() => alert('Błąd sieci — nie udało się zmienić etapu.'))
+        .finally(closeOpenMenu);
+      return;
+    }
+  });
+
+  document.addEventListener('click', () => closeOpenMenu());
+}
+
+/* ── CRM: przeciąganie kafelków między kolumnami w widoku Kanban (Deale) ────── */
+function initDealsKanbanDragDrop() {
+  const board = document.getElementById('deals-kanban-view');
+  if (!board) return;
+
+  function formatPln(value) {
+    const formatted = (Number(value) || 0).toLocaleString('pl-PL', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2,
+    });
+    return formatted + ' zł';
+  }
+
+  function updateColumnTotal(column) {
+    const total = Array.from(column.querySelectorAll('.kanban-card'))
+      .reduce((sum, card) => sum + (parseFloat(card.dataset.amount) || 0), 0);
+    const totalEl = column.querySelector('.kanban-column-total');
+    if (totalEl) totalEl.textContent = formatPln(total);
+  }
+
+  function ensureEmptyState(column) {
+    const body = column.querySelector('.kanban-column-body');
+    if (body.querySelector('.kanban-card')) {
+      const empty = body.querySelector('.kanban-empty');
+      if (empty) empty.remove();
+    } else if (!body.querySelector('.kanban-empty')) {
+      const p = document.createElement('p');
+      p.className = 'text-muted small kanban-empty';
+      p.style.padding = '.4rem .2rem';
+      p.textContent = 'Brak deali.';
+      body.appendChild(p);
+    }
+  }
+
+  let dragged = null;
+
+  board.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragged = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.dealId);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+      board.querySelectorAll('.kanban-column-body.drag-over').forEach(b => b.classList.remove('drag-over'));
+    });
+  });
+
+  board.querySelectorAll('.kanban-column-body').forEach(body => {
+    body.addEventListener('dragover', e => {
+      if (!dragged) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      body.classList.add('drag-over');
+    });
+    body.addEventListener('dragleave', e => {
+      if (!body.contains(e.relatedTarget)) body.classList.remove('drag-over');
+    });
+    body.addEventListener('drop', e => {
+      e.preventDefault();
+      body.classList.remove('drag-over');
+      if (!dragged) return;
+
+      const sourceColumn = dragged.closest('.kanban-column');
+      const targetColumn = body.closest('.kanban-column');
+      if (sourceColumn === targetColumn) return;
+
+      const dealId = dragged.dataset.dealId;
+      const stage = targetColumn.dataset.stage;
+      const card = dragged;
+
+      fetch(window.API_BASE + '/crm/deals/' + dealId + '/stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status !== 'ok') { alert(data.message || 'Nie udało się zmienić etapu.'); return; }
+          body.appendChild(card);
+          ensureEmptyState(sourceColumn);
+          ensureEmptyState(targetColumn);
+          updateColumnTotal(sourceColumn);
+          updateColumnTotal(targetColumn);
+        })
+        .catch(() => alert('Błąd sieci — nie udało się zmienić etapu.'));
+    });
+  });
+}

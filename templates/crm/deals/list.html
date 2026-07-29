@@ -59,9 +59,18 @@
       <tr>
         <td><a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}">{{ d.name }}</a></td>
         <td data-col="stage">
-          <span class="badge {{ stage_badge_classes[d.stage] }}">
-            {{ stage_labels[d.stage] }}
-          </span>
+          <div class="stage-picker" data-deal-id="{{ d.id }}">
+            <button type="button" class="badge {{ stage_badge_classes[d.stage] }} badge-btn stage-picker-trigger">
+              {{ stage_labels[d.stage] }}
+            </button>
+            <div class="stage-picker-menu">
+              {% for val, label in stage_labels.items() %}
+              <div class="stage-picker-item {{ 'active' if val == d.stage }}" data-stage="{{ val }}">
+                <span class="badge {{ stage_badge_classes[val] }}">{{ label }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
         </td>
         <td data-col="deal_type">
           <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">
@@ -118,7 +127,8 @@
       <div class="kanban-column-body">
         {% if stage_deals %}
           {% for d in stage_deals %}
-          <a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}" class="kanban-card">
+          <a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}" class="kanban-card"
+             draggable="true" data-deal-id="{{ d.id }}" data-amount="{{ d.amount or 0 }}">
             <div class="kanban-card-title">{{ d.name }}</div>
             {% if d.company_id %}
             <div class="kanban-card-sub">{{ d.company_short_name or d.company_name }}</div>
@@ -128,7 +138,7 @@
           </a>
           {% endfor %}
         {% else %}
-          <p class="text-muted small" style="padding:.4rem .2rem">Brak deali.</p>
+          <p class="text-muted small kanban-empty" style="padding:.4rem .2rem">Brak deali.</p>
         {% endif %}
       </div>
     </div>
@@ -148,5 +158,7 @@
 initColumnToggle('deals-table', 'crm_deals_columns', 'deals-col-btn', 'deals-col-menu');
 initDealsViewToggle();
 initKanbanStageToggle({{ kanban_default_hidden_stages|tojson }});
+initDealStagePicker();
+initDealsKanbanDragDrop();
 </script>
 {% endblock %}
