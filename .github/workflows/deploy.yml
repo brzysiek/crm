@@ -1,0 +1,25 @@
+name: Deploy to cyberfolks
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull and restart app on server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/brzychu/crm
+            git pull origin main
+            source /home/brzychu/virtualenv/crm/3.13/bin/activate
+            pip install -r requirements.txt
+            mkdir -p tmp
+            touch tmp/restart.txt
