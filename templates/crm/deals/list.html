@@ -73,7 +73,23 @@
             </div>
           </div>
         </td>
-        <td data-col="probability" class="text-right nowrap" data-prob-cell>{{ d.probability ~ '%' if d.probability is not none else '—' }}</td>
+        <td data-col="probability" class="text-right nowrap" data-prob-cell>
+          {% if d.stage in forced_probability_by_stage %}
+            {{ d.probability ~ '%' if d.probability is not none else '—' }}
+          {% else %}
+          <div class="stage-picker probability-picker" data-deal-id="{{ d.id }}">
+            <button type="button" class="badge-btn probability-picker-trigger">
+              {{ d.probability ~ '%' if d.probability is not none else '—' }}
+            </button>
+            <div class="stage-picker-menu">
+              <div class="probability-picker-item {{ 'active' if d.probability is none }}" data-probability="">— nieustawione —</div>
+              {% for val in probability_choices %}
+              <div class="probability-picker-item {{ 'active' if d.probability == val }}" data-probability="{{ val }}">{{ val }}%</div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </td>
         <td data-col="deal_type">
           <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">
             {{ deal_type_labels[d.deal_type] }}
@@ -168,6 +184,7 @@ initColumnToggle('deals-table', 'crm_deals_columns', 'deals-col-btn', 'deals-col
 initDealsViewToggle();
 initKanbanStageToggle({{ kanban_default_hidden_stages|tojson }});
 initDealStagePicker();
+initDealProbabilityPicker();
 initDealsKanbanDragDrop();
 </script>
 {% endblock %}

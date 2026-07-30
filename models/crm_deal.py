@@ -171,6 +171,28 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
             log_history('deal', deal_id, user_id, 'update', summary)
 
 
+def update_deal_probability(deal_id: int, probability: int | None, user_id: int | None) -> int | None:
+    old = get_deal_by_id(deal_id)
+    if not old:
+        return None
+    if old.get('stage') in FORCED_PROBABILITY_BY_STAGE:
+        return old.get('probability')
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_deals SET probability=%s WHERE id=%s", (probability, deal_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if old.get('probability') != probability:
+        old_label = f"{old.get('probability')}%" if old.get('probability') is not None else '—'
+        new_label = f"{probability}%" if probability is not None else '—'
+        log_history('deal', deal_id, user_id, 'update',
+                     f"Prawdopodobieństwo: „{old_label}” → „{new_label}”.")
+    return probability
+
+
 def update_deal_stage(deal_id: int, stage: str, user_id: int | None) -> int | None:
     old = get_deal_by_id(deal_id)
     if not old:

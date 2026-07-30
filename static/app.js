@@ -1466,6 +1466,69 @@ function initDealStagePicker() {
   document.addEventListener('click', () => closeOpenMenu());
 }
 
+/* ── CRM: popup zmiany prawdopodobieństwa deala po kliknięciu w wartość (widok listy) ── */
+function initDealProbabilityPicker() {
+  const table = document.getElementById('deals-table');
+  if (!table) return;
+
+  let openMenu = null;
+
+  function closeOpenMenu() {
+    if (openMenu) openMenu.classList.remove('open');
+    openMenu = null;
+  }
+
+  table.addEventListener('click', e => {
+    const trigger = e.target.closest('.probability-picker-trigger');
+    const item = e.target.closest('.probability-picker-item');
+
+    if (trigger) {
+      e.stopPropagation();
+      const picker = trigger.closest('.probability-picker');
+      const menu = picker.querySelector('.stage-picker-menu');
+      if (menu === openMenu) {
+        closeOpenMenu();
+      } else {
+        closeOpenMenu();
+        menu.classList.add('open');
+        openMenu = menu;
+      }
+      return;
+    }
+
+    if (item) {
+      e.stopPropagation();
+      const picker = item.closest('.probability-picker');
+      const dealId = picker.dataset.dealId;
+      const probability = item.dataset.probability;
+      const menu = picker.querySelector('.stage-picker-menu');
+      const btn = picker.querySelector('.probability-picker-trigger');
+      if (item.classList.contains('active')) { closeOpenMenu(); return; }
+
+      fetch(window.API_BASE + '/crm/deals/' + dealId + '/probability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probability: probability || null }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status !== 'ok') { alert(data.message || 'Nie udało się zmienić prawdopodobieństwa.'); return; }
+          btn.textContent = data.probability_label;
+          menu.querySelectorAll('.probability-picker-item').forEach(it => {
+            it.classList.toggle('active', it.dataset.probability === probability);
+          });
+          const row = picker.closest('tr');
+          if (row) setProbClass(row, data.probability_class);
+        })
+        .catch(() => alert('Błąd sieci — nie udało się zmienić prawdopodobieństwa.'))
+        .finally(closeOpenMenu);
+      return;
+    }
+  });
+
+  document.addEventListener('click', () => closeOpenMenu());
+}
+
 /* ── CRM: przeciąganie kafelków między kolumnami w widoku Kanban (Deale) ────── */
 function initDealsKanbanDragDrop() {
   const board = document.getElementById('deals-kanban-view');

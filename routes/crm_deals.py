@@ -2,10 +2,10 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
-from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, KANBAN_DEFAULT_HIDDEN_STAGES,
-                              PROBABILITY_CHOICES, STAGE_BADGE_CLASSES, STAGE_LABELS,
-                              create_deal, delete_deal, get_all_deals, get_deal_by_id,
-                              probability_row_class, update_deal, update_deal_stage)
+from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, FORCED_PROBABILITY_BY_STAGE,
+                              KANBAN_DEFAULT_HIDDEN_STAGES, PROBABILITY_CHOICES, STAGE_BADGE_CLASSES,
+                              STAGE_LABELS, create_deal, delete_deal, get_all_deals, get_deal_by_id,
+                              probability_row_class, update_deal, update_deal_probability, update_deal_stage)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
@@ -58,6 +58,8 @@ def list_deals():
         sort=sort, direction=direction, filters={'search': search, 'stage': stage, 'deal_type': deal_type},
         kanban_default_hidden_stages=KANBAN_DEFAULT_HIDDEN_STAGES,
         probability_row_class=probability_row_class,
+        probability_choices=PROBABILITY_CHOICES,
+        forced_probability_by_stage=FORCED_PROBABILITY_BY_STAGE,
     )
 
 
@@ -179,6 +181,35 @@ def api_set_stage(deal_id):
         'probability': probability,
         'probability_label': f"{probability}%" if probability is not None else '—',
         'probability_class': probability_row_class(stage, probability),
+    })
+
+
+@bp.route('/<int:deal_id>/probability', methods=['POST'])
+def api_set_probability(deal_id):
+    deal = get_deal_by_id(deal_id)
+    if not deal:
+        return jsonify({'status': 'error', 'message': 'Deal nie istnieje.'}), 404
+    if deal['stage'] in FORCED_PROBABILITY_BY_STAGE:
+        return jsonify({'status': 'error', 'message': 'Ten etap wymusza wartość prawdopodobieństwa.'}), 400
+
+    data = request.get_json(silent=True) or {}
+    raw = data.get('probability')
+    if raw in (None, ''):
+        probability = None
+    else:
+        try:
+            probability = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({'status': 'error', 'message': 'Nieprawidłowa wartość.'}), 400
+        if probability not in PROBABILITY_CHOICES:
+            return jsonify({'status': 'error', 'message': 'Nieprawidłowa wartość.'}), 400
+
+    new_probability = update_deal_probability(deal_id, probability, session.get('user_id'))
+    return jsonify({
+        'status': 'ok',
+        'probability': new_probability,
+        'probability_label': f"{new_probability}%" if new_probability is not None else '—',
+        'probability_class': probability_row_class(deal['stage'], new_probability),
     })
 
 
