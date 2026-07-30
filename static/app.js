@@ -1119,6 +1119,21 @@ function clearEntityPicker(pickerId) {
   input.focus();
 }
 
+/* ── Generyczne otwieranie/zamykanie dropdownu (.col-toggle-menu) przyciskiem
+ * i klikiem poza nim. Bez żadnej persystencji — stan trzymają same checkboxy/URL. */
+function initDropdownToggle(btnId, menuId) {
+  const btn = document.getElementById(btnId);
+  const menu = document.getElementById(menuId);
+  if (!btn || !menu) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
+  });
+}
+
 /* ── CRM: widoczność kolumn listy (zapamiętana w localStorage + per użytkownik) ──
  * Checkboxy w menu muszą mieć data-col="<nazwa>" odpowiadającą atrybutom
  * data-col="<nazwa>" na <th>/<td> w tabeli. `defaultHidden` to kolumny domyślnie

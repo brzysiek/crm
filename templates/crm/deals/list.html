@@ -21,12 +21,19 @@
 <form class="filter-bar" method="get" action="{{ url_for('crm_deals.list_deals') }}">
   <input type="text" name="search" placeholder="Szukaj nazwy, opisu, firmy…"
          value="{{ filters.search }}" class="filter-input">
-  <select name="stage" class="filter-select">
-    <option value="">Wszystkie etapy</option>
-    {% for val, label in stage_labels.items() %}
-      <option value="{{ val }}" {{ 'selected' if filters.stage == val }}>{{ label }}</option>
-    {% endfor %}
-  </select>
+  <input type="hidden" name="stage_filter" value="1">
+  <div class="col-toggle" id="deals-stage-filter">
+    <button type="button" id="deals-stage-filter-btn" class="btn btn-outline btn-sm">
+      Etapy ({{ filters.stage|length }}) ▾
+    </button>
+    <div id="deals-stage-filter-menu" class="col-toggle-menu">
+      {% for val, label in stage_labels.items() %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="stage" value="{{ val }}" {{ 'checked' if val in filters.stage }}> {{ label }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
   <select name="deal_type" class="filter-select">
     <option value="">Wszystkie typy</option>
     {% for val, label in deal_type_labels.items() %}
@@ -39,6 +46,7 @@
 
 {% if deals %}
 <div id="deals-list-view">
+{% if list_deals %}
 <div class="table-wrapper">
   <table class="data-table" id="deals-table">
     <thead>
@@ -56,7 +64,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for d in deals %}
+      {% for d in list_deals %}
       <tr class="{{ probability_row_class(d.stage, d.probability) }}">
         <td><a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}">{{ d.name }}</a></td>
         <td data-col="stage">
@@ -116,7 +124,12 @@
     </tbody>
   </table>
 </div>
-<div class="table-count">{{ deals|length }} deali</div>
+<div class="table-count">{{ list_deals|length }} deali</div>
+{% else %}
+<div class="empty-state">
+  <p>Brak deali dla wybranych etapów.</p>
+</div>
+{% endif %}
 </div>
 
 <div id="deals-kanban-view" style="display:none">
@@ -131,7 +144,7 @@
     </div>
   </div>
   {% set prob_next_dir = 'desc' if sort == 'probability' and direction == 'asc' else 'asc' %}
-  {% set prob_args = request.args.to_dict() %}
+  {% set prob_args = request.args.to_dict(flat=False) %}
   {% set _ = prob_args.update({'sort': 'probability', 'dir': prob_next_dir}) %}
   <a href="{{ url_for('crm_deals.list_deals', **prob_args) }}" class="btn btn-outline btn-sm" style="margin-bottom:.6rem">
     Sortuj wg szansy {% if sort == 'probability' %}<span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}
@@ -181,6 +194,7 @@
 {% block scripts %}
 <script>
 initColumnToggle('deals-table', 'crm_deals_columns', 'deals-col-btn', 'deals-col-menu');
+initDropdownToggle('deals-stage-filter-btn', 'deals-stage-filter-menu');
 initDealsViewToggle();
 initKanbanStageToggle({{ kanban_default_hidden_stages|tojson }});
 initDealStagePicker();

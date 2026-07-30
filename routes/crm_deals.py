@@ -14,6 +14,9 @@ from models.user import get_active_users
 
 bp = Blueprint('crm_deals', __name__, url_prefix='/crm/deals')
 
+# Domyślnie widoczne etapy w widoku listy (nie dotyczy widoku Kanban).
+DEFAULT_LIST_STAGES = ['new', 'in_progress', 'won', 'in_delivery']
+
 
 def _parse_form(form):
     try:
@@ -44,18 +47,30 @@ def _validate(data):
 
 @bp.route('/')
 def list_deals():
-    sort = request.args.get('sort', 'created_at')
-    direction = request.args.get('dir', 'desc')
+    sort = request.args.get('sort', 'stage')
+    direction = request.args.get('dir', 'asc' if sort == 'stage' else 'desc')
     search = request.args.get('search', '')
-    stage = request.args.get('stage', '')
     deal_type = request.args.get('deal_type', '')
 
+    # Znacznik 'stage_filter' odróżnia "formularz filtra wysłany bez zaznaczonych
+    # etapów" (pokaż nic) od "strona wczytana bez parametrów" (pokaż domyślne etapy).
+    if 'stage_filter' in request.args:
+        stage_list = request.args.getlist('stage')
+    else:
+        stage_list = list(DEFAULT_LIST_STAGES)
+
+    # Pełny zbiór dealów (bez filtra etapu) — używany przez widok Kanban, który
+    # pokazuje wszystkie etapy niezależnie od filtra listy.
     deals = get_all_deals(sort=sort, direction=direction, search=search or None,
-                           stage=stage or None, deal_type=deal_type or None)
+                           deal_type=deal_type or None)
+    list_deals_view = [d for d in deals if d['stage'] in stage_list]
+
     return render_template('crm/deals/list.html',
-        active_tab='deals', deals=deals, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+        active_tab='deals', deals=deals, list_deals=list_deals_view,
+        stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
-        sort=sort, direction=direction, filters={'search': search, 'stage': stage, 'deal_type': deal_type},
+        sort=sort, direction=direction, filters={'search': search, 'stage': stage_list, 'deal_type': deal_type},
+        default_list_stages=DEFAULT_LIST_STAGES,
         kanban_default_hidden_stages=KANBAN_DEFAULT_HIDDEN_STAGES,
         probability_row_class=probability_row_class,
         probability_choices=PROBABILITY_CHOICES,

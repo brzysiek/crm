@@ -1,6 +1,6 @@
 {% macro sort_th(label, col, sort, direction, endpoint, col_attr=None) %}
   {% set next_dir = 'desc' if sort == col and direction == 'asc' else 'asc' %}
-  {% set args = request.args.to_dict() %}
+  {% set args = request.args.to_dict(flat=False) %}
   {% set _ = args.update({'sort': col, 'dir': next_dir}) %}
   <th{% if col_attr %} data-col="{{ col_attr }}"{% endif %}>
     <a class="sort-link" href="{{ url_for(endpoint, **args) }}">

@@ -6,6 +6,9 @@ STAGE_LABELS = {
     'completed': 'Zakończony', 'someday': 'Kiedyś', 'lost': 'Przegrany', 'unqualified': 'Niekwalifikowany',
 }
 
+# Kolejność etapów w pipeline — używana do sortowania listy dealów po etapie.
+STAGE_ORDER = list(STAGE_LABELS.keys())
+
 STAGE_BADGE_CLASSES = {
     'new': 'badge-yellow', 'in_progress': 'badge-blue', 'won': 'badge-green', 'in_delivery': 'badge-purple',
     'completed': 'badge-lime', 'someday': 'badge-gray', 'lost': 'badge-red', 'unqualified': 'badge-orange',
@@ -53,7 +56,7 @@ def probability_row_class(stage: str, probability: int | None) -> str:
 
 
 def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
-                   search: str = None, stage: str = None, deal_type: str = None,
+                   search: str = None, stage: str | list[str] = None, deal_type: str = None,
                    company_id: int = None, contact_id: int = None) -> list[dict]:
     allowed_sort = {'name', 'amount', 'stage', 'probability', 'start_date', 'end_date', 'created_at'}
     if sort not in allowed_sort:
@@ -68,8 +71,10 @@ def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
            "LEFT JOIN crm_contacts ct ON ct.id = d.contact_id WHERE 1=1")
     params = []
     if stage:
-        sql += " AND d.stage = %s"
-        params.append(stage)
+        stages = [stage] if isinstance(stage, str) else list(stage)
+        placeholders = ','.join(['%s'] * len(stages))
+        sql += f" AND d.stage IN ({placeholders})"
+        params.extend(stages)
     if deal_type:
         sql += " AND d.deal_type = %s"
         params.append(deal_type)
@@ -83,7 +88,15 @@ def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
         sql += " AND (d.name LIKE %s OR d.description LIKE %s OR co.name LIKE %s)"
         like = f"%{search}%"
         params.extend([like, like, like])
-    sql += f" ORDER BY d.{sort} {direction}, d.id DESC"
+
+    if sort == 'stage':
+        # Sortowanie po etapie w kolejności pipeline'u, w drugiej kolejności zawsze
+        # po malejącym prawdopodobieństwie (niezależnie od kierunku sortowania etapu).
+        stage_placeholders = ','.join(['%s'] * len(STAGE_ORDER))
+        sql += f" ORDER BY FIELD(d.stage, {stage_placeholders}) {direction}, d.probability DESC, d.id DESC"
+        params.extend(STAGE_ORDER)
+    else:
+        sql += f" ORDER BY d.{sort} {direction}, d.id DESC"
 
     with db.cursor() as cur:
         cur.execute(sql, params)
