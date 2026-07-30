@@ -91,6 +91,9 @@
       <button type="button" class="btn btn-primary btn-sm" id="btnBulkAccept">
         Akceptuj zaznaczone
       </button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkAcceptInternal">
+        Akceptuj zaznaczone jako wewnętrzne
+      </button>
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkReject">
         Odrzuć zaznaczone
       </button>
@@ -349,42 +352,52 @@ function clearTxnFilter() {
   applyTxnFilter();
 }
 
+async function runBulkAccept(internal) {
+  const ids = getCheckedIds();
+  if (!ids.length) return;
+  const confirmMsg = internal
+    ? 'Automatycznie utworzyć wydatki/przychody jako WEWNĘTRZNE z ' + ids.length + ' zaznaczonych transakcji?'
+    : 'Automatycznie utworzyć wydatki/przychody z ' + ids.length + ' zaznaczonych transakcji?';
+  if (!confirm(confirmMsg)) return;
+  const el = document.getElementById('bulkResult');
+  opProgress(el, 'Przetwarzanie transakcji…', 0, 0);
+  try {
+    const r = await fetch(API_BASE + '/api/bank/bulk-accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, internal }),
+    });
+    const d = await r.json();
+    el.style.whiteSpace = 'pre-wrap';
+    if (!r.ok || (d.status !== 'ok' && d.status !== 'partial')) {
+      el.className = 'api-result api-error';
+      el.textContent = d.message || (d.errors && d.errors.join('\n')) || 'Błąd przetwarzania.';
+      return;
+    }
+    const msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}`;
+    if (d.errors && d.errors.length) {
+      el.className = 'api-result api-error';
+      el.textContent = msg + `\nBłędy (${d.errors.length}):\n` + d.errors.join('\n');
+    } else {
+      el.className = 'api-result api-ok';
+      el.textContent = msg;
+      setTimeout(() => location.reload(), 1500);
+    }
+  } catch (e) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd żądania: ' + e.message;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   const btnAccept = document.getElementById('btnBulkAccept');
   if (btnAccept) {
-    btnAccept.addEventListener('click', async function () {
-      const ids = getCheckedIds();
-      if (!ids.length) return;
-      if (!confirm('Automatycznie utworzyć wydatki/przychody z ' + ids.length + ' zaznaczonych transakcji?')) return;
-      const el = document.getElementById('bulkResult');
-      opProgress(el, 'Przetwarzanie transakcji…', 0, 0);
-      try {
-        const r = await fetch(API_BASE + '/api/bank/bulk-accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids }),
-        });
-        const d = await r.json();
-        el.style.whiteSpace = 'pre-wrap';
-        if (!r.ok || (d.status !== 'ok' && d.status !== 'partial')) {
-          el.className = 'api-result api-error';
-          el.textContent = d.message || (d.errors && d.errors.join('\n')) || 'Błąd przetwarzania.';
-          return;
-        }
-        const msg = `Utworzono: wydatków ${d.created_expenses}, przychodów ${d.created_incomes}`;
-        if (d.errors && d.errors.length) {
-          el.className = 'api-result api-error';
-          el.textContent = msg + `\nBłędy (${d.errors.length}):\n` + d.errors.join('\n');
-        } else {
-          el.className = 'api-result api-ok';
-          el.textContent = msg;
-          setTimeout(() => location.reload(), 1500);
-        }
-      } catch (e) {
-        el.className = 'api-result api-error';
-        el.textContent = 'Błąd żądania: ' + e.message;
-      }
-    });
+    btnAccept.addEventListener('click', () => runBulkAccept(false));
+  }
+
+  const btnAcceptInternal = document.getElementById('btnBulkAcceptInternal');
+  if (btnAcceptInternal) {
+    btnAcceptInternal.addEventListener('click', () => runBulkAccept(true));
   }
 
   const btnReject = document.getElementById('btnBulkReject');

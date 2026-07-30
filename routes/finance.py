@@ -18,15 +18,17 @@ EXCLUDED_INCOME_CATEGORIES_KEY  = 'dashboard_excluded_income_categories'
 
 
 def _excluded_categories(key: str, valid: list[str]) -> list[str]:
-    """Domyślnie żadna kategoria nie jest wykluczona (wszystko liczone)."""
+    """Domyślnie wykluczona jest tylko kategoria 'wewnętrzne' (dopóki użytkownik
+    sam nie zapisze innego wyboru checkboxów na dashboardzie)."""
+    default = ['wewnętrzne'] if 'wewnętrzne' in valid else []
     saved = get_user_setting(session['user_id'], key)
     if not saved:
-        return []
+        return default
     try:
         excluded = json.loads(saved)
         return [c for c in excluded if c in valid]
     except (ValueError, TypeError):
-        return []
+        return default
 
 MONTHS_PL = {
     1: 'styczeń', 2: 'luty', 3: 'marzec', 4: 'kwiecień',

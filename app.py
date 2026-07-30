@@ -1163,6 +1163,7 @@ def api_bank_bulk_accept():
     ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
     if not ids:
         return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    category = 'wewnętrzne' if data.get('internal') else None
 
     txns = get_bank_transactions_by_ids(ids)
     created_expenses = 0
@@ -1196,6 +1197,7 @@ def api_bank_bulk_accept():
                     'paid_by':            'Auto-import',
                     'payment_method':     'transfer',
                     'source':             txn.get('bank'),
+                    'category':           category,
                 })
                 link_transaction(record_id, txn['id'])
                 created_expenses += 1
@@ -1213,6 +1215,7 @@ def api_bank_bulk_accept():
                     'payment_method':  'transfer',
                     'payment_status':  'paid',
                     'source':          txn.get('bank'),
+                    'category':        category,
                 })
                 link_income_transaction(record_id, txn['id'])
                 created_incomes += 1
@@ -1253,6 +1256,7 @@ def api_bulk_accept():
     ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
     if not ids:
         return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    category = 'wewnętrzne' if data.get('internal') else None
 
     invoices = get_invoices_by_ids(ids)
     created_expenses = 0
@@ -1311,6 +1315,7 @@ def api_bulk_accept():
                     'payment_method': 'transfer' if best_bank else None,
                     'orig_amount':    inv_orig,
                     'orig_currency':  inv_currency if inv_orig else None,
+                    'category':       category,
                 })
                 created_incomes += 1
                 if best:
@@ -1342,6 +1347,7 @@ def api_bulk_accept():
                     'payment_method':     'transfer' if best_bank else None,
                     'orig_amount':        inv_orig,
                     'orig_currency':      inv_currency if inv_orig else None,
+                    'category':           category,
                 })
                 created_expenses += 1
                 if best:
@@ -1672,6 +1678,7 @@ def api_gdrive_bulk_accept():
     ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
     if not ids:
         return jsonify({'status': 'error', 'message': 'Brak ID.'})
+    category = 'wewnętrzne' if data.get('internal') else None
 
     invoices = get_gdrive_invoices_by_ids(ids)
     created_expenses = 0
@@ -1722,6 +1729,7 @@ def api_gdrive_bulk_accept():
                     'payment_method': 'transfer' if best_bank else None,
                     'orig_amount':    inv_orig,
                     'orig_currency':  inv_currency if inv_orig else None,
+                    'category':       category,
                 })
                 created_incomes += 1
                 if best:
@@ -1749,6 +1757,7 @@ def api_gdrive_bulk_accept():
                     'payment_method':     'transfer' if best_bank else None,
                     'orig_amount':        inv_orig,
                     'orig_currency':      inv_currency if inv_orig else None,
+                    'category':           category,
                 })
                 created_expenses += 1
                 if best:

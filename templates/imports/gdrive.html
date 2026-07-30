@@ -92,6 +92,9 @@
       <button type="button" class="btn btn-primary btn-sm" id="btnBulkAccept">
         Akceptuj zaznaczone
       </button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkAcceptInternal">
+        Akceptuj zaznaczone jako wewnętrzne
+      </button>
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkSwapType">
         Zamień przychód/koszt
       </button>
@@ -704,7 +707,7 @@ function toggleSelectAll(cb) {
   updateBulkBar();
 }
 
-async function bulkAction(url, ids, confirmMsg) {
+async function bulkAction(url, ids, confirmMsg, extra = {}) {
   if (!confirm(confirmMsg)) return;
   const el = document.getElementById('apiResult');
   const isReject = url.includes('reject');
@@ -721,7 +724,7 @@ async function bulkAction(url, ids, confirmMsg) {
       const r = await fetch(url, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ids: [ids[i]] }),
+        body:    JSON.stringify({ ids: [ids[i]], ...extra }),
       });
       const d = await r.json();
       if (isReject) {
@@ -908,6 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
   loadInvoiceSuggestions();
 
   const btnAccept = document.getElementById('btnBulkAccept');
+  const btnAcceptInternal = document.getElementById('btnBulkAcceptInternal');
   const btnReject = document.getElementById('btnBulkReject');
   const btnSwapType = document.getElementById('btnBulkSwapType');
   if (btnAccept) {
@@ -915,6 +919,14 @@ document.addEventListener('DOMContentLoaded', function () {
       const ids = getCheckedIds();
       bulkAction(API_BASE + '/api/gdrive/bulk-accept', ids,
         `Automatycznie utwórz wydatki/przychody z ${ids.length} faktur?`);
+    });
+  }
+  if (btnAcceptInternal) {
+    btnAcceptInternal.addEventListener('click', () => {
+      const ids = getCheckedIds();
+      bulkAction(API_BASE + '/api/gdrive/bulk-accept', ids,
+        `Automatycznie utwórz wydatki/przychody jako WEWNĘTRZNE z ${ids.length} faktur?`,
+        { internal: true });
     });
   }
   if (btnReject) {
