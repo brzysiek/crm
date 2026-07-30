@@ -1394,6 +1394,11 @@ function initKanbanStageToggle(defaultHidden) {
 }
 
 /* ── CRM: zmiana etapu deala z popupu po kliknięciu w badge (widok listy) ───── */
+function setProbClass(el, probClass) {
+  Array.from(el.classList).forEach(c => { if (c.startsWith('prob-')) el.classList.remove(c); });
+  el.classList.add(probClass);
+}
+
 function initDealStagePicker() {
   const table = document.getElementById('deals-table');
   if (!table) return;
@@ -1445,6 +1450,12 @@ function initDealStagePicker() {
           menu.querySelectorAll('.stage-picker-item').forEach(it => {
             it.classList.toggle('active', it.dataset.stage === stage);
           });
+          const row = picker.closest('tr');
+          if (row) {
+            setProbClass(row, data.probability_class);
+            const probCell = row.querySelector('[data-prob-cell]');
+            if (probCell) probCell.textContent = data.probability_label;
+          }
         })
         .catch(() => alert('Błąd sieci — nie udało się zmienić etapu.'))
         .finally(closeOpenMenu);
@@ -1536,6 +1547,9 @@ function initDealsKanbanDragDrop() {
         .then(data => {
           if (data.status !== 'ok') { alert(data.message || 'Nie udało się zmienić etapu.'); return; }
           body.appendChild(card);
+          setProbClass(card, data.probability_class);
+          const probLabel = card.querySelector('[data-prob-label]');
+          if (probLabel) probLabel.textContent = data.probability_label;
           ensureEmptyState(sourceColumn);
           ensureEmptyState(targetColumn);
           updateColumnTotal(sourceColumn);

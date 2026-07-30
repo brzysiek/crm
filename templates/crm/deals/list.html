@@ -11,7 +11,7 @@
       <button type="button" class="btn btn-outline" id="deals-view-kanban">▦ Kanban</button>
     </div>
     {{ m.col_toggle('deals-col-btn', 'deals-col-menu', [
-      ('stage', 'Etap'), ('deal_type', 'Typ'), ('amount', 'Kwota'), ('company_name', 'Firma'),
+      ('stage', 'Etap'), ('probability', 'Szansa'), ('deal_type', 'Typ'), ('amount', 'Kwota'), ('company_name', 'Firma'),
       ('contact_name', 'Kontakt'), ('start_date', 'Rozpoczęcie'), ('end_date', 'Zakończenie'),
     ]) }}
     <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">+ Dodaj deal</a>
@@ -45,6 +45,7 @@
       <tr>
         {{ m.sort_th('Nazwa', 'name', sort, direction, 'crm_deals.list_deals') }}
         {{ m.sort_th('Etap', 'stage', sort, direction, 'crm_deals.list_deals', 'stage') }}
+        {{ m.sort_th('Szansa', 'probability', sort, direction, 'crm_deals.list_deals', 'probability') }}
         <th data-col="deal_type">Typ</th>
         {{ m.sort_th('Kwota', 'amount', sort, direction, 'crm_deals.list_deals', 'amount') }}
         <th data-col="company_name">Firma</th>
@@ -56,7 +57,7 @@
     </thead>
     <tbody>
       {% for d in deals %}
-      <tr>
+      <tr class="{{ probability_row_class(d.stage, d.probability) }}">
         <td><a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}">{{ d.name }}</a></td>
         <td data-col="stage">
           <div class="stage-picker" data-deal-id="{{ d.id }}">
@@ -72,6 +73,7 @@
             </div>
           </div>
         </td>
+        <td data-col="probability" class="text-right nowrap" data-prob-cell>{{ d.probability ~ '%' if d.probability is not none else '—' }}</td>
         <td data-col="deal_type">
           <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">
             {{ deal_type_labels[d.deal_type] }}
@@ -112,6 +114,12 @@
       {% endfor %}
     </div>
   </div>
+  {% set prob_next_dir = 'desc' if sort == 'probability' and direction == 'asc' else 'asc' %}
+  {% set prob_args = request.args.to_dict() %}
+  {% set _ = prob_args.update({'sort': 'probability', 'dir': prob_next_dir}) %}
+  <a href="{{ url_for('crm_deals.list_deals', **prob_args) }}" class="btn btn-outline btn-sm" style="margin-bottom:.6rem">
+    Sortuj wg szansy {% if sort == 'probability' %}<span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}
+  </a>
   <div class="kanban-board">
     {% for stage_val, stage_label in stage_labels.items() %}
     {% set stage_deals = deals|selectattr('stage', 'equalto', stage_val)|list %}
@@ -127,7 +135,7 @@
       <div class="kanban-column-body">
         {% if stage_deals %}
           {% for d in stage_deals %}
-          <a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}" class="kanban-card"
+          <a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}" class="kanban-card {{ probability_row_class(d.stage, d.probability) }}"
              draggable="true" data-deal-id="{{ d.id }}" data-amount="{{ d.amount or 0 }}">
             <div class="kanban-card-title">{{ d.name }}</div>
             {% if d.company_id %}
@@ -135,6 +143,7 @@
             {% endif %}
             <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
             <div class="kanban-card-amount">{{ d.amount|pln if d.amount is not none else '—' }}</div>
+            <div class="kanban-card-prob" data-prob-label>{{ d.probability ~ '%' if d.probability is not none else '—' }}</div>
           </a>
           {% endfor %}
         {% else %}

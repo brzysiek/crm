@@ -39,6 +39,7 @@
         <dt>Kontakt</dt>
         <dd>{% if deal.contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=deal.contact_id) }}">{{ deal.contact_first_name }} {{ deal.contact_last_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Kwota</dt><dd>{{ deal.amount|pln if deal.amount is not none else '—' }}</dd>
+        <dt>Prawdopodobieństwo</dt><dd>{{ deal.probability ~ '%' if deal.probability is not none else '—' }}</dd>
         <dt>Data rozpoczęcia</dt><dd>{{ deal.start_date|ddmmyyyy if deal.start_date else '—' }}</dd>
         <dt>Data zakończenia</dt><dd>{{ deal.end_date|ddmmyyyy if deal.end_date else '—' }}</dd>
         <dt>Opis</dt><dd>{{ deal.description or '—' }}</dd>

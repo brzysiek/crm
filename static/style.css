@@ -2064,6 +2064,20 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .kanban-card-title  { font-weight: 600; font-size: .82rem; color: var(--text-primary); margin-bottom: .15rem; }
 .kanban-card-sub    { font-size: .75rem; color: var(--text-muted); margin-bottom: .25rem; }
 .kanban-card-amount { font-size: .85rem; font-weight: 700; color: var(--primary); }
+.kanban-card-prob   { font-size: .72rem; font-weight: 600; color: var(--text-muted); margin-top: .2rem; }
+
+.kanban-card.prob-5   { background: #f6cfcb; }
+.kanban-card.prob-20  { background: #f6dccb; }
+.kanban-card.prob-40  { background: #f6edcb; }
+.kanban-card.prob-60  { background: #edf6cb; }
+.kanban-card.prob-80  { background: #dcf6cb; }
+.kanban-card.prob-100 { background: #cbf6cb; }
+.kanban-card.prob-none { background: #e0cbf6; }
+.kanban-card.prob-lost { background: #7f1d1d; }
+.kanban-card.prob-lost .kanban-card-title,
+.kanban-card.prob-lost .kanban-card-sub,
+.kanban-card.prob-lost .kanban-card-amount,
+.kanban-card.prob-lost .kanban-card-prob { color: #fecaca; }
 
 .kanban-column-body.drag-over {
   background: var(--surface-secondary);
@@ -2261,6 +2275,16 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 
 .data-table tr.gtd-row-done td { background: var(--success-bg); }
 .data-table tr.gtd-row-overdue td { background: var(--error-bg); }
+
+.data-table tr.prob-5 td   { background: #f6cfcb; }
+.data-table tr.prob-20 td  { background: #f6dccb; }
+.data-table tr.prob-40 td  { background: #f6edcb; }
+.data-table tr.prob-60 td  { background: #edf6cb; }
+.data-table tr.prob-80 td  { background: #dcf6cb; }
+.data-table tr.prob-100 td { background: #cbf6cb; }
+.data-table tr.prob-none td { background: #e0cbf6; }
+.data-table tr.prob-lost td { background: #7f1d1d; color: #fecaca; }
+.data-table tr.prob-lost td a { color: #fecaca; }
 .gtd-timeline-card.gtd-row-done { background: var(--success-bg); }
 .gtd-timeline-card.gtd-row-overdue { background: var(--error-bg); }
 

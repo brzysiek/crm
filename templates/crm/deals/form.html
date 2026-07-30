@@ -46,6 +46,20 @@
     </div>
   </div>
 
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="probability">Prawdopodobieństwo</label>
+      {% set cur_probability = deal.probability|int if deal.probability else None %}
+      <select id="probability" name="probability">
+        <option value="">— nieustawione —</option>
+        {% for val in probability_choices %}
+          <option value="{{ val }}" {{ 'selected' if cur_probability == val }}>{{ val }}%</option>
+        {% endfor %}
+      </select>
+      <p class="text-muted small" style="margin-top:.3rem">Dla etapów Wygrany / W toku projektu / Zakończony zawsze 100%, dla Przegranego zawsze 0% — niezależnie od wyboru.</p>
+    </div>
+  </div>
+
   <div class="form-group">
     <label for="deal_type">Typ</label>
     {% set cur_deal_type = deal.deal_type if deal.deal_type is defined else 'inne' %}
@@ -123,5 +137,33 @@
 <script>
 initEntityPicker('company-picker', '/api/crm/companies/search');
 initEntityPicker('contact-picker', '/api/crm/contacts/search');
+
+(function() {
+  var stageSel = document.getElementById('stage');
+  var probSel = document.getElementById('probability');
+  var forced = { won: 100, in_delivery: 100, completed: 100, lost: 0 };
+  function apply() {
+    var tempOpt = probSel.querySelector('option[data-temp]');
+    if (tempOpt) tempOpt.remove();
+    var f = forced[stageSel.value];
+    if (f === undefined) {
+      probSel.disabled = false;
+      probSel.title = '';
+      return;
+    }
+    if (f === 0) {
+      var opt = document.createElement('option');
+      opt.value = '0';
+      opt.textContent = '0%';
+      opt.dataset.temp = '1';
+      probSel.insertBefore(opt, probSel.firstChild);
+    }
+    probSel.value = String(f);
+    probSel.disabled = true;
+    probSel.title = 'Wymuszone przez etap: ' + f + '%';
+  }
+  stageSel.addEventListener('change', apply);
+  apply();
+})();
 </script>
 {% endblock %}

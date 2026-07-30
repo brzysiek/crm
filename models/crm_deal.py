@@ -13,6 +13,11 @@ STAGE_BADGE_CLASSES = {
 
 KANBAN_DEFAULT_HIDDEN_STAGES = ['completed', 'lost', 'unqualified']
 
+PROBABILITY_CHOICES = [5, 20, 40, 60, 80, 100]
+
+# Etapy, dla których prawdopodobieństwo jest wymuszone i niezależne od wyboru użytkownika.
+FORCED_PROBABILITY_BY_STAGE = {'won': 100, 'in_delivery': 100, 'completed': 100, 'lost': 0}
+
 DEAL_TYPE_LABELS = {
     'szkolenie': 'Szkolenie', 'ma': 'M&A', 'warsztaty': 'Warsztaty',
     'prowizja': 'Prowizja', 'partnerstwo': 'Partnerstwo', 'inne': 'Inne',
@@ -25,14 +30,32 @@ DEAL_TYPE_BADGE_CLASSES = {
 
 FIELD_LABELS = {
     'name': 'Nazwa', 'description': 'Opis', 'amount': 'Kwota', 'stage': 'Etap',
-    'deal_type': 'Typ', 'start_date': 'Data rozpoczęcia', 'end_date': 'Data zakończenia',
+    'deal_type': 'Typ', 'probability': 'Prawdopodobieństwo',
+    'start_date': 'Data rozpoczęcia', 'end_date': 'Data zakończenia',
 }
+
+
+def resolve_probability(stage: str, probability: int | None) -> int | None:
+    """Dla wygranych/zakończonych/w toku wymusza 100%, dla przegranych 0% —
+    niezależnie od tego, co wybrał użytkownik."""
+    return FORCED_PROBABILITY_BY_STAGE.get(stage, probability)
+
+
+def probability_row_class(stage: str, probability: int | None) -> str:
+    """Klasa CSS pastelowego tła rzędu/kafelka: czerwień (0%) → zieleń (100%),
+    fiolet dla nieustawionej wartości, ciemny bordowy dla przegranych."""
+    if stage == 'lost':
+        return 'prob-lost'
+    if probability is None:
+        return 'prob-none'
+    nearest = min(PROBABILITY_CHOICES, key=lambda x: abs(x - probability))
+    return f'prob-{nearest}'
 
 
 def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
                    search: str = None, stage: str = None, deal_type: str = None,
                    company_id: int = None, contact_id: int = None) -> list[dict]:
-    allowed_sort = {'name', 'amount', 'stage', 'start_date', 'end_date', 'created_at'}
+    allowed_sort = {'name', 'amount', 'stage', 'probability', 'start_date', 'end_date', 'created_at'}
     if sort not in allowed_sort:
         sort = 'created_at'
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
@@ -83,18 +106,20 @@ def get_deal_by_id(deal_id: int) -> dict | None:
 
 
 def create_deal(data: dict, user_id: int | None) -> int:
+    stage = data.get('stage', 'new')
+    probability = resolve_probability(stage, data.get('probability'))
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_deals
-                   (name, description, amount, company_id, contact_id, stage, deal_type,
+                   (name, description, amount, company_id, contact_id, stage, probability, deal_type,
                     start_date, end_date, owner_user_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['name'], data.get('description') or None, data.get('amount') or None,
                     data.get('company_id') or None, data.get('contact_id') or None,
-                    data.get('stage', 'new'), data.get('deal_type', 'inne'), data.get('start_date') or None,
+                    stage, probability, data.get('deal_type', 'inne'), data.get('start_date') or None,
                     data.get('end_date') or None, data.get('owner_user_id') or None,
                 )
             )
@@ -109,18 +134,20 @@ def create_deal(data: dict, user_id: int | None) -> int:
 
 def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
     old = get_deal_by_id(deal_id)
+    stage = data.get('stage', 'new')
+    probability = resolve_probability(stage, data.get('probability'))
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE crm_deals SET
                    name=%s, description=%s, amount=%s, company_id=%s, contact_id=%s,
-                   stage=%s, deal_type=%s, start_date=%s, end_date=%s, owner_user_id=%s
+                   stage=%s, probability=%s, deal_type=%s, start_date=%s, end_date=%s, owner_user_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('description') or None, data.get('amount') or None,
                     data.get('company_id') or None, data.get('contact_id') or None,
-                    data.get('stage', 'new'), data.get('deal_type', 'inne'), data.get('start_date') or None,
+                    stage, probability, data.get('deal_type', 'inne'), data.get('start_date') or None,
                     data.get('end_date') or None, data.get('owner_user_id') or None,
                     deal_id,
                 )
@@ -132,28 +159,35 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
     if old:
         old_disp = dict(old)
         new_disp = dict(data)
+        new_disp['probability'] = probability
         old_disp['stage'] = STAGE_LABELS.get(old.get('stage'), old.get('stage'))
         new_disp['stage'] = STAGE_LABELS.get(data.get('stage'), data.get('stage'))
         old_disp['deal_type'] = DEAL_TYPE_LABELS.get(old.get('deal_type'), old.get('deal_type'))
         new_disp['deal_type'] = DEAL_TYPE_LABELS.get(data.get('deal_type'), data.get('deal_type'))
+        old_disp['probability'] = f"{old.get('probability')}%" if old.get('probability') is not None else None
+        new_disp['probability'] = f"{probability}%" if probability is not None else None
         summary = build_diff_summary(old_disp, new_disp, FIELD_LABELS)
         if summary:
             log_history('deal', deal_id, user_id, 'update', summary)
 
 
-def update_deal_stage(deal_id: int, stage: str, user_id: int | None) -> None:
+def update_deal_stage(deal_id: int, stage: str, user_id: int | None) -> int | None:
     old = get_deal_by_id(deal_id)
+    if not old:
+        return None
+    probability = resolve_probability(stage, old.get('probability'))
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("UPDATE crm_deals SET stage=%s WHERE id=%s", (stage, deal_id))
+            cur.execute("UPDATE crm_deals SET stage=%s, probability=%s WHERE id=%s", (stage, probability, deal_id))
         db.commit()
     except Exception:
         db.rollback()
         raise
-    if old and old.get('stage') != stage:
+    if old.get('stage') != stage:
         log_history('deal', deal_id, user_id, 'update',
                      f"Etap: „{STAGE_LABELS.get(old.get('stage'), old.get('stage'))}” → „{STAGE_LABELS.get(stage, stage)}”.")
+    return probability
 
 
 def delete_deal(deal_id: int, user_id: int | None) -> None:

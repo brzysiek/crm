@@ -3,9 +3,9 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
 from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, KANBAN_DEFAULT_HIDDEN_STAGES,
-                              STAGE_BADGE_CLASSES, STAGE_LABELS,
-                              create_deal, delete_deal, get_all_deals, get_deal_by_id, update_deal,
-                              update_deal_stage)
+                              PROBABILITY_CHOICES, STAGE_BADGE_CLASSES, STAGE_LABELS,
+                              create_deal, delete_deal, get_all_deals, get_deal_by_id,
+                              probability_row_class, update_deal, update_deal_stage)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
@@ -27,6 +27,7 @@ def _parse_form(form):
         'company_id': form.get('company_id', type=int),
         'contact_id': form.get('contact_id', type=int),
         'stage': form.get('stage', 'new'),
+        'probability': form.get('probability', type=int),
         'deal_type': form.get('deal_type', 'inne'),
         'start_date': form.get('start_date', '').strip() or None,
         'end_date': form.get('end_date', '').strip() or None,
@@ -56,6 +57,7 @@ def list_deals():
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
         sort=sort, direction=direction, filters={'search': search, 'stage': stage, 'deal_type': deal_type},
         kanban_default_hidden_stages=KANBAN_DEFAULT_HIDDEN_STAGES,
+        probability_row_class=probability_row_class,
     )
 
 
@@ -78,6 +80,7 @@ def new_deal():
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
                 deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
+                probability_choices=PROBABILITY_CHOICES,
                 prefill_company=None, prefill_contact=None,
                 action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
@@ -94,6 +97,7 @@ def new_deal():
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
+        probability_choices=PROBABILITY_CHOICES,
         prefill_company=prefill_company, prefill_contact=prefill_contact,
         action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
@@ -116,6 +120,7 @@ def edit_deal(deal_id):
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
                 deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
+                probability_choices=PROBABILITY_CHOICES,
                 prefill_company=None, prefill_contact=None,
                 action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
@@ -129,6 +134,7 @@ def edit_deal(deal_id):
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
+        probability_choices=PROBABILITY_CHOICES,
         prefill_company=prefill_company, prefill_contact=prefill_contact,
         action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
@@ -166,10 +172,13 @@ def api_set_stage(deal_id):
     stage = data.get('stage', '')
     if stage not in STAGE_LABELS:
         return jsonify({'status': 'error', 'message': 'Nieprawidłowy etap.'}), 400
-    update_deal_stage(deal_id, stage, session.get('user_id'))
+    probability = update_deal_stage(deal_id, stage, session.get('user_id'))
     return jsonify({
         'status': 'ok', 'stage': stage,
         'label': STAGE_LABELS[stage], 'badge_class': STAGE_BADGE_CLASSES[stage],
+        'probability': probability,
+        'probability_label': f"{probability}%" if probability is not None else '—',
+        'probability_class': probability_row_class(stage, probability),
     })
 
 
