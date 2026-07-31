@@ -5,8 +5,8 @@
   <td>
     <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600">{{ p.title }}</a>
     {% if p.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ p.due_date|ddmmyyyy }}</span>{% endif %}
-    {% if p.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ p.crm_contact_first_name }} {{ p.crm_contact_last_name }}</span>{% endif %}
-    {% if p.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ p.crm_company_short_name or p.crm_company_name }}</span>{% endif %}
+    {% if p.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=p.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ p.crm_contact_first_name }} {{ p.crm_contact_last_name }}</a>{% endif %}
+    {% if p.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=p.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ p.crm_company_short_name or p.crm_company_name }}</a>{% endif %}
   </td>
   <td style="min-width:180px">
     {% if p.subtask_total %}
@@ -40,8 +40,8 @@
       {{ t.title }}
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
-      {% if t.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</span>{% endif %}
-      {% if t.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</span>{% endif %}
+      {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
+      {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
               onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">✎</button>
     </div>
@@ -139,11 +139,11 @@
                 onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
           <strong>{{ t.title }}</strong>
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
-          {% if t.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</span>{% endif %}
-          {% if t.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</span>{% endif %}
+          {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
+          {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
                   onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">✎</button>
-          {% if t.project_title %}<div class="text-muted" style="font-size:.78rem">📁 {{ t.project_title }}</div>{% endif %}
+          {% if t.project_title %}<div class="text-muted" style="font-size:.78rem"><a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-top:.2rem">📁 {{ t.project_title }}</a></div>{% endif %}
         </div>
         <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           {{ priority_stars(t) }}

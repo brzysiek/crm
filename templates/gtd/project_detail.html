@@ -10,8 +10,8 @@
             onclick="gtdToggleStar({{ project.id }}, 'toggle_important')">{{ '★' if project.is_important else '☆' }}</button>
     📁 {{ project.title }}
     {% if project.status == 'done' %}<span class="badge badge-green" style="margin-left:.4rem">zakończony</span>{% endif %}
-    {% if project.crm_contact_id %}<span class="badge badge-blue" style="margin-left:.4rem">👤 {{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</span>{% endif %}
-    {% if project.crm_company_id %}<span class="badge badge-blue" style="margin-left:.4rem">🏢 {{ project.crm_company_short_name or project.crm_company_name }}</span>{% endif %}
+    {% if project.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=project.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</a>{% endif %}
+    {% if project.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=project.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ project.crm_company_short_name or project.crm_company_name }}</a>{% endif %}
   </h1>
   <div class="header-actions">
     <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.projects') }}">← Projekty</a>
