@@ -121,7 +121,7 @@ a:hover { text-decoration: underline; }
   -webkit-backdrop-filter: blur(16px);
   color: var(--text-primary);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto auto 1fr;
   align-items: center;
   padding: 0 2rem;
   height: 64px;
@@ -175,6 +175,23 @@ a:hover { text-decoration: underline; }
 }
 .navbar-nav a:hover { background: var(--surface-secondary); color: var(--text-primary); text-decoration: none; }
 .navbar-nav a.active { background: var(--gradient-primary); color: #fff; box-shadow: var(--shadow-lg); }
+
+.nav-agent-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: .45rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: .875rem;
+  box-shadow: var(--shadow-lg);
+  white-space: nowrap;
+}
+.nav-agent-btn:hover { color: #fff; text-decoration: none; opacity: .92; }
+.nav-agent-btn-icon { display: none; font-size: 1.1rem; line-height: 1; }
 
 .nav-badge {
   background: var(--error);
@@ -266,10 +283,16 @@ a:hover { text-decoration: underline; }
 
 @media (max-width: 880px) {
   .navbar {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     padding: 0 1rem;
   }
-  .navbar-toggle { display: flex; }
+  .navbar-toggle { display: flex; order: 3; }
+  .nav-agent-btn {
+    order: 2;
+    padding: .4rem .55rem;
+  }
+  .nav-agent-btn-label { display: none; }
+  .nav-agent-btn-icon { display: inline; }
   .navbar-nav,
   .nav-user {
     display: none;

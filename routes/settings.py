@@ -13,19 +13,43 @@ def index():
 
 @bp.route('/account', methods=['GET', 'POST'])
 def account():
-    from models.user import change_password, get_user_by_id
+    from models.user import (change_password, get_user_by_id,
+                              get_user_by_username, update_user_profile)
 
     if request.method == 'POST':
-        new_password = request.form.get('new_password', '')
-        new_password2 = request.form.get('new_password2', '')
+        if request.form.get('form') == 'profile':
+            username = request.form.get('username', '').strip()
+            full_name = request.form.get('full_name', '').strip()
 
-        if not new_password:
-            flash('Nowe hasło nie może być puste.', 'error')
-        elif new_password != new_password2:
-            flash('Hasła nie są identyczne.', 'error')
+            errors = []
+            if not username:
+                errors.append('Login nie może być pusty.')
+            if not full_name:
+                errors.append('Imię i nazwisko nie może być puste.')
+            if not errors:
+                existing = get_user_by_username(username)
+                if existing and existing['id'] != session['user_id']:
+                    errors.append(f'Login „{username}" jest już zajęty.')
+
+            if errors:
+                for e in errors:
+                    flash(e, 'error')
+            else:
+                update_user_profile(session['user_id'], username, full_name)
+                session['username'] = username
+                session['full_name'] = full_name
+                flash('Dane konta zostały zaktualizowane.', 'success')
         else:
-            change_password(session['user_id'], new_password)
-            flash('Hasło zostało zmienione.', 'success')
+            new_password = request.form.get('new_password', '')
+            new_password2 = request.form.get('new_password2', '')
+
+            if not new_password:
+                flash('Nowe hasło nie może być puste.', 'error')
+            elif new_password != new_password2:
+                flash('Hasła nie są identyczne.', 'error')
+            else:
+                change_password(session['user_id'], new_password)
+                flash('Hasło zostało zmienione.', 'success')
         return redirect(url_for('settings.account'))
 
     user = get_user_by_id(session['user_id'])

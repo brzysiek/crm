@@ -302,7 +302,7 @@ def web_manifest():
     manifest = {
         'name':             name,
         'short_name':       name,
-        'start_url':        url_for('agent.index'),
+        'start_url':        url_for('gtd.day'),
         'scope':            url_for('agent.index'),
         'display':          'standalone',
         'background_color': '#ffffff',

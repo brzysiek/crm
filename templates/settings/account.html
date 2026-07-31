@@ -5,16 +5,27 @@
 
 <div class="settings-section">
   <h3>Dane konta</h3>
-  <p class="text-muted">
-    Login: <code>{{ user.username }}</code><br>
-    Imię i nazwisko: {{ user.full_name }}
-  </p>
+  <form method="post" action="{{ url_for('settings.account') }}">
+    <input type="hidden" name="form" value="profile">
+    <div class="form-group">
+      <label for="username">Login</label>
+      <input type="text" id="username" name="username" value="{{ user.username }}" required>
+    </div>
+    <div class="form-group">
+      <label for="full_name">Imię i nazwisko</label>
+      <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}" required>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz dane konta</button>
+    </div>
+  </form>
 </div>
 
 {# ── Zmiana hasła ──────────────────────────────────────────────────────────── #}
 <div class="settings-section">
   <h3>Zmień hasło</h3>
   <form method="post" action="{{ url_for('settings.account') }}">
+    <input type="hidden" name="form" value="password">
     <div class="form-group">
       <label for="new_password">Nowe hasło</label>
       <input type="password" id="new_password" name="new_password" required

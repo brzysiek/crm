@@ -29,18 +29,6 @@
     <span></span><span></span><span></span>
   </button>
   <ul class="navbar-nav">
-    <li class="navbar-dropdown" id="nav-dd-agent">
-      <a href="{{ url_for('agent.index') }}"
-         class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'agent' else '' }}">
-        Agent <span class="navbar-dropdown-caret">▾</span>
-      </a>
-      <div class="navbar-dropdown-menu">
-        <a href="{{ url_for('agent.index') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'agent.index' else '' }}">🤖 Asystent</a>
-        <a href="{{ url_for('agent.history') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'agent.history' else '' }}">🕘 Historia</a>
-      </div>
-    </li>
     <li class="navbar-dropdown" id="nav-dd-crm">
       <a href="{{ url_for('crm_companies.list_companies') }}"
          class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
@@ -120,6 +108,10 @@
       </div>
     </li>
   </ul>
+  <a href="{{ url_for('agent.index') }}" class="nav-agent-btn" title="Agent">
+    <span class="nav-agent-btn-label">Agent</span>
+    <span class="nav-agent-btn-icon" aria-hidden="true">🎙️</span>
+  </a>
   <div class="nav-user" id="nav-user">
     <button type="button" class="nav-user-toggle" id="nav-user-toggle">
       {{ current_user.full_name or current_user.username }}
