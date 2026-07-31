@@ -555,10 +555,12 @@ function _gtdSetCrmPickers(currentContactId, currentCompanyId, contactPickerId, 
   }
 }
 
-function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId) {
+function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek) {
   document.getElementById('gtdEditTaskId').value = taskId;
   document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
+  document.getElementById('gtdEditTaskScheduled').value = currentScheduled || '';
+  document.getElementById('gtdEditTaskWeek').value = currentWeek || '';
   _gtdFillProjectSelect(taskId, currentParentId || null);
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
   document.getElementById('gtdEditTaskModal').classList.add('open');
@@ -569,6 +571,8 @@ function gtdSubmitEditTask() {
   const title = document.getElementById('gtdEditTaskTitle').value.trim();
   if (!title) { alert('Nazwa zadania nie może być pusta.'); return; }
   const due_date = document.getElementById('gtdEditTaskDue').value || null;
+  const scheduled_date = document.getElementById('gtdEditTaskScheduled').value || null;
+  const week = document.getElementById('gtdEditTaskWeek').value || null;
   const parentValue = document.getElementById('gtdEditTaskProject').value;
   const parent_id = parentValue ? parseInt(parentValue, 10) : null;
   const contactValue = document.getElementById('gtdEditTaskContactPicker-hidden').value;
@@ -578,10 +582,18 @@ function gtdSubmitEditTask() {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, parent_id, crm_contact_id, crm_company_id }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id }),
   })
     .then(r => r.json())
-    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .then(data => {
+      if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
+      const weekReq = week
+        ? fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_week', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monday: week }),
+          })
+        : fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/clear_week', { method: 'POST' });
+      return weekReq.then(() => location.reload());
+    })
     .catch(() => alert('Błąd sieci.'));
 }
 
@@ -589,6 +601,8 @@ function gtdSubmitEditTask() {
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId) {
   document.getElementById('gtdFollowUpTitle').value = '';
   document.getElementById('gtdFollowUpDue').value = '';
+  document.getElementById('gtdFollowUpScheduled').value = '';
+  document.getElementById('gtdFollowUpWeek').value = '';
   _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   document.getElementById('gtdFollowUpModal').classList.add('open');
@@ -598,6 +612,8 @@ function gtdSubmitFollowUp() {
   const title = document.getElementById('gtdFollowUpTitle').value.trim();
   if (!title) { alert('Nazwa zadania nie może być pusta.'); return; }
   const due_date = document.getElementById('gtdFollowUpDue').value || null;
+  const scheduled_date = document.getElementById('gtdFollowUpScheduled').value || null;
+  const week = document.getElementById('gtdFollowUpWeek').value || null;
   const parentValue = document.getElementById('gtdFollowUpProject').value;
   const parent_id = parentValue ? parseInt(parentValue, 10) : null;
   const contactValue = document.getElementById('gtdFollowUpContactPicker-hidden').value;
@@ -607,17 +623,26 @@ function gtdSubmitFollowUp() {
   fetch(window.API_BASE + '/api/gtd/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, parent_id, status: 'next' }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, status: 'next' }),
   })
     .then(r => r.json())
     .then(data => {
       if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
-      if (!crm_contact_id && !crm_company_id) { location.reload(); return; }
-      return fetch(window.API_BASE + '/api/gtd/tasks/' + data.task.id, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ crm_contact_id, crm_company_id }),
-      }).then(() => location.reload());
+      const taskId = data.task.id;
+      const steps = [];
+      if (crm_contact_id || crm_company_id) {
+        steps.push(() => fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ crm_contact_id, crm_company_id }),
+        }));
+      }
+      if (week) {
+        steps.push(() => fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_week', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monday: week }),
+        }));
+      }
+      return steps.reduce((p, step) => p.then(step), Promise.resolve()).then(() => location.reload());
     })
     .catch(() => alert('Błąd sieci.'));
 }
