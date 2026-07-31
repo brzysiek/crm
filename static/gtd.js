@@ -585,6 +585,43 @@ function gtdSubmitEditTask() {
     .catch(() => alert('Błąd sieci.'));
 }
 
+/* ── Modal nowego zadania follow-up ── */
+function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId) {
+  document.getElementById('gtdFollowUpTitle').value = '';
+  document.getElementById('gtdFollowUpDue').value = '';
+  _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject');
+  _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
+  document.getElementById('gtdFollowUpModal').classList.add('open');
+}
+
+function gtdSubmitFollowUp() {
+  const title = document.getElementById('gtdFollowUpTitle').value.trim();
+  if (!title) { alert('Nazwa zadania nie może być pusta.'); return; }
+  const due_date = document.getElementById('gtdFollowUpDue').value || null;
+  const parentValue = document.getElementById('gtdFollowUpProject').value;
+  const parent_id = parentValue ? parseInt(parentValue, 10) : null;
+  const contactValue = document.getElementById('gtdFollowUpContactPicker-hidden').value;
+  const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
+  const companyValue = document.getElementById('gtdFollowUpCompanyPicker-hidden').value;
+  const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, due_date, parent_id, status: 'next' }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
+      if (!crm_contact_id && !crm_company_id) { location.reload(); return; }
+      return fetch(window.API_BASE + '/api/gtd/tasks/' + data.task.id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crm_contact_id, crm_company_id }),
+      }).then(() => location.reload());
+    })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdCloseProject(projectId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + projectId + '/open_subtasks')
     .then(r => r.json())
@@ -683,4 +720,7 @@ if (document.getElementById('gtdEditTaskContactPicker')) {
   initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdGcalProjectCompanyPicker'));
   initEntityPicker('gtdGcalProjectCompanyPicker', '/api/crm/companies/search');
+  initEntityPicker('gtdFollowUpContactPicker', '/api/crm/contacts/search',
+    it => _gtdAutoFillCompanyFromContact(it, 'gtdFollowUpCompanyPicker'));
+  initEntityPicker('gtdFollowUpCompanyPicker', '/api/crm/companies/search');
 }

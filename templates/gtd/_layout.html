@@ -159,6 +159,54 @@
   </div>
 </div>
 
+{# ── Modal: nowe zadanie follow-up (kopiuje kontakt/klienta/projekt z pierwotnego zadania) ── #}
+<div id="gtdFollowUpModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nowe zadanie follow-up</h3>
+      <button onclick="document.getElementById('gtdFollowUpModal').classList.remove('open')" class="modal-close" title="Zamknij">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="agent-confirm-row">
+        <label>Nazwa</label>
+        <input type="text" id="gtdFollowUpTitle" class="filter-input" style="width:100%" placeholder="Nazwa nowego zadania…">
+      </div>
+      <div class="agent-confirm-row">
+        <label>Termin</label>
+        <input type="date" id="gtdFollowUpDue" class="filter-input" style="width:100%">
+      </div>
+      <div class="agent-confirm-row">
+        <label>Projekt</label>
+        <select id="gtdFollowUpProject" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Kontakt</label>
+        <div class="entity-picker" id="gtdFollowUpContactPicker">
+          <input type="text" id="gtdFollowUpContactPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj kontaktu…" autocomplete="off">
+          <div id="gtdFollowUpContactPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdFollowUpContactPicker-hidden">
+        </div>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Firma / klient</label>
+        <div class="entity-picker" id="gtdFollowUpCompanyPicker">
+          <input type="text" id="gtdFollowUpCompanyPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj firmy…" autocomplete="off">
+          <div id="gtdFollowUpCompanyPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdFollowUpCompanyPicker-hidden">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="gtdSubmitFollowUp()">Utwórz</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('gtdFollowUpModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+
 {# ── Modal: przypisanie wydarzenia z kalendarza do projektu ──────────────── #}
 <div id="gtdGcalProjectModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal">
