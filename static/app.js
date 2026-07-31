@@ -1108,6 +1108,44 @@ function initDropdownToggle(btnId, menuId) {
   });
 }
 
+/* ── CRM: dynamiczne wyszukiwanie w liście (filtruje już wczytane wiersze
+ * po każdej wpisanej literze, bez przeładowania strony). Dopasowanie po całym
+ * tekście wiersza — obejmuje też kolumny aktualnie ukryte przez initColumnToggle.
+ * Formularz z przyciskiem „Filtruj” działa nadal jak wcześniej (round-trip do
+ * serwera), to tylko warstwa dodatkowa dla natychmiastowej odpowiedzi.
+ */
+function initLiveTableSearch(inputId, tableId, countSuffix) {
+  const input = document.getElementById(inputId);
+  const table = document.getElementById(tableId);
+  if (!input || !table) return;
+  const tbody = table.querySelector('tbody');
+  const wrapper = table.closest('.table-wrapper');
+  const countEl = document.querySelector('.table-count');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+
+  const emptyMsg = document.createElement('div');
+  emptyMsg.className = 'empty-state';
+  emptyMsg.style.display = 'none';
+  emptyMsg.innerHTML = '<p>Brak wyników pasujących do wyszukiwania.</p>';
+  wrapper.insertAdjacentElement('afterend', emptyMsg);
+
+  function apply() {
+    const q = input.value.trim().toLocaleLowerCase();
+    let visible = 0;
+    rows.forEach(row => {
+      const match = !q || row.textContent.toLocaleLowerCase().includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    if (countEl) countEl.textContent = visible + ' ' + countSuffix;
+    wrapper.style.display = visible === 0 && q ? 'none' : '';
+    if (countEl) countEl.style.display = visible === 0 && q ? 'none' : '';
+    emptyMsg.style.display = visible === 0 && q ? '' : 'none';
+  }
+
+  input.addEventListener('input', apply);
+}
+
 /* ── CRM: widoczność kolumn listy (zapamiętana w localStorage + per użytkownik) ──
  * Checkboxy w menu muszą mieć data-col="<nazwa>" odpowiadającą atrybutom
  * data-col="<nazwa>" na <th>/<td> w tabeli. `defaultHidden` to kolumny domyślnie

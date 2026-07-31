@@ -18,8 +18,8 @@
 </div>
 
 <form class="filter-bar" method="get" action="{{ url_for('crm_companies.list_companies') }}">
-  <input type="text" name="search" placeholder="Szukaj nazwy, email, NIP, miasta…"
-         value="{{ filters.search }}" class="filter-input">
+  <input type="text" id="companies-search" name="search" placeholder="Szukaj nazwy, email, NIP, miasta…"
+         value="{{ filters.search }}" class="filter-input" autocomplete="off">
 
   <select name="relation_type" class="filter-select">
     <option value="">Wszystkie relacje</option>
@@ -174,6 +174,7 @@
 <script>
 initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu',
   ['city', 'email', 'phone', 'nip', 'source']);
+initLiveTableSearch('companies-search', 'companies-table', 'firm');
 
 function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));

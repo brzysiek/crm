@@ -16,8 +16,8 @@
 </div>
 
 <form class="filter-bar" method="get" action="{{ url_for('crm_contacts.list_contacts') }}">
-  <input type="text" name="search" placeholder="Szukaj imienia, email, firmy…"
-         value="{{ filters.search }}" class="filter-input">
+  <input type="text" id="contacts-search" name="search" placeholder="Szukaj imienia, email, firmy…"
+         value="{{ filters.search }}" class="filter-input" autocomplete="off">
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
@@ -144,6 +144,7 @@ function openBusinessCardModal(url, mime) {
 
 initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu',
   ['company_tags', 'company_industries']);
+initLiveTableSearch('contacts-search', 'contacts-table', 'kontaktów');
 
 function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
