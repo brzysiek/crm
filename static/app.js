@@ -704,38 +704,12 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-/* ── Górne menu: rozwijane podmenu (CRM / Finanse / Agent) ─────────────────────
+/* ── Górne menu: rozwijane podmenu (CRM / Finanse) ──────────────────────────────
  * Na desktopie (>880px) przycisk to link — klik przenosi na stronę główną
  * sekcji, a podmenu z pozostałymi podstronami otwiera się po najechaniu (CSS
- * :hover). Na mobile klik zamiast nawigacji otwiera/zamyka rozwijane podmenu;
- * klik poza nim zamyka je, otwarcie jednego zamyka pozostałe.
+ * :hover). Na mobile podmenu są zawsze rozwinięte (CSS), więc klik po prostu
+ * nawiguje jak zwykły link.
  */
-function initNavDropdowns() {
-  const dropdowns = document.querySelectorAll('.navbar-dropdown');
-  if (!dropdowns.length) return;
-
-  dropdowns.forEach(dd => {
-    const toggle = dd.querySelector('.navbar-dropdown-toggle');
-    if (!toggle) return;
-    toggle.addEventListener('click', e => {
-      if (!window.matchMedia('(max-width: 880px)').matches) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const wasOpen = dd.classList.contains('open');
-      dropdowns.forEach(other => other.classList.remove('open'));
-      dd.classList.toggle('open', !wasOpen);
-    });
-  });
-
-  document.addEventListener('click', e => {
-    dropdowns.forEach(dd => {
-      if (dd.classList.contains('open') && !dd.contains(e.target)) {
-        dd.classList.remove('open');
-      }
-    });
-  });
-}
-document.addEventListener('DOMContentLoaded', initNavDropdowns);
 
 /* ── CRM: helpers ─────────────────────────────────────────────────────────────── */
 function crmEsc(s) {

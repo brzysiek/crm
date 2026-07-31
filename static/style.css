@@ -279,30 +279,32 @@ a:hover { text-decoration: underline; }
   height: 2px;
   background: var(--text-primary);
   border-radius: 1px;
+  transition: transform var(--speed) var(--curve), opacity var(--speed) var(--curve);
 }
+.navbar.nav-open .navbar-toggle span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.navbar.nav-open .navbar-toggle span:nth-child(2) { opacity: 0; }
+.navbar.nav-open .navbar-toggle span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
 @media (max-width: 880px) {
   .navbar {
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     padding: 0 1rem;
   }
-  .navbar-toggle { display: flex; order: 3; }
-  .nav-agent-btn {
-    order: 2;
-    padding: .4rem .55rem;
-  }
-  .nav-agent-btn-label { display: none; }
-  .nav-agent-btn-icon { display: inline; }
+  .navbar-toggle { display: flex; }
   .navbar-nav,
+  .nav-agent-btn,
   .nav-user {
     display: none;
   }
   .navbar.nav-open {
     height: auto;
-    background: var(--surface);
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     padding-bottom: .5rem;
   }
   .navbar.nav-open .navbar-nav,
+  .navbar.nav-open .nav-agent-btn,
   .navbar.nav-open .nav-user {
     display: flex;
   }
@@ -320,6 +322,14 @@ a:hover { text-decoration: underline; }
     border-radius: var(--radius-sm);
   }
   .navbar-nav a.active { box-shadow: none; }
+  .nav-agent-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: flex-start;
+    padding: .65rem .75rem;
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+  }
   .nav-user {
     grid-column: 1 / -1;
     justify-self: stretch;
@@ -1564,13 +1574,12 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .navbar-dropdown-toggle { width: 100%; padding: .65rem .75rem; border-radius: var(--radius-sm); }
   .navbar-dropdown-toggle.active { box-shadow: none; }
   .navbar-dropdown-menu {
-    display: none;
+    display: block;
     position: static;
     box-shadow: none;
     border: none;
     padding: 0 0 0 1rem;
   }
-  .navbar-dropdown.open .navbar-dropdown-menu { display: block; }
 }
 
 /* ── CRM: tag/branża chip-input ──────────────────────────────────────────────── */
