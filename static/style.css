@@ -178,9 +178,7 @@ html.sidebar-collapsed .sidebar-header { padding: 22px 0 18px; justify-content: 
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; color: var(--rd-deep-green); font-size: 15px; flex-shrink: 0;
 }
-.sidebar-logo-img { height: 30px; width: auto; max-width: 150px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
-.sidebar-brand-text { color: #F5F5F3; font-weight: 600; font-size: 15px; letter-spacing: .2px; white-space: nowrap; overflow: hidden; }
-html.sidebar-collapsed .sidebar-brand-text { display: none; }
+.sidebar-logo-img { height: 30px; width: auto; max-width: 200px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
 
 .sidebar-nav { flex: 1; padding-bottom: 8px; }
 
