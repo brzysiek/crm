@@ -1,39 +1,31 @@
-/* ── Górne menu: hamburger na urządzeniach mobilnych ──────────────────────────── */
-function initNavbarToggle() {
-  const navbar = document.querySelector('.navbar');
-  const toggle = document.getElementById('navbar-toggle');
-  if (!navbar || !toggle) return;
+/* ── Sidebar: zwijanie/rozwijanie na desktopie (stan w localStorage) ─────────── */
+function initSidebarCollapse() {
+  const btn = document.getElementById('sidebarCollapseBtn');
+  if (!btn) return;
 
-  toggle.addEventListener('click', e => {
-    e.stopPropagation();
-    const open = navbar.classList.toggle('nav-open');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
-
-  document.addEventListener('click', e => {
-    if (navbar.classList.contains('nav-open') && !navbar.contains(e.target)) {
-      navbar.classList.remove('nav-open');
-      toggle.setAttribute('aria-expanded', 'false');
-    }
+  btn.addEventListener('click', () => {
+    const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
   });
 }
-document.addEventListener('DOMContentLoaded', initNavbarToggle);
+document.addEventListener('DOMContentLoaded', initSidebarCollapse);
 
-/* ── Górne menu: rozwijane menu użytkownika (Ustawienia / Wyloguj) ────────────── */
+/* ── Rozwijane menu użytkownika (Ustawienia / Wyloguj) — sidebar + mobile topbar ── */
 function initNavUserMenu() {
-  const navUser = document.getElementById('nav-user');
-  const toggle = document.getElementById('nav-user-toggle');
-  if (!navUser || !toggle) return;
+  document.querySelectorAll('.nav-user').forEach(navUser => {
+    const toggle = navUser.querySelector('.nav-user-toggle');
+    if (!toggle) return;
 
-  toggle.addEventListener('click', e => {
-    e.stopPropagation();
-    navUser.classList.toggle('open');
-  });
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      navUser.classList.toggle('open');
+    });
 
-  document.addEventListener('click', e => {
-    if (navUser.classList.contains('open') && !navUser.contains(e.target)) {
-      navUser.classList.remove('open');
-    }
+    document.addEventListener('click', e => {
+      if (navUser.classList.contains('open') && !navUser.contains(e.target)) {
+        navUser.classList.remove('open');
+      }
+    });
   });
 }
 document.addEventListener('DOMContentLoaded', initNavUserMenu);

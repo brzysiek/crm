@@ -3,6 +3,7 @@
 {% block title %}Firmy{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-firmy">
 <div class="page-header">
   <h1>Firmy</h1>
   <div class="header-actions">
@@ -36,6 +37,8 @@
   <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
 
+<a href="{{ url_for('crm_companies.new_company') }}" class="rd-fab" title="Dodaj firmę">+</a>
+
 {% if companies %}
 <div class="bulk-select-bar">
   <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
@@ -64,8 +67,7 @@
     <thead>
       <tr>
         <th class="col-checkbox"></th>
-        <th class="favicon-cell"></th>
-        {{ m.sort_th('Nazwa skrócona', 'short_name', sort, direction, 'crm_companies.list_companies', 'short_name') }}
+        {{ m.sort_th('Firma', 'short_name', sort, direction, 'crm_companies.list_companies', 'short_name') }}
         {{ m.sort_th('Relacja', 'relation_type', sort, direction, 'crm_companies.list_companies', 'relation_type') }}
         {{ m.sort_th('Miasto', 'city', sort, direction, 'crm_companies.list_companies', 'city') }}
         {{ m.sort_th('Email', 'email', sort, direction, 'crm_companies.list_companies', 'email') }}
@@ -88,14 +90,10 @@
           <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
                   onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
         </td>
-        <td class="favicon-cell">
-          {% if c.favicon_url %}
-            <img src="{{ c.favicon_url }}" class="favicon-img" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'favicon-placeholder',textContent:'—'}))">
-          {% else %}
-            <div class="favicon-placeholder">—</div>
-          {% endif %}
-        </td>
-        <td data-col="short_name">
+        <td data-col="short_name" class="rd-entity-cell">
+          <span class="rd-avatar" style="background:{{ m.rd_avatar_color(c.id) }}">
+            {% if c.favicon_url %}<img src="{{ c.favicon_url }}" alt="" onerror="this.style.display='none'">{% endif %}<span>{{ m.rd_initials(c.short_name or c.name) }}</span>
+          </span>
           <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or c.name }}</a>
         </td>
         <td data-col="relation_type">
@@ -162,18 +160,51 @@
   </table>
 </div>
 <div class="table-count">{{ companies|length }} firm</div>
+
+<div class="rd-card-list">
+  {% for c in companies %}
+  <div class="rd-card">
+    <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}" class="rd-card-link" aria-label="{{ c.short_name or c.name }}"></a>
+    <div class="rd-card-top">
+      <span class="rd-avatar" style="background:{{ m.rd_avatar_color(c.id) }}">
+        {% if c.favicon_url %}<img src="{{ c.favicon_url }}" alt="" onerror="this.style.display='none'">{% endif %}<span>{{ m.rd_initials(c.short_name or c.name) }}</span>
+      </span>
+      <span class="rd-card-name">{{ c.short_name or c.name }}</span>
+      <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[c.relation_type] }}">{{ relation_labels[c.relation_type] }}</span>
+    </div>
+    <div class="rd-card-meta">{{ c.city or '—' }}{% if c.primary_contact_name %} · {{ c.primary_contact_name }}{% endif %}</div>
+    {% if c.tags_list %}
+    <div class="rd-card-chips">
+      {% for t in c.tags_list.split(', ') %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="rd-card-actions">
+      <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
+              onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
+      <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+      <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=c.id) }}"
+            class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ c.contacts_count or 0 }})">
+        <input type="hidden" name="archive_contacts" value="0">
+        <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 {% else %}
 <div class="empty-state">
   <p>Brak firm spełniających kryteria.</p>
   <a href="{{ url_for('crm_companies.new_company') }}" class="btn btn-primary">Dodaj pierwszą firmę</a>
 </div>
 {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu',
-  ['city', 'email', 'phone', 'nip', 'source']);
+  ['city', 'email', 'phone', 'nip', 'source', 'short_description', 'description']);
 initLiveTableSearch('companies-search', 'companies-table', 'firm');
 
 function getCheckedIds() {

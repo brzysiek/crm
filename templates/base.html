@@ -16,142 +16,228 @@
   {% block head_extra %}{% endblock %}
 </head>
 <body>
+<script>
+(function () {
+  if (localStorage.getItem('sidebarCollapsed') === '1') {
+    document.documentElement.classList.add('sidebar-collapsed');
+  }
+})();
+</script>
 
-<nav class="navbar">
-  <a href="{{ url_for('gtd.day') }}" class="navbar-brand">
-    {% if logo_main %}
-      <img src="{{ logo_main }}" alt="{{ app_name }}" class="navbar-logo-img">
-    {% else %}
-      <span class="brand-leaf">⬡</span>
-    {% endif %}
-  </a>
-  <button type="button" class="navbar-toggle" id="navbar-toggle" aria-label="Menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
-  <ul class="navbar-nav">
-    <li class="navbar-dropdown" id="nav-dd-crm">
-      <a href="{{ url_for('crm_companies.list_companies') }}"
-         class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') else '' }}">
-        CRM <span class="navbar-dropdown-caret">▾</span>
+{% set crm_active = request.blueprint in ('crm_companies', 'crm_contacts', 'crm_deals', 'crm_plan', 'crm_invoices') %}
+{% set gtd_active = request.blueprint == 'gtd' %}
+{% set finance_active = request.blueprint in ('finance', 'expenses', 'income', 'imports') %}
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="{{ url_for('gtd.day') }}" class="sidebar-logo">
+        {% if logo_main %}
+          <img src="{{ logo_main }}" alt="{{ app_name }}" class="sidebar-logo-img">
+        {% else %}
+          <span class="sidebar-logo-badge">{{ (app_name or 'B')[0] }}</span>
+        {% endif %}
+        <span class="sidebar-brand-text">{{ app_name }}</span>
       </a>
-      <div class="navbar-dropdown-menu">
-        <a href="{{ url_for('crm_companies.list_companies') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_companies' else '' }}">🏢 Firmy</a>
-        <a href="{{ url_for('crm_contacts.list_contacts') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_contacts' else '' }}">👤 Kontakty</a>
-        <a href="{{ url_for('crm_deals.list_deals') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_deals' else '' }}">💼 Deale</a>
-        <a href="{{ url_for('crm_invoices.list_invoices') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_invoices' else '' }}">🧾 Faktury</a>
-        <a href="{{ url_for('crm_plan.index') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'crm_plan' else '' }}">📊 Plan</a>
-      </div>
-    </li>
-    <li class="navbar-dropdown" id="nav-dd-gtd">
-      <a href="{{ url_for('gtd.day') }}"
-         class="navbar-dropdown-toggle {{ 'active' if request.blueprint == 'gtd' else '' }}">
-        Zadania
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">CRM</div>
+      <a href="{{ url_for('crm_companies.list_companies') }}" title="Firmy"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_companies' else '' }}">
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V7l9-4 9 4v14"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h.01M15 10h.01M9 14h.01M15 14h.01"></path></svg></span>
+        <span class="sidebar-nav-label">Firmy</span>
+      </a>
+      <a href="{{ url_for('crm_contacts.list_contacts') }}" title="Kontakty"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_contacts' else '' }}">
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path></svg></span>
+        <span class="sidebar-nav-label">Kontakty</span>
+      </a>
+      <a href="{{ url_for('crm_deals.list_deals') }}" title="Deale"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_deals' else '' }}">
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg></span>
+        <span class="sidebar-nav-label">Deale</span>
+      </a>
+      <a href="{{ url_for('crm_invoices.list_invoices') }}" title="Faktury"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_invoices' else '' }}">
+        <span class="sidebar-nav-icon">🧾</span>
+        <span class="sidebar-nav-label">Faktury</span>
+      </a>
+      <a href="{{ url_for('crm_plan.index') }}" title="Plan"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_plan' else '' }}">
+        <span class="sidebar-nav-icon">📊</span>
+        <span class="sidebar-nav-label">Plan</span>
+      </a>
+
+      <div class="sidebar-section-label">Zadania</div>
+      <a href="{{ url_for('gtd.day') }}" title="Dziś"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.day' else '' }}">
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg></span>
+        <span class="sidebar-nav-label">Dziś</span>
+      </a>
+      <a href="{{ url_for('gtd.week') }}" title="Tydzień"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.week' else '' }}">
+        <span class="sidebar-nav-icon">🗓</span>
+        <span class="sidebar-nav-label">Tydzień</span>
+      </a>
+      <a href="{{ url_for('gtd.month') }}" title="Miesiąc"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.month' else '' }}">
+        <span class="sidebar-nav-icon">📆</span>
+        <span class="sidebar-nav-label">Miesiąc</span>
+      </a>
+      <a href="{{ url_for('gtd.inbox') }}" title="Inbox"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.inbox' else '' }}">
+        <span class="sidebar-nav-icon">📥</span>
+        <span class="sidebar-nav-label">Inbox</span>
         {% if gtd_inbox_badge > 0 %}
-          <span class="nav-badge">{{ gtd_inbox_badge }}</span>
+          <span class="sidebar-nav-badge">{{ gtd_inbox_badge }}</span>
         {% endif %}
-        <span class="navbar-dropdown-caret">▾</span>
       </a>
-      <div class="navbar-dropdown-menu">
-        <a href="{{ url_for('gtd.day') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.day' else '' }}">📅 Dziś</a>
-        <a href="{{ url_for('gtd.week') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.week' else '' }}">🗓 Tydzień</a>
-        <a href="{{ url_for('gtd.month') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.month' else '' }}">📆 Miesiąc</a>
-        <a href="{{ url_for('gtd.inbox') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.inbox' else '' }}">
-          📥 Inbox
-          {% if gtd_inbox_badge > 0 %}
-            <span class="nav-badge" style="margin-left:auto">{{ gtd_inbox_badge }}</span>
-          {% endif %}
-        </a>
-        <a href="{{ url_for('gtd.next_actions') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.next_actions' else '' }}">▶ Next actions</a>
-        <a href="{{ url_for('gtd.projects') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'gtd' and request.endpoint in ('gtd.projects', 'gtd.project_detail') else '' }}">📁 Projekty</a>
-        <a href="{{ url_for('gtd.waiting') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.waiting' else '' }}">⏳ Czeka na</a>
-        <a href="{{ url_for('gtd.someday') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.someday' else '' }}">💤 Kiedyś/może</a>
-        <a href="{{ url_for('gtd.archive') }}"
-           class="navbar-dropdown-item {{ 'active' if request.endpoint == 'gtd.archive' else '' }}">🗄 Archiwum</a>
-      </div>
-    </li>
-    <li class="navbar-dropdown" id="nav-dd-finance">
-      <a href="{{ url_for('finance.index') }}"
-         class="navbar-dropdown-toggle {{ 'active' if request.blueprint in ('finance', 'expenses', 'income', 'imports') else '' }}">
-        Finanse
+      <a href="{{ url_for('gtd.next_actions') }}" title="Next actions"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.next_actions' else '' }}">
+        <span class="sidebar-nav-icon">▶</span>
+        <span class="sidebar-nav-label">Next actions</span>
+      </a>
+      <a href="{{ url_for('gtd.projects') }}" title="Projekty"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'gtd' and request.endpoint in ('gtd.projects', 'gtd.project_detail') else '' }}">
+        <span class="sidebar-nav-icon">📁</span>
+        <span class="sidebar-nav-label">Projekty</span>
+      </a>
+      <a href="{{ url_for('gtd.waiting') }}" title="Czeka na"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.waiting' else '' }}">
+        <span class="sidebar-nav-icon">⏳</span>
+        <span class="sidebar-nav-label">Czeka na</span>
+      </a>
+      <a href="{{ url_for('gtd.someday') }}" title="Kiedyś/może"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.someday' else '' }}">
+        <span class="sidebar-nav-icon">💤</span>
+        <span class="sidebar-nav-label">Kiedyś/może</span>
+      </a>
+      <a href="{{ url_for('gtd.archive') }}" title="Archiwum"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.archive' else '' }}">
+        <span class="sidebar-nav-icon">🗄</span>
+        <span class="sidebar-nav-label">Archiwum</span>
+      </a>
+
+      <div class="sidebar-section-label">Finanse</div>
+      <a href="{{ url_for('finance.index') }}" title="Dashboard"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'finance' else '' }}">
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"></path></svg></span>
+        <span class="sidebar-nav-label">Dashboard</span>
+      </a>
+      <a href="{{ url_for('expenses.list_expenses') }}" title="Wydatki"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'expenses' else '' }}">
+        <span class="sidebar-nav-icon">↓</span>
+        <span class="sidebar-nav-label">Wydatki</span>
+      </a>
+      <a href="{{ url_for('income.list_incomes') }}" title="Przychody"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'income' else '' }}">
+        <span class="sidebar-nav-icon">↑</span>
+        <span class="sidebar-nav-label">Przychody</span>
+      </a>
+      <a href="{{ url_for('imports.bank') }}" title="Importy"
+         class="sidebar-nav-item {{ 'active' if request.blueprint == 'imports' else '' }}">
+        <span class="sidebar-nav-icon">📥</span>
+        <span class="sidebar-nav-label">Importy</span>
         {% if imports_badge > 0 %}
-          <span class="nav-badge">{{ imports_badge }}</span>
+          <span class="sidebar-nav-badge">{{ imports_badge }}</span>
         {% endif %}
-        <span class="navbar-dropdown-caret">▾</span>
       </a>
-      <div class="navbar-dropdown-menu">
-        <a href="{{ url_for('finance.index') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'finance' else '' }}">📈 Dashboard</a>
-        <a href="{{ url_for('expenses.list_expenses') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'expenses' else '' }}">↓ Wydatki</a>
-        <a href="{{ url_for('income.list_incomes') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'income' else '' }}">↑ Przychody</a>
-        <a href="{{ url_for('imports.bank') }}"
-           class="navbar-dropdown-item {{ 'active' if request.blueprint == 'imports' else '' }}">
-          📥 Importy
-          {% if imports_badge > 0 %}
-            <span class="nav-badge" style="margin-left:auto">{{ imports_badge }}</span>
-          {% endif %}
-        </a>
-      </div>
-    </li>
-  </ul>
-  <a href="{{ url_for('agent.index') }}" class="nav-agent-btn" title="Agent">
-    <span class="nav-agent-btn-label">Agent</span>
-    <span class="nav-agent-btn-icon" aria-hidden="true">🎙️</span>
-  </a>
-  <div class="nav-user" id="nav-user">
-    <button type="button" class="nav-user-toggle" id="nav-user-toggle">
-      {{ current_user.full_name or current_user.username }}
+
+      <a href="{{ url_for('agent.index') }}" title="Agent" class="sidebar-agent-btn">
+        <span class="sidebar-nav-icon" aria-hidden="true">🎙️</span>
+        <span class="sidebar-nav-label">Agent</span>
+      </a>
+    </nav>
+
+    <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Zwiń/rozwiń menu">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9C4BB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>
+      <span class="sidebar-nav-label">Zwiń menu</span>
     </button>
-    <div class="nav-user-menu" id="nav-user-menu">
-      <a href="{{ url_for('settings.index') }}" class="nav-user-menu-item">Ustawienia</a>
-      <a href="{{ url_for('auth.logout') }}" class="nav-user-menu-item">Wyloguj</a>
-    </div>
-  </div>
-</nav>
 
-<div class="page-wrapper">
-  {% with messages = get_flashed_messages(with_categories=True) %}
-    {% if messages %}
-      <div class="flash-container">
-        {% for cat, msg in messages %}
-          <div class="flash flash-{{ cat }}">{{ msg }}</div>
-        {% endfor %}
+    <div class="sidebar-footer nav-user" id="nav-user">
+      <button type="button" class="sidebar-user-toggle" id="nav-user-toggle">
+        <span class="sidebar-avatar">{{ (current_user.full_name or current_user.username or '?')[:2] | upper }}</span>
+        <span class="sidebar-user-name">{{ current_user.full_name or current_user.username }}</span>
+      </button>
+      <div class="nav-user-menu" id="nav-user-menu">
+        <a href="{{ url_for('settings.index') }}" class="nav-user-menu-item">Ustawienia</a>
+        <a href="{{ url_for('auth.logout') }}" class="nav-user-menu-item">Wyloguj</a>
       </div>
-    {% endif %}
-  {% endwith %}
-
-  {% block content %}{% endblock %}
-</div>
-
-{# ── Modal: podgląd faktury KSeF ──────────────────────────────────────────── #}
-<div id="ksefPreviewModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal modal-wide">
-    <div class="modal-header">
-      <h3 id="ksefPreviewTitle">Podgląd faktury KSeF</h3>
-      <button onclick="document.getElementById('ksefPreviewModal').classList.remove('open')" class="modal-close">✕</button>
     </div>
-    <div class="modal-body" id="ksefPreviewBody" style="max-height:75vh;overflow-y:auto;padding:1rem">
+  </aside>
+
+  <div class="main-col">
+    <div class="mobile-topbar">
+      <a href="{{ url_for('gtd.day') }}" class="mobile-topbar-brand">
+        {% if logo_main %}
+          <img src="{{ logo_main }}" alt="{{ app_name }}" class="mobile-topbar-logo-img">
+        {% else %}
+          <span class="mobile-topbar-logo-badge">{{ (app_name or 'B')[0] }}</span>
+        {% endif %}
+        <span class="mobile-topbar-title">{{ app_name }}</span>
+      </a>
+      <div class="mobile-topbar-actions nav-user" id="nav-user-mobile">
+        <button type="button" class="mobile-topbar-avatar nav-user-toggle" id="nav-user-toggle-mobile">
+          {{ (current_user.full_name or current_user.username or '?')[:2] | upper }}
+        </button>
+        <div class="nav-user-menu" id="nav-user-menu-mobile">
+          <a href="{{ url_for('settings.index') }}" class="nav-user-menu-item">Ustawienia</a>
+          <a href="{{ url_for('auth.logout') }}" class="nav-user-menu-item">Wyloguj</a>
+        </div>
+      </div>
     </div>
+
+    <div class="page-wrapper">
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash-container">
+            {% for cat, msg in messages %}
+              <div class="flash flash-{{ cat }}">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+
+    {# ── Modal: podgląd faktury KSeF ──────────────────────────────────────────── #}
+    <div id="ksefPreviewModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+      <div class="modal modal-wide">
+        <div class="modal-header">
+          <h3 id="ksefPreviewTitle">Podgląd faktury KSeF</h3>
+          <button onclick="document.getElementById('ksefPreviewModal').classList.remove('open')" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body" id="ksefPreviewBody" style="max-height:75vh;overflow-y:auto;padding:1rem">
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <span class="build-id">Build {{ build_id }}</span>
+    </footer>
+
+    <nav class="mobile-tabbar">
+      <a href="{{ url_for('crm_companies.list_companies') }}" class="mobile-tabbar-item {{ 'active' if request.blueprint == 'crm_companies' else '' }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V7l9-4 9 4v14"></path><path d="M9 21v-6h6v6"></path></svg>
+        <span>Firmy</span>
+      </a>
+      <a href="{{ url_for('crm_contacts.list_contacts') }}" class="mobile-tabbar-item {{ 'active' if request.blueprint == 'crm_contacts' else '' }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path></svg>
+        <span>Kontakty</span>
+      </a>
+      <a href="{{ url_for('crm_deals.list_deals') }}" class="mobile-tabbar-item {{ 'active' if request.blueprint == 'crm_deals' else '' }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+        <span>Deale</span>
+      </a>
+      <a href="{{ url_for('gtd.day') }}" class="mobile-tabbar-item {{ 'active' if request.blueprint == 'gtd' else '' }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg>
+        <span>Zadania</span>
+      </a>
+    </nav>
   </div>
 </div>
-
-<footer class="app-footer">
-  <span class="build-id">Build {{ build_id }}</span>
-</footer>
 
 <script>
 /* Prefix dla wszystkich fetch('/api/...) — obsługuje wdrożenie w podkatalogu */

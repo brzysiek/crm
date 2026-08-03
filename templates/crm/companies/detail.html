@@ -1,13 +1,14 @@
 {% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
 {% block title %}{{ company.name }}{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-firma-detail">
 <div class="detail-header">
   <div style="display:flex; align-items:center; gap:1rem">
-    {% if company.favicon_url %}
-      <img src="{{ company.favicon_url }}" class="favicon-img" alt=""
-           onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'favicon-placeholder',textContent:'—'}))">
-    {% endif %}
+    <span class="rd-avatar rd-avatar-lg" style="background:{{ m.rd_avatar_color(company.id) }}">
+      {% if company.favicon_url %}<img src="{{ company.favicon_url }}" alt="" onerror="this.style.display='none'">{% endif %}<span>{{ m.rd_initials(company.short_name or company.name) }}</span>
+    </span>
     <div>
     <h1>
       <form method="post" action="{{ url_for('crm_companies.toggle_star_view', company_id=company.id) }}" class="inline-form" style="display:inline">
@@ -31,7 +32,7 @@
 <div class="detail-grid detail-grid-narrow-left">
   <div>
 
-    <div class="inv-section inv-section-navy">
+    <div class="inv-section">
       <h4>Dane firmy</h4>
       <dl class="inv-dl">
         <dt>Opis</dt><dd>{{ company.description or '—' }}</dd>
@@ -106,7 +107,7 @@
 
   <div>
 
-    <div class="inv-section inv-section-navy">
+    <div class="inv-section">
       <div class="inv-section-header">
         <h4>Kontakty</h4>
         <a href="{{ url_for('crm_contacts.new_contact', company_id=company.id) }}" class="btn btn-outline btn-sm">+ Dodaj kontakt</a>
@@ -229,5 +230,6 @@
     <input type="hidden" name="archive_contacts" value="0">
     <button type="submit" class="btn btn-danger">✕ Usuń firmę</button>
   </form>
+</div>
 </div>
 {% endblock %}

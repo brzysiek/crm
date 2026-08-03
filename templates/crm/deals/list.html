@@ -3,6 +3,7 @@
 {% block title %}Deale{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-deale">
 <div class="page-header">
   <h1>Deale</h1>
   <div class="header-actions">
@@ -43,6 +44,8 @@
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
+
+<a href="{{ url_for('crm_deals.new_deal') }}" class="rd-fab" title="Dodaj deal">+</a>
 
 {% if deals %}
 <div id="deals-list-view">
@@ -125,6 +128,34 @@
   </table>
 </div>
 <div class="table-count">{{ list_deals|length }} deali</div>
+
+<div class="rd-card-list">
+  {% for d in list_deals %}
+  <div class="rd-card">
+    <a href="{{ url_for('crm_deals.view_deal', deal_id=d.id) }}" class="rd-card-link" aria-label="{{ d.name }}"></a>
+    <div class="rd-card-top">
+      <span class="rd-card-name">{{ d.name }}</span>
+      <span class="badge {{ stage_badge_classes[d.stage] }}">{{ stage_labels[d.stage] }}</span>
+    </div>
+    <div class="rd-card-meta">
+      {% if d.company_id %}{{ d.company_short_name or d.company_name }}{% else %}—{% endif %}
+      {% if d.amount is not none %} · <strong style="color:var(--rd-bottle-green)">{{ d.amount|pln }}</strong>{% endif %}
+      {% if d.probability is not none %} · {{ d.probability }}%{% endif %}
+    </div>
+    <div class="rd-card-chips">
+      <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
+    </div>
+    <div class="rd-card-actions">
+      <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">✎</a>
+      <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
+            class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
+        <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 {% else %}
 <div class="empty-state">
   <p>Brak deali dla wybranych etapów.</p>
@@ -189,6 +220,7 @@
   <a href="{{ url_for('crm_deals.new_deal') }}" class="btn btn-primary">Dodaj pierwszy deal</a>
 </div>
 {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}

@@ -3,6 +3,7 @@
 {% block title %}Kontakty{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-kontakty">
 <div class="page-header">
   <h1>Kontakty</h1>
   <div class="header-actions">
@@ -22,6 +23,8 @@
   <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
 
+<a href="{{ url_for('crm_contacts.new_contact') }}" class="rd-fab" title="Dodaj kontakt">+</a>
+
 {% if contacts %}
 <div class="bulk-select-bar">
   <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
@@ -38,9 +41,7 @@
     <thead>
       <tr>
         <th class="col-checkbox"></th>
-        <th class="card-cell"></th>
-        {{ m.sort_th('Nazwisko', 'last_name', sort, direction, 'crm_contacts.list_contacts') }}
-        {{ m.sort_th('Imię', 'first_name', sort, direction, 'crm_contacts.list_contacts') }}
+        {{ m.sort_th('Imię i nazwisko', 'last_name', sort, direction, 'crm_contacts.list_contacts', 'last_name') }}
         {{ m.sort_th('Stanowisko', 'position', sort, direction, 'crm_contacts.list_contacts', 'position') }}
         {{ m.sort_th('Firma', 'company_name', sort, direction, 'crm_contacts.list_contacts', 'company_name') }}
         {{ m.sort_th('Email', 'email', sort, direction, 'crm_contacts.list_contacts', 'email') }}
@@ -58,23 +59,19 @@
           <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
                   onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
         </td>
-        <td class="card-cell">
+        <td data-col="last_name" class="rd-entity-cell">
+          <span class="rd-avatar rd-avatar-round" style="background:{{ m.rd_avatar_color(c.id) }}"><span>{{ m.rd_initials(c.first_name ~ ' ' ~ c.last_name) }}</span></span>
+          <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }} {{ c.first_name }}</a>
           {% if c.business_card_file_id %}
           <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
-                  onclick="openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
-          {% else %}
-          <span class="card-circle"></span>
+                  onclick="event.preventDefault(); openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
           {% endif %}
         </td>
-        <td><a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }}</a></td>
-        <td>{{ c.first_name }}</td>
         <td data-col="position">{{ c.position or '—' }}</td>
         <td data-col="company_name">
           {% if c.company_id %}
             <a href="{{ url_for('crm_companies.view_company', company_id=c.company_id) }}">
-              {% if c.company_favicon_url %}
-                <img src="{{ c.company_favicon_url }}" class="favicon-img-sm" alt="" onerror="this.remove()">
-              {% endif %}
+              <span class="rd-swatch" style="background:{{ m.rd_avatar_color(c.company_id) }}"></span>
               {{ c.company_short_name or c.company_name }}
             </a>
           {% else %}<span class="text-muted">—</span>{% endif %}
@@ -111,6 +108,34 @@
   </table>
 </div>
 <div class="table-count">{{ contacts|length }} kontaktów</div>
+
+<div class="rd-card-list">
+  {% for c in contacts %}
+  <div class="rd-card">
+    <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}" class="rd-card-link" aria-label="{{ c.last_name }} {{ c.first_name }}"></a>
+    <div class="rd-card-top">
+      <span class="rd-avatar rd-avatar-round" style="background:{{ m.rd_avatar_color(c.id) }}"><span>{{ m.rd_initials(c.first_name ~ ' ' ~ c.last_name) }}</span></span>
+      <span class="rd-card-name">{{ c.last_name }} {{ c.first_name }}</span>
+      {% if c.business_card_file_id %}
+      <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
+              onclick="openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
+      {% endif %}
+    </div>
+    <div class="rd-card-meta">{{ c.position or '—' }}{% if c.company_id %} · {{ c.company_short_name or c.company_name }}{% endif %}</div>
+    <div class="rd-card-actions">
+      <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
+              onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
+      <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+      <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
+            class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if c.company_id else 'false' }})">
+        <input type="hidden" name="archive_company" value="0">
+        <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 {% else %}
 <div class="empty-state">
   <p>Brak kontaktów spełniających kryteria.</p>
@@ -128,6 +153,7 @@
       <img id="businessCardModalImg" src="" alt="Wizytówka" style="max-width:100%;display:block;border-radius:8px">
     </div>
   </div>
+</div>
 </div>
 {% endblock %}
 

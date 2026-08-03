@@ -1,9 +1,13 @@
 {% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
 {% block title %}{{ contact.first_name }} {{ contact.last_name }}{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-kontakt-detail">
 <div class="detail-header">
-  <div>
+  <div style="display:flex; align-items:center; gap:1rem">
+    <span class="rd-avatar rd-avatar-lg rd-avatar-round" style="background:{{ m.rd_avatar_color(contact.id) }}"><span>{{ m.rd_initials(contact.first_name ~ ' ' ~ contact.last_name) }}</span></span>
+    <div>
     <h1>
       <form method="post" action="{{ url_for('crm_contacts.toggle_star_view', contact_id=contact.id) }}" class="inline-form" style="display:inline">
         <button type="submit" class="star-toggle {{ 'starred' if contact.is_starred }}" title="{{ 'Usuń z ulubionych' if contact.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if contact.is_starred else '☆' }}</button>
@@ -11,6 +15,7 @@
       {{ contact.first_name }} {{ contact.last_name }}
     </h1>
     {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}</div>{% endif %}
+    </div>
   </div>
   <div class="header-actions">
     <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline" title="Wróć do listy">←</a>
@@ -23,7 +28,7 @@
 <div class="detail-grid detail-grid-narrow-left">
   <div>
 
-    <div class="inv-section inv-section-navy">
+    <div class="inv-section">
       <h4>Dane kontaktu</h4>
       <dl class="inv-dl">
         <dt>Firma</dt>
@@ -215,6 +220,7 @@
     <input type="hidden" name="archive_company" value="0">
     <button type="submit" class="btn btn-danger">✕ Usuń kontakt</button>
   </form>
+</div>
 </div>
 
 <script>

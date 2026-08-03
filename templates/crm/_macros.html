@@ -20,6 +20,18 @@
   </button>
 {% endmacro %}
 
+{% macro rd_initials(name) %}
+  {%- set parts = (name or '?').split() -%}
+  {%- if parts|length >= 2 -%}{{ (parts[0][0] ~ parts[1][0])|upper }}
+  {%- elif parts and parts[0] -%}{{ parts[0][:2]|upper }}
+  {%- else -%}?{%- endif -%}
+{% endmacro %}
+
+{% macro rd_avatar_color(seed) %}
+  {%- set palette = ['var(--rd-bottle-green)', 'var(--rd-blue-link)', 'var(--rd-amber-solid)', 'var(--rd-purple-text)', 'var(--rd-lime-tint-text)'] -%}
+  {{ palette[(seed or 0) % 5] }}
+{% endmacro %}
+
 {% macro col_toggle(btn_id, menu_id, columns) %}
   <div class="col-toggle">
     <button type="button" id="{{ btn_id }}" class="btn btn-outline btn-sm">Kolumny ▾</button>
