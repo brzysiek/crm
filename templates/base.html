@@ -156,7 +156,7 @@
     </button>
 
     <div class="sidebar-footer nav-user" id="nav-user">
-      <button type="button" class="sidebar-user-toggle" id="nav-user-toggle">
+      <button type="button" class="sidebar-user-toggle nav-user-toggle" id="nav-user-toggle">
         <span class="sidebar-avatar">{{ (current_user.full_name or current_user.username or '?')[:2] | upper }}</span>
         <span class="sidebar-user-name">{{ current_user.full_name or current_user.username }}</span>
       </button>

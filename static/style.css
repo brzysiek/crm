@@ -910,6 +910,12 @@ input[type="file"]:hover::-webkit-file-upload-button {
   box-shadow: var(--shadow-lg);
 }
 
+/* Zbędne przy widocznym bocznym menu app-wide (>880px) — patrz .sidebar { display:none } poniżej 881px */
+@media (min-width: 881px) {
+  .gtd-fluxa .gtd-sidebar.settings-sidebar { display: none; }
+  .gtd-fluxa.settings-layout { grid-template-columns: 1fr; }
+}
+
 .settings-nav { display: flex; flex-direction: column; }
 
 .settings-nav-item {
