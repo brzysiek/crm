@@ -60,12 +60,14 @@
                   onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
         </td>
         <td data-col="last_name" class="rd-entity-cell">
-          <span class="rd-avatar rd-avatar-round" style="background:{{ m.rd_avatar_color(c.id) }}"><span>{{ m.rd_initials(c.first_name ~ ' ' ~ c.last_name) }}</span></span>
-          <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }} {{ c.first_name }}</a>
-          {% if c.business_card_file_id %}
-          <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
-                  onclick="event.preventDefault(); openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
-          {% endif %}
+          <span class="rd-entity-inner">
+            <span class="rd-avatar rd-avatar-round" style="background:{{ m.rd_avatar_color(c.id) }}"><span>{{ m.rd_initials(c.first_name ~ ' ' ~ c.last_name) }}</span></span>
+            <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }} {{ c.first_name }}</a>
+            {% if c.business_card_file_id %}
+            <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
+                    onclick="event.preventDefault(); openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
+            {% endif %}
+          </span>
         </td>
         <td data-col="position">{{ c.position or '—' }}</td>
         <td data-col="company_name">

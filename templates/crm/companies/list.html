@@ -91,10 +91,12 @@
                   onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
         </td>
         <td data-col="short_name" class="rd-entity-cell">
-          <span class="rd-avatar" style="background:{{ m.rd_avatar_color(c.id) }}">
-            {% if c.favicon_url %}<img src="{{ c.favicon_url }}" alt="" onerror="this.style.display='none'">{% endif %}<span>{{ m.rd_initials(c.short_name or c.name) }}</span>
+          <span class="rd-entity-inner">
+            <span class="rd-avatar" style="background:{{ m.rd_avatar_color(c.id) }}">
+              {% if c.favicon_url %}<img src="{{ c.favicon_url }}" alt="" onerror="this.style.display='none'">{% endif %}<span>{{ m.rd_initials(c.short_name or c.name) }}</span>
+            </span>
+            <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or c.name }}</a>
           </span>
-          <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}">{{ c.short_name or c.name }}</a>
         </td>
         <td data-col="relation_type">
           <a href="{{ url_for('crm_companies.list_companies', relation_type=c.relation_type) }}"
