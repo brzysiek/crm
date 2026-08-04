@@ -2877,6 +2877,12 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .rd-screen .filter-bar .btn { width: 100%; }
   .rd-screen .header-actions { width: 100%; }
   .rd-screen .header-actions .btn { flex: 1; }
+
+  /* Kolumny/Zaznacz nie mają zastosowania w widoku kart na mobile */
+  .rd-kontakty .col-toggle,
+  .rd-firmy .col-toggle,
+  .rd-kontakty .bulk-select-bar,
+  .rd-firmy .bulk-select-bar { display: none; }
 }
 
 /* ── Redesign: Zadania — dzień/tydzień/miesiąc (mobile) — tabele (zaległe, priorytety,
