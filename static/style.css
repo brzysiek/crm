@@ -2883,6 +2883,36 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 @media (max-width: 880px) {
   .rd-zadania-dzien .table-wrapper { display: block; }
   .rd-zadania-dzien .table-count { display: block; }
+
+  /* Tabele jako skladane karty zamiast przewijania w bok */
+  .rd-zadania-dzien .data-table,
+  .rd-zadania-dzien .data-table thead,
+  .rd-zadania-dzien .data-table tbody,
+  .rd-zadania-dzien .data-table tr,
+  .rd-zadania-dzien .data-table td { display: block; width: auto; }
+  .rd-zadania-dzien .data-table thead { display: none; }
+  .rd-zadania-dzien .data-table tr {
+    border: 1px solid var(--rd-border-light);
+    border-radius: 10px;
+    padding: .6rem .75rem;
+    margin-bottom: .5rem;
+  }
+  .rd-zadania-dzien .data-table tr:last-child { margin-bottom: 0; }
+  .rd-zadania-dzien .data-table td {
+    border-bottom: none;
+    padding: .15rem 0;
+    text-align: left;
+  }
+  .rd-zadania-dzien .data-table td.col-checkbox { padding-bottom: .35rem; }
+  .rd-zadania-dzien .data-table td:has(.action-btn) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem;
+    padding-top: .4rem;
+    margin-top: .3rem;
+    border-top: 1px solid var(--rd-border-light);
+  }
 }
 
 /* ── Redesign: Deale (list + kanban) ── */
