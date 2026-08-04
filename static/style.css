@@ -2879,6 +2879,13 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .rd-screen .header-actions .btn { flex: 1; }
 }
 
+/* ── Redesign: Zadania — dzień (mobile) — tabele (zaległe, priorytety, bez godziny)
+   nie mają odpowiednika w postaci kart, więc pozostają widoczne zamiast się ukrywać ── */
+@media (max-width: 880px) {
+  .rd-zadania-dzien .table-wrapper { display: block; }
+  .rd-zadania-dzien .table-count { display: block; }
+}
+
 /* ── Redesign: Deale (list + kanban) ── */
 .rd-deale .rd-card-meta, .rd-deale .rd-card-chips { margin-left: 0; }
 
