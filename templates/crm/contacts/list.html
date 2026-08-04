@@ -70,8 +70,10 @@
         <td data-col="position">{{ c.position or '—' }}</td>
         <td data-col="company_name">
           {% if c.company_id %}
-            <a href="{{ url_for('crm_companies.view_company', company_id=c.company_id) }}">
-              <span class="rd-swatch" style="background:{{ m.rd_avatar_color(c.company_id) }}"></span>
+            <a href="{{ url_for('crm_companies.view_company', company_id=c.company_id) }}" style="display:inline-flex;align-items:center;gap:6px">
+              <span class="rd-avatar rd-avatar-round rd-avatar-sm" style="background:{{ m.rd_avatar_color(c.company_id) }}">
+                {% if c.company_favicon_url %}<img src="{{ c.company_favicon_url }}" alt="" onerror="this.style.display='none'">{% endif %}<span>{{ m.rd_initials(c.company_short_name or c.company_name) }}</span>
+              </span>
               {{ c.company_short_name or c.company_name }}
             </a>
           {% else %}<span class="text-muted">—</span>{% endif %}

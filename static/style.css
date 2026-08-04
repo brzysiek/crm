@@ -2776,6 +2776,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 }
 .rd-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 7px; background: #fff; }
 .rd-avatar-round { border-radius: 50%; }
+.rd-avatar-sm { width: 18px; height: 18px; font-size: 8px; }
 .rd-entity-cell a { color: var(--rd-text-primary); font-weight: 500; }
 
 /* Badges — relation/status chips, scoped so other pages' badge colors are untouched */
@@ -2856,7 +2857,6 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-card-top, .rd-card-meta, .rd-card-chips { position: relative; }
 .rd-card-actions { position: relative; z-index: 2; }
 .rd-card-top .card-circle { position: relative; z-index: 2; }
-.rd-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .rd-card-top { display: flex; align-items: center; gap: 10px; }
 .rd-card-name { flex: 1; min-width: 0; font-weight: 600; color: var(--rd-text-primary); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rd-card-meta { margin: 6px 0 0 36px; font-size: 12px; color: var(--rd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2997,14 +2997,15 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .inv-section:hover { box-shadow: none; }
 .rd-screen .inv-section h4,
 .rd-screen .inv-section-header h4 {
-  font-family: var(--rd-font); color: var(--rd-bottle-green); font-size: 11px;
+  font-family: var(--rd-font); color: #fff; font-size: 11px;
   letter-spacing: .06em; font-weight: 700; text-transform: uppercase;
 }
-.rd-screen .inv-section-header { border-bottom: 1px solid var(--rd-border); }
+.rd-screen .inv-section h4 { background: var(--rd-bottle-green); }
+.rd-screen .inv-section-header { background: var(--rd-bottle-green); border-bottom: none; }
 
-.rd-screen.rd-firma-detail .detail-grid > div > .inv-section:first-child,
-.rd-screen.rd-kontakt-detail .detail-grid > div > .inv-section:first-child {
-  border-top: 3px solid var(--rd-bottle-green);
+.rd-screen.rd-firma-detail .detail-grid > div:first-child > .inv-section:first-child,
+.rd-screen.rd-kontakt-detail .detail-grid > div:first-child > .inv-section:first-child {
+  background: var(--rd-lime-tint-bg);
 }
 .rd-screen .inv-dl dt { color: var(--rd-text-muted); font-family: var(--rd-font); font-size: 12.5px; border-color: var(--rd-border-light); }
 .rd-screen .inv-dl dd { color: var(--rd-text-body); font-family: var(--rd-font); font-size: 13px; }
