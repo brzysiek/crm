@@ -3027,28 +3027,23 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   display: flex;
   flex-direction: column;
   gap: .5rem;
-  background: var(--rd-amber-bg);
-  border: 1px solid var(--rd-amber-solid);
-  border-radius: 9px;
-  padding: .75rem 1rem;
   margin-bottom: 1rem;
   font-family: var(--rd-font);
 }
 .gtd-warning-panel-title { font-weight: 700; font-size: 12.5px; color: var(--rd-amber-text); }
-.gtd-warning-panel .text-muted { color: var(--rd-amber-text); opacity: .75; }
+.gtd-warning-panel .text-muted { color: var(--rd-text-muted); }
 
 .rd-screen .gtd-day-heading { font-family: var(--rd-font); color: var(--rd-text-primary); font-size: 13.5px; font-weight: 700; }
 
 .rd-screen .gtd-priority-panel {
-  background: var(--rd-card);
-  border: 1px solid var(--rd-border);
-  border-top: 3px solid var(--rd-amber-solid);
-  border-radius: 10px;
+  background: transparent;
+  border: none;
   box-shadow: none;
+  padding: 0;
 }
 .rd-screen .gtd-priority-panel::after { display: none; }
 .rd-screen .gtd-priority-panel h3 {
-  color: var(--rd-amber-text);
+  color: var(--rd-bottle-green);
   text-transform: none;
   letter-spacing: 0;
   font-size: 13px;
@@ -3056,20 +3051,34 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .gtd-priority-panel > p.text-muted { color: var(--rd-text-muted); }
 .rd-screen .gtd-priority-panel .table-wrapper { background: transparent; border: none; }
 
+/* Kolory wierszy wg stanu zadania: zaległe = żółte, zwykłe todo = lime,
+   priorytetowe = bottle green (białe litery), done = białe i blade */
+.rd-screen .data-table tr.gtd-row-overdue td { background: var(--rd-amber-bg); }
+.rd-screen .data-table tr.gtd-row-todo td { background: var(--rd-lime-tint-bg); }
+.rd-screen .data-table tr.gtd-row-done td { background: var(--rd-card); }
+.rd-screen .data-table tr.gtd-row-done { opacity: .55; }
+
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td { background: var(--rd-bottle-green); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .text-muted { color: rgba(255,255,255,.65); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn { color: rgba(255,255,255,.85); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost { color: rgba(255,255,255,.75); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done td { background: var(--rd-card); color: var(--rd-text-body); }
+
 .rd-screen .gtd-timeline-time { color: var(--rd-text-muted); font-family: var(--rd-font); }
 .rd-screen .gtd-timeline-card {
-  background: var(--rd-card);
+  background: var(--rd-lime-tint-bg);
   border-color: var(--rd-border);
-  border-left-color: var(--rd-blue-link);
+  border-left-color: var(--rd-lime-tint-text);
   border-radius: 9px;
   box-shadow: none;
 }
 .rd-screen .gtd-timeline-card:hover { transform: none; box-shadow: 0 4px 14px rgba(13,40,32,.1); }
-.rd-screen .gtd-timeline-card.gtd-row-done { border-left-color: var(--rd-lime-tint-text); background: var(--rd-lime-tint-bg); }
-.rd-screen .gtd-timeline-card.gtd-row-overdue { border-left-color: var(--rd-red-text); background: var(--rd-red-bg); }
-.rd-screen .gtd-timeline-card.gtd-gcal-card { border-left-color: var(--rd-blue-link); background: var(--rd-blue-bg); }
-.rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-done { border-left-color: var(--rd-lime-tint-text); background: var(--rd-lime-tint-bg); }
-.rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-declined { border-left-color: var(--rd-red-text); background: var(--rd-red-bg); }
-.rd-screen .gtd-timeline-card.gtd-gcal-card .badge { background: rgba(255,255,255,.85); }
+.rd-screen .gtd-timeline-card.gtd-row-overdue { border-left-color: var(--rd-amber-solid); background: var(--rd-amber-bg); }
+.rd-screen .gtd-timeline-card.gtd-gcal-card { border-left-color: var(--rd-lime-tint-text); background: var(--rd-lime-tint-bg); }
+.rd-screen .gtd-timeline-card.gtd-row-done,
+.rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-done { border-left-color: var(--rd-border); background: var(--rd-card); opacity: .55; }
+.rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-declined { border-left-color: var(--rd-red-text); background: var(--rd-red-bg); opacity: 1; }
 
 .rd-screen .term-hover-picker { background: var(--rd-card); border-color: var(--rd-border); border-radius: 8px; font-family: var(--rd-font); }
