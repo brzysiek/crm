@@ -2997,10 +2997,15 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .inv-section:hover { box-shadow: none; }
 .rd-screen .inv-section h4,
 .rd-screen .inv-section-header h4 {
-  font-family: var(--rd-font); color: var(--rd-text-muted); font-size: 11px;
+  font-family: var(--rd-font); color: var(--rd-bottle-green); font-size: 11px;
   letter-spacing: .06em; font-weight: 700; text-transform: uppercase;
 }
 .rd-screen .inv-section-header { border-bottom: 1px solid var(--rd-border); }
+
+.rd-screen.rd-firma-detail .detail-grid > div > .inv-section:first-child,
+.rd-screen.rd-kontakt-detail .detail-grid > div > .inv-section:first-child {
+  border-top: 3px solid var(--rd-bottle-green);
+}
 .rd-screen .inv-dl dt { color: var(--rd-text-muted); font-family: var(--rd-font); font-size: 12.5px; border-color: var(--rd-border-light); }
 .rd-screen .inv-dl dd { color: var(--rd-text-body); font-family: var(--rd-font); font-size: 13px; }
 .rd-screen .inv-dl a { color: var(--rd-blue-link); }
