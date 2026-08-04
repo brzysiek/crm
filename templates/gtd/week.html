@@ -3,6 +3,7 @@
 {% block title %}Tydzień — GTD{% endblock %}
 
 {% block gtd_content %}
+<div class="rd-screen rd-zadania-tydzien">
 <div class="page-header">
   <div class="gtd-period-nav">
     <a class="action-btn" title="Poprzedni tydzień" href="{{ url_for('gtd.week', start=prev_week_start) }}">◀</a>
@@ -22,8 +23,8 @@
 {% endif %}
 
 {% if unfinished_weeks %}
-<div class="filter-bar" style="flex-direction:column;align-items:stretch;gap:.5rem;background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:1rem">
-  <div style="font-weight:600">Niedokończone z poprzednich tygodni ({{ unfinished_weeks|length }})</div>
+<div class="gtd-warning-panel">
+  <div class="gtd-warning-panel-title">Niedokończone z poprzednich tygodni ({{ unfinished_weeks|length }})</div>
   <div class="text-muted" style="font-size:.8rem">GTD nie przenosi zadań automatycznie — zdecyduj, co zrobić z każdym.</div>
   <div class="table-wrapper">
   <table class="data-table">
@@ -163,4 +164,7 @@
 </table>
 </div>
 {% endif %}
+
+<button type="button" class="rd-fab" title="Dodaj zadanie" onclick="var i=document.getElementById('gtdWeekAddInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
+</div>
 {% endblock %}
