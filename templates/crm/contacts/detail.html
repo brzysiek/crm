@@ -50,6 +50,45 @@
       </dl>
     </div>
 
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>Wizytówka</h4>
+      <div style="padding:.85rem">
+        {% if not contact.company_id %}
+        <p class="text-muted small">Ten kontakt nie jest przypisany do firmy — nie można dodać wizytówki.</p>
+        {% else %}
+          {% if business_card %}
+            {% if business_card.mime_type in ('image/jpeg', 'image/png') %}
+            <a href="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" target="_blank" rel="noopener">
+              <img src="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" alt="Wizytówka"
+                   style="max-width:100%;border-radius:8px;display:block;margin-bottom:.6rem">
+            </a>
+            {% else %}
+            <p class="small" style="margin-bottom:.6rem">
+              <a href="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" target="_blank" rel="noopener">{{ business_card.file_name }}</a>
+            </p>
+            {% endif %}
+            <div style="display:flex; gap:.5rem; align-items:center">
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                Podmień
+                <input type="file" id="businessCardInput" style="display:none"
+                       accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
+              </label>
+              <button type="button" class="btn btn-outline btn-sm" onclick="deleteBusinessCard({{ contact.id }})">Usuń</button>
+              <span id="businessCardStatus" class="small text-muted"></span>
+            </div>
+          {% else %}
+            <p class="text-muted small" style="margin-bottom:.6rem">Brak wizytówki.</p>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer">
+              + Dodaj wizytówkę
+              <input type="file" id="businessCardInput" style="display:none"
+                     accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
+            </label>
+            <span id="businessCardStatus" class="small text-muted"></span>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
     {% if company_tags or company_industries or company_source %}
     <div class="inv-section" style="margin-top:1rem">
       <h4>Klasyfikacja firmy</h4>
@@ -89,45 +128,6 @@
   </div>
 
   <div>
-    <div class="inv-section" style="margin-bottom:1rem">
-      <h4>Wizytówka</h4>
-      <div style="padding:.85rem">
-        {% if not contact.company_id %}
-        <p class="text-muted small">Ten kontakt nie jest przypisany do firmy — nie można dodać wizytówki.</p>
-        {% else %}
-          {% if business_card %}
-            {% if business_card.mime_type in ('image/jpeg', 'image/png') %}
-            <a href="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" target="_blank" rel="noopener">
-              <img src="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" alt="Wizytówka"
-                   style="max-width:100%;border-radius:8px;display:block;margin-bottom:.6rem">
-            </a>
-            {% else %}
-            <p class="small" style="margin-bottom:.6rem">
-              <a href="{{ url_for('api_crm_files_download', file_id=business_card.id) }}" target="_blank" rel="noopener">{{ business_card.file_name }}</a>
-            </p>
-            {% endif %}
-            <div style="display:flex; gap:.5rem; align-items:center">
-              <label class="btn btn-outline btn-sm" style="cursor:pointer">
-                Podmień
-                <input type="file" id="businessCardInput" style="display:none"
-                       accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
-              </label>
-              <button type="button" class="btn btn-outline btn-sm" onclick="deleteBusinessCard({{ contact.id }})">Usuń</button>
-              <span id="businessCardStatus" class="small text-muted"></span>
-            </div>
-          {% else %}
-            <p class="text-muted small" style="margin-bottom:.6rem">Brak wizytówki.</p>
-            <label class="btn btn-outline btn-sm" style="cursor:pointer">
-              + Dodaj wizytówkę
-              <input type="file" id="businessCardInput" style="display:none"
-                     accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
-            </label>
-            <span id="businessCardStatus" class="small text-muted"></span>
-          {% endif %}
-        {% endif %}
-      </div>
-    </div>
-
     <div class="inv-section">
       <div class="inv-section-header">
         <h4>Deale</h4>
