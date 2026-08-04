@@ -369,6 +369,7 @@ html.sidebar-collapsed .sidebar-user-name { display: none; }
 
 /* ── Page wrapper ───────────────────────────────────────────────────────────── */
 .page-wrapper {
+  width: 100%;
   min-width: 90%;
   max-width: 1600px;
   margin: 0 auto;
