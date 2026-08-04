@@ -3,6 +3,7 @@
 {% block title %}{{ project.title }} — Projekt — GTD{% endblock %}
 
 {% block gtd_content %}
+<div class="rd-screen rd-zadania rd-zadania-projekt">
 <div class="page-header">
   <h1>
     <button type="button" class="star-toggle {{ 'starred' if project.is_important }}"
@@ -89,4 +90,7 @@
 </div>
 {% endfor %}
 {% endif %}
+
+<button type="button" class="rd-fab" title="Dodaj podzadanie" onclick="var i=document.getElementById('gtdSubtaskInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
+</div>
 {% endblock %}

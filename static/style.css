@@ -2885,60 +2885,34 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .rd-firmy .bulk-select-bar { display: none; }
 }
 
-/* ── Redesign: Zadania — dzień/tydzień/miesiąc (mobile) — tabele (zaległe, priorytety,
-   bez godziny/dnia) nie mają odpowiednika w postaci kart, więc pozostają widoczne
+/* ── Redesign: Zadania — wszystkie widoki GTD (mobile) — tabele (zaległe, priorytety,
+   bez godziny/dnia itp.) nie mają odpowiednika w postaci kart, więc pozostają widoczne
    zamiast się ukrywać ── */
 @media (max-width: 880px) {
-  .rd-zadania-dzien .table-wrapper,
-  .rd-zadania-tydzien .table-wrapper,
-  .rd-zadania-miesiac .table-wrapper { display: block; }
-  .rd-zadania-dzien .table-count,
-  .rd-zadania-tydzien .table-count,
-  .rd-zadania-miesiac .table-count { display: block; }
+  .rd-zadania .table-wrapper { display: block; }
+  .rd-zadania .table-count { display: block; }
 
   /* Tabele jako skladane karty zamiast przewijania w bok */
-  .rd-zadania-dzien .data-table,
-  .rd-zadania-dzien .data-table thead,
-  .rd-zadania-dzien .data-table tbody,
-  .rd-zadania-dzien .data-table tr,
-  .rd-zadania-dzien .data-table td,
-  .rd-zadania-tydzien .data-table,
-  .rd-zadania-tydzien .data-table thead,
-  .rd-zadania-tydzien .data-table tbody,
-  .rd-zadania-tydzien .data-table tr,
-  .rd-zadania-tydzien .data-table td,
-  .rd-zadania-miesiac .data-table,
-  .rd-zadania-miesiac .data-table thead,
-  .rd-zadania-miesiac .data-table tbody,
-  .rd-zadania-miesiac .data-table tr,
-  .rd-zadania-miesiac .data-table td { display: block; width: auto; }
-  .rd-zadania-dzien .data-table thead,
-  .rd-zadania-tydzien .data-table thead,
-  .rd-zadania-miesiac .data-table thead { display: none; }
-  .rd-zadania-dzien .data-table tr,
-  .rd-zadania-tydzien .data-table tr,
-  .rd-zadania-miesiac .data-table tr {
+  .rd-zadania .data-table,
+  .rd-zadania .data-table thead,
+  .rd-zadania .data-table tbody,
+  .rd-zadania .data-table tr,
+  .rd-zadania .data-table td { display: block; width: auto; }
+  .rd-zadania .data-table thead { display: none; }
+  .rd-zadania .data-table tr {
     border: 1px solid var(--rd-border-light);
     border-radius: 10px;
     padding: .6rem .75rem;
     margin-bottom: .5rem;
   }
-  .rd-zadania-dzien .data-table tr:last-child,
-  .rd-zadania-tydzien .data-table tr:last-child,
-  .rd-zadania-miesiac .data-table tr:last-child { margin-bottom: 0; }
-  .rd-zadania-dzien .data-table td,
-  .rd-zadania-tydzien .data-table td,
-  .rd-zadania-miesiac .data-table td {
+  .rd-zadania .data-table tr:last-child { margin-bottom: 0; }
+  .rd-zadania .data-table td {
     border-bottom: none;
     padding: .15rem 0;
     text-align: left;
   }
-  .rd-zadania-dzien .data-table td.col-checkbox,
-  .rd-zadania-tydzien .data-table td.col-checkbox,
-  .rd-zadania-miesiac .data-table td.col-checkbox { padding-bottom: .35rem; }
-  .rd-zadania-dzien .data-table td:has(.action-btn),
-  .rd-zadania-tydzien .data-table td:has(.action-btn),
-  .rd-zadania-miesiac .data-table td:has(.action-btn) {
+  .rd-zadania .data-table td.col-checkbox { padding-bottom: .35rem; }
+  .rd-zadania .data-table td:has(.action-btn) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;

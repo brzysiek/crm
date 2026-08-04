@@ -3,6 +3,7 @@
 {% block title %}Projekty — GTD{% endblock %}
 
 {% block gtd_content %}
+<div class="rd-screen rd-zadania rd-zadania-projekty">
 <div class="page-header">
   <h1>Projekty</h1>
 </div>
@@ -57,4 +58,7 @@
 </div>
 {% endif %}
 {% endif %}
+
+<button type="button" class="rd-fab" title="Nowy projekt" onclick="var i=document.getElementById('gtdNewProjectInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
+</div>
 {% endblock %}
