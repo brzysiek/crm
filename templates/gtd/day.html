@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, task_extra_actions, row_class, timeline_item %}
 {% block title %}Dziś — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -64,17 +64,16 @@
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:190px"></th>
+      <th class="col-actions" style="width:220px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in priority_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, today, day_actions=true) }}
+      {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
       <td class="col-actions nowrap">
-        {{ priority_stars(t) }}
-        <button type="button" class="action-btn" title="Zaplanuj godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰</button>
-        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
+        {{ task_extra_actions(t) }}
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}
@@ -102,17 +101,16 @@
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:190px"></th>
+      <th class="col-actions" style="width:220px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, today, day_actions=true) }}
+      {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
       <td class="col-actions nowrap">
-        {{ priority_stars(t) }}
-        <button type="button" class="action-btn" title="Zaplanuj godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰</button>
-        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
+        {{ task_extra_actions(t) }}
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}

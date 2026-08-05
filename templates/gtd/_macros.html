@@ -30,7 +30,7 @@
 </tr>
 {% endmacro %}
 
-{% macro task_cells(t, today=none, week_start=none, day_actions=false) %}
+{% macro task_cells(t, today=none, week_start=none, day_actions=false, inline_actions=true) %}
   <td class="col-checkbox">
     <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
           onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
@@ -44,10 +44,12 @@
       {{ t.title }}
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
+      {% if inline_actions %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
               onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">✎</button>
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Nowe zadanie follow-up"
               onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">↩</button>
+      {% endif %}
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes|linkify }}</div>{% endif %}
   </td>
@@ -176,4 +178,14 @@
 {% macro priority_stars(t) %}
   <button type="button" class="action-btn" title="Priorytet dnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_today')">{{ '★' if t.is_today_priority else '☆' }}</button>
   <button type="button" class="action-btn" title="Priorytet tygodnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_week')">{{ '⚑' if t.is_week_priority else '⚐' }}</button>
+{% endmacro %}
+
+{% macro task_extra_actions(t) %}
+  <button type="button" class="action-btn" title="Edytuj termin"
+          onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">✎</button>
+  <button type="button" class="action-btn" title="Nowe zadanie follow-up"
+          onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">↩</button>
+  {{ priority_stars(t) }}
+  <button type="button" class="action-btn" title="Zaplanuj godzinę"
+          onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰</button>
 {% endmacro %}

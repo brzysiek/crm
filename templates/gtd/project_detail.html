@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, row_class, timeline_item %}
+{% from 'gtd/_macros.html' import task_cells, task_extra_actions, row_class, timeline_item %}
 {% block title %}{{ project.title }} — Projekt — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -50,19 +50,18 @@
       <th class="col-checkbox"></th>
       <th>Zadanie</th>
       <th>Termin</th>
-      <th class="col-actions" style="width:140px"></th>
+      <th class="col-actions" style="width:220px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in subtasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t) }}
-      <td class="col-actions">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
-          <button type="button" class="btn btn-outline btn-sm" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
-          <button type="button" class="btn btn-ghost btn-sm" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
-        </div>
+      {{ task_cells(t, inline_actions=false) }}
+      <td class="col-actions nowrap">
+        {{ task_extra_actions(t) }}
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
       </td>
     </tr>
     {% endfor %}
