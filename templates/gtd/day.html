@@ -23,10 +23,18 @@
   <div class="text-muted" style="font-size:.8rem">GTD nie przenosi zadań automatycznie — zdecyduj, co zrobić z każdym.</div>
   <div class="table-wrapper">
   <table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-checkbox"></th>
+        <th>Zadanie</th>
+        <th>Termin</th>
+        <th class="col-actions" style="width:220px"></th>
+      </tr>
+    </thead>
     <tbody>
       {% for t in unfinished %}
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
-        {{ task_cells(t, today, day_actions=true) }}
+        {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
         <td class="col-actions nowrap">
           <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
           <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">{{ icon('moon', 16) }}</button>
