@@ -555,7 +555,7 @@ function _gtdSetCrmPickers(currentContactId, currentCompanyId, contactPickerId, 
   }
 }
 
-function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek) {
+function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek, currentDealId, currentDealName) {
   document.getElementById('gtdEditTaskId').value = taskId;
   document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
@@ -563,6 +563,11 @@ function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, curr
   document.getElementById('gtdEditTaskWeek').value = currentWeek || '';
   _gtdFillProjectSelect(taskId, currentParentId || null);
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
+  if (currentDealId) {
+    selectEntityPicker('gtdEditTaskDealPicker', currentDealId, currentDealName || ('Deal #' + currentDealId));
+  } else {
+    clearEntityPicker('gtdEditTaskDealPicker');
+  }
   document.getElementById('gtdEditTaskModal').classList.add('open');
 }
 
@@ -579,10 +584,12 @@ function gtdSubmitEditTask() {
   const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
   const companyValue = document.getElementById('gtdEditTaskCompanyPicker-hidden').value;
   const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
+  const dealValue = document.getElementById('gtdEditTaskDealPicker-hidden').value;
+  const crm_deal_id = dealValue ? parseInt(dealValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id, crm_deal_id }),
   })
     .then(r => r.json())
     .then(data => {
@@ -742,6 +749,7 @@ if (document.getElementById('gtdEditTaskContactPicker')) {
   initEntityPicker('gtdEditTaskContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdEditTaskCompanyPicker'));
   initEntityPicker('gtdEditTaskCompanyPicker', '/api/crm/companies/search');
+  initEntityPicker('gtdEditTaskDealPicker', '/api/crm/deals/search');
   initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdGcalProjectCompanyPicker'));
   initEntityPicker('gtdGcalProjectCompanyPicker', '/api/crm/companies/search');

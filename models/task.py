@@ -14,12 +14,14 @@ STATUS_LABELS = {
 
 _LIST_FIELDS = """t.*, p.title AS project_title,
                   cc.first_name AS crm_contact_first_name, cc.last_name AS crm_contact_last_name,
-                  cco.name AS crm_company_name, cco.short_name AS crm_company_short_name"""
+                  cco.name AS crm_company_name, cco.short_name AS crm_company_short_name,
+                  cd.name AS crm_deal_name"""
 
 _LIST_JOINS = """FROM tasks t
                  LEFT JOIN tasks p ON p.id = t.parent_id
                  LEFT JOIN crm_contacts cc ON cc.id = t.crm_contact_id
-                 LEFT JOIN crm_companies cco ON cco.id = t.crm_company_id"""
+                 LEFT JOIN crm_companies cco ON cco.id = t.crm_company_id
+                 LEFT JOIN crm_deals cd ON cd.id = t.crm_deal_id"""
 
 
 def _valid_user_id(user_id: int | None) -> int | None:
@@ -76,7 +78,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
 def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
-               'parent_id', 'crm_contact_id', 'crm_company_id')
+               'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
@@ -86,6 +88,8 @@ def update_task(task_id: int, data: dict) -> None:
         fields['crm_contact_id'] = fields['crm_contact_id'] or None
     if 'crm_company_id' in fields:
         fields['crm_company_id'] = fields['crm_company_id'] or None
+    if 'crm_deal_id' in fields:
+        fields['crm_deal_id'] = fields['crm_deal_id'] or None
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -94,7 +98,7 @@ def update_task(task_id: int, data: dict) -> None:
                 f"UPDATE tasks SET {set_clause} WHERE id=%s",
                 (*fields.values(), task_id)
             )
-            client_fields = {k: fields[k] for k in ('crm_contact_id', 'crm_company_id') if k in fields}
+            client_fields = {k: fields[k] for k in ('crm_contact_id', 'crm_company_id', 'crm_deal_id') if k in fields}
             if client_fields:
                 cur.execute("SELECT is_project FROM tasks WHERE id=%s", (task_id,))
                 row = cur.fetchone()
