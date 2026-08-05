@@ -33,7 +33,7 @@
   <p class="text-muted">{{ project.notes|linkify }}</p>
 {% endif %}
 
-<div class="filter-bar" style="gap:.5rem">
+<div class="filter-bar" data-no-collapse style="gap:.5rem">
   <input type="text" id="gtdSubtaskInput" class="filter-input" style="flex:1"
          placeholder="Dodaj podzadanie…" autocomplete="off"
          onkeydown="if(event.key==='Enter') gtdAddSubtask({{ project.id }}, 'gtdSubtaskInput')">

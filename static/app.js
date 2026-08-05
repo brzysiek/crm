@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', initNavUserMenu);
 
 /* ── CRM: domyślnie zwinięte paski filtrów na urządzeniach mobilnych ──────────── */
 function initFilterBarCollapse() {
-  document.querySelectorAll('.filter-bar').forEach(bar => {
+  document.querySelectorAll('.filter-bar:not([data-no-collapse])').forEach(bar => {
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'filter-bar-toggle';

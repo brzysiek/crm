@@ -39,7 +39,7 @@
 </div>
 {% endif %}
 
-<div class="filter-bar" style="gap:.5rem">
+<div class="filter-bar" data-no-collapse style="gap:.5rem">
   <input type="text" id="gtdDayAddInput" class="filter-input" style="flex:1"
          placeholder="Dodaj zadanie na ten dzień…" autocomplete="off"
          onkeydown="if(event.key==='Enter') gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">
