@@ -1,19 +1,20 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
+{% from '_icons.html' import icon %}
 {% block title %}Miesiąc — GTD{% endblock %}
 
 {% block gtd_content %}
 <div class="rd-screen rd-zadania rd-zadania-miesiac">
 <div class="page-header">
   <div class="gtd-period-nav">
-    <a class="action-btn" title="Poprzedni miesiąc" href="{{ url_for('gtd.month', start=prev_month_start) }}">◀</a>
+    <a class="action-btn" title="Poprzedni miesiąc" href="{{ url_for('gtd.month', start=prev_month_start) }}">{{ icon('chevron-left', 16) }}</a>
     <h1>{{ month_label }}</h1>
-    <a class="action-btn" title="Następny miesiąc" href="{{ url_for('gtd.month', start=next_month_start) }}">▶</a>
+    <a class="action-btn" title="Następny miesiąc" href="{{ url_for('gtd.month', start=next_month_start) }}">{{ icon('chevron-right', 16) }}</a>
     {% if not is_current_month %}
     <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.month') }}">Dziś</a>
     {% endif %}
   </div>
-  <span class="badge {{ 'badge-red' if month_star_count > 15 else 'badge-gray' }}" title="Priorytety w tym miesiącu">★ {{ month_star_count }}</span>
+  <span class="badge {{ 'badge-red' if month_star_count > 15 else 'badge-gray' }}" title="Priorytety w tym miesiącu">{{ icon('star', 12) }} {{ month_star_count }}</span>
 </div>
 
 {% if gcal_error %}
@@ -33,10 +34,10 @@
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
         {{ task_cells(t) }}
         <td class="col-actions nowrap">
-          <button type="button" class="action-btn" title="Do tego miesiąca" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">→</button>
-          <button type="button" class="action-btn" title="Do następnego miesiąca" onclick="gtdAssignMonth({{ t.id }}, '{{ next_month_start }}')">→⁺</button>
-          <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤</button>
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+          <button type="button" class="action-btn" title="Do tego miesiąca" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">{{ icon('arrow-right', 16) }}</button>
+          <button type="button" class="action-btn" title="Do następnego miesiąca" onclick="gtdAssignMonth({{ t.id }}, '{{ next_month_start }}')">{{ icon('arrow-right', 16) }}⁺</button>
+          <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">{{ icon('moon', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
         </td>
       </tr>
       {% endfor %}
@@ -54,7 +55,7 @@
 </div>
 
 <div class="gtd-priority-panel">
-<h3><span class="gtd-priority-star">★</span> Priorytety miesiąca</h3>
+<h3><span class="gtd-priority-star">{{ icon('star', 16) }}</span> Priorytety miesiąca</h3>
 {% if not priority_tasks %}
   <p class="text-muted">Brak oznaczonych priorytetów w tym miesiącu. Oznacz gwiazdką zadania w Next actions lub widoku tygodnia.</p>
 {% else %}
@@ -75,8 +76,8 @@
       {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -89,15 +90,15 @@
 {% for week in weeks %}
 <div class="gtd-week-section{{ ' gtd-week-collapsed' if week.is_past else '' }}">
 <div class="gtd-week-header" onclick="this.closest('.gtd-week-section').classList.toggle('gtd-week-collapsed')">
-  <span class="gtd-week-toggle-icon">▾</span>
-  <a class="gtd-week-divider-label" href="{{ url_for('gtd.week', start=week.week_start.isoformat()) }}" onclick="event.stopPropagation()">🗓 {{ week.week_label }}</a>
+  <span class="gtd-week-toggle-icon">{{ icon('chevron-down', 14) }}</span>
+  <a class="gtd-week-divider-label" href="{{ url_for('gtd.week', start=week.week_start.isoformat()) }}" onclick="event.stopPropagation()">{{ icon('calendar', 14) }} {{ week.week_label }}</a>
   <span class="gtd-week-divider-line"></span>
 </div>
 <div class="gtd-week-body">
 {% for group in week.days %}
 <div class="gtd-day-section{{ ' gtd-day-collapsed' if group.date < today else '' }}">
 <h3 class="gtd-day-toggle" onclick="this.closest('.gtd-day-section').classList.toggle('gtd-day-collapsed')">
-  <span class="gtd-day-toggle-icon">▾</span> {{ group.label }}
+  <span class="gtd-day-toggle-icon">{{ icon('chevron-down', 14) }}</span> {{ group.label }}
   <span class="gtd-day-done-count">{{ group.done_count }}/{{ group.total_count }}</span>
 </h3>
 <div class="gtd-day-body">
@@ -124,9 +125,9 @@
       {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn" title="Zablokuj czas" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ group.date.isoformat() }}', '', 30)">⏰</button>
-        <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">✕</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Zablokuj czas" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ group.date.isoformat() }}', '', 30)">{{ icon('clock', 16) }}</button>
+        <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">{{ icon('x', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -162,9 +163,9 @@
       {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
-        <button type="button" class="action-btn" title="Usuń z miesiąca" onclick="gtdClearMonth({{ t.id }})">✕</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
+        <button type="button" class="action-btn" title="Usuń z miesiąca" onclick="gtdClearMonth({{ t.id }})">{{ icon('x', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

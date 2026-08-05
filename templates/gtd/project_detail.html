@@ -1,5 +1,6 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, task_extra_actions, row_class, timeline_item %}
+{% from '_icons.html' import icon %}
 {% block title %}{{ project.title }} — Projekt — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -8,24 +9,24 @@
   <h1>
     <button type="button" class="star-toggle {{ 'starred' if project.is_important }}"
             title="{{ 'Usuń z ważnych' if project.is_important else 'Oznacz jako ważny' }}"
-            onclick="gtdToggleStar({{ project.id }}, 'toggle_important')">{{ '★' if project.is_important else '☆' }}</button>
-    📁 {{ project.title }}
+            onclick="gtdToggleStar({{ project.id }}, 'toggle_important')">{{ icon('star', 16) if project.is_important else icon('star-outline', 16) }}</button>
+    {{ icon('folder', 18) }} {{ project.title }}
     {% if project.status == 'done' %}<span class="badge badge-green" style="margin-left:.4rem">zakończony</span>{% endif %}
-    {% if project.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=project.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</a>{% endif %}
-    {% if project.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=project.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ project.crm_company_short_name or project.crm_company_name }}</a>{% endif %}
+    {% if project.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=project.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</a>{% endif %}
+    {% if project.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=project.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ project.crm_company_short_name or project.crm_company_name }}</a>{% endif %}
   </h1>
   <div class="header-actions">
-    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.projects') }}">← Projekty</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.projects') }}">{{ icon('arrow-left', 14) }} Projekty</a>
     {% if project.status == 'done' %}
-    <button type="button" class="btn btn-outline btn-sm" onclick="gtdReopenProject({{ project.id }})">↺ Otwórz ponownie</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdReopenProject({{ project.id }})">{{ icon('rotate-ccw', 14) }} Otwórz ponownie</button>
     {% else %}
-    <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ project.id }})">✓ Zakończ projekt</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ project.id }})">{{ icon('check', 14) }} Zakończ projekt</button>
     {% endif %}
     <button type="button" class="btn btn-outline btn-sm"
-            onclick="gtdOpenEditTask({{ project.id }}, '{{ project.due_date or '' }}', {{ project.parent_id or 'null' }}, {{ project.title|tojson|forceescape }}, {{ project.crm_contact_id or 'null' }}, {{ project.crm_company_id or 'null' }}, '{{ project.scheduled_date or '' }}', '{{ project.planned_week or '' }}', {{ project.crm_deal_id or 'null' }}, {{ project.crm_deal_name|tojson|forceescape if project.crm_deal_name else 'null' }})">🔗 Przypisz klienta</button>
-    <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ project.id }}, {{ project.title|tojson|forceescape }})">✎ Zmień nazwę</button>
+            onclick="gtdOpenEditTask({{ project.id }}, '{{ project.due_date or '' }}', {{ project.parent_id or 'null' }}, {{ project.title|tojson|forceescape }}, {{ project.crm_contact_id or 'null' }}, {{ project.crm_company_id or 'null' }}, '{{ project.scheduled_date or '' }}', '{{ project.planned_week or '' }}', {{ project.crm_deal_id or 'null' }}, {{ project.crm_deal_name|tojson|forceescape if project.crm_deal_name else 'null' }})">{{ icon('link', 14) }} Przypisz klienta</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ project.id }}, {{ project.title|tojson|forceescape }})">{{ icon('edit', 14) }} Zmień nazwę</button>
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdFlattenProject({{ project.id }})">Cofnij do zwykłego zadania</button>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteProject({{ project.id }})">🗑 Usuń projekt</button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteProject({{ project.id }})">{{ icon('trash', 14) }} Usuń projekt</button>
   </div>
 </div>
 
@@ -59,9 +60,9 @@
       {{ task_cells(t, inline_actions=false) }}
       <td class="col-actions nowrap">
         {{ task_extra_actions(t) }}
-        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
-        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
-        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -77,7 +78,7 @@
 {% for group in gcal_day_groups %}
 <div class="gtd-day-section">
   <h3 class="gtd-day-toggle" onclick="this.closest('.gtd-day-section').classList.toggle('gtd-day-collapsed')">
-    <span class="gtd-day-toggle-icon">▾</span>
+    <span class="gtd-day-toggle-icon">{{ icon('chevron-down', 14) }}</span>
     <a href="{{ url_for('gtd.day', d=group.date.isoformat()) }}" onclick="event.stopPropagation()">{{ group.label }}</a>
   </h3>
   <div class="gtd-day-body">

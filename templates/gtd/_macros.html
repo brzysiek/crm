@@ -1,3 +1,4 @@
+{% from '_icons.html' import icon %}
 {% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else 'gtd-row-todo') }}{% endmacro %}
 
 {% macro project_row(p) %}
@@ -5,8 +6,8 @@
   <td>
     <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600">{{ p.title }}</a>
     {% if p.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ p.due_date|ddmmyyyy }}</span>{% endif %}
-    {% if p.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=p.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ p.crm_contact_first_name }} {{ p.crm_contact_last_name }}</a>{% endif %}
-    {% if p.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=p.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ p.crm_company_short_name or p.crm_company_name }}</a>{% endif %}
+    {% if p.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=p.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ p.crm_contact_first_name }} {{ p.crm_contact_last_name }}</a>{% endif %}
+    {% if p.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=p.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ p.crm_company_short_name or p.crm_company_name }}</a>{% endif %}
   </td>
   <td style="min-width:180px">
     {% if p.subtask_total %}
@@ -21,11 +22,11 @@
   </td>
   <td class="col-actions nowrap">
     <button type="button" class="action-btn" title="{{ 'Odznacz jako ważny' if p.is_important else 'Oznacz jako ważny' }}"
-            onclick="gtdToggleStar({{ p.id }}, 'toggle_important')">{{ '★' if p.is_important else '☆' }}</button>
+            onclick="gtdToggleStar({{ p.id }}, 'toggle_important')">{{ icon('star', 16) if p.is_important else icon('star-outline', 16) }}</button>
     <button type="button" class="action-btn" title="Edytuj projekt"
-            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }}, '{{ p.scheduled_date or '' }}', '{{ p.planned_week or '' }}', {{ p.crm_deal_id or 'null' }}, {{ p.crm_deal_name|tojson|forceescape if p.crm_deal_name else 'null' }})">✎</button>
-    <button type="button" class="action-btn" title="Zakończ projekt" onclick="gtdCloseProject({{ p.id }})">✓</button>
-    <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdDeleteProject({{ p.id }})">🗑</button>
+            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }}, '{{ p.scheduled_date or '' }}', '{{ p.planned_week or '' }}', {{ p.crm_deal_id or 'null' }}, {{ p.crm_deal_name|tojson|forceescape if p.crm_deal_name else 'null' }})">{{ icon('edit', 16) }}</button>
+    <button type="button" class="action-btn" title="Zakończ projekt" onclick="gtdCloseProject({{ p.id }})">{{ icon('check', 16) }}</button>
+    <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdDeleteProject({{ p.id }})">{{ icon('trash', 16) }}</button>
   </td>
 </tr>
 {% endmacro %}
@@ -37,18 +38,18 @@
   </td>
   <td>
     <div style="font-weight:600">
-      {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-right:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
-      {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-right:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
-      {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-right:.4rem">📁 {{ t.project_title }}</a>{% endif %}
-      {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-right:.4rem">💼 {{ t.crm_deal_name }}</a>{% endif %}
+      {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-right:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
+      {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-right:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
+      {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-right:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}
+      {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-right:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_deal_name }}</a>{% endif %}
       {{ t.title }}
-      {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
+      {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
       {% if inline_actions %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">✎</button>
+              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">{{ icon('edit', 14) }}</button>
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Nowe zadanie follow-up"
-              onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">↩</button>
+              onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">{{ icon('reply', 14) }}</button>
       {% endif %}
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes|linkify }}</div>{% endif %}
@@ -64,10 +65,10 @@
           <a class="badge badge-green" href="{{ url_for('gtd.day', d=t.scheduled_date.isoformat()) }}">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</a>
         {% endif %}
         {% if t.planned_week %}
-          <a class="badge badge-blue" title="Blok tygodniowy" href="{{ url_for('gtd.week', start=t.planned_week.isoformat()) }}">🗓 tydz. {{ t.planned_week|ddmmyyyy }}</a>
+          <a class="badge badge-blue" title="Blok tygodniowy" href="{{ url_for('gtd.week', start=t.planned_week.isoformat()) }}">{{ icon('calendar', 12) }} tydz. {{ t.planned_week|ddmmyyyy }}</a>
         {% endif %}
         {% if t.planned_month %}
-          <a class="badge badge-blue" title="Blok miesięczny" href="{{ url_for('gtd.month', start=t.planned_month.isoformat()) }}">📆 {{ t.planned_month|ddmmyyyy }}</a>
+          <a class="badge badge-blue" title="Blok miesięczny" href="{{ url_for('gtd.month', start=t.planned_month.isoformat()) }}">{{ icon('calendar', 12) }} {{ t.planned_month|ddmmyyyy }}</a>
         {% endif %}
         {% if not t.due_date and not t.scheduled_date and not t.planned_week and not t.planned_month %}<span class="text-muted" style="font-size:.78rem">—</span>{% endif %}
       </span>
@@ -81,13 +82,13 @@
       {% elif day_actions %}
       <div class="term-hover-picker">
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
-                onclick="gtdScheduleToday({{ t.id }})">→ Dziś</button>
+                onclick="gtdScheduleToday({{ t.id }})">{{ icon('arrow-right', 12) }} Dziś</button>
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
-                onclick="gtdScheduleTomorrow({{ t.id }})">→ Jutro</button>
+                onclick="gtdScheduleTomorrow({{ t.id }})">{{ icon('arrow-right', 12) }} Jutro</button>
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
-                onclick="gtdAssignWeek({{ t.id }}, 'this')">→ Ten tydzień</button>
+                onclick="gtdAssignWeek({{ t.id }}, 'this')">{{ icon('arrow-right', 12) }} Ten tydzień</button>
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
-                onclick="gtdAssignWeek({{ t.id }}, 'next')">→ Przyszły tydzień</button>
+                onclick="gtdAssignWeek({{ t.id }}, 'next')">{{ icon('arrow-right', 12) }} Przyszły tydzień</button>
       </div>
       {% endif %}
     </div>
@@ -107,30 +108,30 @@
             onclick="gtdToggleGcalDone({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ 'false' if e.is_done else 'true' }})">{{ 'DONE' if e.is_done else 'TODO' }}</span>
       {% endif %}
       <strong{% if e.is_done or e.is_declined %} style="text-decoration:line-through"{% endif %}>{{ e.title }}</strong>
-      {% if e.is_declined %}<span class="badge badge-red" style="margin-left:.4rem" title="Odrzucone w Google Calendar">✕ odrzucone</span>{% endif %}
-      <span class="badge badge-blue" style="margin-left:.4rem">📅 kalendarz</span>
+      {% if e.is_declined %}<span class="badge badge-red" style="margin-left:.4rem" title="Odrzucone w Google Calendar">{{ icon('x', 12) }} odrzucone</span>{% endif %}
+      <span class="badge badge-blue" style="margin-left:.4rem">{{ icon('calendar', 12) }} kalendarz</span>
       {% if e.project_title %}
       <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer"
             title="Zmień przypisany projekt"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">📁 {{ e.project_title }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }} {{ e.project_title }}</span>
       {% else %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
-              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">📁 Przypisz do projektu</button>
+              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }} Przypisz do projektu</button>
       {% endif %}
       {% if e.crm_contact_name %}
       <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id }}, {{ e.crm_company_id or 'null' }})">👤 {{ e.crm_contact_name }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id }}, {{ e.crm_company_id or 'null' }})">{{ icon('user', 12) }} {{ e.crm_contact_name }}</span>
       {% endif %}
       {% if e.crm_company_name %}
       <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id }})">🏢 {{ e.crm_company_name }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id }})">{{ icon('building', 12) }} {{ e.crm_company_name }}</span>
       {% endif %}
       {% if not e.crm_contact_name and not e.crm_company_name %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
-              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">👤 Przypisz klienta</button>
+              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">{{ icon('user', 12) }} Przypisz klienta</button>
       {% endif %}
       <button type="button" class="action-btn" style="margin-left:.4rem" title="Priorytet dnia"
-              onclick="gtdToggleGcalStar({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }})">{{ '★' if e.is_today_priority else '☆' }}</button>
+              onclick="gtdToggleGcalStar({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }})">{{ icon('star', 16) if e.is_today_priority else icon('star-outline', 16) }}</button>
     </div>
   </div>
   {% else %}
@@ -142,31 +143,31 @@
         <div>
           <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
                 onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
-          {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">👤 {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
-          {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">🏢 {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
-          {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">📁 {{ t.project_title }}</a>{% endif %}
-          {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">💼 {{ t.crm_deal_name }}</a>{% endif %}
+          {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
+          {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
+          {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}
+          {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_deal_name }}</a>{% endif %}
           <strong style="margin-left:.4rem">{{ t.title }}</strong>
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">✎</button>
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">{{ icon('edit', 14) }}</button>
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Nowe zadanie follow-up"
-                  onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">↩</button>
+                  onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">{{ icon('reply', 14) }}</button>
         </div>
         <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           {{ priority_stars(t) }}
-          <button type="button" class="action-btn" title="Zmień godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰</button>
+          <button type="button" class="action-btn" title="Zmień godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
           {% if not t.gcal_event_id %}
-          <button type="button" class="action-btn" title="Wyślij do Google Calendar" onclick="gtdGcalPush({{ t.id }})">📆</button>
+          <button type="button" class="action-btn" title="Wyślij do Google Calendar" onclick="gtdGcalPush({{ t.id }})">{{ icon('calendar', 16) }}</button>
           {% else %}
-          <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">📆 ✓</span>
+          <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">{{ icon('calendar-check', 12) }}</span>
           {% endif %}
           {% if week_start %}
-          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignWeek({{ t.id }}, '{{ week_start.isoformat() }}')">✕</button>
+          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignWeek({{ t.id }}, '{{ week_start.isoformat() }}')">{{ icon('x', 16) }}</button>
           {% elif month_start %}
-          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">✕</button>
+          <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">{{ icon('x', 16) }}</button>
           {% else %}
-          <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
+          <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
           {% endif %}
         </div>
       </div>
@@ -176,16 +177,16 @@
 {% endmacro %}
 
 {% macro priority_stars(t) %}
-  <button type="button" class="action-btn" title="Priorytet dnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_today')">{{ '★' if t.is_today_priority else '☆' }}</button>
-  <button type="button" class="action-btn" title="Priorytet tygodnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_week')">{{ '⚑' if t.is_week_priority else '⚐' }}</button>
+  <button type="button" class="action-btn" title="Priorytet dnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_today')">{{ icon('star', 16) if t.is_today_priority else icon('star-outline', 16) }}</button>
+  <button type="button" class="action-btn" title="Priorytet tygodnia" onclick="gtdToggleStar({{ t.id }}, 'toggle_week')">{{ icon('flag', 16) if t.is_week_priority else icon('flag-outline', 16) }}</button>
 {% endmacro %}
 
 {% macro task_extra_actions(t) %}
   <button type="button" class="action-btn" title="Edytuj termin"
-          onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">✎</button>
+          onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">{{ icon('edit', 16) }}</button>
   <button type="button" class="action-btn" title="Nowe zadanie follow-up"
-          onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">↩</button>
+          onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">{{ icon('reply', 16) }}</button>
   {{ priority_stars(t) }}
   <button type="button" class="action-btn" title="Zaplanuj godzinę"
-          onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰</button>
+          onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
 {% endmacro %}

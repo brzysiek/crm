@@ -1,5 +1,6 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
+{% from '_icons.html' import icon %}
 {% block title %}Next actions — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -12,7 +13,7 @@
   <select name="project" class="filter-select" onchange="this.form.submit()">
     <option value="">Wszystkie projekty</option>
     {% for p in projects %}
-      <option value="{{ p.id }}" {{ 'selected' if selected_project == p.id }}>📁 {{ p.title }}</option>
+      <option value="{{ p.id }}" {{ 'selected' if selected_project == p.id }}>{{ p.title }}</option>
     {% endfor %}
   </select>
 </form>
@@ -37,11 +38,11 @@
       {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
-        <button type="button" class="action-btn" title="Ten tydzień" onclick="gtdAssignWeek({{ t.id }}, 'this')">🗓</button>
-        <button type="button" class="action-btn" title="Przyszły tydzień" onclick="gtdAssignWeek({{ t.id }}, 'next')">🗓⁺</button>
-        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">⏳</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
+        <button type="button" class="action-btn" title="Ten tydzień" onclick="gtdAssignWeek({{ t.id }}, 'this')">{{ icon('calendar', 16) }}</button>
+        <button type="button" class="action-btn" title="Przyszły tydzień" onclick="gtdAssignWeek({{ t.id }}, 'next')">{{ icon('calendar', 16) }}⁺</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

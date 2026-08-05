@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}Getting Things Done{% endblock %}
 
 {% block content %}
@@ -19,7 +20,7 @@
   <aside class="settings-sidebar gtd-sidebar">
     <button type="button" class="gtd-sidebar-toggle" onclick="this.closest('.gtd-sidebar').classList.toggle('open')">
       <span>{{ gtd_tab_labels.get(active_tab, 'Menu') }}</span>
-      <span class="gtd-sidebar-toggle-icon">▾</span>
+      <span class="gtd-sidebar-toggle-icon">{{ icon('chevron-down', 14) }}</span>
     </button>
     <nav class="settings-nav">
       <a href="{{ url_for('gtd.day') }}"
@@ -71,7 +72,7 @@
       <input type="text" id="gtdQuickInput" class="filter-input" style="flex:1"
              placeholder="Szybko dodaj zadanie… (Enter, żeby zapisać do Inbox)" autocomplete="off">
       <button type="button" id="gtdQuickAddBtn" class="btn btn-primary btn-sm">+ Dodaj</button>
-      <button type="button" id="gtdVoiceBtn" class="btn btn-outline btn-sm" title="Dodaj głosowo">🎙</button>
+      <button type="button" id="gtdVoiceBtn" class="btn btn-outline btn-sm" title="Dodaj głosowo">{{ icon('mic', 14) }}</button>
       <span id="gtdQuickAddStatus" class="text-muted" style="font-size:.8rem"></span>
     </div>
     {% endif %}
@@ -88,7 +89,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Zablokuj czas</h3>
-      <button onclick="document.getElementById('gtdTimeBlockModal').classList.remove('open')" class="modal-close" title="Zamknij">✕</button>
+      <button onclick="document.getElementById('gtdTimeBlockModal').classList.remove('open')" class="modal-close" title="Zamknij">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="gtdTimeBlockTaskId">
@@ -117,7 +118,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Edytuj zadanie</h3>
-      <button onclick="document.getElementById('gtdEditTaskModal').classList.remove('open')" class="modal-close" title="Zamknij">✕</button>
+      <button onclick="document.getElementById('gtdEditTaskModal').classList.remove('open')" class="modal-close" title="Zamknij">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="gtdEditTaskId">
@@ -183,7 +184,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Nowe zadanie follow-up</h3>
-      <button onclick="document.getElementById('gtdFollowUpModal').classList.remove('open')" class="modal-close" title="Zamknij">✕</button>
+      <button onclick="document.getElementById('gtdFollowUpModal').classList.remove('open')" class="modal-close" title="Zamknij">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
       <div class="agent-confirm-row">
@@ -239,7 +240,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Przypisz spotkanie</h3>
-      <button onclick="document.getElementById('gtdGcalProjectModal').classList.remove('open')" class="modal-close" title="Zamknij">✕</button>
+      <button onclick="document.getElementById('gtdGcalProjectModal').classList.remove('open')" class="modal-close" title="Zamknij">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="gtdGcalProjectEventId">

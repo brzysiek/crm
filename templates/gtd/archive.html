@@ -1,5 +1,6 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, row_class %}
+{% from '_icons.html' import icon %}
 {% block title %}Archiwum — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -29,8 +30,8 @@
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
         {{ task_cells(t) }}
         <td class="col-actions nowrap">
-          <button type="button" class="action-btn" title="Cofnij do Next" onclick="gtdSetStatus({{ t.id }}, 'next')">↺</button>
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+          <button type="button" class="action-btn" title="Cofnij do Next" onclick="gtdSetStatus({{ t.id }}, 'next')">{{ icon('rotate-ccw', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
         </td>
       </tr>
       {% else %}
@@ -38,31 +39,31 @@
       <tr data-project-id="{{ p.id }}" class="gtd-archive-project-row{{ ' gtd-row-done' if p.status == 'done' else '' }}"
           title="Rozwiń/zwiń podzadania" onclick="gtdToggleArchiveProject({{ p.id }})">
         <td class="col-checkbox">
-          <span class="gtd-archive-toggle-icon">▸</span>
+          <span class="gtd-archive-toggle-icon">{{ icon('chevron-right', 14) }}</span>
         </td>
         <td>
           <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600" onclick="event.stopPropagation()">
             {{ p.title }}
           </a>
-          <span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>
+          <span class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} projekt</span>
         </td>
         <td>—</td>
         <td><span class="badge {{ 'badge-green' if p.status == 'done' else 'badge-gray' }}">{{ p.subtask_done }}/{{ p.subtask_total }}</span></td>
         <td class="col-actions nowrap" onclick="event.stopPropagation()">
           {% if p.status == 'done' %}
-          <button type="button" class="action-btn" title="Otwórz ponownie" onclick="gtdReopenProject({{ p.id }})">↺</button>
+          <button type="button" class="action-btn" title="Otwórz ponownie" onclick="gtdReopenProject({{ p.id }})">{{ icon('rotate-ccw', 16) }}</button>
           {% else %}
-          <button type="button" class="action-btn" title="Zakończ" onclick="gtdCloseProject({{ p.id }})">✓</button>
+          <button type="button" class="action-btn" title="Zakończ" onclick="gtdCloseProject({{ p.id }})">{{ icon('check', 16) }}</button>
           {% endif %}
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ p.id }})">🗑</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ p.id }})">{{ icon('trash', 16) }}</button>
         </td>
       </tr>
       {% for st in p.completed_subtasks %}
       <tr data-task-id="{{ st.id }}" data-project-id="{{ p.id }}" class="gtd-archive-subrow gtd-row-done">
         {{ task_cells(st) }}
         <td class="col-actions nowrap">
-          <button type="button" class="action-btn" title="Cofnij do Next" onclick="gtdSetStatus({{ st.id }}, 'next')">↺</button>
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ st.id }})">🗑</button>
+          <button type="button" class="action-btn" title="Cofnij do Next" onclick="gtdSetStatus({{ st.id }}, 'next')">{{ icon('rotate-ccw', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ st.id }})">{{ icon('trash', 16) }}</button>
         </td>
       </tr>
       {% endfor %}
@@ -94,13 +95,13 @@
       <td>
         <div style="font-weight:600;text-decoration:line-through">
           {{ t.title }}
-          {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">📁 projekt</span>{% endif %}
+          {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} projekt</span>{% endif %}
         </div>
       </td>
       <td>{{ t.deleted_at|ddmmyyyy }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn" title="Przywróć" onclick="gtdRestoreTask({{ t.id }})">↺</button>
-        <button type="button" class="action-btn action-danger" title="Usuń na zawsze" onclick="gtdPermanentlyDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Przywróć" onclick="gtdRestoreTask({{ t.id }})">{{ icon('rotate-ccw', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń na zawsze" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

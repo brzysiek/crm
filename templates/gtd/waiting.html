@@ -1,5 +1,6 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, task_extra_actions, row_class %}
+{% from '_icons.html' import icon %}
 {% block title %}Czeka na — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -27,8 +28,8 @@
       {{ task_cells(t, inline_actions=false) }}
       <td class="col-actions nowrap">
         {{ task_extra_actions(t) }}
-        <button type="button" class="action-btn" title="Wróć do Next" onclick="gtdSetStatus({{ t.id }}, 'next')">▶</button>
-        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn" title="Wróć do Next" onclick="gtdSetStatus({{ t.id }}, 'next')">{{ icon('arrow-right', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

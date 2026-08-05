@@ -1,5 +1,6 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, priority_stars, task_extra_actions, row_class, timeline_item %}
+{% from '_icons.html' import icon %}
 {% block title %}Dziś — GTD{% endblock %}
 
 {% block gtd_content %}
@@ -7,12 +8,12 @@
 <div class="page-header">
   <h1>{{ current_day_label }}{% if is_today %} <span class="badge badge-blue">dziś</span>{% endif %}</h1>
   <div class="header-actions" style="align-items:center;gap:.5rem">
-    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day', d=prev_day) }}">← Poprzedni</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day', d=prev_day) }}">{{ icon('arrow-left', 14) }} Poprzedni</a>
     {% if not is_today %}
       <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day') }}">Dziś</a>
     {% endif %}
-    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day', d=next_day) }}">Następny →</a>
-    <span class="badge {{ 'badge-red' if today_star_count > 3 else 'badge-gray' }}" title="Priorytety dnia (miękki limit 1-3)">★ {{ today_star_count }}/3</span>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('gtd.day', d=next_day) }}">Następny {{ icon('arrow-right', 14) }}</a>
+    <span class="badge {{ 'badge-red' if today_star_count > 3 else 'badge-gray' }}" title="Priorytety dnia (miękki limit 1-3)">{{ icon('star', 12) }} {{ today_star_count }}/3</span>
   </div>
 </div>
 
@@ -27,9 +28,9 @@
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
         {{ task_cells(t, today, day_actions=true) }}
         <td class="col-actions nowrap">
-          <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">📆</button>
-          <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">💤</button>
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+          <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
+          <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">{{ icon('moon', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
         </td>
       </tr>
       {% endfor %}
@@ -53,7 +54,7 @@
 {% endif %}
 
 <div class="gtd-priority-panel">
-<h3><span class="gtd-priority-star">★</span> Priorytety dnia</h3>
+<h3><span class="gtd-priority-star">{{ icon('star', 16) }}</span> Priorytety dnia</h3>
 {% if not priority_tasks %}
   <p class="text-muted">Brak oznaczonych priorytetów dnia. Oznacz gwiazdką zadania poniżej lub w Next actions.</p>
 {% else %}
@@ -73,7 +74,7 @@
       {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
       <td class="col-actions nowrap">
         {{ task_extra_actions(t) }}
-        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -110,7 +111,7 @@
       {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
       <td class="col-actions nowrap">
         {{ task_extra_actions(t) }}
-        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

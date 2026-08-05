@@ -685,6 +685,10 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .badge-income  { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success); }
 .badge-expense { background: var(--error-bg); color: var(--error-text); border: 1px solid var(--error); }
 
+/* ── SVG ikony (zamiast emoji) ───────────────────────────────────────────────── */
+.rd-icon { flex-shrink: 0; vertical-align: -3px; }
+.action-btn .rd-icon, .sidebar-nav-icon .rd-icon, .gtd-nav-icon .rd-icon { vertical-align: baseline; }
+
 /* ── Action buttons (in table) ──────────────────────────────────────────────── */
 .action-btn {
   display: inline-flex;
