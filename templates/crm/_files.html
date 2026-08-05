@@ -57,6 +57,7 @@
 
 <script>
 (function() {
+  const ICON_X = {{ icon('x', 12)|tojson }};
   const form = document.getElementById('filesUploadForm');
   if (!form) return;
   const statusEl = document.getElementById('filesUploadStatus');
@@ -76,7 +77,7 @@
       const rm = document.createElement('button');
       rm.type = 'button';
       rm.className = 'tag-chip-remove';
-      rm.textContent = '✕';
+      rm.innerHTML = ICON_X;
       rm.addEventListener('click', () => {
         queuedFiles.splice(i, 1);
         syncInput();

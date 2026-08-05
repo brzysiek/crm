@@ -1,4 +1,5 @@
 {% extends 'settings/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block settings_content %}
 
 <div class="section-header">
@@ -121,7 +122,7 @@
     <div class="modal-header">
       <h3>Zmień hasło — <span id="modalUserName"></span></h3>
       <button onclick="document.getElementById('passwordModal').classList.remove('open')"
-              class="modal-close">✕</button>
+              class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <form id="passwordForm" method="post">
       <div class="form-group">

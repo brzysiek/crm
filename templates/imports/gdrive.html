@@ -1,4 +1,5 @@
 {% extends 'imports/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block imports_content %}
 
 <h2>Import z Dysku Google</h2>
@@ -181,7 +182,7 @@
         {% if inv.duplicate_label %}
         <div class="text-muted small" style="margin-bottom:.35rem">
           <span class="badge badge-yellow" title="Ta sama faktura (numer + NIP) występuje też w: {{ inv.duplicate_label }}">
-            ⚠ Możliwy duplikat — również w: {{ inv.duplicate_label }}
+            {{ icon('alert-triangle', 14) }} Możliwy duplikat — również w: {{ inv.duplicate_label }}
           </span>
         </div>
         {% endif %}
@@ -253,7 +254,7 @@
     <div class="modal-header">
       <h3>Sugerowana transakcja bankowa</h3>
       <button onclick="document.getElementById('txnPreviewModal').classList.remove('open')"
-              class="modal-close">&#x2715;</button>
+              class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <div id="txnPreviewBody" class="modal-body" style="padding:1.25rem"></div>
   </div>
@@ -266,7 +267,7 @@
     <div class="modal-header">
       <h3 id="detailsModalTitle">Szczegóły dokumentu</h3>
       <button onclick="document.getElementById('invoiceDetailsModal').classList.remove('open')"
-              class="modal-close">&#x2715;</button>
+              class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <div id="detailsModalBody" class="modal-body">
       <div class="details-loading">Ładowanie…</div>

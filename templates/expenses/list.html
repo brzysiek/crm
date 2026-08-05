@@ -1,4 +1,5 @@
 {% extends 'finance/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}Wydatki{% endblock %}
 
 {% block finance_content %}
@@ -7,10 +8,10 @@
   <div class="header-actions">
     <a href="{{ url_for('expenses.new_expense') }}" class="btn btn-primary">+ Dodaj wydatek</a>
     <button class="btn btn-outline" onclick="document.getElementById('csvModal').classList.add('open')">
-      ↑ Import CSV
+      {{ icon('arrow-up', 14) }} Import CSV
     </button>
     <button class="btn btn-outline" onclick="document.getElementById('columnsModal').classList.add('open')">
-      ⚙ Kolumny
+      {{ icon('settings', 14) }} Kolumny
     </button>
   </div>
 </div>
@@ -126,7 +127,7 @@
     </select>
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPaymentStatus">Ustaw status</button>
 
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">↩ Cofnij akceptację</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">{{ icon('rotate-ccw', 14) }} Cofnij akceptację</button>
   </div>
 </div>
 
@@ -175,7 +176,7 @@
         {% if 'description' in visible_columns %}
         <td>
           <span class="desc-cell" title="{{ e.description }}">{{ e.description }}</span>
-          {% if e.is_recurring %}<span class="badge badge-gray" title="Koszt stały">↺</span>{% endif %}
+          {% if e.is_recurring %}<span class="badge badge-gray" title="Koszt stały">{{ icon('rotate-ccw', 12) }}</span>{% endif %}
         </td>
         {% endif %}
         {% if 'category' in visible_columns %}
@@ -228,12 +229,12 @@
         {% endif %}
         <td class="col-actions nowrap">
           <a href="{{ url_for('expenses.edit_expense', expense_id=e.id) }}"
-             class="action-btn" title="Edytuj">✎</a>
+             class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
           <form method="post"
                 action="{{ url_for('expenses.delete_expense_view', expense_id=e.id) }}"
                 class="inline-form"
                 onsubmit="return confirm('Usunąć ten wydatek?')">
-            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
           </form>
         </td>
       </tr>
@@ -262,7 +263,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Import CSV</h3>
-      <button onclick="document.getElementById('csvModal').classList.remove('open')" class="modal-close">✕</button>
+      <button onclick="document.getElementById('csvModal').classList.remove('open')" class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <form method="post" action="{{ url_for('expenses.import_csv') }}"
           enctype="multipart/form-data">
@@ -284,7 +285,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Widoczne kolumny</h3>
-      <button onclick="document.getElementById('columnsModal').classList.remove('open')" class="modal-close">✕</button>
+      <button onclick="document.getElementById('columnsModal').classList.remove('open')" class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     {% for col in columns %}
     <label class="checkbox-label" style="display:flex;margin-bottom:.6rem">

@@ -1,4 +1,5 @@
 {% extends 'finance/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}Przychody{% endblock %}
 
 {% block finance_content %}
@@ -7,7 +8,7 @@
   <div class="header-actions">
     <a href="{{ url_for('income.new_income') }}" class="btn btn-primary">+ Dodaj przychód</a>
     <button class="btn btn-outline" onclick="document.getElementById('columnsModal').classList.add('open')">
-      ⚙ Kolumny
+      {{ icon('settings', 14) }} Kolumny
     </button>
   </div>
 </div>
@@ -111,7 +112,7 @@
     </select>
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkSetPaymentStatus">Ustaw status</button>
 
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">↩ Cofnij akceptację</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRevert">{{ icon('rotate-ccw', 14) }} Cofnij akceptację</button>
   </div>
 </div>
 
@@ -209,12 +210,12 @@
         {% endif %}
         <td class="col-actions nowrap">
           <a href="{{ url_for('income.edit_income', income_id=inc.id) }}"
-             class="action-btn" title="Edytuj">✎</a>
+             class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
           <form method="post"
                 action="{{ url_for('income.delete_income_view', income_id=inc.id) }}"
                 class="inline-form"
                 onsubmit="return confirm('Usunąć ten przychód?')">
-            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
           </form>
         </td>
       </tr>
@@ -243,7 +244,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Widoczne kolumny</h3>
-      <button onclick="document.getElementById('columnsModal').classList.remove('open')" class="modal-close">✕</button>
+      <button onclick="document.getElementById('columnsModal').classList.remove('open')" class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     {% for col in columns %}
     <label class="checkbox-label" style="display:flex;margin-bottom:.6rem">

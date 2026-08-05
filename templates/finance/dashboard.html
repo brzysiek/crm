@@ -1,4 +1,5 @@
 {% extends 'finance/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}Dashboard{% endblock %}
 
 {% block finance_content %}
@@ -29,7 +30,7 @@
       </select>
     </form>
     <button class="btn btn-outline" onclick="document.getElementById('categoryFilterModal').classList.add('open')">
-      ⚙ Filtry kategorii
+      {{ icon('settings', 14) }} Filtry kategorii
       {% if excluded_expense_categories or excluded_income_categories %}
         <span class="badge badge-yellow" style="margin-left:.3rem">
           {{ (excluded_expense_categories|length) + (excluded_income_categories|length) }}
@@ -44,7 +45,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3>Kategorie liczone na dashboardzie</h3>
-      <button onclick="document.getElementById('categoryFilterModal').classList.remove('open')" class="modal-close">✕</button>
+      <button onclick="document.getElementById('categoryFilterModal').classList.remove('open')" class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <p class="text-muted small" style="margin-top:0">
       Odznacz kategorię, aby wykluczyć jej wydatki/przychody z wyliczeń na dashboardzie
@@ -83,7 +84,7 @@
 {# ── Bilans bieżącego miesiąca (3 karty) ────────────────────────────────── #}
 <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">
   <div class="kpi-card kpi-blue">
-    <div class="kpi-label">↑ Przychody brutto</div>
+    <div class="kpi-label">{{ icon('arrow-up', 14) }} Przychody brutto</div>
     <div class="kpi-value">{{ income_kpi.total_gross|pln }}</div>
     <div class="kpi-sub">
       zapłacone {{ income_kpi.paid|pln }}
@@ -91,7 +92,7 @@
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">↓ Koszty brutto</div>
+    <div class="kpi-label">{{ icon('arrow-down', 14) }} Koszty brutto</div>
     <div class="kpi-value">{{ expense_kpi.total_gross|pln }}</div>
     <div class="kpi-sub">
       opłacone {{ expense_kpi.paid|pln }}
@@ -110,12 +111,12 @@
 {# ── Bilans netto / VAT ──────────────────────────────────────────────────── #}
 <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">
   <div class="kpi-card kpi-blue">
-    <div class="kpi-label">↑ Przychody netto</div>
+    <div class="kpi-label">{{ icon('arrow-up', 14) }} Przychody netto</div>
     <div class="kpi-value">{{ income_kpi.total_net|pln }}</div>
     <div class="kpi-sub">VAT należny {{ income_kpi.total_vat|pln }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">↓ Koszty netto</div>
+    <div class="kpi-label">{{ icon('arrow-down', 14) }} Koszty netto</div>
     <div class="kpi-value">{{ expense_kpi.total_net|pln }}</div>
     <div class="kpi-sub">VAT naliczony {{ expense_kpi.total_vat|pln }}</div>
   </div>
@@ -162,7 +163,7 @@
     <div class="kpi-value" style="font-size:2rem">{{ bank_pending_count }}</div>
     <div class="kpi-sub">
       {% if bank_pending_count > 0 %}
-        <a href="{{ url_for('imports.bank') }}#pending">do przypisania →</a>
+        <a href="{{ url_for('imports.bank') }}#pending">do przypisania {{ icon('arrow-right', 14) }}</a>
       {% else %}
         wszystkie przypisane
       {% endif %}
@@ -205,7 +206,7 @@
       {% endif %}
     </h3>
     <a href="{{ url_for('expenses.list_expenses', payment_filter='none') }}" class="btn btn-ghost btn-sm">
-      Wszystkie nieopłacone →
+      Wszystkie nieopłacone {{ icon('arrow-right', 14) }}
     </a>
   </div>
   {% if unpaid_expenses %}
@@ -278,7 +279,7 @@
       {% endif %}
     </h3>
     <a href="{{ url_for('income.list_incomes', payment_status='unpaid') }}" class="btn btn-ghost btn-sm">
-      Wszystkie niezapłacone →
+      Wszystkie niezapłacone {{ icon('arrow-right', 14) }}
     </a>
   </div>
   {% if unpaid_incomes %}

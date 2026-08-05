@@ -1,10 +1,11 @@
 {% extends 'finance/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}{{ title }}{% endblock %}
 
 {% block finance_content %}
 <div class="page-header">
   <h1>{{ title }}</h1>
-  <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">← Wróć do listy</a>
+  <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
 </div>
 
 <div class="form-card">
@@ -252,7 +253,7 @@
     <a href="{{ url_for('income.list_incomes') }}" class="btn btn-outline">Anuluj</a>
     {% if income_id is defined %}
     <button type="button" class="btn btn-outline" id="btnRevertAcceptance" style="margin-left:auto">
-      ↩ Cofnij akceptację
+      {{ icon('rotate-ccw', 14) }} Cofnij akceptację
     </button>
     {% endif %}
   </div>
@@ -264,7 +265,7 @@
   <div class="modal modal-txn">
     <div class="modal-header">
       <h3>Szukaj faktury</h3>
-      <button onclick="document.getElementById('invSearchModal').classList.remove('open')" class="modal-close">✕</button>
+      <button onclick="document.getElementById('invSearchModal').classList.remove('open')" class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body" style="padding:1rem">
       <div class="txn-search-bar">
@@ -288,7 +289,7 @@
   <div class="modal modal-txn">
     <div class="modal-header">
       <h3>Wyszukaj transakcję bankową</h3>
-      <button onclick="document.getElementById('txnSearchModal').classList.remove('open')" class="modal-close">✕</button>
+      <button onclick="document.getElementById('txnSearchModal').classList.remove('open')" class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body" style="padding:1rem">
       <div class="txn-search-bar">
@@ -316,7 +317,7 @@
     <div class="modal-header">
       <h3 id="detailsModalTitle">Szczegóły faktury</h3>
       <button onclick="document.getElementById('invoiceDetailsModal').classList.remove('open')"
-              class="modal-close">✕</button>
+              class="modal-close">{{ icon('x', 16) }}</button>
     </div>
     <div id="detailsModalBody" class="modal-body">
       <div class="details-loading">Ładowanie…</div>

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}Agent{% endblock %}
 
 {% block content %}
@@ -7,13 +8,13 @@
   <p class="text-muted" style="margin:.25rem 0 0">
     Wydaj polecenie głosowo lub tekstem — np. „Dodaj notatkę dla firmy Acme: umówiliśmy się na kolejne spotkanie za dwa tygodnie”.
   </p>
-  <a href="{{ url_for('agent.history') }}" class="btn btn-outline btn-sm" style="margin-top:.6rem">🕘 Historia</a>
+  <a href="{{ url_for('agent.history') }}" class="btn btn-outline btn-sm" style="margin-top:.6rem">{{ icon('clock', 14) }} Historia</a>
 </div>
 
 <div class="inv-section agent-panel">
   <div class="agent-input-area" id="agentInputArea">
     <button type="button" id="agentRecordBtn" class="agent-record-btn">
-      <span class="agent-record-icon">🎙️</span>
+      <span class="agent-record-icon">{{ icon('mic', 40) }}</span>
       <span class="agent-record-label">Nagrywaj</span>
     </button>
     <div id="agentRecordStatus" class="text-muted" style="text-align:center;margin-top:.6rem;min-height:1.2em"></div>

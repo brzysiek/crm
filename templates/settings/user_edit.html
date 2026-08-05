@@ -1,9 +1,10 @@
 {% extends 'settings/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block settings_content %}
 
 <div class="section-header">
   <h2>Edytuj użytkownika</h2>
-  <a href="{{ url_for('users.list_users') }}" class="btn btn-outline btn-sm">← Wróć</a>
+  <a href="{{ url_for('users.list_users') }}" class="btn btn-outline btn-sm">{{ icon('arrow-left', 14) }} Wróć</a>
 </div>
 
 <div class="settings-section">
