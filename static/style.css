@@ -913,8 +913,11 @@ input[type="file"]:hover::-webkit-file-upload-button {
     border: none;
     box-shadow: none;
     border-radius: 0;
+    margin: calc(var(--space-lg) * -1) -3% 0;
+    padding: var(--space-lg) 3% 0;
   }
   .gtd-fluxa.settings-layout { row-gap: 0; }
+  .gtd-fluxa .settings-content .rd-screen { margin-top: 0; }
 }
 .gtd-sidebar .settings-nav-item.active {
   box-shadow: var(--shadow-lg);
@@ -966,12 +969,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
   color: var(--rd-bottle-green);
 }
 @media (max-width: 880px) {
-  .gtd-fluxa .settings-nav {
-    border: 1px solid var(--rd-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    margin-top: .25rem;
-  }
+  .gtd-fluxa .settings-nav { margin-top: .25rem; }
 }
 
 .settings-content {
@@ -1007,7 +1005,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
     transition: max-height var(--speed) var(--curve);
   }
   .gtd-sidebar.open .settings-nav {
-    max-height: 500px;
+    max-height: 1000px;
   }
 }
 
@@ -3100,7 +3098,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   font-size: 13px;
 }
 .rd-screen .gtd-priority-panel > p.text-muted { color: var(--rd-text-muted); }
-.rd-screen .gtd-priority-panel .table-wrapper { background: transparent; border: none; }
+.rd-screen .gtd-priority-panel .table-wrapper { background: transparent; border: none; border-radius: 0; }
 
 /* Kolory wierszy wg stanu zadania: zaległe = żółte, zwykłe todo = lime,
    priorytetowe = bottle green (białe litery), done = białe i blade */
