@@ -65,17 +65,17 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th style="width:4.2rem"></th>
-      <th class="col-actions" style="width:100px"></th>
+      <th class="col-actions" style="width:190px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in priority_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, today, day_actions=true) }}
-      <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">🗑</button>
+        {{ priority_stars(t) }}
+        <button type="button" class="action-btn" title="Zaplanuj godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">⏰</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
       </td>
     </tr>
     {% endfor %}
@@ -104,22 +104,15 @@
       <th>Zadanie</th>
       <th>Projekt</th>
       <th>Termin</th>
-      <th style="width:4.2rem" title="Priorytety"></th>
-      <th class="col-actions" style="width:160px"></th>
+      <th class="col-actions" style="width:190px"></th>
     </tr>
   </thead>
   <tbody>
     {% for t in unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
       {{ task_cells(t, today, day_actions=true) }}
-      <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        <button type="button" class="action-btn" title="Przesuń wyżej"
-                {{ 'disabled' if loop.first }}
-                onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'up')">↑</button>
-        <button type="button" class="action-btn" title="Przesuń niżej"
-                {{ 'disabled' if loop.last }}
-                onclick="gtdMoveTask({{ t.id }}, '{{ current_day.isoformat() }}', 'down')">↓</button>
+        {{ priority_stars(t) }}
         <button type="button" class="action-btn" title="Zaplanuj godzinę" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date }}', '', 30)">⏰</button>
         <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">✕</button>
       </td>
