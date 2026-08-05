@@ -901,7 +901,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
   position: sticky;
   top: 88px;
 }
-@media (max-width: 680px) {
+@media (max-width: 880px) {
   .gtd-sidebar.settings-sidebar { position: static; }
 }
 .gtd-sidebar .settings-nav-item.active {
@@ -944,7 +944,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 
 .gtd-sidebar-toggle { display: none; }
 
-@media (max-width: 680px) {
+@media (max-width: 880px) {
   .gtd-sidebar-toggle {
     display: flex;
     align-items: center;
