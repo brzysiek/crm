@@ -930,6 +930,13 @@ input[type="file"]:hover::-webkit-file-upload-button {
 
 .settings-nav { display: flex; flex-direction: column; }
 
+.gtd-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: .55rem;
+  vertical-align: -3px;
+}
+
 .settings-nav-item {
   display: flex;
   align-items: center;

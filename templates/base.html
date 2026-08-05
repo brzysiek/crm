@@ -59,12 +59,12 @@
       </a>
       <a href="{{ url_for('crm_invoices.list_invoices') }}" title="Faktury"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_invoices' else '' }}">
-        <span class="sidebar-nav-icon">🧾</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-1.8-3 1.8-3-1.8L6 21V3z"></path><path d="M9 8h6M9 12h6"></path></svg></span>
         <span class="sidebar-nav-label">Faktury</span>
       </a>
       <a href="{{ url_for('crm_plan.index') }}" title="Plan"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_plan' else '' }}">
-        <span class="sidebar-nav-icon">📊</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg></span>
         <span class="sidebar-nav-label">Plan</span>
       </a>
 
@@ -76,17 +76,17 @@
       </a>
       <a href="{{ url_for('gtd.week') }}" title="Tydzień"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.week' else '' }}">
-        <span class="sidebar-nav-icon">🗓</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></span>
         <span class="sidebar-nav-label">Tydzień</span>
       </a>
       <a href="{{ url_for('gtd.month') }}" title="Miesiąc"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.month' else '' }}">
-        <span class="sidebar-nav-icon">📆</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 15h.01M12 15h.01M16 15h.01"></path></svg></span>
         <span class="sidebar-nav-label">Miesiąc</span>
       </a>
       <a href="{{ url_for('gtd.inbox') }}" title="Inbox"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.inbox' else '' }}">
-        <span class="sidebar-nav-icon">📥</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"></path></svg></span>
         <span class="sidebar-nav-label">Inbox</span>
         {% if gtd_inbox_badge > 0 %}
           <span class="sidebar-nav-badge">{{ gtd_inbox_badge }}</span>
@@ -94,27 +94,27 @@
       </a>
       <a href="{{ url_for('gtd.next_actions') }}" title="Next actions"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.next_actions' else '' }}">
-        <span class="sidebar-nav-icon">▶</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l14 9-14 9V3z"></path></svg></span>
         <span class="sidebar-nav-label">Next actions</span>
       </a>
       <a href="{{ url_for('gtd.projects') }}" title="Projekty"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'gtd' and request.endpoint in ('gtd.projects', 'gtd.project_detail') else '' }}">
-        <span class="sidebar-nav-icon">📁</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path></svg></span>
         <span class="sidebar-nav-label">Projekty</span>
       </a>
       <a href="{{ url_for('gtd.waiting') }}" title="Czeka na"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.waiting' else '' }}">
-        <span class="sidebar-nav-icon">⏳</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg></span>
         <span class="sidebar-nav-label">Czeka na</span>
       </a>
       <a href="{{ url_for('gtd.someday') }}" title="Kiedyś/może"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.someday' else '' }}">
-        <span class="sidebar-nav-icon">💤</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.5A8.5 8.5 0 1111.5 4a7 7 0 008.5 8.5z"></path></svg></span>
         <span class="sidebar-nav-label">Kiedyś/może</span>
       </a>
       <a href="{{ url_for('gtd.archive') }}" title="Archiwum"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.archive' else '' }}">
-        <span class="sidebar-nav-icon">🗄</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="5" rx="1"></rect><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"></path><path d="M9 13h6"></path></svg></span>
         <span class="sidebar-nav-label">Archiwum</span>
       </a>
 
@@ -126,17 +126,17 @@
       </a>
       <a href="{{ url_for('expenses.list_expenses') }}" title="Wydatki"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'expenses' else '' }}">
-        <span class="sidebar-nav-icon">↓</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 18l-9.5-9.5-5 5L1 6"></path><path d="M17 18h6v-6"></path></svg></span>
         <span class="sidebar-nav-label">Wydatki</span>
       </a>
       <a href="{{ url_for('income.list_incomes') }}" title="Przychody"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'income' else '' }}">
-        <span class="sidebar-nav-icon">↑</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg></span>
         <span class="sidebar-nav-label">Przychody</span>
       </a>
       <a href="{{ url_for('imports.bank') }}" title="Importy"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'imports' else '' }}">
-        <span class="sidebar-nav-icon">📥</span>
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg></span>
         <span class="sidebar-nav-label">Importy</span>
         {% if imports_badge > 0 %}
           <span class="sidebar-nav-badge">{{ imports_badge }}</span>
@@ -144,7 +144,7 @@
       </a>
 
       <a href="{{ url_for('agent.index') }}" title="Agent" class="sidebar-agent-btn">
-        <span class="sidebar-nav-icon" aria-hidden="true">🎙️</span>
+        <span class="sidebar-nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><path d="M12 19v4M8 23h8"></path></svg></span>
         <span class="sidebar-nav-label">Agent</span>
       </a>
     </nav>
