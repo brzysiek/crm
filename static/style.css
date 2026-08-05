@@ -870,6 +870,9 @@ input[type="file"]:hover::-webkit-file-upload-button {
   .settings-layout { grid-template-columns: 1fr; }
 }
 
+/* GTD sub-pages: always single column (toggle above content), regardless of width */
+.gtd-fluxa.settings-layout { grid-template-columns: 1fr; }
+
 .settings-sidebar {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -902,7 +905,16 @@ input[type="file"]:hover::-webkit-file-upload-button {
   top: 88px;
 }
 @media (max-width: 880px) {
-  .gtd-sidebar.settings-sidebar { position: static; }
+  .gtd-sidebar.settings-sidebar {
+    position: static;
+    background: var(--rd-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .gtd-fluxa.settings-layout { row-gap: 0; }
 }
 .gtd-sidebar .settings-nav-item.active {
   box-shadow: var(--shadow-lg);
@@ -911,7 +923,6 @@ input[type="file"]:hover::-webkit-file-upload-button {
 /* Zbędne przy widocznym bocznym menu app-wide (>880px) — patrz .sidebar { display:none } poniżej 881px */
 @media (min-width: 881px) {
   .gtd-fluxa .gtd-sidebar.settings-sidebar { display: none; }
-  .gtd-fluxa.settings-layout { grid-template-columns: 1fr; }
 }
 
 .settings-nav { display: flex; flex-direction: column; }
@@ -936,6 +947,31 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .settings-nav-item.active .nav-badge {
   background: rgba(255,255,255,.9);
   color: var(--primary);
+}
+
+.gtd-fluxa .settings-nav-item {
+  background: var(--rd-card);
+  border-bottom-color: var(--rd-border);
+  color: var(--rd-text-body);
+}
+.gtd-fluxa .settings-nav-item:hover {
+  background: var(--rd-lime-tint-bg, var(--rd-panel));
+}
+.gtd-fluxa .settings-nav-item.active {
+  background: var(--rd-bottle-green);
+  color: #fff;
+}
+.gtd-fluxa .settings-nav-item.active .nav-badge {
+  background: rgba(255,255,255,.9);
+  color: var(--rd-bottle-green);
+}
+@media (max-width: 880px) {
+  .gtd-fluxa .settings-nav {
+    border: 1px solid var(--rd-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-top: .25rem;
+  }
 }
 
 .settings-content {
@@ -2890,7 +2926,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
    bez godziny/dnia itp.) nie mają odpowiednika w postaci kart, więc pozostają widoczne
    zamiast się ukrywać ── */
 @media (max-width: 880px) {
-  .rd-zadania .table-wrapper { display: block; }
+  .rd-zadania .table-wrapper { display: block; background: transparent; border: none; border-radius: 0; }
   .rd-zadania .table-count { display: block; }
 
   /* Tabele jako skladane karty zamiast przewijania w bok */
