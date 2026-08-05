@@ -2,6 +2,7 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-kontakt-form">
 <div class="page-header">
   <h1>{{ title }}</h1>
   <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">← Wróć do listy</a>
@@ -91,6 +92,7 @@
   </form>
 </div>
 {% endif %}
+</div>
 </div>
 {% endblock %}
 

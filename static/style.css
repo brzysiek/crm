@@ -3076,6 +3076,123 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 
 .rd-screen .btn-danger { border-radius: 8px; font-family: var(--rd-font); }
 
+/* ── Redesign: formularze (dodawanie/edycja kontaktu, firmy, dealu) ── */
+.rd-screen .form-card {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 12px;
+  box-shadow: none;
+  font-family: var(--rd-font);
+}
+.rd-screen .form-group label {
+  color: var(--rd-text-primary);
+  font-family: var(--rd-font);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.rd-screen .form-group input[type=text],
+.rd-screen .form-group input[type=number],
+.rd-screen .form-group input[type=email],
+.rd-screen .form-group input[type=date],
+.rd-screen .form-group input[type=month],
+.rd-screen .form-group input[type=password],
+.rd-screen .form-group textarea,
+.rd-screen .form-group select {
+  font-family: var(--rd-font);
+  border: 1px solid var(--rd-border-input);
+  border-radius: 8px;
+  background: var(--rd-card);
+  color: var(--rd-text-primary);
+}
+.rd-screen .form-group input:focus,
+.rd-screen .form-group textarea:focus,
+.rd-screen .form-group select:focus {
+  outline: none;
+  border-color: var(--rd-bottle-green);
+  box-shadow: none;
+}
+.rd-screen .form-group input[readonly] { background: var(--rd-panel); color: var(--rd-text-muted); }
+.rd-screen .req { color: var(--rd-red-text); }
+
+.rd-screen .radio-label { font-family: var(--rd-font); color: var(--rd-text-body); }
+.rd-screen .radio-label input[type=radio] { accent-color: var(--rd-bottle-green); }
+
+.rd-screen .form-section-divider { border-top: 2px solid var(--rd-border); }
+.rd-screen .form-section-title { color: var(--rd-bottle-green); font-family: var(--rd-font); }
+
+.rd-screen .input-suffix,
+.rd-screen .btn-reveal {
+  font-family: var(--rd-font);
+  border: 1px solid var(--rd-border-input);
+  border-left: none;
+  background: var(--rd-panel);
+  color: var(--rd-text-muted);
+}
+.rd-screen .btn-reveal:hover { background: var(--rd-border); }
+.rd-screen .input-disabled { background: var(--rd-panel) !important; color: var(--rd-text-muted) !important; }
+
+.rd-screen .link-danger { color: var(--rd-red-text); font-family: var(--rd-font); }
+
+.rd-screen .tag-input-wrap {
+  font-family: var(--rd-font);
+  border: 1px solid var(--rd-border-input);
+  border-radius: 8px;
+  background: var(--rd-card);
+}
+.rd-screen .tag-input-wrap:focus-within { border-color: var(--rd-bottle-green); }
+.rd-screen .tag-chip {
+  background: var(--rd-panel);
+  border: 1px solid var(--rd-border);
+  color: var(--rd-text-primary);
+}
+.rd-screen .tag-chip-remove:hover { background: var(--rd-border); color: var(--rd-text-primary); }
+.rd-screen .tag-input-field { color: var(--rd-text-primary); }
+.rd-screen .tag-suggestions {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(13,40,32,.1);
+}
+.rd-screen .tag-suggestion-item { font-family: var(--rd-font); color: var(--rd-text-body); }
+.rd-screen .tag-suggestion-item:hover, .rd-screen .tag-suggestion-item.active { background: var(--rd-panel); }
+.rd-screen .tag-suggestion-hint { background: var(--rd-blue-bg); color: var(--rd-blue-text); }
+
+.rd-screen .entity-picker-selected {
+  font-family: var(--rd-font);
+  border: 1px solid var(--rd-border-input);
+  border-radius: 8px;
+  background: var(--rd-panel);
+}
+.rd-screen .entity-picker-selected-name { color: var(--rd-text-primary); }
+.rd-screen .entity-picker-clear { color: var(--rd-text-muted); }
+.rd-screen .entity-picker-clear:hover { color: var(--rd-red-text); }
+.rd-screen .entity-picker-results {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(13,40,32,.1);
+}
+.rd-screen .entity-picker-result-item { font-family: var(--rd-font); color: var(--rd-text-body); border-bottom: 1px solid var(--rd-border-light); }
+.rd-screen .entity-picker-result-item:hover { background: var(--rd-panel); }
+.rd-screen .entity-picker-result-sub { color: var(--rd-text-muted); }
+.rd-screen .table-sum-row { background: var(--rd-panel); border-top: 2px solid var(--rd-border); font-family: var(--rd-font); }
+
+/* ── Redesign: modale (edycja zadania, blokowanie czasu, follow-up, notatki) ── */
+.rd-screen.modal-overlay,
+.rd-screen .modal-overlay { background: rgba(13,40,32,.45); }
+.rd-screen .modal {
+  background: var(--rd-card);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(13,40,32,.22);
+  font-family: var(--rd-font);
+}
+.rd-screen .modal-header h3 { color: var(--rd-text-primary); font-family: var(--rd-font); }
+.rd-screen .modal-close { color: var(--rd-text-muted); }
+.rd-screen .modal-close:hover { background: var(--rd-panel); }
+.rd-screen .modal-wide .modal-header,
+.rd-screen .modal-txn .modal-header { border-bottom: 1px solid var(--rd-border); }
+.rd-screen .agent-confirm-row label { color: var(--rd-text-primary); font-family: var(--rd-font); font-weight: 600; font-size: 12.5px; }
+
 /* ── Redesign: Zadania — dzień (GTD day view) ── */
 .gtd-fluxa:has(.rd-screen)::before { display: none; }
 

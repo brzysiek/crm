@@ -2,6 +2,7 @@
 {% block title %}{{ deal.name }}{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-deal-detail">
 <div class="detail-header">
   <div>
     <h1>{{ deal.name }}
@@ -99,5 +100,6 @@
   <div>
     {% include 'crm/_notes_history.html' %}
   </div>
+</div>
 </div>
 {% endblock %}
