@@ -1,19 +1,20 @@
 {# Wspólny partial: przycisk "+ Notatka" w pasku akcji + modal dodawania notatki (tekst/głos).
    Wymaga: add_note_url, entity_type, entity_id #}
+{% from '_icons.html' import icon %}
 
-<button type="button" class="btn btn-primary" onclick="document.getElementById('addNoteModal').classList.add('open')">📝 Notatka</button>
+<button type="button" class="btn btn-primary" onclick="document.getElementById('addNoteModal').classList.add('open')">{{ icon('edit', 14) }} Notatka</button>
 
 <div id="addNoteModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal modal-note">
     <div class="modal-header">
       <h3>Dodaj notatkę</h3>
-      <button class="modal-close" onclick="document.getElementById('addNoteModal').classList.remove('open')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('addNoteModal').classList.remove('open')">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
       <div class="voice-note-cta">
         <button type="button" class="btn btn-primary btn-voice-large" id="btnVoiceNote"
                 data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}">
-          🎙️ Nagraj notatkę głosową
+          {{ icon('mic', 16) }} Nagraj notatkę głosową
         </button>
         <div id="voiceNoteStatus" class="small text-muted" style="margin-top:.5rem"></div>
       </div>
@@ -41,6 +42,8 @@
 (function() {
   const btnVoice = document.getElementById('btnVoiceNote');
   const statusEl = document.getElementById('voiceNoteStatus');
+  const iconMic = {{ icon('mic', 16)|tojson }};
+  const iconStop = {{ icon('square', 16)|tojson }};
   let mediaRecorder = null;
   let audioChunks = [];
   let recording = false;
@@ -73,7 +76,7 @@
     };
     mediaRecorder.start();
     recording = true;
-    btnVoice.textContent = '⏹ Zatrzymaj i zapisz';
+    btnVoice.innerHTML = iconStop + ' Zatrzymaj i zapisz';
     setStatus('Nagrywanie…');
   }
 
@@ -81,7 +84,7 @@
     if (mediaRecorder && recording) {
       mediaRecorder.stop();
       recording = false;
-      btnVoice.textContent = '🎙️ Nagraj notatkę głosową';
+      btnVoice.innerHTML = iconMic + ' Nagraj notatkę głosową';
     }
   }
 

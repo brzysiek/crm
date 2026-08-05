@@ -1,11 +1,12 @@
 {% extends 'crm/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}{{ title }}{% endblock %}
 
 {% block crm_content %}
 <div class="rd-screen rd-deal-form">
 <div class="page-header">
   <h1>{{ title }}</h1>
-  <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">← Wróć do listy</a>
+  <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
 </div>
 
 <div class="form-card">
@@ -89,7 +90,7 @@
         {% if prefill_company %}
         <div class="entity-picker-selected" id="company-picker-selected">
           <span class="entity-picker-selected-name">{{ prefill_company.short_name or prefill_company.name }}</span>
-          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('company-picker')">✕</button>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('company-picker')">{{ icon('x', 14) }}</button>
         </div>
         {% endif %}
         <input type="text" id="company-picker-input" class="filter-input"
@@ -105,7 +106,7 @@
         {% if prefill_contact %}
         <div class="entity-picker-selected" id="contact-picker-selected">
           <span class="entity-picker-selected-name">{{ prefill_contact.first_name }} {{ prefill_contact.last_name }}</span>
-          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('contact-picker')">✕</button>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('contact-picker')">{{ icon('x', 14) }}</button>
         </div>
         {% endif %}
         <input type="text" id="contact-picker-input" class="filter-input"

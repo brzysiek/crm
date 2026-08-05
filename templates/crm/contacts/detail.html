@@ -1,5 +1,6 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 {% block title %}{{ contact.first_name }} {{ contact.last_name }}{% endblock %}
 
 {% block crm_content %}
@@ -10,7 +11,7 @@
     <div>
     <h1>
       <form method="post" action="{{ url_for('crm_contacts.toggle_star_view', contact_id=contact.id) }}" class="inline-form" style="display:inline">
-        <button type="submit" class="star-toggle {{ 'starred' if contact.is_starred }}" title="{{ 'Usuń z ulubionych' if contact.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if contact.is_starred else '☆' }}</button>
+        <button type="submit" class="star-toggle {{ 'starred' if contact.is_starred }}" title="{{ 'Usuń z ulubionych' if contact.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if contact.is_starred else icon('star-outline', 16) }}</button>
       </form>
       {{ contact.first_name }} {{ contact.last_name }}
     </h1>
@@ -18,10 +19,10 @@
     </div>
   </div>
   <div class="header-actions">
-    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline" title="Wróć do listy">←</a>
-    <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">✎ Edytuj</a>
+    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline" title="Wróć do listy">{{ icon('arrow-left', 14) }}</a>
+    <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
     {% include 'crm/_add_note_modal.html' %}
-    <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">📇 Wizytówka</a>
+    <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('id-card', 14) }} Wizytówka</a>
   </div>
 </div>
 
@@ -194,7 +195,7 @@
             <tbody>
               {% for i in gtd_items %}
               <tr class="{{ 'gtd-row-done' if i.done else '' }}">
-                <td>{{ {'project': '📁 Projekt', 'task': '☑ Zadanie', 'event': '📅 Spotkanie'}[i.kind] }}</td>
+                <td>{{ {'project': icon('folder', 14) ~ ' Projekt', 'task': icon('check', 14) ~ ' Zadanie', 'event': icon('calendar', 14) ~ ' Spotkanie'}[i.kind] }}</td>
                 <td>{% if i.url %}<a href="{{ i.url }}">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %}</td>
                 <td>{{ i.date|ddmmyyyy if i.date else '—' }}</td>
               </tr>
@@ -218,7 +219,7 @@
   <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=contact.id) }}"
         class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if contact.company_id else 'false' }})">
     <input type="hidden" name="archive_company" value="0">
-    <button type="submit" class="btn btn-danger">✕ Usuń kontakt</button>
+    <button type="submit" class="btn btn-danger">{{ icon('x', 14) }} Usuń kontakt</button>
   </form>
 </div>
 </div>

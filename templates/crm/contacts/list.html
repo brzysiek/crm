@@ -1,5 +1,6 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 {% block title %}Kontakty{% endblock %}
 
 {% block crm_content %}
@@ -30,8 +31,8 @@
   <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
   <div class="bulk-actions" id="bulkActions" style="display:none">
     <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">★ Oznacz</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">☆ Odznacz</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkDelete">Usuń zaznaczone</button>
   </div>
 </div>
@@ -57,7 +58,7 @@
         <td class="col-checkbox">
           <input type="checkbox" class="row-checkbox" value="{{ c.id }}" onchange="updateBulkBar()" style="display:none">
           <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
-                  onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
+                  onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
         </td>
         <td data-col="last_name" class="rd-entity-cell">
           <span class="rd-entity-inner">
@@ -65,7 +66,7 @@
             <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}">{{ c.last_name }} {{ c.first_name }}</a>
             {% if c.business_card_file_id %}
             <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
-                    onclick="event.preventDefault(); openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
+                    onclick="event.preventDefault(); openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">{{ icon('id-card', 14) }}</button>
             {% endif %}
           </span>
         </td>
@@ -99,11 +100,11 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+          <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
           <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
                 class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if c.company_id else 'false' }})">
             <input type="hidden" name="archive_company" value="0">
-            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
           </form>
         </td>
       </tr>
@@ -122,18 +123,18 @@
       <span class="rd-card-name">{{ c.last_name }} {{ c.first_name }}</span>
       {% if c.business_card_file_id %}
       <button type="button" class="card-circle card-circle-has" title="Zobacz wizytówkę"
-              onclick="openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">🪪</button>
+              onclick="openBusinessCardModal('{{ url_for('api_crm_files_download', file_id=c.business_card_file_id) }}', '{{ c.business_card_mime_type }}')">{{ icon('id-card', 14) }}</button>
       {% endif %}
     </div>
     <div class="rd-card-meta">{{ c.position or '—' }}{% if c.company_id %} · {{ c.company_short_name or c.company_name }}{% endif %}</div>
     <div class="rd-card-actions">
       <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
-              onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
-      <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+              onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
+      <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
       <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
             class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if c.company_id else 'false' }})">
         <input type="hidden" name="archive_company" value="0">
-        <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
       </form>
     </div>
   </div>
@@ -151,7 +152,7 @@
   <div class="modal" style="max-width:500px;padding:0">
     <div class="modal-header" style="padding:1rem 1.25rem">
       <h3>Wizytówka</h3>
-      <button class="modal-close" title="Zamknij" onclick="document.getElementById('businessCardModal').classList.remove('open')">✕</button>
+      <button class="modal-close" title="Zamknij" onclick="document.getElementById('businessCardModal').classList.remove('open')">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body" style="padding:0 1.25rem 1.25rem">
       <img id="businessCardModalImg" src="" alt="Wizytówka" style="max-width:100%;display:block;border-radius:8px">

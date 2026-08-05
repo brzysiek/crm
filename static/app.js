@@ -117,7 +117,13 @@ function toggleMoreFields(id, btn) {
   const el = document.getElementById(id);
   if (!el) return;
   const hidden = el.classList.toggle('hidden');
-  btn.textContent = hidden ? '▼ Więcej danych' : '▲ Mniej danych';
+  const iconMore = btn.dataset.iconMore;
+  const iconLess = btn.dataset.iconLess;
+  if (iconMore && iconLess) {
+    btn.innerHTML = (hidden ? iconMore : iconLess) + (hidden ? ' Więcej danych' : ' Mniej danych');
+  } else {
+    btn.textContent = hidden ? '▼ Więcej danych' : '▲ Mniej danych';
+  }
 }
 
 /* ── API key reveal toggle ───────────────────────────────────────────────────── */

@@ -1,5 +1,6 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 {% block title %}Deale{% endblock %}
 
 {% block crm_content %}
@@ -8,8 +9,8 @@
   <h1>Deale</h1>
   <div class="header-actions">
     <div class="view-toggle">
-      <button type="button" class="btn btn-outline" id="deals-view-list">☰ Lista</button>
-      <button type="button" class="btn btn-outline" id="deals-view-kanban">▦ Kanban</button>
+      <button type="button" class="btn btn-outline" id="deals-view-list">{{ icon('menu', 14) }} Lista</button>
+      <button type="button" class="btn btn-outline" id="deals-view-kanban">{{ icon('grid', 14) }} Kanban</button>
     </div>
     {{ m.col_toggle('deals-col-btn', 'deals-col-menu', [
       ('stage', 'Etap'), ('probability', 'Szansa'), ('deal_type', 'Typ'), ('amount', 'Kwota'), ('company_name', 'Firma'),
@@ -25,7 +26,7 @@
   <input type="hidden" name="stage_filter" value="1">
   <div class="col-toggle" id="deals-stage-filter">
     <button type="button" id="deals-stage-filter-btn" class="btn btn-outline btn-sm">
-      Etapy ({{ filters.stage|length }}) ▾
+      Etapy ({{ filters.stage|length }}) {{ icon('chevron-down', 12) }}
     </button>
     <div id="deals-stage-filter-menu" class="col-toggle-menu">
       {% for val, label in stage_labels.items() %}
@@ -116,10 +117,10 @@
         <td data-col="start_date" class="nowrap">{{ d.start_date|ddmmyyyy if d.start_date else '—' }}</td>
         <td data-col="end_date" class="nowrap">{{ d.end_date|ddmmyyyy if d.end_date else '—' }}</td>
         <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">✎</a>
+          <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
           <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
                 class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
-            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
           </form>
         </td>
       </tr>
@@ -146,10 +147,10 @@
       <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
     </div>
     <div class="rd-card-actions">
-      <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">✎</a>
+      <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
       <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
             class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
-        <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
       </form>
     </div>
   </div>
@@ -165,7 +166,7 @@
 
 <div id="deals-kanban-view" style="display:none">
   <div class="col-toggle" id="kanban-stage-toggle" style="margin-bottom:.6rem">
-    <button type="button" id="kanban-stage-toggle-btn" class="btn btn-outline btn-sm">Statusy ▾</button>
+    <button type="button" id="kanban-stage-toggle-btn" class="btn btn-outline btn-sm">Statusy {{ icon('chevron-down', 12) }}</button>
     <div id="kanban-stage-toggle-menu" class="col-toggle-menu">
       {% for val, label in stage_labels.items() %}
       <div class="col-toggle-item">
@@ -178,7 +179,7 @@
   {% set prob_args = request.args.to_dict(flat=False) %}
   {% set _ = prob_args.update({'sort': 'probability', 'dir': prob_next_dir}) %}
   <a href="{{ url_for('crm_deals.list_deals', **prob_args) }}" class="btn btn-outline btn-sm" style="margin-bottom:.6rem">
-    Sortuj wg szansy {% if sort == 'probability' %}<span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}
+    Sortuj wg szansy {% if sort == 'probability' %}<span class="sort-arrow">{{ icon('chevron-up', 12) if direction == 'asc' else icon('chevron-down', 12) }}</span>{% endif %}
   </a>
   <div class="kanban-board">
     {% for stage_val, stage_label in stage_labels.items() %}

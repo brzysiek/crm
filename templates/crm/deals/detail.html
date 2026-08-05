@@ -1,4 +1,5 @@
 {% extends 'crm/_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block title %}{{ deal.name }}{% endblock %}
 
 {% block crm_content %}
@@ -16,12 +17,12 @@
     {% if deal.amount is not none %}<div class="detail-subtitle">{{ deal.amount|pln }}</div>{% endif %}
   </div>
   <div class="header-actions">
-    <a href="{{ url_for('crm_deals.edit_deal', deal_id=deal.id) }}" class="btn btn-outline">✎ Edytuj</a>
+    <a href="{{ url_for('crm_deals.edit_deal', deal_id=deal.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
     <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=deal.id) }}"
           class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
-      <button type="submit" class="btn btn-outline">✕ Usuń</button>
+      <button type="submit" class="btn btn-outline">{{ icon('x', 14) }} Usuń</button>
     </form>
-    <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">← Lista</a>
+    <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
   </div>
 </div>
 
@@ -76,7 +77,7 @@
                   <form method="post"
                         action="{{ url_for('crm_deals.delete_payment_view', deal_id=deal.id, payment_id=p.id) }}"
                         class="inline-form" onsubmit="return confirm('Usunąć tę płatność?')">
-                    <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+                    <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
                   </form>
                 </td>
               </tr>

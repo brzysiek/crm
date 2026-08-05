@@ -1,3 +1,5 @@
+{% from '_icons.html' import icon %}
+
 {% macro sort_th(label, col, sort, direction, endpoint, col_attr=None) %}
   {% set next_dir = 'desc' if sort == col and direction == 'asc' else 'asc' %}
   {% set args = request.args.to_dict(flat=False) %}
@@ -5,7 +7,7 @@
   <th{% if col_attr %} data-col="{{ col_attr }}"{% endif %}>
     <a class="sort-link" href="{{ url_for(endpoint, **args) }}">
       {{ label }}
-      {% if sort == col %}<span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}
+      {% if sort == col %}<span class="sort-arrow">{{ icon('chevron-up', 12) if direction == 'asc' else icon('chevron-down', 12) }}</span>{% endif %}
     </a>
   </th>
 {% endmacro %}
@@ -34,12 +36,12 @@
 
 {% macro col_toggle(btn_id, menu_id, columns) %}
   <div class="col-toggle">
-    <button type="button" id="{{ btn_id }}" class="btn btn-outline btn-sm">Kolumny ▾</button>
+    <button type="button" id="{{ btn_id }}" class="btn btn-outline btn-sm">Kolumny {{ icon('chevron-down', 12) }}</button>
     <div id="{{ menu_id }}" class="col-toggle-menu">
       <p class="col-toggle-hint">Przeciągnij, aby zmienić kolejność</p>
       {% for col, label in columns %}
       <div class="col-toggle-item" draggable="true" data-col="{{ col }}">
-        <span class="col-toggle-handle" title="Przeciągnij, aby zmienić kolejność">⠿</span>
+        <span class="col-toggle-handle" title="Przeciągnij, aby zmienić kolejność">{{ icon('grip', 14) }}</span>
         <label><input type="checkbox" data-col="{{ col }}"> {{ label }}</label>
       </div>
       {% endfor %}

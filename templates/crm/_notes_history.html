@@ -1,6 +1,7 @@
 {# Wspólny partial: pliki + notatki + historia. Wymaga: notes, history, add_note_url,
    entity_type, entity_id, files, can_upload_files, upload_company_id, upload_contact_id #}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 
 <div class="inv-section">
   <h4>Pliki</h4>
@@ -35,7 +36,7 @@
             {{ file.user_name or 'System' }} · {{ file.created_at|ddmmyyyy }}{% if file.file_size %} · {{ file.file_size|filesizeformat }}{% endif %}
           </span>
         </div>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="deleteFile({{ file.id }})">✕</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="deleteFile({{ file.id }})">{{ icon('x', 16) }}</button>
       </div>
       {% endfor %}
     </div>
@@ -49,7 +50,7 @@
   <div class="modal modal-wide">
     <div class="modal-header">
       <h3 id="filePreviewTitle">Podgląd pliku</h3>
-      <button class="modal-close" onclick="document.getElementById('filePreviewModal').classList.remove('open')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('filePreviewModal').classList.remove('open')">{{ icon('x', 16) }}</button>
     </div>
     <div id="filePreviewBody" class="modal-body"></div>
   </div>
@@ -207,7 +208,7 @@ function openFilePreview(btn) {
     <div style="margin-bottom:1rem">
       <button type="button" class="btn btn-outline btn-sm" id="btnVoiceNote"
               data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}">
-        🎙️ Nagraj notatkę głosową
+        {{ icon('mic', 16) }} Nagraj notatkę głosową
       </button>
       <span id="voiceNoteStatus" class="small text-muted" style="margin-left:.5rem"></span>
     </div>
@@ -228,7 +229,7 @@ function openFilePreview(btn) {
           </span>
           <form method="post" action="{{ n.delete_url }}" class="inline-form"
                 onsubmit="return confirm('Usunąć tę notatkę?')">
-            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
           </form>
         </div>
         {% if n.audio_data and not n.transcribed_at %}
@@ -259,6 +260,8 @@ function openFilePreview(btn) {
 (function() {
   const btnVoice = document.getElementById('btnVoiceNote');
   const statusEl = document.getElementById('voiceNoteStatus');
+  const iconMic = {{ icon('mic', 16)|tojson }};
+  const iconStop = {{ icon('square', 16)|tojson }};
   let mediaRecorder = null;
   let audioChunks = [];
   let recording = false;
@@ -291,7 +294,7 @@ function openFilePreview(btn) {
     };
     mediaRecorder.start();
     recording = true;
-    btnVoice.textContent = '⏹ Zatrzymaj i zapisz';
+    btnVoice.innerHTML = iconStop + ' Zatrzymaj i zapisz';
     setStatus('Nagrywanie…');
   }
 
@@ -299,7 +302,7 @@ function openFilePreview(btn) {
     if (mediaRecorder && recording) {
       mediaRecorder.stop();
       recording = false;
-      btnVoice.textContent = '🎙️ Nagraj notatkę głosową';
+      btnVoice.innerHTML = iconMic + ' Nagraj notatkę głosową';
     }
   }
 

@@ -1,5 +1,6 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 {% block title %}{{ company.name }}{% endblock %}
 
 {% block crm_content %}
@@ -12,7 +13,7 @@
     <div>
     <h1>
       <form method="post" action="{{ url_for('crm_companies.toggle_star_view', company_id=company.id) }}" class="inline-form" style="display:inline">
-        <button type="submit" class="star-toggle {{ 'starred' if company.is_starred }}" title="{{ 'Usuń z ulubionych' if company.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if company.is_starred else '☆' }}</button>
+        <button type="submit" class="star-toggle {{ 'starred' if company.is_starred }}" title="{{ 'Usuń z ulubionych' if company.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if company.is_starred else icon('star-outline', 16) }}</button>
       </form>
       {{ company.short_name or company.name }}
       <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
@@ -23,8 +24,8 @@
     </div>
   </div>
   <div class="header-actions">
-    <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline" title="Wróć do listy">←</a>
-    <a href="{{ url_for('crm_companies.edit_company', company_id=company.id) }}" class="btn btn-outline">✎ Edytuj</a>
+    <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline" title="Wróć do listy">{{ icon('arrow-left', 14) }}</a>
+    <a href="{{ url_for('crm_companies.edit_company', company_id=company.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
     {% include 'crm/_add_note_modal.html' %}
   </div>
 </div>
@@ -51,7 +52,8 @@
         <dt>KRS</dt><dd>{{ company.krs or '—' }}</dd>
       </dl>
       <div style="padding:.6rem .85rem">
-        <button type="button" class="btn btn-outline btn-sm" onclick="toggleMoreFields('companyMoreFields', this)">▼ Więcej danych</button>
+        <button type="button" class="btn btn-outline btn-sm" data-icon-more="{{ icon('chevron-down', 14)|forceescape }}" data-icon-less="{{ icon('chevron-up', 14)|forceescape }}"
+                onclick="toggleMoreFields('companyMoreFields', this)">{{ icon('chevron-down', 14) }} Więcej danych</button>
       </div>
     </div>
 
@@ -203,7 +205,7 @@
             <tbody>
               {% for i in gtd_items %}
               <tr class="{{ 'gtd-row-done' if i.done else '' }}">
-                <td>{{ {'project': '📁 Projekt', 'task': '☑ Zadanie', 'event': '📅 Spotkanie'}[i.kind] }}</td>
+                <td>{{ {'project': icon('folder', 14) ~ ' Projekt', 'task': icon('check', 14) ~ ' Zadanie', 'event': icon('calendar', 14) ~ ' Spotkanie'}[i.kind] }}</td>
                 <td>{% if i.url %}<a href="{{ i.url }}">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %}</td>
                 <td>{{ i.date|ddmmyyyy if i.date else '—' }}</td>
               </tr>
@@ -228,7 +230,7 @@
   <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=company.id) }}"
         class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ contacts|length }})">
     <input type="hidden" name="archive_contacts" value="0">
-    <button type="submit" class="btn btn-danger">✕ Usuń firmę</button>
+    <button type="submit" class="btn btn-danger">{{ icon('x', 14) }} Usuń firmę</button>
   </form>
 </div>
 </div>

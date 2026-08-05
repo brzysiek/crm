@@ -1,5 +1,6 @@
 {# Wspólny partial: zunifikowany feed aktywności (notatki + historia), posortowany chronologicznie.
    Wymaga: activity — lista pozycji z polem _kind ('note' albo 'history'). #}
+{% from '_icons.html' import icon %}
 
 <div class="inv-section">
   <h4>Historia</h4>
@@ -21,7 +22,7 @@
             </span>
             <form method="post" action="{{ item.delete_url }}" class="inline-form"
                   onsubmit="return confirm('Usunąć tę notatkę?')">
-              <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+              <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
             </form>
           </div>
           {% if item.audio_data and not item.transcribed_at %}

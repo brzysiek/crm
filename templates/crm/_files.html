@@ -1,5 +1,6 @@
 {# Wspólny partial: sekcja Pliki. Wymaga: files, can_upload_files, upload_company_id, upload_contact_id #}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 
 <div class="inv-section">
   <h4>Pliki</h4>
@@ -34,7 +35,7 @@
             {{ file.user_name or 'System' }} · {{ file.created_at|ddmmyyyy }}{% if file.file_size %} · {{ file.file_size|filesizeformat }}{% endif %}
           </span>
         </div>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="deleteFile({{ file.id }})">✕</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="deleteFile({{ file.id }})">{{ icon('x', 16) }}</button>
       </div>
       {% endfor %}
     </div>
@@ -48,7 +49,7 @@
   <div class="modal modal-wide">
     <div class="modal-header">
       <h3 id="filePreviewTitle">Podgląd pliku</h3>
-      <button class="modal-close" onclick="document.getElementById('filePreviewModal').classList.remove('open')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('filePreviewModal').classList.remove('open')">{{ icon('x', 16) }}</button>
     </div>
     <div id="filePreviewBody" class="modal-body"></div>
   </div>

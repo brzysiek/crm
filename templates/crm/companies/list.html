@@ -1,5 +1,6 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
 {% block title %}Firmy{% endblock %}
 
 {% block crm_content %}
@@ -57,8 +58,8 @@
     </div>
     <button type="button" class="btn btn-primary btn-sm" id="btnBulkAdd">Dodaj</button>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkRemove">Usuń</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">★ Oznacz</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">☆ Odznacz</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
   </div>
 </div>
 
@@ -88,7 +89,7 @@
         <td class="col-checkbox">
           <input type="checkbox" class="row-checkbox" value="{{ c.id }}" onchange="updateBulkBar()" style="display:none">
           <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
-                  onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
+                  onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
         </td>
         <td data-col="short_name" class="rd-entity-cell">
           <span class="rd-entity-inner">
@@ -149,11 +150,11 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+          <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
           <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=c.id) }}"
                 class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ c.contacts_count or 0 }})">
             <input type="hidden" name="archive_contacts" value="0">
-            <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
           </form>
         </td>
       </tr>
@@ -182,12 +183,12 @@
     {% endif %}
     <div class="rd-card-actions">
       <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
-              onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ '★' if c.is_starred else '☆' }}</button>
-      <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">✎</a>
+              onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
+      <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
       <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=c.id) }}"
             class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ c.contacts_count or 0 }})">
         <input type="hidden" name="archive_contacts" value="0">
-        <button type="submit" class="action-btn action-danger" title="Usuń">✕</button>
+        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
       </form>
     </div>
   </div>
