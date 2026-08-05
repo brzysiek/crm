@@ -115,7 +115,7 @@
 
 <div class="rd-card-list">
   {% for c in contacts %}
-  <div class="rd-card">
+  <div class="rd-card {{ 'rd-card-starred' if c.is_starred }}">
     <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.id) }}" class="rd-card-link" aria-label="{{ c.last_name }} {{ c.first_name }}"></a>
     <div class="rd-card-top">
       <span class="rd-avatar rd-avatar-round" style="background:{{ m.rd_avatar_color(c.id) }}"><span>{{ m.rd_initials(c.first_name ~ ' ' ~ c.last_name) }}</span></span>

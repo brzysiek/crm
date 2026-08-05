@@ -165,7 +165,7 @@
 
 <div class="rd-card-list">
   {% for c in companies %}
-  <div class="rd-card">
+  <div class="rd-card {{ 'rd-card-starred' if c.is_starred }}">
     <a href="{{ url_for('crm_companies.view_company', company_id=c.id) }}" class="rd-card-link" aria-label="{{ c.short_name or c.name }}"></a>
     <div class="rd-card-top">
       <span class="rd-avatar" style="background:{{ m.rd_avatar_color(c.id) }}">
