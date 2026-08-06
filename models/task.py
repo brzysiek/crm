@@ -204,11 +204,12 @@ def restore_task(task_id: int) -> None:
 
 
 def permanently_delete_task(task_id: int) -> None:
-    """Trwałe skasowanie — dozwolone tylko dla pozycji już miękko usuniętych."""
+    """Trwałe skasowanie — działa niezależnie od tego, czy zadanie było wcześniej zarchiwizowane."""
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("DELETE FROM tasks WHERE id=%s AND deleted_at IS NOT NULL", (task_id,))
+            cur.execute("UPDATE tasks SET parent_id=NULL WHERE parent_id=%s", (task_id,))
+            cur.execute("DELETE FROM tasks WHERE id=%s", (task_id,))
         db.commit()
     except Exception:
         db.rollback()

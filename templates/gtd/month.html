@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, priority_stars, edit_followup_actions, row_class, timeline_item %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
 {% from '_icons.html' import icon %}
 {% block title %}Miesiąc — GTD{% endblock %}
 
@@ -40,13 +40,14 @@
     <tbody>
       {% for t in unfinished_months %}
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
-        {{ task_cells(t, inline_actions=false) }}
+        {{ task_cells(t) }}
         <td class="col-actions nowrap">
-          {{ edit_followup_actions(t) }}
           <button type="button" class="action-btn" title="Do tego miesiąca" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">{{ icon('arrow-right', 16) }}</button>
           <button type="button" class="action-btn" title="Do następnego miesiąca" onclick="gtdAssignMonth({{ t.id }}, '{{ next_month_start }}')">{{ icon('arrow-right', 16) }}⁺</button>
           <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">{{ icon('moon', 16) }}</button>
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+          <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+          <button type="button" class="action-btn" title="Odepnij" onclick="gtdClearMonth({{ t.id }})">{{ icon('x', 16) }}</button>
         </td>
       </tr>
       {% endfor %}
@@ -82,12 +83,13 @@
   <tbody>
     {% for t in priority_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, inline_actions=false) }}
+      {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        {{ edit_followup_actions(t) }}
         <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdClearMonth({{ t.id }})">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -132,13 +134,13 @@
   <tbody>
     {% for t in group.unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, inline_actions=false) }}
+      {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        {{ edit_followup_actions(t) }}
         <button type="button" class="action-btn" title="Zablokuj czas" onclick="gtdOpenTimeBlock({{ t.id }}, '{{ group.date.isoformat() }}', '', 30)">{{ icon('clock', 16) }}</button>
-        <button type="button" class="action-btn" title="Odepnij dzień" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">{{ icon('x', 16) }}</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdAssignMonth({{ t.id }}, '{{ month_start.isoformat() }}')">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -171,13 +173,13 @@
   <tbody>
     {% for t in bucket_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, inline_actions=false) }}
+      {{ task_cells(t) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
-        {{ edit_followup_actions(t) }}
         <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
-        <button type="button" class="action-btn" title="Usuń z miesiąca" onclick="gtdClearMonth({{ t.id }})">{{ icon('x', 16) }}</button>
-        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdClearMonth({{ t.id }})">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

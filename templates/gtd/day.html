@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, priority_stars, task_extra_actions, edit_followup_actions, row_class, timeline_item %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
 {% from '_icons.html' import icon %}
 {% block title %}Dziś — GTD{% endblock %}
 
@@ -34,12 +34,13 @@
     <tbody>
       {% for t in unfinished %}
       <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=true) }}">
-        {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
+        {{ task_cells(t, today, day_actions=true) }}
         <td class="col-actions nowrap">
-          {{ edit_followup_actions(t) }}
           <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
           <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">{{ icon('moon', 16) }}</button>
-          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+          <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+          <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
         </td>
       </tr>
       {% endfor %}
@@ -80,10 +81,14 @@
   <tbody>
     {% for t in priority_tasks %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
+      {{ task_cells(t, today, day_actions=true) }}
       <td class="col-actions nowrap">
-        {{ task_extra_actions(t) }}
-        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        {{ priority_stars(t) }}
+        <button type="button" class="action-btn" title="Zaplanuj godzinę"
+                onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
+        <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -117,10 +122,14 @@
   <tbody>
     {% for t in unscheduled %}
     <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
-      {{ task_cells(t, today, day_actions=true, inline_actions=false) }}
+      {{ task_cells(t, today, day_actions=true) }}
       <td class="col-actions nowrap">
-        {{ task_extra_actions(t) }}
-        <button type="button" class="action-btn action-danger" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        {{ priority_stars(t) }}
+        <button type="button" class="action-btn" title="Zaplanuj godzinę"
+                onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
+        <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
+        <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

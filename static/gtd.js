@@ -307,7 +307,7 @@ function gtdFlattenProject(taskId) {
 }
 
 function gtdDeleteTask(taskId) {
-  if (!confirm('Usunąć to zadanie?')) return;
+  if (!confirm('Zarchiwizować to zadanie? Trafi do Archiwum, skąd można je przywrócić.')) return;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, { method: 'DELETE' })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
