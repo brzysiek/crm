@@ -1091,6 +1091,90 @@ function clearEntityPicker(pickerId) {
   input.focus();
 }
 
+/* ── CRM: przypisywanie/odpinanie wielu kontaktów do firmy (formularz firmy) ───
+ * Wymaga w DOM: <div id="{wrapId}"> zawierający <input id="{inputId}">
+ * i <div id="{suggestId}">. `initialContacts` to lista {id, label} już
+ * przypisanych kontaktów. Wybranie kontaktu przypisanego gdzie indziej
+ * przeniesie go do tej firmy po zapisie formularza.
+ */
+function initContactMultiPicker(wrapId, inputId, suggestId, searchUrl, initialContacts) {
+  const wrap = document.getElementById(wrapId);
+  const input = document.getElementById(inputId);
+  const suggestBox = document.getElementById(suggestId);
+  if (!wrap || !input || !suggestBox) return;
+
+  let items = Array.isArray(initialContacts) ? [...initialContacts] : [];
+
+  function render() {
+    wrap.querySelectorAll('.tag-chip, input[type=hidden]').forEach(el => el.remove());
+    items.forEach(it => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.appendChild(document.createTextNode(it.label));
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'tag-chip-remove';
+      rm.textContent = '✕';
+      rm.onclick = () => { items = items.filter(x => x.id !== it.id); render(); };
+      chip.appendChild(rm);
+      wrap.insertBefore(chip, input);
+
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'contact_ids[]';
+      hidden.value = it.id;
+      wrap.appendChild(hidden);
+    });
+  }
+
+  function closeSuggestions() {
+    suggestBox.classList.remove('open');
+    suggestBox.innerHTML = '';
+  }
+
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (!q) { closeSuggestions(); return; }
+    timer = setTimeout(async () => {
+      try {
+        const resp = await fetch(window.API_BASE + searchUrl + '?q=' + encodeURIComponent(q));
+        const raw = await resp.json();
+        const filtered = raw.filter(c => !items.some(x => x.id === c.id));
+        if (filtered.length === 0) {
+          suggestBox.innerHTML = '<div class="tag-suggestion-item text-muted">Brak wyników</div>';
+          suggestBox.classList.add('open');
+          return;
+        }
+        suggestBox.innerHTML = filtered.map((c, i) => {
+          const label = ((c.first_name || '') + ' ' + (c.last_name || '')).trim();
+          return '<div class="tag-suggestion-item" data-i="' + i + '">' + crmEsc(label) +
+            (c.company_name ? ' <span class="tag-suggestion-hint">obecnie: ' + crmEsc(c.company_name) + '</span>' : '') +
+            '</div>';
+        }).join('');
+        suggestBox.classList.add('open');
+        suggestBox.querySelectorAll('.tag-suggestion-item[data-i]').forEach(el => {
+          el.onclick = () => {
+            const c = filtered[parseInt(el.dataset.i, 10)];
+            const label = ((c.first_name || '') + ' ' + (c.last_name || '')).trim();
+            items.push({ id: c.id, label: label });
+            input.value = '';
+            closeSuggestions();
+            render();
+          };
+        });
+      } catch (_) { closeSuggestions(); }
+    }, 250);
+  });
+
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target)) closeSuggestions();
+  });
+
+  render();
+}
+
 /* ── Generyczne otwieranie/zamykanie dropdownu (.col-toggle-menu) przyciskiem
  * i klikiem poza nim. Bez żadnej persystencji — stan trzymają same checkboxy/URL. */
 function initDropdownToggle(btnId, menuId) {

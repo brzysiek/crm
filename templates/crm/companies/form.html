@@ -172,20 +172,28 @@
     </div>
   </div>
 
-  {% if not company.id %}
   <div class="form-section-divider">
-    <span class="form-section-title">Kontakt</span>
+    <span class="form-section-title">Kontakty</span>
   </div>
+  <div class="form-group">
+    <label>Kontakty przypisane do firmy</label>
+    <div class="tag-input-wrap" id="company-contacts-wrap">
+      <input type="text" id="company-contacts-input" class="tag-input-field" placeholder="Szukaj kontaktu…" autocomplete="off">
+      <div id="company-contacts-suggestions" class="tag-suggestions"></div>
+    </div>
+    <p class="text-muted small" style="margin-top:.3rem">Wybranie kontaktu przypisanego do innej firmy przeniesie go do tej firmy po zapisaniu. Usunięcie chipa odepnie kontakt od tej firmy.</p>
+  </div>
+
   <div class="flash flash-info">
-    Kontakt zostanie utworzony jako osobny rekord (kontakt), tylko przypisany do tej firmy.
+    Nowy kontakt zostanie utworzony jako osobny rekord i przypisany do tej firmy.
   </div>
   <div class="form-grid form-grid-2">
     <div class="form-group">
-      <label for="contact_first_name">Imię</label>
+      <label for="contact_first_name">Imię (nowy kontakt)</label>
       <input type="text" id="contact_first_name" name="contact_first_name" value="{{ company.contact_first_name or '' }}">
     </div>
     <div class="form-group">
-      <label for="contact_last_name">Nazwisko</label>
+      <label for="contact_last_name">Nazwisko (nowy kontakt)</label>
       <input type="text" id="contact_last_name" name="contact_last_name" value="{{ company.contact_last_name or '' }}">
     </div>
   </div>
@@ -203,7 +211,6 @@
       <input type="text" id="contact_phone" name="contact_phone" value="{{ company.contact_phone or '' }}">
     </div>
   </div>
-  {% endif %}
 
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz firmę</button>
@@ -229,5 +236,7 @@
 initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
 initTagInput('industries-wrap', 'industries-input', 'industries-suggestions', 'industry', {{ industries | tojson }});
 initTagInput('source-wrap', 'source-input', 'source-suggestions', 'source', {{ source | tojson }});
+initContactMultiPicker('company-contacts-wrap', 'company-contacts-input', 'company-contacts-suggestions',
+  '/api/crm/contacts/search', {{ assigned_contacts | tojson }});
 </script>
 {% endblock %}

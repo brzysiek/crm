@@ -161,6 +161,44 @@ def set_starred(contact_id: int, starred: bool) -> None:
         raise
 
 
+def assign_contacts_to_company(contact_ids: list[int], company_id: int, user_id: int | None) -> None:
+    if not contact_ids:
+        return
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(contact_ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE crm_contacts SET company_id=%s WHERE id IN ({placeholders})",
+                [company_id] + contact_ids,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    for contact_id in contact_ids:
+        log_history('contact', contact_id, user_id, 'update', 'Przypisano kontakt do firmy.')
+
+
+def unassign_contacts_from_company(contact_ids: list[int], user_id: int | None) -> None:
+    if not contact_ids:
+        return
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(contact_ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE crm_contacts SET company_id=NULL WHERE id IN ({placeholders})",
+                contact_ids,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    for contact_id in contact_ids:
+        log_history('contact', contact_id, user_id, 'update', 'Odpięto kontakt od firmy.')
+
+
 def bulk_set_starred(contact_ids: list[int], starred: bool) -> int:
     if not contact_ids:
         return 0

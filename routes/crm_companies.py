@@ -80,20 +80,27 @@ def new_company():
         industries = [t.strip() for t in request.form.getlist('industries[]') if t.strip()]
         source = [t.strip() for t in request.form.getlist('sources[]') if t.strip()]
         if errors:
+            from models.crm_contact import get_names_by_ids
+            contact_ids = [int(x) for x in request.form.getlist('contact_ids[]') if x.strip()]
+            names = get_names_by_ids(contact_ids)
+            assigned_contacts = [{'id': cid, 'label': names.get(cid, '')} for cid in contact_ids]
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/companies/form.html',
                 active_tab='companies', company=request.form, owners=owners, tags=tags, industries=industries,
-                source=source,
+                source=source, assigned_contacts=assigned_contacts,
                 action=url_for('crm_companies.new_company'),
                 title='Nowa firma', relation_labels=RELATION_LABELS)
 
         company_id = create_company(data, session.get('user_id'), tags=tags, industries=industries, source=source)
 
+        from models.crm_contact import assign_contacts_to_company, create_contact
+        contact_ids = [int(x) for x in request.form.getlist('contact_ids[]') if x.strip()]
+        assign_contacts_to_company(contact_ids, company_id, session.get('user_id'))
+
         contact_first_name = request.form.get('contact_first_name', '').strip()
         contact_last_name = request.form.get('contact_last_name', '').strip()
         if contact_first_name and contact_last_name:
-            from models.crm_contact import create_contact
             create_contact({
                 'company_id': company_id,
                 'first_name': contact_first_name,
@@ -112,6 +119,7 @@ def new_company():
 
     return render_template('crm/companies/form.html',
         active_tab='companies', company={}, owners=owners, tags=[], industries=[], source=[],
+        assigned_contacts=[],
         action=url_for('crm_companies.new_company'),
         title='Nowa firma', relation_labels=RELATION_LABELS)
 
@@ -132,28 +140,59 @@ def edit_company(company_id):
         industries = [t.strip() for t in request.form.getlist('industries[]') if t.strip()]
         source = [t.strip() for t in request.form.getlist('sources[]') if t.strip()]
         if errors:
+            from models.crm_contact import get_names_by_ids
+            contact_ids = [int(x) for x in request.form.getlist('contact_ids[]') if x.strip()]
+            names = get_names_by_ids(contact_ids)
+            assigned_contacts = [{'id': cid, 'label': names.get(cid, '')} for cid in contact_ids]
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/companies/form.html',
                 active_tab='companies', company=request.form, owners=owners, tags=tags, industries=industries,
-                source=source,
+                source=source, assigned_contacts=assigned_contacts,
                 action=url_for('crm_companies.edit_company', company_id=company_id),
                 title='Edytuj firmę', relation_labels=RELATION_LABELS)
 
         update_company(company_id, data, session.get('user_id'), tags=tags, industries=industries, source=source)
-        flash('Firma została zaktualizowana.', 'success')
+
+        from models.crm_contact import (assign_contacts_to_company, create_contact, get_all_contacts,
+                                          unassign_contacts_from_company)
+        current_ids = {c['id'] for c in get_all_contacts(company_id=company_id)}
+        new_ids = {int(x) for x in request.form.getlist('contact_ids[]') if x.strip()}
+        assign_contacts_to_company(list(new_ids - current_ids), company_id, session.get('user_id'))
+        unassign_contacts_from_company(list(current_ids - new_ids), session.get('user_id'))
+
+        contact_first_name = request.form.get('contact_first_name', '').strip()
+        contact_last_name = request.form.get('contact_last_name', '').strip()
+        if contact_first_name and contact_last_name:
+            create_contact({
+                'company_id': company_id,
+                'first_name': contact_first_name,
+                'last_name': contact_last_name,
+                'position': request.form.get('contact_position', '').strip() or None,
+                'email': request.form.get('contact_email', '').strip() or None,
+                'phone': request.form.get('contact_phone', '').strip() or None,
+            }, session.get('user_id'))
+            flash('Firma i kontakt zostały zapisane.', 'success')
+        elif contact_first_name or contact_last_name:
+            flash('Firma została zaktualizowana, ale kontakt nie został utworzony — podaj imię i nazwisko.', 'error')
+        else:
+            flash('Firma została zaktualizowana.', 'success')
+
         return redirect(url_for('crm_companies.view_company', company_id=company_id))
 
     from models.crm_contact import get_all_contacts
+
+    contacts = get_all_contacts(company_id=company_id)
 
     return render_template('crm/companies/form.html',
         active_tab='companies', company=company, owners=owners,
         tags=get_company_tags(company_id, 'tag'),
         industries=get_company_tags(company_id, 'industry'),
         source=get_company_tags(company_id, 'source'),
+        assigned_contacts=[{'id': c['id'], 'label': f"{c['first_name']} {c['last_name']}".strip()} for c in contacts],
         action=url_for('crm_companies.edit_company', company_id=company_id),
         title='Edytuj firmę', relation_labels=RELATION_LABELS,
-        contacts_count=len(get_all_contacts(company_id=company_id)))
+        contacts_count=len(contacts))
 
 
 @bp.route('/<int:company_id>')
