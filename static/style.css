@@ -376,16 +376,33 @@ html.sidebar-collapsed .sidebar-user-name { display: none; }
   padding: var(--space-lg) 3% 3rem;
 }
 
-/* ── Flash messages ─────────────────────────────────────────────────────────── */
-.flash-container { margin-bottom: 1rem; }
+/* ── Flash messages: toast pływający nad treścią, nie przesuwający layoutu ──── */
+.flash-container {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  width: min(360px, calc(100% - 40px));
+  pointer-events: none;
+}
+@media (max-width: 880px) {
+  .flash-container { top: 76px; }
+}
 
 .flash {
   padding: .7rem 1.1rem;
   border-radius: var(--radius-sm);
-  margin-bottom: .5rem;
   font-weight: 500;
   font-size: .875rem;
+  box-shadow: 0 8px 24px rgba(13,40,32,.18);
+  pointer-events: auto;
+  animation: flash-in .25s ease, flash-out .3s ease 3.5s forwards;
 }
+@keyframes flash-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes flash-out { to { opacity: 0; transform: translateY(-8px); } }
 .flash-success { background: var(--success-bg); color: var(--success-text); border-left: 3px solid var(--success); }
 .flash-error   { background: var(--error-bg);   color: var(--error-text);   border-left: 3px solid var(--error); }
 .flash-info    { background: var(--info-bg);    color: var(--info-text);    border-left: 3px solid var(--info); }
@@ -2929,6 +2946,13 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .rd-firmy .col-toggle,
   .rd-kontakty .bulk-select-bar,
   .rd-firmy .bulk-select-bar { display: none; }
+}
+
+/* ── Redesign: sekcje szczegółów (Kontakty/Deale/Zadania na karcie firmy, kontaktu, deala) —
+   tabele w .inv-section nie mają odpowiednika w postaci kart, więc pozostają widoczne
+   (z przewijaniem w bok) zamiast się ukrywać ── */
+@media (max-width: 880px) {
+  .inv-section .table-wrapper { display: block; }
 }
 
 /* ── Redesign: Zadania — wszystkie widoki GTD (mobile) — tabele (zaległe, priorytety,

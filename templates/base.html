@@ -196,6 +196,13 @@
               <div class="flash flash-{{ cat }}">{{ msg }}</div>
             {% endfor %}
           </div>
+          <script>
+            document.querySelectorAll('.flash-container .flash').forEach(function (el) {
+              el.addEventListener('animationend', function (e) {
+                if (e.animationName === 'flash-out') el.remove();
+              });
+            });
+          </script>
         {% endif %}
       {% endwith %}
 
