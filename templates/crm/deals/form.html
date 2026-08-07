@@ -139,7 +139,11 @@
 {% block scripts %}
 <script>
 initEntityPicker('company-picker', '/api/crm/companies/search');
-initEntityPicker('contact-picker', '/api/crm/contacts/search');
+initEntityPicker('contact-picker', '/api/crm/contacts/search', function(contact) {
+  if (contact.company_id && !document.getElementById('company-picker-hidden').value) {
+    selectEntityPicker('company-picker', contact.company_id, contact.company_name);
+  }
+});
 
 (function() {
   var stageSel = document.getElementById('stage');
