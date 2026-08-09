@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="header-actions">
-    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline" title="Wróć do listy">{{ icon('arrow-left', 14) }}</a>
+    <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
     <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
     <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('id-card', 14) }} Wizytówka</a>
   </div>

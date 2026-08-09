@@ -1402,6 +1402,10 @@ function initDealsViewToggle() {
   const kanbanView = document.getElementById('deals-kanban-view');
   if (!listBtn || !kanbanBtn || !listView || !kanbanView) return;
 
+  const colToggleWrap = document.getElementById('deals-col-toggle-wrap');
+  const stageToggle = document.getElementById('kanban-stage-toggle');
+  const sortProbBtn = document.getElementById('kanban-sort-probability-btn');
+
   const STORAGE_KEY = 'crm_deals_view';
 
   function apply(view) {
@@ -1411,6 +1415,9 @@ function initDealsViewToggle() {
     listBtn.classList.toggle('btn-outline', view === 'kanban');
     kanbanBtn.classList.toggle('btn-primary', view === 'kanban');
     kanbanBtn.classList.toggle('btn-outline', view !== 'kanban');
+    if (colToggleWrap) colToggleWrap.style.display = view === 'kanban' ? 'none' : '';
+    if (stageToggle) stageToggle.style.display = view === 'kanban' ? '' : 'none';
+    if (sortProbBtn) sortProbBtn.style.display = view === 'kanban' ? '' : 'none';
   }
 
   listBtn.addEventListener('click', () => {
