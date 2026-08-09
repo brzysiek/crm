@@ -3,6 +3,7 @@
 {% block title %}Faktury{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-faktury">
 <div class="page-header">
   <h1>Faktury przychodowe</h1>
 </div>
@@ -28,8 +29,8 @@
         {{ m.sort_th('Numer', 'invoice_number', sort, direction, 'crm_invoices.list_invoices') }}
         {{ m.sort_th('Klient', 'vendor_name', sort, direction, 'crm_invoices.list_invoices') }}
         <th>NIP</th>
-        {{ m.sort_th('Data wystawienia', 'issue_date', sort, direction, 'crm_invoices.list_invoices') }}
-        {{ m.sort_th('Termin płatności', 'payment_to', sort, direction, 'crm_invoices.list_invoices') }}
+        {{ m.sort_th('Wystawiona', 'issue_date', sort, direction, 'crm_invoices.list_invoices') }}
+        {{ m.sort_th('Termin', 'payment_to', sort, direction, 'crm_invoices.list_invoices') }}
         {{ m.sort_th('Brutto', 'amount_gross', sort, direction, 'crm_invoices.list_invoices') }}
         <th>Netto</th>
         <th>VAT</th>
@@ -47,11 +48,13 @@
         <td class="nowrap">{{ inv.issue_date|ddmmyyyy if inv.issue_date else '—' }}</td>
         <td class="nowrap">{{ inv.payment_to|ddmmyyyy if inv.payment_to else '—' }}</td>
         <td class="text-right nowrap">
-          {{ inv.amount_gross|pln }}
+          <div>{{ inv.amount_gross|pln }}</div>
           {% if inv.currency and inv.currency != 'PLN' and inv.orig_amount %}
+          <div style="margin-top:.25rem">
             <span class="badge badge-yellow" title="Kurs NBP: {{ '%.4f'|format(inv.exchange_rate|float) if inv.exchange_rate else '—' }} PLN/{{ inv.currency }}">
               {{ '%.2f'|format(inv.orig_amount|float) }} {{ inv.currency }}
             </span>
+          </div>
           {% endif %}
         </td>
         <td class="text-right nowrap">{{ inv.amount_net|pln }}</td>
@@ -71,9 +74,38 @@
   </table>
 </div>
 <div class="table-count">{{ invoices|length }} faktur</div>
+
+<div class="rd-card-list">
+  {% for inv in invoices %}
+  <div class="rd-card">
+    <div class="rd-card-top">
+      <span class="rd-card-name">{{ inv.vendor_name or '— brak nazwy —' }}</span>
+      {% if inv.status == 'assigned' %}
+        <span class="badge badge-green">Przypisana</span>
+      {% elif inv.status == 'rejected' %}
+        <span class="badge badge-red">Odrzucona</span>
+      {% else %}
+        <span class="badge badge-gray">Oczekująca</span>
+      {% endif %}
+    </div>
+    <div class="rd-card-meta">
+      {{ inv.invoice_number or '—' }} · {{ inv.issue_date|ddmmyyyy if inv.issue_date else '—' }}
+      {% if inv.payment_to %} · termin {{ inv.payment_to|ddmmyyyy }}{% endif %}
+    </div>
+    <div class="rd-card-meta">
+      <strong style="color:var(--rd-bottle-green)">{{ inv.amount_gross|pln }}</strong>
+      {% if inv.currency and inv.currency != 'PLN' and inv.orig_amount %}
+        · {{ '%.2f'|format(inv.orig_amount|float) }} {{ inv.currency }}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 {% else %}
 <div class="empty-state">
   <p>Brak faktur przychodowych spełniających kryteria.</p>
 </div>
 {% endif %}
+</div>
 {% endblock %}

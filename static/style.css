@@ -2745,8 +2745,8 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 
 /* ── Redesign: shared screen chrome (Brzyski & Partners palette) ─────────────────
    Scoped under .rd-screen so it only applies to the redesigned CRM/GTD screens
-   (Firmy, Kontakty, Deale, company/contact detail, Zadania — dzień) and never
-   touches other CRM pages (Faktury, Plan) or Finance/GTD week-month/etc. ── */
+   (Firmy, Kontakty, Deale, company/contact detail, Faktury, Zadania — dzień)
+   and never touches other CRM pages (Plan) or Finance/GTD week-month/etc. ── */
 .rd-screen {
   font-family: var(--rd-font);
   color: var(--rd-text-body);
