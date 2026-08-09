@@ -237,7 +237,8 @@ def view_company(company_id):
             deal = deals_by_id.get(h['entity_id'])
             h['source_label'] = f"Deal: {deal['name']}" if deal else 'Deal'
 
-    activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
+    notes = sorted(notes, key=lambda x: x['created_at'], reverse=True)
+    history = sorted(history, key=lambda x: x['created_at'], reverse=True)
 
     street_line = ' '.join(filter(None, [company.get('street'), company.get('house_number')]))
     if company.get('flat_number'):
@@ -262,7 +263,8 @@ def view_company(company_id):
         contacts=contacts,
         deals=deals, stage_labels=STAGE_LABELS,
         stage_badge_classes=STAGE_BADGE_CLASSES,
-        activity=activity,
+        notes=notes,
+        history=history,
         add_note_url=url_for('crm_companies.add_note_view', company_id=company_id),
         entity_type='company', entity_id=company_id,
         files=get_files_for_company(company_id),

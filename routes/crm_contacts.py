@@ -196,7 +196,8 @@ def view_contact(contact_id):
             deal = next((d for d in deals if d['id'] == h['entity_id']), None)
             h['source_label'] = f"Deal: {deal['name']}" if deal else 'Deal'
 
-    activity = sorted(notes + history, key=lambda x: x['created_at'], reverse=True)
+    notes = sorted(notes, key=lambda x: x['created_at'], reverse=True)
+    history = sorted(history, key=lambda x: x['created_at'], reverse=True)
     referred_by_id = {c['id']: c for c in get_companies_referred_by_contact(contact_id)}
     if contact.get('company_id'):
         for c in get_companies_referred_by_company(contact['company_id']):
@@ -209,7 +210,8 @@ def view_contact(contact_id):
         deals=deals, stage_labels=STAGE_LABELS,
         referred_companies=referred_companies,
         stage_badge_classes=STAGE_BADGE_CLASSES,
-        activity=activity,
+        notes=notes,
+        history=history,
         add_note_url=url_for('crm_contacts.add_note_view', contact_id=contact_id),
         entity_type='contact', entity_id=contact_id,
         files=get_files_for_company(company['id']) if company else [],

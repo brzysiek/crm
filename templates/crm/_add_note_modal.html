@@ -2,7 +2,7 @@
    Wymaga: add_note_url, entity_type, entity_id #}
 {% from '_icons.html' import icon %}
 
-<button type="button" class="btn btn-primary" onclick="document.getElementById('addNoteModal').classList.add('open')">{{ icon('edit', 14) }} Notatka</button>
+<button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('addNoteModal').classList.add('open')">+ Dodaj notatkę</button>
 
 <div id="addNoteModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal modal-note">

@@ -1,0 +1,93 @@
+{# Wspólny partial: sekcja Notatki (kontakt/firma) z przyciskiem "+ Dodaj notatkę" w headerze,
+   otwierającym popup dodawania notatki (tekst/głos). Wymaga: notes, add_note_url,
+   entity_type, entity_id, note_type_labels #}
+{% from '_icons.html' import icon %}
+
+<div class="inv-section">
+  <div class="inv-section-header">
+    <h4>Notatki</h4>
+    {% include 'crm/_add_note_modal.html' %}
+  </div>
+  <div style="padding:.85rem">
+    {% if notes %}
+    <div class="notes-list">
+      {% for n in notes %}
+      <div class="note-item">
+        <div class="note-meta">
+          <span>
+            {% if n.source_label %}<span class="text-muted">{{ n.source_label }}</span> · {% endif %}
+            {{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}
+            · <select class="note-type-select" data-note-id="{{ n.id }}" onchange="updateNoteType(this)">
+                {% for key, label in note_type_labels.items() %}
+                <option value="{{ key }}" {% if key == n.note_type %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+          </span>
+          <form method="post" action="{{ n.delete_url }}" class="inline-form"
+                onsubmit="return confirm('Usunąć tę notatkę?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
+          </form>
+        </div>
+        {% if n.audio_data and not n.transcribed_at %}
+          <div class="note-body"><em class="text-muted">Notatka głosowa</em></div>
+        {% else %}
+          <div class="note-body">{{ n.body }}</div>
+        {% endif %}
+        {% if n.audio_data %}
+        <div class="note-audio" style="margin-top:.4rem;display:flex;align-items:center;gap:.5rem">
+          <audio controls preload="none" src="{{ n.audio_data }}" style="height:32px;max-width:260px"></audio>
+          {% if not n.transcribed_at %}
+          <button type="button" class="btn btn-outline btn-sm btn-transcribe-note" data-note-id="{{ n.id }}">
+            Transkrybuj
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small">Brak notatek.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.btn-transcribe-note').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const noteId = btn.dataset.noteId;
+    btn.disabled = true;
+    btn.textContent = 'Transkrybuję…';
+    fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/transcribe', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          location.reload();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Transkrybuj';
+          alert(data.message || 'Nie udało się przetranskrybować notatki.');
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Transkrybuj';
+        alert('Błąd sieci przy transkrypcji.');
+      });
+  });
+});
+
+function updateNoteType(sel) {
+  const noteId = sel.dataset.noteId;
+  const fd = new FormData();
+  fd.append('note_type', sel.value);
+  fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/type', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') {
+        alert(data.message || 'Nie udało się zmienić typu notatki.');
+      }
+    })
+    .catch(() => alert('Błąd sieci przy zmianie typu notatki.'));
+}
+</script>

@@ -26,7 +26,6 @@
   <div class="header-actions">
     <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-outline" title="Wróć do listy">{{ icon('arrow-left', 14) }}</a>
     <a href="{{ url_for('crm_companies.edit_company', company_id=company.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
-    {% include 'crm/_add_note_modal.html' %}
   </div>
 </div>
 
@@ -217,6 +216,10 @@
         <p class="text-muted small">Brak zadań, projektów ani spotkań przypisanych do tej firmy.</p>
         {% endif %}
       </div>
+    </div>
+
+    <div style="margin-top:1rem">
+      {% include 'crm/_notes_section.html' %}
     </div>
 
     <div style="margin-top:1rem">

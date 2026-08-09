@@ -21,7 +21,6 @@
   <div class="header-actions">
     <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline" title="Wróć do listy">{{ icon('arrow-left', 14) }}</a>
     <a href="{{ url_for('crm_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
-    {% include 'crm/_add_note_modal.html' %}
     <a href="{{ url_for('crm_contacts.download_vcard', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('id-card', 14) }} Wizytówka</a>
   </div>
 </div>
@@ -207,6 +206,10 @@
         <p class="text-muted small">Brak zadań, projektów ani spotkań przypisanych do tego kontaktu.</p>
         {% endif %}
       </div>
+    </div>
+
+    <div style="margin-top:1rem">
+      {% include 'crm/_notes_section.html' %}
     </div>
 
     <div style="margin-top:1rem">
