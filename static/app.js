@@ -280,18 +280,20 @@ function drawMonthlyBarChart(canvas, labels, data, currentIndex) {
     ctx.fillText(formatK(val), padL - 8, y + 4);
   }
 
-  const indigo    = '#4f46e5';
-  const lightBlue = '#93c5fd';
+  const barColor      = canvas.dataset.barColor      || '#4f46e5';
+  const barColorMuted  = canvas.dataset.barColorMuted || '#93c5fd';
+  const labelColor     = canvas.dataset.labelColor    || '#1f2937';
+  const labelColorMuted= canvas.dataset.labelColorMuted || '#6b7280';
 
   data.forEach((val, i) => {
     const barH = (val / maxVal) * H;
     const x    = padL + i * step + (step - barW) / 2;
     const y    = padT + H - barH;
 
-    ctx.fillStyle = i === currentIndex ? indigo : lightBlue;
+    ctx.fillStyle = i === currentIndex ? barColor : barColorMuted;
     fillRoundedTopRect(ctx, x, y, barW, barH, 4);
 
-    ctx.fillStyle = i === currentIndex ? '#1f2937' : '#6b7280';
+    ctx.fillStyle = i === currentIndex ? labelColor : labelColorMuted;
     ctx.font = (i === currentIndex ? '700 ' : '500 ') + '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(labels[i] || '', x + barW / 2, padT + H + 18);

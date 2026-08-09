@@ -2,6 +2,7 @@
 {% block title %}Plan{% endblock %}
 
 {% block crm_content %}
+<div class="rd-screen rd-plan">
 <div class="page-header">
   <h1>Plan przychodów</h1>
 </div>
@@ -19,7 +20,9 @@
   <div class="chart-header">
     <h2>Prognoza przychodów netto — {{ months[0].label_short }} – {{ months[-1].label_short }}</h2>
   </div>
-  <canvas id="planChart" style="width:100%; display:block"></canvas>
+  <canvas id="planChart" style="width:100%; display:block"
+          data-bar-color="#1C4B40" data-bar-color-muted="#A9C4BB"
+          data-label-color="#0D2820" data-label-color-muted="#878782"></canvas>
 </div>
 
 <div class="kanban-board">
@@ -50,6 +53,7 @@
   {% endfor %}
 </div>
 <div class="table-count">Suma w oknie {{ months|length }} {{ months_word }}: {{ grand_total|pln }}</div>
+</div>
 {% endblock %}
 
 {% block scripts %}
