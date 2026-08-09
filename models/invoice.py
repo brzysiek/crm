@@ -17,6 +17,7 @@ def _fix_counterparty(row: dict) -> dict:
             row['vendor_name'] = name
         if nip:
             row['vendor_nip'] = nip
+        row['payment_status'] = raw.get('payment_status')
     except Exception:
         pass
     return row

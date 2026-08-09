@@ -334,6 +334,33 @@ async function showKsefPreview(entityType, entityId) {
   }
 }
 
+/* ── CRM: podgląd faktury z listy Faktury (po id z fakturownia_invoices) ── */
+async function showCrmInvoicePreview(invoiceId) {
+  const modal = document.getElementById('ksefPreviewModal');
+  if (!modal) return;
+  const body = document.getElementById('ksefPreviewBody');
+  modal.classList.add('open');
+  if (body) body.innerHTML = '<div style="padding:1rem;color:#6b7280">Ładowanie…</div>';
+
+  try {
+    const r = await fetch(window.API_BASE + '/api/crm-invoice-preview/' + invoiceId);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const resp = await r.json();
+    if (resp.has_fakturownia_data) {
+      const isIncome = resp.invoice_type === 'income';
+      body.innerHTML = buildDetailsHTML(resp.data, isIncome);
+    } else {
+      const num = resp.ksef_number || '—';
+      body.innerHTML = '<div class="inv-details">' +
+        section('Numer KSeF', [['Numer', num]]) +
+        '<p style="margin:1rem;color:#6b7280;font-size:.9rem">Brak szczegółowych danych faktury.</p>' +
+        '</div>';
+    }
+  } catch (e) {
+    if (body) body.innerHTML = '<div style="padding:1rem;color:#b91c1c">Błąd ładowania: ' + e.message + '</div>';
+  }
+}
+
 /* ── Dysk (GDrive) preview modal ─────────────────────────────────────────── */
 async function showDiskPreview(entityType, entityId) {
   const modal = document.getElementById('ksefPreviewModal');

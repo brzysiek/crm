@@ -967,6 +967,39 @@ def api_ksef_preview(entity_type, entity_id):
     })
 
 
+@app.route('/api/crm-invoice-preview/<int:invoice_id>')
+def api_crm_invoice_preview(invoice_id):
+    """Podgląd faktury z listy CRM Faktury, po id z fakturownia_invoices (bez wymogu przypisania do income/expense)."""
+    import json as _json
+    from models.invoice import get_invoice_by_id
+
+    inv = get_invoice_by_id(invoice_id)
+    if not inv:
+        return jsonify({'error': 'Nie znaleziono'}), 404
+
+    if inv.get('raw_json'):
+        try:
+            raw = _json.loads(inv['raw_json'])
+        except Exception:
+            raw = {}
+        pc = raw.get('product_cache')
+        if isinstance(pc, str) and pc.strip().startswith('['):
+            try:
+                raw['product_cache'] = _json.loads(pc)
+            except Exception:
+                raw['product_cache'] = []
+        return jsonify({
+            'has_fakturownia_data': True,
+            'invoice_type': inv.get('invoice_type') or 'income',
+            'data': raw,
+        })
+
+    return jsonify({
+        'has_fakturownia_data': False,
+        'ksef_number': inv.get('ksef_number') or '',
+    })
+
+
 @app.route('/api/gdrive/test')
 def api_gdrive_test():
     from models.settings import get_setting

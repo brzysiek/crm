@@ -34,15 +34,16 @@
         {{ m.sort_th('Brutto', 'amount_gross', sort, direction, 'crm_invoices.list_invoices') }}
         <th>Netto</th>
         <th>VAT</th>
+        <th>Płatność</th>
         <th>Status</th>
       </tr>
     </thead>
     <tbody>
       {% for inv in invoices %}
-      <tr>
-        <td>{{ inv.invoice_number or '—' }}</td>
+      <tr class="{{ 'row-paid' if inv.payment_status == 'paid' else '' }}">
+        <td><a href="#" onclick="showCrmInvoicePreview({{ inv.id }});return false;">{{ inv.invoice_number or '—' }}</a></td>
         <td>
-          <strong>{{ inv.vendor_name or '— brak nazwy —' }}</strong>
+          <a href="#" onclick="showCrmInvoicePreview({{ inv.id }});return false;"><strong>{{ inv.vendor_name or '— brak nazwy —' }}</strong></a>
         </td>
         <td>{{ inv.vendor_nip or '—' }}</td>
         <td class="nowrap">{{ inv.issue_date|ddmmyyyy if inv.issue_date else '—' }}</td>
@@ -59,6 +60,17 @@
         </td>
         <td class="text-right nowrap">{{ inv.amount_net|pln }}</td>
         <td class="text-right nowrap">{{ inv.vat_amount|pln }}</td>
+        <td>
+          {% if inv.payment_status == 'paid' %}
+            <span class="badge badge-green">Opłacona</span>
+          {% elif inv.payment_status == 'partial' %}
+            <span class="badge badge-yellow">Częściowo</span>
+          {% elif inv.payment_status == 'overdue' %}
+            <span class="badge badge-red">Przeterminowana</span>
+          {% else %}
+            <span class="badge badge-gray">Nieopłacona</span>
+          {% endif %}
+        </td>
         <td>
           {% if inv.status == 'assigned' %}
             <span class="badge badge-green">Przypisana</span>
@@ -77,7 +89,7 @@
 
 <div class="rd-card-list">
   {% for inv in invoices %}
-  <div class="rd-card">
+  <div class="rd-card {{ 'row-paid' if inv.payment_status == 'paid' else '' }}" onclick="showCrmInvoicePreview({{ inv.id }})">
     <div class="rd-card-top">
       <span class="rd-card-name">{{ inv.vendor_name or '— brak nazwy —' }}</span>
       {% if inv.status == 'assigned' %}
@@ -96,6 +108,15 @@
       <strong style="color:var(--rd-bottle-green)">{{ inv.amount_gross|pln }}</strong>
       {% if inv.currency and inv.currency != 'PLN' and inv.orig_amount %}
         · {{ '%.2f'|format(inv.orig_amount|float) }} {{ inv.currency }}
+      {% endif %}
+      {% if inv.payment_status == 'paid' %}
+        · <span class="badge badge-green">Opłacona</span>
+      {% elif inv.payment_status == 'partial' %}
+        · <span class="badge badge-yellow">Częściowo</span>
+      {% elif inv.payment_status == 'overdue' %}
+        · <span class="badge badge-red">Przeterminowana</span>
+      {% else %}
+        · <span class="badge badge-gray">Nieopłacona</span>
       {% endif %}
     </div>
   </div>

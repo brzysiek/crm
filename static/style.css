@@ -1479,6 +1479,9 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .row-partial  { background: var(--warning-bg); }
 .row-unpaid   { background: var(--error-bg); }
 .row-internal { background: var(--surface-secondary); }
+
+.rd-card.row-paid { background: var(--success-bg); }
+.rd-faktury .rd-card { cursor: pointer; }
 .row-starred  { background: var(--warning-bg); }
 
 .star-toggle {
