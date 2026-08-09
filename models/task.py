@@ -789,14 +789,21 @@ def count_inbox() -> int:
         return cur.fetchone()['cnt']
 
 
-def get_tasks_for_crm(contact_id: int | None = None, company_id: int | None = None) -> list[dict]:
-    """Zadania/projekty przypisane do kontaktu lub firmy CRM — do sekcji
-    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy."""
-    if not contact_id and not company_id:
+def get_tasks_for_crm(contact_id: int | None = None, company_id: int | None = None,
+                       deal_id: int | None = None) -> list[dict]:
+    """Zadania/projekty przypisane do kontaktu, firmy lub deala CRM — do sekcji
+    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy/deala."""
+    if not contact_id and not company_id and not deal_id:
         return []
     db = get_db()
     with db.cursor() as cur:
-        if contact_id:
+        if deal_id:
+            cur.execute(
+                "SELECT id, title, is_project, status, due_date, completed_at, created_at "
+                "FROM tasks WHERE crm_deal_id=%s AND deleted_at IS NULL ORDER BY created_at DESC",
+                (deal_id,)
+            )
+        elif contact_id:
             cur.execute(
                 "SELECT id, title, is_project, status, due_date, completed_at, created_at "
                 "FROM tasks WHERE crm_contact_id=%s AND deleted_at IS NULL ORDER BY created_at DESC",

@@ -8,9 +8,11 @@ from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, FORCED_P
                               probability_row_class, update_deal, update_deal_probability, update_deal_stage)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
+from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history, get_notes)
 from models.user import get_active_users
+from routes.crm_contacts import build_gtd_items
 
 bp = Blueprint('crm_deals', __name__, url_prefix='/crm/deals')
 
@@ -180,6 +182,11 @@ def view_deal(deal_id):
         entity_type='deal', entity_id=deal_id,
         note_type_labels=NOTE_TYPE_LABELS,
         history_badge_labels=HISTORY_BADGE_LABELS,
+        files=get_files_for_company(deal['company_id']) if deal.get('company_id') else [],
+        can_upload_files=bool(deal.get('company_id')),
+        upload_company_id=deal.get('company_id'),
+        upload_contact_id=deal.get('contact_id'),
+        gtd_items=build_gtd_items(deal_id=deal_id),
     )
 
 

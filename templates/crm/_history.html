@@ -1,0 +1,32 @@
+{# Wspólny partial: sekcja Historia. Wymaga: history, history_badge_labels #}
+<div class="inv-section" style="margin-top:1rem">
+  <h4>Historia</h4>
+  <div style="padding:.85rem">
+    {% if history %}
+    <div class="history-list">
+      {% for h in history %}
+      <div class="history-item">
+        <div class="history-meta">
+          <span class="history-action history-action-{{ h.action }}">
+            {{ history_badge_labels.get(h.entry_type or h.action, h.action) }}
+          </span>
+          <span>{{ h.user_name or 'System' }} · {{ h.created_at|ddmmyyyy }}</span>
+        </div>
+        {% if h.action == 'file' and h.file_id and ': ' in h.summary %}
+          {% set prefix, fname = h.summary.split(': ', 1) %}
+          <div class="note-body">{{ prefix }}:
+            <button type="button" class="file-name-btn file-name-btn-inline" data-file-id="{{ h.file_id }}"
+                    data-mime="{{ h.file_mime_type or '' }}" data-name="{{ h.file_current_name or fname }}"
+                    onclick="openFilePreview(this)">{{ fname }}</button>
+          </div>
+        {% else %}
+        <div class="note-body">{{ h.summary }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small">Brak historii zmian.</p>
+    {% endif %}
+  </div>
+</div>

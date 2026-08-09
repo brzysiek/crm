@@ -25,12 +25,13 @@ def _as_date(value):
     return value
 
 
-def build_gtd_items(contact_id=None, company_id=None):
-    """Zadania/projekty/spotkania przypisane do kontaktu lub firmy CRM — sekcja
-    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy (współdzielone z
-    crm_companies.view_company)."""
-    tasks = task_model.get_tasks_for_crm(contact_id=contact_id, company_id=company_id)
-    events = gcal_event_model.enrich_with_titles(
+def build_gtd_items(contact_id=None, company_id=None, deal_id=None):
+    """Zadania/projekty/spotkania przypisane do kontaktu, firmy lub deala CRM —
+    sekcja „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy/deala (współdzielone
+    z crm_companies.view_company i crm_deals.view_deal). Wydarzenia kalendarza nie
+    mają powiązania z dealem, więc dla deal_id zwracane są tylko zadania/projekty."""
+    tasks = task_model.get_tasks_for_crm(contact_id=contact_id, company_id=company_id, deal_id=deal_id)
+    events = [] if deal_id else gcal_event_model.enrich_with_titles(
         gcal_event_model.get_events_for_crm(contact_id=contact_id, company_id=company_id)
     )
 

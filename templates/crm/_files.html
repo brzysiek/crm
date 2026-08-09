@@ -18,7 +18,7 @@
     </form>
     {% else %}
     <p class="text-muted small" style="margin-bottom:1rem">
-      Ten kontakt nie jest przypisany do firmy — pliki można dodać tylko z poziomu firmy lub kontaktu przypisanego do firmy.
+      {{ files_unavailable_message or 'Ten kontakt nie jest przypisany do firmy — pliki można dodać tylko z poziomu firmy lub kontaktu przypisanego do firmy.' }}
     </p>
     {% endif %}
 

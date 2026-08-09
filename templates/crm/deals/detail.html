@@ -26,7 +26,7 @@
   </div>
 </div>
 
-<div class="detail-grid">
+<div class="detail-grid detail-grid-narrow-left">
   <div>
 
     <div class="inv-section">
@@ -44,8 +44,23 @@
         <dt>Prawdopodobieństwo</dt><dd>{{ deal.probability ~ '%' if deal.probability is not none else '—' }}</dd>
         <dt>Data rozpoczęcia</dt><dd>{{ deal.start_date|ddmmyyyy if deal.start_date else '—' }}</dd>
         <dt>Data zakończenia</dt><dd>{{ deal.end_date|ddmmyyyy if deal.end_date else '—' }}</dd>
-        <dt>Opis</dt><dd>{{ deal.description or '—' }}</dd>
       </dl>
+    </div>
+
+    <div style="margin-top:1rem">
+      {% set files_unavailable_message = 'Ten deal nie ma przypisanej firmy — pliki można dodać tylko dla deala przypisanego do firmy.' %}
+      {% include 'crm/_files.html' %}
+    </div>
+
+  </div>
+
+  <div>
+
+    <div class="inv-section">
+      <h4>Opis</h4>
+      <div style="padding:.85rem">
+        <p class="{{ 'text-muted small' if not deal.description }}" style="white-space:pre-wrap; margin:0">{{ deal.description or 'Brak opisu.' }}</p>
+      </div>
     </div>
 
     <div class="inv-section" style="margin-top:1rem">
@@ -96,10 +111,36 @@
       </div>
     </div>
 
-  </div>
+    {% include 'crm/_notes.html' %}
 
-  <div>
-    {% include 'crm/_notes_history.html' %}
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Zadania</h4>
+      </div>
+      <div style="padding:.85rem">
+        {% if gtd_items %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Typ</th><th>Nazwa</th><th>Data</th></tr></thead>
+            <tbody>
+              {% for i in gtd_items %}
+              <tr class="{{ 'gtd-row-done' if i.done else '' }}">
+                <td>{{ {'project': icon('folder', 14) ~ ' Projekt', 'task': icon('check', 14) ~ ' Zadanie', 'event': icon('calendar', 14) ~ ' Spotkanie'}[i.kind] }}</td>
+                <td>{% if i.url %}<a href="{{ i.url }}">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %}</td>
+                <td>{{ i.date|ddmmyyyy if i.date else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Brak zadań przypisanych do tego deala.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% include 'crm/_history.html' %}
+
   </div>
 </div>
 </div>
