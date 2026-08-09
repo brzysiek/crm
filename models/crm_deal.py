@@ -14,7 +14,7 @@ STAGE_BADGE_CLASSES = {
     'completed': 'badge-lime', 'someday': 'badge-gray', 'lost': 'badge-red', 'unqualified': 'badge-orange',
 }
 
-KANBAN_DEFAULT_HIDDEN_STAGES = ['completed', 'lost', 'unqualified']
+KANBAN_DEFAULT_HIDDEN_STAGES = ['completed', 'lost', 'unqualified', 'someday']
 
 PROBABILITY_CHOICES = [5, 20, 40, 60, 80, 100]
 
