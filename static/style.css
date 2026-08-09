@@ -2777,6 +2777,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .btn-ghost { color: var(--rd-text-muted); }
 .rd-screen .btn-ghost:hover { background: var(--rd-panel); color: var(--rd-text-primary); }
 .rd-screen .btn-sm { padding: .35rem .75rem; font-size: 12.5px; }
+.rd-screen .header-actions .btn { min-height: 37.5px; }
 
 /* Filter bar */
 .rd-screen .filter-bar {
