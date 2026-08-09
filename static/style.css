@@ -2997,8 +2997,10 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 /* ── Redesign: Deale (list + kanban) ── */
 .rd-deale .rd-card-meta, .rd-deale .rd-card-chips { margin-left: 0; }
 
-.rd-screen .view-toggle .btn { border-radius: 8px; }
-.rd-screen .view-toggle .btn.active { background: var(--rd-bottle-green); border-color: var(--rd-bottle-green); color: #fff; }
+.rd-screen .view-toggle .btn { border-radius: 0; margin-left: -1px; }
+.rd-screen .view-toggle .btn:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+.rd-screen .view-toggle .btn:last-child { border-radius: 0 8px 8px 0; }
+.rd-screen .view-toggle .btn.active { background: var(--rd-bottle-green); border-color: var(--rd-bottle-green); color: #fff; position: relative; z-index: 1; }
 
 .rd-screen td[data-col="amount"] { font-weight: 700; color: var(--rd-bottle-green); }
 .rd-screen .kanban-card-amount { color: var(--rd-bottle-green); }
