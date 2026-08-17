@@ -209,6 +209,17 @@ function gtdSetWaiting(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdUnwait(taskId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'next', waiting_on: null }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdScheduleToday(taskId) {
   const today = new Date().toISOString().slice(0, 10);
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/schedule', {
