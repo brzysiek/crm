@@ -361,8 +361,10 @@ html.sidebar-collapsed .sidebar-user-name { display: none; }
   color: #9C9C97;
 }
 .mobile-tabbar-item svg { stroke: #9C9C97; }
-.mobile-tabbar-item.active { font-weight: 600; color: var(--rd-bottle-green); }
+.mobile-tabbar-item.active { font-weight: 600; color: var(--rd-bottle-green); background: var(--rd-lime-tint-bg); }
 .mobile-tabbar-item.active svg { stroke: var(--rd-bottle-green); }
+.mobile-tabbar-item.tapped { font-weight: 600; color: #F5F5F3; background: var(--rd-bottle-green); }
+.mobile-tabbar-item.tapped svg { stroke: #F5F5F3; }
 .mobile-tabbar-item:hover { text-decoration: none; }
 
 @media (max-width: 880px) {

@@ -50,6 +50,19 @@ function initFilterBarCollapse() {
 }
 document.addEventListener('DOMContentLoaded', initFilterBarCollapse);
 
+/* ── Mobile tabbar: natychmiastowe podświetlenie zakładki po tapnięciu, zanim
+   przeładuje się strona (kolor bottle-green, dopóki nie wczyta się nowy widok) ── */
+function initMobileTabbarTapFeedback() {
+  document.querySelectorAll('.mobile-tabbar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (item.classList.contains('active')) return;
+      document.querySelectorAll('.mobile-tabbar-item.tapped').forEach(el => el.classList.remove('tapped'));
+      item.classList.add('tapped');
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', initMobileTabbarTapFeedback);
+
 /* ── VAT calculator ──────────────────────────────────────────────────────────── */
 function calcNet() {
   const grossEl = document.getElementById('amount_gross');
