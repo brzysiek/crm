@@ -135,6 +135,8 @@
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
 body {
   font-family: var(--font);
   font-size: 14px;
@@ -680,7 +682,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .badge-gray    { background: var(--surface-secondary); color: var(--text-secondary); }
 .badge-yellow  { background: var(--warning-bg); color: var(--warning-text); }
 .badge-red     { background: var(--error-bg); color: var(--error-text); }
-.badge-waiting { background: #A84232; color: #fff; }
+.badge-waiting { background: #BE7165; color: #fff; }
 .badge-lime    { background: var(--success-bg); color: var(--success-text); }
 .badge-purple  { background: #f3e8ff; color: #7e22ce; }
 .badge-orange  { background: #ffedd5; color: #c2410c; }
@@ -1343,6 +1345,15 @@ input[type="file"]:hover::-webkit-file-upload-button {
   overflow-y: auto;
   padding: 1.25rem 1.5rem;
   flex: 1;
+}
+
+@media (max-width: 560px) {
+  .modal { padding: 1rem; max-height: 90vh; overflow-y: auto; }
+  .modal-header { margin-bottom: .75rem; }
+  .agent-confirm-row { margin-bottom: .55rem; }
+  .agent-confirm-row label { margin-bottom: .2rem; font-size: .8rem; }
+  .modal .filter-input, .modal .filter-select { padding: .35rem .6rem; }
+  .modal-footer { margin-top: .65rem; }
 }
 
 .invoice-detail-grid {

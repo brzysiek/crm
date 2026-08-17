@@ -23,6 +23,8 @@ _LIST_JOINS = """FROM tasks t
                  LEFT JOIN crm_companies cco ON cco.id = t.crm_company_id
                  LEFT JOIN crm_deals cd ON cd.id = t.crm_deal_id"""
 
+_STATUS_SORT_SQL = "CASE WHEN {col}='done' THEN 2 WHEN {col}='waiting' THEN 1 ELSE 0 END"
+
 
 def _valid_user_id(user_id: int | None) -> int | None:
     if not user_id:
@@ -492,7 +494,7 @@ def get_project_subtasks(project_id: int) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s AND t.deleted_at IS NULL "
-            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id ASC",
+            f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id ASC",
             (project_id,)
         )
         return cur.fetchall()
@@ -504,7 +506,7 @@ def get_tasks_for_day(day: date) -> list[dict]:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.scheduled_date=%s AND t.deleted_at IS NULL "
             f"ORDER BY t.scheduled_time IS NULL, t.scheduled_time ASC, "
-            f"(t.status='done'), t.day_order ASC, t.is_today_priority DESC, t.id ASC",
+            f"({_STATUS_SORT_SQL.format(col='t.status')}), t.day_order ASC, t.is_today_priority DESC, t.id ASC",
             (day,)
         )
         return cur.fetchall()
@@ -519,7 +521,7 @@ def move_task_in_day(task_id: int, day: date, direction: str) -> None:
         with db.cursor() as cur:
             cur.execute(
                 "SELECT id FROM tasks WHERE scheduled_date=%s AND scheduled_time IS NULL "
-                "AND deleted_at IS NULL ORDER BY (status='done'), day_order ASC, is_today_priority DESC, id ASC",
+                f"AND deleted_at IS NULL ORDER BY ({_STATUS_SORT_SQL.format(col='status')}), day_order ASC, is_today_priority DESC, id ASC",
                 (day,)
             )
             ids = [row['id'] for row in cur.fetchall()]
@@ -566,7 +568,7 @@ def get_week_priority_tasks(monday: date, sunday: date, include_unassigned: bool
             clause = f"({clause} OR (t.planned_week IS NULL AND t.scheduled_date IS NULL))"
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND t.deleted_at IS NULL AND {clause} "
-            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             tuple(params)
         )
         return cur.fetchall()
@@ -593,7 +595,7 @@ def get_week_bucket_tasks(monday: date) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_week=%s AND t.deleted_at IS NULL "
-            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             (monday,)
         )
         return cur.fetchall()
@@ -613,7 +615,7 @@ def get_month_priority_tasks(month_start: date, month_end: date, include_unassig
                       f"AND t.scheduled_date IS NULL))")
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_week_priority=1 AND t.deleted_at IS NULL AND {clause} "
-            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             tuple(params)
         )
         return cur.fetchall()
@@ -640,7 +642,7 @@ def get_month_bucket_tasks(month_start: date) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.planned_month=%s AND t.deleted_at IS NULL "
-            f"ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC",
+            f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id DESC",
             (month_start,)
         )
         return cur.fetchall()
@@ -733,7 +735,7 @@ def get_today_priority_tasks(day: date) -> list[dict]:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
             f"WHERE t.is_today_priority=1 AND t.scheduled_date=%s AND t.deleted_at IS NULL "
-            f"ORDER BY (t.status='done'), t.scheduled_time IS NULL, t.scheduled_time ASC, t.id DESC",
+            f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.scheduled_time IS NULL, t.scheduled_time ASC, t.id DESC",
             (day,)
         )
         return cur.fetchall()
