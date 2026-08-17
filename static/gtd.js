@@ -366,9 +366,17 @@ function gtdRenameProject(taskId, currentTitle) {
     .catch(() => alert('Błąd sieci.'));
 }
 
-function gtdDeleteProject(taskId) {
-  if (!confirm('Usunąć ten projekt? Zadania w nim zostaną zachowane, ale odłączone od projektu.')) return;
+function gtdArchiveProject(taskId) {
+  if (!confirm('Zarchiwizować ten projekt? Trafi do Archiwum, skąd można go przywrócić. Podzadania zostaną zachowane, ale odłączone od projektu.')) return;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.href = window.API_BASE + '/gtd/projekty'; else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdPermanentlyDeleteProject(taskId) {
+  if (!confirm('Usunąć ten projekt trwale? Tej operacji nie można cofnąć. Podzadania zostaną zachowane, ale odłączone od projektu.')) return;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/permanent', { method: 'DELETE' })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.href = window.API_BASE + '/gtd/projekty'; else alert(data.message || 'Błąd.'); })
     .catch(() => alert('Błąd sieci.'));
@@ -604,15 +612,25 @@ function gtdSubmitEditTask() {
     .catch(() => alert('Błąd sieci.'));
 }
 
-/* ── Modal nowego zadania follow-up ── */
-function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId) {
+/* ── Modal nowego zadania (follow-up z pierwotnego zadania, albo zaawansowane
+   dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
+   wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
+function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
+                          presetScheduled, presetWeek, presetMonth) {
   document.getElementById('gtdFollowUpTitle').value = '';
   document.getElementById('gtdFollowUpDue').value = '';
-  document.getElementById('gtdFollowUpScheduled').value = '';
-  document.getElementById('gtdFollowUpWeek').value = '';
+  document.getElementById('gtdFollowUpScheduled').value = presetScheduled || '';
+  document.getElementById('gtdFollowUpWeek').value = presetWeek || '';
+  document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
+  if (currentDealId) {
+    selectEntityPicker('gtdFollowUpDealPicker', currentDealId, currentDealName || ('Deal #' + currentDealId));
+  } else {
+    clearEntityPicker('gtdFollowUpDealPicker');
+  }
   document.getElementById('gtdFollowUpModal').classList.add('open');
+  document.getElementById('gtdFollowUpTitle').focus();
 }
 
 function gtdSubmitFollowUp() {
@@ -621,12 +639,15 @@ function gtdSubmitFollowUp() {
   const due_date = document.getElementById('gtdFollowUpDue').value || null;
   const scheduled_date = document.getElementById('gtdFollowUpScheduled').value || null;
   const week = document.getElementById('gtdFollowUpWeek').value || null;
+  const month = document.getElementById('gtdFollowUpMonth').value || null;
   const parentValue = document.getElementById('gtdFollowUpProject').value;
   const parent_id = parentValue ? parseInt(parentValue, 10) : null;
   const contactValue = document.getElementById('gtdFollowUpContactPicker-hidden').value;
   const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
   const companyValue = document.getElementById('gtdFollowUpCompanyPicker-hidden').value;
   const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
+  const dealValue = document.getElementById('gtdFollowUpDealPicker-hidden').value;
+  const crm_deal_id = dealValue ? parseInt(dealValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -637,16 +658,20 @@ function gtdSubmitFollowUp() {
       if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
       const taskId = data.task.id;
       const steps = [];
-      if (crm_contact_id || crm_company_id) {
+      if (crm_contact_id || crm_company_id || crm_deal_id) {
         steps.push(() => fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ crm_contact_id, crm_company_id }),
+          body: JSON.stringify({ crm_contact_id, crm_company_id, crm_deal_id }),
         }));
       }
       if (week) {
         steps.push(() => fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_week', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monday: week }),
+        }));
+      } else if (month) {
+        steps.push(() => fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/assign_month', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month }),
         }));
       }
       return steps.reduce((p, step) => p.then(step), Promise.resolve()).then(() => location.reload());
@@ -756,4 +781,5 @@ if (document.getElementById('gtdEditTaskContactPicker')) {
   initEntityPicker('gtdFollowUpContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdFollowUpCompanyPicker'));
   initEntityPicker('gtdFollowUpCompanyPicker', '/api/crm/companies/search');
+  initEntityPicker('gtdFollowUpDealPicker', '/api/crm/deals/search');
 }

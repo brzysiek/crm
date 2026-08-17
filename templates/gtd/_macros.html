@@ -26,7 +26,8 @@
     <button type="button" class="action-btn" title="Edytuj projekt"
             onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }}, '{{ p.scheduled_date or '' }}', '{{ p.planned_week or '' }}', {{ p.crm_deal_id or 'null' }}, {{ p.crm_deal_name|tojson|forceescape if p.crm_deal_name else 'null' }})">{{ icon('edit', 16) }}</button>
     <button type="button" class="action-btn" title="Zakończ projekt" onclick="gtdCloseProject({{ p.id }})">{{ icon('check', 16) }}</button>
-    <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdDeleteProject({{ p.id }})">{{ icon('trash', 16) }}</button>
+    <button type="button" class="action-btn" title="Archiwizuj projekt" onclick="gtdArchiveProject({{ p.id }})">{{ icon('archive', 16) }}</button>
+    <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdPermanentlyDeleteProject({{ p.id }})">{{ icon('trash', 16) }}</button>
   </td>
 </tr>
 {% endmacro %}
@@ -49,7 +50,7 @@
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
               onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">{{ icon('edit', 14) }}</button>
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Nowe zadanie follow-up"
-              onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">{{ icon('reply', 14) }}</button>
+              onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }})">{{ icon('reply', 14) }}</button>
       {% endif %}
     </div>
     {% if t.notes %}<div class="text-muted" style="font-size:.8rem">{{ t.notes|linkify }}</div>{% endif %}
