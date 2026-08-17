@@ -1,8 +1,5 @@
 {% from '_icons.html' import icon %}
-{% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else ('gtd-row-blocked' if t.status == 'blocked' else 'gtd-row-todo')) }}{% endmacro %}
-
-{% macro status_badge(t) %}<span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-blocked' if t.status == 'blocked' else 'badge-red') }}"
-      onclick="gtdCycleStatus({{ t.id }}, '{{ t.status }}', '{{ 'next' if t.status in ['done', 'blocked'] else t.status }}')">{{ 'DONE' if t.status == 'done' else ('BLOCKED' if t.status == 'blocked' else 'TODO') }}</span>{% endmacro %}
+{% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else 'gtd-row-todo') }}{% endmacro %}
 
 {% macro project_row(p) %}
 <tr>
@@ -37,7 +34,8 @@
 
 {% macro task_cells(t, today=none, week_start=none, day_actions=false, inline_actions=true) %}
   <td class="col-checkbox">
-    {{ status_badge(t) }}
+    <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
+          onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
   </td>
   <td>
     <div style="font-weight:600">
@@ -144,7 +142,8 @@
     <div class="gtd-timeline-card {{ row_class(t) }}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div>
-          {{ status_badge(t) }}
+          <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else 'badge-red' }}"
+                onclick="gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}')">{{ 'DONE' if t.status == 'done' else 'TODO' }}</span>
           {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
           {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
           {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}

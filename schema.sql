@@ -423,7 +423,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     notes                  TEXT,
     is_project             TINYINT(1) NOT NULL DEFAULT 0,
     parent_id              INT NULL,
-    status                 ENUM('inbox','next','waiting','someday','done','blocked') NOT NULL DEFAULT 'inbox',
+    status                 ENUM('inbox','next','waiting','someday','done') NOT NULL DEFAULT 'inbox',
     waiting_on             VARCHAR(256),
     due_date               DATE NULL,
     scheduled_date         DATE NULL,

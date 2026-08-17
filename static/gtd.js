@@ -144,10 +144,16 @@ function gtdRefreshContent(focusInputId) {
 }
 
 /* ── Akcje na zadaniach (używane przez onclick w widokach listy) ── */
-/* Cykl statusu po kliknięciu badge'a: TODO -> DONE -> BLOCKED -> TODO. */
-function gtdCycleStatus(taskId, status, prevStatus) {
-  const next = status === 'done' ? 'blocked' : (status === 'blocked' ? (prevStatus || 'next') : 'done');
-  gtdSetStatus(taskId, next);
+function gtdToggleDone(taskId, checked, prevStatus) {
+  const status = checked ? 'done' : prevStatus;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
 }
 
 function gtdToggleGcalDone(eventId, eventDate, done) {
