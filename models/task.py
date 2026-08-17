@@ -232,6 +232,13 @@ def set_status(task_id: int, status: str) -> bool:
                     "UPDATE tasks SET status=%s, completed_at=NOW() WHERE id=%s",
                     (status, task_id)
                 )
+            elif status == 'someday':
+                cur.execute(
+                    """UPDATE tasks SET status=%s, completed_at=NULL, scheduled_date=NULL,
+                       scheduled_time=NULL, scheduled_duration_min=NULL, planned_week=NULL,
+                       planned_month=NULL, gcal_event_id=NULL WHERE id=%s""",
+                    (status, task_id)
+                )
             else:
                 cur.execute(
                     "UPDATE tasks SET status=%s, completed_at=NULL WHERE id=%s",
