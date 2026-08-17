@@ -38,6 +38,7 @@
         <td class="col-actions nowrap">
           <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
           <button type="button" class="action-btn" title="Kiedyś" onclick="gtdSetStatus({{ t.id }}, 'someday')">{{ icon('moon', 16) }}</button>
+          <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
           <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
           <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
           <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
@@ -86,11 +87,11 @@
       {{ task_cells(t, today, day_actions=true) }}
       <td class="col-actions nowrap">
         {{ priority_stars(t) }}
-        <button type="button" class="action-btn" title="Zaplanuj godzinę"
+        <button type="button" class="action-btn" title="Zablokuj czas"
                 onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
         <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
         <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
-        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}
@@ -127,11 +128,11 @@
       {{ task_cells(t, today, day_actions=true) }}
       <td class="col-actions nowrap">
         {{ priority_stars(t) }}
-        <button type="button" class="action-btn" title="Zaplanuj godzinę"
+        <button type="button" class="action-btn" title="Zablokuj czas"
                 onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
+        <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
         <button type="button" class="action-btn" title="Archiwizuj" onclick="gtdDeleteTask({{ t.id }})">{{ icon('archive', 16) }}</button>
         <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdPermanentlyDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
-        <button type="button" class="action-btn" title="Odepnij" onclick="gtdUnschedule({{ t.id }})">{{ icon('x', 16) }}</button>
       </td>
     </tr>
     {% endfor %}

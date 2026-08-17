@@ -680,6 +680,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .badge-gray    { background: var(--surface-secondary); color: var(--text-secondary); }
 .badge-yellow  { background: var(--warning-bg); color: var(--warning-text); }
 .badge-red     { background: var(--error-bg); color: var(--error-text); }
+.badge-waiting { background: #A84232; color: #fff; }
 .badge-lime    { background: var(--success-bg); color: var(--success-text); }
 .badge-purple  { background: #f3e8ff; color: #7e22ce; }
 .badge-orange  { background: #ffedd5; color: #c2410c; }
@@ -2342,7 +2343,8 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 }
 
 .data-table tr.gtd-row-done td { background: var(--success-bg); }
-.data-table tr.gtd-row-overdue td { background: var(--error-bg); }
+.data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, .5); }
+.data-table tr.gtd-row-waiting td { background: var(--rd-amber-bg); }
 
 .data-table tr.prob-5 td   { background: #f6cfcb; }
 .data-table tr.prob-20 td  { background: #f6dccb; }
@@ -2354,7 +2356,8 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .data-table tr.prob-lost td { background: #7f1d1d; color: #fecaca; }
 .data-table tr.prob-lost td a { color: #fecaca; }
 .gtd-timeline-card.gtd-row-done { background: var(--success-bg); }
-.gtd-timeline-card.gtd-row-overdue { background: var(--error-bg); }
+.gtd-timeline-card.gtd-row-overdue { background: rgba(168, 66, 50, .5); }
+.gtd-timeline-card.gtd-row-waiting { background: var(--rd-amber-bg); }
 
 .gtd-timeline-card.gtd-gcal-card {
   border-left-color: var(--info);
@@ -3282,8 +3285,9 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 
 /* Kolory wierszy wg stanu zadania: zaległe = żółte, zwykłe todo = lime,
    priorytetowe = bottle green (białe litery), done = białe i blade */
-.rd-screen .data-table tr.gtd-row-overdue td { background: var(--rd-amber-bg); }
+.rd-screen .data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, .5); }
 .rd-screen .data-table tr.gtd-row-todo td { background: var(--rd-lime-tint-bg); }
+.rd-screen .data-table tr.gtd-row-waiting td { background: var(--rd-amber-bg); }
 .rd-screen .data-table tr.gtd-row-done td { background: var(--rd-card); }
 .rd-screen .data-table tr.gtd-row-done { opacity: .55; }
 
@@ -3301,10 +3305,12 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 @media (max-width: 880px) {
   .rd-zadania .data-table tr.gtd-row-overdue td,
   .rd-zadania .data-table tr.gtd-row-todo td,
+  .rd-zadania .data-table tr.gtd-row-waiting td,
   .rd-zadania .data-table tr.gtd-row-done td,
   .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo td { background: transparent; }
-  .rd-zadania .data-table tr.gtd-row-overdue { background: var(--rd-amber-bg); border-color: var(--rd-amber-bg); }
+  .rd-zadania .data-table tr.gtd-row-overdue { background: rgba(168, 66, 50, .5); border-color: rgba(168, 66, 50, .5); }
   .rd-zadania .data-table tr.gtd-row-todo { background: var(--rd-lime-tint-bg); border-color: var(--rd-lime-tint-bg); }
+  .rd-zadania .data-table tr.gtd-row-waiting { background: var(--rd-amber-bg); border-color: var(--rd-amber-bg); }
   .rd-zadania .data-table tr.gtd-row-done { background: var(--rd-card); }
   .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo { background: var(--rd-bottle-green); border-color: var(--rd-bottle-green); }
   .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-done { background: var(--rd-card); border-color: var(--rd-border-light); }
@@ -3319,7 +3325,8 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   box-shadow: none;
 }
 .rd-screen .gtd-timeline-card:hover { transform: none; box-shadow: 0 4px 14px rgba(13,40,32,.1); }
-.rd-screen .gtd-timeline-card.gtd-row-overdue { border-left-color: var(--rd-amber-solid); background: var(--rd-amber-bg); }
+.rd-screen .gtd-timeline-card.gtd-row-overdue { border-left-color: #A84232; background: rgba(168, 66, 50, .5); }
+.rd-screen .gtd-timeline-card.gtd-row-waiting { border-left-color: var(--rd-amber-solid); background: var(--rd-amber-bg); }
 .rd-screen .gtd-timeline-card.gtd-gcal-card { border-left-color: var(--rd-lime-tint-text); background: var(--rd-lime-tint-bg); }
 .rd-screen .gtd-timeline-card.gtd-row-done,
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-done { border-left-color: var(--rd-border); background: var(--rd-card); opacity: .55; }
