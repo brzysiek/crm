@@ -57,7 +57,7 @@
          onkeydown="if(event.key==='Enter') gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToDay('{{ current_day.isoformat() }}', 'gtdDayAddInput')">+ Dodaj do dnia</button>
   <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
-          onclick="gtdOpenFollowUp(null, null, null, null, null, '{{ current_day.isoformat() }}')">{{ icon('edit', 14) }} Zaawansowane…</button>
+          onclick="gtdOpenFollowUp(null, null, null, null, null, '{{ current_day.isoformat() }}', null, null, document.getElementById('gtdDayAddInput').value)">{{ icon('edit', 14) }} Zaawansowane…</button>
 </div>
 
 {% if gcal_error %}

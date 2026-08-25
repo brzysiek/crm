@@ -63,7 +63,7 @@
          onkeydown="if(event.key==='Enter') gtdAddToMonth('{{ month_start.isoformat() }}', 'gtdMonthAddInput')">
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToMonth('{{ month_start.isoformat() }}', 'gtdMonthAddInput')">+ Dodaj do miesiąca</button>
   <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
-          onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, '{{ month_start.isoformat() }}')">{{ icon('edit', 14) }} Zaawansowane…</button>
+          onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, '{{ month_start.isoformat() }}', document.getElementById('gtdMonthAddInput').value)">{{ icon('edit', 14) }} Zaawansowane…</button>
 </div>
 
 <div class="gtd-priority-panel">

@@ -63,7 +63,7 @@
          onkeydown="if(event.key==='Enter') gtdAddToWeek('{{ week_start.isoformat() }}', 'gtdWeekAddInput')">
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToWeek('{{ week_start.isoformat() }}', 'gtdWeekAddInput')">+ Dodaj do tygodnia</button>
   <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
-          onclick="gtdOpenFollowUp(null, null, null, null, null, null, '{{ week_start.isoformat() }}')">{{ icon('edit', 14) }} Zaawansowane…</button>
+          onclick="gtdOpenFollowUp(null, null, null, null, null, null, '{{ week_start.isoformat() }}', null, document.getElementById('gtdWeekAddInput').value)">{{ icon('edit', 14) }} Zaawansowane…</button>
 </div>
 
 <div class="gtd-priority-panel">

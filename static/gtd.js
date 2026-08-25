@@ -627,8 +627,8 @@ function gtdSubmitEditTask() {
    dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
-                          presetScheduled, presetWeek, presetMonth) {
-  document.getElementById('gtdFollowUpTitle').value = '';
+                          presetScheduled, presetWeek, presetMonth, presetTitle) {
+  document.getElementById('gtdFollowUpTitle').value = presetTitle || '';
   document.getElementById('gtdFollowUpDue').value = '';
   document.getElementById('gtdFollowUpScheduled').value = presetScheduled || '';
   document.getElementById('gtdFollowUpWeek').value = presetWeek || '';
