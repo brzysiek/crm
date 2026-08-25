@@ -18,6 +18,13 @@ CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar'
 CALENDAR_API = 'https://www.googleapis.com/calendar/v3'
 
 
+def parse_calendar_ids(raw: str) -> list[str]:
+    """Ustawienie 'ID kalendarza do odczytu' może zawierać kilka ID (kilka
+    kont Google udostępnionych temu samemu service accountowi), rozdzielonych
+    przecinkiem lub nową linią."""
+    return [c.strip() for c in (raw or '').replace('\n', ',').split(',') if c.strip()]
+
+
 def _raise_for_status(resp: requests.Response) -> None:
     try:
         resp.raise_for_status()
@@ -71,6 +78,19 @@ class GoogleCalendarClient:
         )
         _raise_for_status(resp)
         return resp.json()
+
+    def get_event_any(self, calendar_ids: list[str], event_id: str) -> tuple[str, dict]:
+        """Jak get_event, ale event_id nie jest jednoznaczny globalnie przy kilku
+        skonfigurowanych kalendarzach — sprawdza je po kolei i zwraca (calendar_id,
+        wydarzenie) z pierwszego, w którym się znalazło."""
+        last_exc: Exception | None = None
+        for calendar_id in calendar_ids:
+            try:
+                return calendar_id, self.get_event(calendar_id, event_id)
+            except requests.HTTPError as e:
+                last_exc = e
+                continue
+        raise last_exc or requests.HTTPError('Wydarzenie nie znalezione w żadnym skonfigurowanym kalendarzu.')
 
     def upsert_task_event(self, calendar_id: str, event_id: str | None, title: str,
                            day: date, time_str: str, duration_min: int, notes: str = '') -> dict:

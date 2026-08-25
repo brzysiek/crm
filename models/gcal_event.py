@@ -177,18 +177,18 @@ def enrich_with_titles(events: list[dict]) -> list[dict]:
     if not events:
         return events
     from models.settings import get_setting
-    from services.google_calendar import GoogleCalendarClient
+    from services.google_calendar import GoogleCalendarClient, parse_calendar_ids
 
     token = get_setting('google_drive_api_token', '')
-    calendar_id = get_setting('gtd_gcal_read_calendar_id', '')
-    if not token or not calendar_id:
+    calendar_ids = parse_calendar_ids(get_setting('gtd_gcal_read_calendar_id', ''))
+    if not token or not calendar_ids:
         for e in events:
             e['title'] = None
         return events
     client = GoogleCalendarClient(token)
     for e in events:
         try:
-            ev = client.get_event(calendar_id, e['event_id'])
+            _, ev = client.get_event_any(calendar_ids, e['event_id'])
             e['title'] = ev.get('summary') or '(bez tytułu)'
         except Exception:
             e['title'] = None

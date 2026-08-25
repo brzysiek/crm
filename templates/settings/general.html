@@ -117,14 +117,17 @@
     </div>
 
     <div class="form-group">
-      <label for="gtd_gcal_read_calendar_id">GTD: ID kalendarza do odczytu wydarzeń (Google Calendar)</label>
+      <label for="gtd_gcal_read_calendar_id">GTD: ID kalendarza/y do odczytu wydarzeń (Google Calendar)</label>
       <input type="text" id="gtd_gcal_read_calendar_id" name="gtd_gcal_read_calendar_id"
-             placeholder="np. abc123@group.calendar.google.com"
+             placeholder="np. abc123@group.calendar.google.com, inny@gmail.com"
              value="{{ cfg.gtd_gcal_read_calendar_id or '' }}">
       <small class="text-muted">
-        Osobny kalendarz Google udostępniony kontu usługi (wystarczy prawo
+        Kalendarz Google udostępniony kontu usługi (wystarczy prawo
         „Zobacz wszystkie szczegóły wydarzeń") — GTD tylko go odczytuje i
-        pokazuje wydarzenia w widoku dnia/tygodnia. Powinien być inny niż
+        pokazuje wydarzenia w widoku dnia/tygodnia. Można podać kilka ID
+        (nawet z zupełnie innych kont Google) rozdzielonych przecinkiem —
+        każde z nich musi być udostępnione temu samemu service accountowi
+        (adres z pola „client_email” w kluczu JSON). Powinny być inne niż
         kalendarz „Zadania” powyżej, żeby nie mieszać źródeł. Wymaga service
         account w polu „Token / klucz API” powyżej.
       </small>

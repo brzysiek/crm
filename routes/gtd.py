@@ -134,14 +134,19 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     Błąd API nie ma prawa wywalić widoku dnia/tygodnia, więc jest przechwytywany —
     ale zwracany jako komunikat, żeby dało się go zobaczyć wprost w interfejsie
     zamiast szukać w logach serwera."""
-    client, calendar_id = _gcal_read_client_and_calendar()
+    client, calendar_ids = _gcal_read_client_and_calendar()
     if not client:
         return {}, None
-    try:
-        raw = client.get_events(calendar_id, start, end + timedelta(days=1))
-    except Exception as e:
-        current_app.logger.exception('GTD: błąd pobierania wydarzeń z Google Calendar (calendar_id=%s)', calendar_id)
-        return {}, str(e)
+    raw = []
+    errors = []
+    for calendar_id in calendar_ids:
+        try:
+            raw.extend(client.get_events(calendar_id, start, end + timedelta(days=1)))
+        except Exception as e:
+            current_app.logger.exception('GTD: błąd pobierania wydarzeń z Google Calendar (calendar_id=%s)', calendar_id)
+            errors.append(str(e))
+    if errors and not raw:
+        return {}, '; '.join(errors)
     try:
         event_meta = gcal_event_model.get_event_meta(start, end)
     except Exception:
@@ -181,7 +186,7 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
-    return by_day, None
+    return by_day, ('; '.join(errors) if errors else None)
 
 
 def _project_gcal_day_groups(project: dict) -> list[dict]:
@@ -191,7 +196,7 @@ def _project_gcal_day_groups(project: dict) -> list[dict]:
     rows = gcal_event_model.get_events_for_project(project['id'])
     if not rows:
         return []
-    client, calendar_id = _gcal_read_client_and_calendar()
+    client, calendar_ids = _gcal_read_client_and_calendar()
     if not client:
         return []
     contact_ids = {r['crm_contact_id'] for r in rows if r.get('crm_contact_id')}
@@ -202,7 +207,7 @@ def _project_gcal_day_groups(project: dict) -> list[dict]:
     by_day: dict = {}
     for r in rows:
         try:
-            raw = client.get_event(calendar_id, r['event_id'])
+            _, raw = client.get_event_any(calendar_ids, r['event_id'])
         except Exception:
             continue
         parsed = _parse_gcal_raw_event(raw)
@@ -546,9 +551,9 @@ def api_set_status(task_id):
 def api_gcal_event_done(event_id):
     data = request.get_json(silent=True) or {}
     done = bool(data.get('done'))
-    client, calendar_id = _gcal_read_client_and_calendar()
+    client, calendar_ids = _gcal_read_client_and_calendar()
     if client:
-        event = client.get_event(calendar_id, event_id)
+        _, event = client.get_event_any(calendar_ids, event_id)
         self_attendee = next((a for a in event.get('attendees') or [] if a.get('self')), None)
         is_declined = event.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
         if is_declined:
@@ -767,16 +772,17 @@ def _gcal_client_and_calendar():
 
 
 def _gcal_read_client_and_calendar():
-    """Osobny, tylko-do-odczytu kalendarz (np. Twój główny kalendarz udostępniony
-    kontu usługi) — celowo inny niż kalendarz „Zadania” używany do zapisu."""
+    """Osobne, tylko-do-odczytu kalendarze (np. główny kalendarz i/lub kalendarz
+    z innego konta Google, oba udostępnione temu samemu service accountowi) —
+    celowo inne niż kalendarz „Zadania” używany do zapisu. Zwraca (client, [calendar_id, ...])."""
     from models.settings import get_setting
-    from services.google_calendar import GoogleCalendarClient
+    from services.google_calendar import GoogleCalendarClient, parse_calendar_ids
 
     token = get_setting('google_drive_api_token', '')
-    calendar_id = get_setting('gtd_gcal_read_calendar_id', '')
-    if not token or not calendar_id:
-        return None, None
-    return GoogleCalendarClient(token), calendar_id
+    calendar_ids = parse_calendar_ids(get_setting('gtd_gcal_read_calendar_id', ''))
+    if not token or not calendar_ids:
+        return None, []
+    return GoogleCalendarClient(token), calendar_ids
 
 
 def _try_gcal_delete(task: dict) -> None:
