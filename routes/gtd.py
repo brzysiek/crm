@@ -269,6 +269,9 @@ def day():
     unscheduled = [t for t in tasks if not t.get('scheduled_time') and t['id'] not in priority_ids]
     timeline = _build_timeline([t for t in tasks if t['id'] not in priority_ids], gcal_events)
 
+    week_start, week_end = _week_range(current)
+    week_tasks = task_model.get_week_tasks_excluding_day(week_start, week_end, current)
+
     return render_template(
         'gtd/day.html',
         active_tab=('jutro' if current == today + timedelta(days=1) else 'dzis'),
@@ -286,6 +289,8 @@ def day():
         today_star_count=task_model.count_today_priority(current) + gcal_event_model.count_today_priority(current),
         timeline=timeline,
         gcal_error=gcal_error,
+        week_start=week_start,
+        week_tasks=week_tasks,
     )
 
 

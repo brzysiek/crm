@@ -232,6 +232,17 @@ function gtdScheduleToday(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdScheduleDay(taskId, dayIso) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scheduled_date: dayIso }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdScheduleTomorrow(taskId) {
   const d = new Date();
   d.setDate(d.getDate() + 1);

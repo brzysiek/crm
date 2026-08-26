@@ -141,6 +141,34 @@
 </div>
 {% endif %}
 
+<h3 style="margin:1.2rem 0 .5rem">Reszta zadań tygodnia</h3>
+{% if not week_tasks %}
+  <p class="text-muted">Brak innych zadań przypisanych do tego tygodnia.</p>
+{% else %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="col-checkbox"></th>
+      <th>Zadanie</th>
+      <th>Termin</th>
+      <th class="col-actions" style="width:160px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in week_tasks %}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+      {{ task_cells(t, today, week_start=week_start) }}
+      <td class="col-actions nowrap">
+        <button type="button" class="action-btn" title="Przenieś na ten dzień" onclick="gtdScheduleDay({{ t.id }}, '{{ current_day.isoformat() }}')">{{ icon('calendar', 16) }}</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
 <button type="button" class="rd-fab" title="Dodaj zadanie" onclick="var i=document.getElementById('gtdDayAddInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
 </div>
 {% endblock %}
