@@ -616,7 +616,8 @@ def get_week_tasks_excluding_day(monday: date, sunday: date, exclude_day: date) 
     with db.cursor() as cur:
         cur.execute(
             f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
-            f"WHERE t.deleted_at IS NULL AND (t.planned_week=%s OR (t.scheduled_date BETWEEN %s AND %s)) "
+            f"WHERE t.deleted_at IS NULL AND t.status != 'done' "
+            f"AND (t.planned_week=%s OR (t.scheduled_date BETWEEN %s AND %s)) "
             f"AND (t.scheduled_date IS NULL OR t.scheduled_date != %s) "
             f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.scheduled_date IS NULL, t.scheduled_date ASC, "
             f"t.due_date IS NULL, t.due_date ASC, t.id DESC",
