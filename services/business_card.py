@@ -4,7 +4,8 @@ import difflib
 import re
 import time
 
-from models.crm_company import create_company, derive_short_name, get_company_by_nip, search_companies
+from models.crm_company import create_company, derive_short_name, get_company_by_domain, get_company_by_nip, \
+    search_companies
 from models.crm_contact import create_contact, search_contacts
 from models.crm_file import ALLOWED_EXTENSIONS, add_file
 from services.company_lookup import lookup_by_nip
@@ -166,6 +167,8 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
     company = None
     if company_data['nip']:
         company = get_company_by_nip(company_data['nip'])
+    if not company and website:
+        company = get_company_by_domain(website)
     if not company:
         hint = final_short_name or final_name
         company = _best_match(hint, search_companies(hint, limit=8), _company_label)

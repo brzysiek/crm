@@ -124,6 +124,36 @@ def get_company_by_nip(nip: str) -> dict | None:
         return cur.fetchone()
 
 
+def _extract_domain(value: str) -> str:
+    value = (value or '').strip().lower()
+    if not value:
+        return ''
+    if '@' in value and '://' not in value:
+        value = value.rsplit('@', 1)[-1]
+    value = re.sub(r'^https?://', '', value)
+    value = value.split('/', 1)[0].split(':', 1)[0]
+    if value.startswith('www.'):
+        value = value[4:]
+    return value
+
+
+def get_company_by_domain(domain: str) -> dict | None:
+    """Znajduje firmę po domenie z pola website (porównanie znormalizowane: bez
+    schematu, 'www.' i ścieżki) — używane przy skanowaniu wizytówki, żeby nie
+    tworzyć duplikatu firmy, gdy e-mail kontaktu jest w domenie firmy już
+    istniejącej w bazie."""
+    domain = _extract_domain(domain)
+    if not domain:
+        return None
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT * FROM crm_companies WHERE archived_at IS NULL AND website IS NOT NULL AND website != ''")
+        for row in cur.fetchall():
+            if _extract_domain(row['website']) == domain:
+                return row
+    return None
+
+
 def get_names_by_ids(ids: list[int]) -> dict[int, str]:
     if not ids:
         return {}
