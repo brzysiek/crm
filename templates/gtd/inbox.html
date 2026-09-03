@@ -9,6 +9,15 @@
   <h1>Inbox</h1>
 </div>
 
+<div class="filter-bar" data-no-collapse style="gap:.5rem">
+  <input type="text" id="gtdInboxAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj zadanie do Inbox…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToInbox('gtdInboxAddInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToInbox('gtdInboxAddInput')">+ Dodaj do Inbox</button>
+  <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
+          onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, null, document.getElementById('gtdInboxAddInput').value, 'inbox')">{{ icon('edit', 14) }} Zaawansowane…</button>
+</div>
+
 <div id="gtdInboxList">
 {% if not tasks %}
   <p class="text-muted">Pusto — wszystko przetworzone. 🎉</p>
@@ -44,5 +53,7 @@
 </div>
 {% endif %}
 </div>
+
+<button type="button" class="rd-fab" title="Dodaj zadanie" onclick="var i=document.getElementById('gtdInboxAddInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
 </div>
 {% endblock %}

@@ -9,6 +9,13 @@
   <h1>Czeka na</h1>
 </div>
 
+<div class="filter-bar" data-no-collapse style="gap:.5rem">
+  <input type="text" id="gtdWaitingAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj zadanie do Czeka na…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToWaiting('gtdWaitingAddInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToWaiting('gtdWaitingAddInput')">+ Dodaj do Czeka na</button>
+</div>
+
 {% if not tasks %}
   <p class="text-muted">Nic nie czeka na kogoś innego.</p>
 {% else %}
@@ -37,5 +44,7 @@
 </table>
 </div>
 {% endif %}
+
+<button type="button" class="rd-fab" title="Dodaj zadanie" onclick="var i=document.getElementById('gtdWaitingAddInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
 </div>
 {% endblock %}

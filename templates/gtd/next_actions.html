@@ -18,6 +18,15 @@
   </select>
 </form>
 
+<div class="filter-bar" data-no-collapse style="gap:.5rem">
+  <input type="text" id="gtdNextAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj next action…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToNext('gtdNextAddInput', {{ selected_project or 'null' }})">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToNext('gtdNextAddInput', {{ selected_project or 'null' }})">+ Dodaj do Next actions</button>
+  <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
+          onclick="gtdOpenFollowUp({{ selected_project or 'null' }}, null, null, null, null, null, null, null, document.getElementById('gtdNextAddInput').value, 'next')">{{ icon('edit', 14) }} Zaawansowane…</button>
+</div>
+
 {% if not tasks %}
   <p class="text-muted">Brak zadań next action{{ ' w tym projekcie' if selected_project }}.</p>
 {% else %}
@@ -50,5 +59,7 @@
 </table>
 </div>
 {% endif %}
+
+<button type="button" class="rd-fab" title="Dodaj zadanie" onclick="var i=document.getElementById('gtdNextAddInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
 </div>
 {% endblock %}

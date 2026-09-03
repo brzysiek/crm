@@ -9,6 +9,15 @@
   <h1>Kiedyś/może</h1>
 </div>
 
+<div class="filter-bar" data-no-collapse style="gap:.5rem">
+  <input type="text" id="gtdSomedayAddInput" class="filter-input" style="flex:1"
+         placeholder="Dodaj pomysł na później…" autocomplete="off"
+         onkeydown="if(event.key==='Enter') gtdAddToSomeday('gtdSomedayAddInput')">
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToSomeday('gtdSomedayAddInput')">+ Dodaj do Kiedyś/może</button>
+  <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
+          onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, null, document.getElementById('gtdSomedayAddInput').value, 'someday')">{{ icon('edit', 14) }} Zaawansowane…</button>
+</div>
+
 {% if not tasks %}
   <p class="text-muted">Lista pomysłów na później jest pusta.</p>
 {% else %}
@@ -37,5 +46,7 @@
 </table>
 </div>
 {% endif %}
+
+<button type="button" class="rd-fab" title="Dodaj zadanie" onclick="var i=document.getElementById('gtdSomedayAddInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
 </div>
 {% endblock %}

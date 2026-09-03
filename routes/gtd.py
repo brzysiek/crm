@@ -501,6 +501,7 @@ def api_create_task():
         is_project=bool(data.get('is_project')),
         status=data.get('status', 'inbox'),
         notes=data.get('notes'),
+        waiting_on=data.get('waiting_on'),
         parent_id=data.get('parent_id'),
         due_date=data.get('due_date') or None,
         scheduled_date=data.get('scheduled_date') or None,

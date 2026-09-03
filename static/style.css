@@ -2283,35 +2283,6 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .agent-done .btn { margin-top: .75rem; }
 
 /* ── GTD ──────────────────────────────────────────────────────────────────── */
-.gtd-quick-add {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
-  padding: .7rem 1rem;
-  margin-bottom: 1.2rem;
-  background: rgba(255, 255, 255, .85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  transition: box-shadow var(--speed) var(--curve);
-}
-.gtd-quick-add:focus-within {
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary);
-}
-#gtdVoiceBtn.recording {
-  background: var(--danger);
-  color: #fff;
-  border-color: var(--danger);
-  animation: agent-pulse 1.4s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  #gtdVoiceBtn.recording { animation: none; }
-}
-
 .gtd-timeline {
   display: flex;
   flex-direction: column;

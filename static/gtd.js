@@ -1,126 +1,3 @@
-/* ── GTD: szybkie dodawanie (tekst + głos), akcje na zadaniach ── */
-(function () {
-  const quickInput = document.getElementById('gtdQuickInput');
-  const quickBtn = document.getElementById('gtdQuickAddBtn');
-  const voiceBtn = document.getElementById('gtdVoiceBtn');
-  const statusEl = document.getElementById('gtdQuickAddStatus');
-
-  if (!quickInput) return;
-
-  function showStatus(text, isError) {
-    statusEl.textContent = text;
-    statusEl.style.color = isError ? 'var(--error-text)' : '';
-    if (text) setTimeout(() => { if (statusEl.textContent === text) statusEl.textContent = ''; }, 3000);
-  }
-
-  function afterAdd() {
-    quickInput.value = '';
-    quickInput.focus();
-    if (document.getElementById('gtdInboxList')) {
-      gtdRefreshContent();
-    } else {
-      showStatus('Dodano do Inbox ✓', false);
-    }
-  }
-
-  function submitQuickAdd() {
-    const text = quickInput.value.trim();
-    if (!text) return;
-    quickBtn.disabled = true;
-    fetch(window.API_BASE + '/api/gtd/quick_add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        quickBtn.disabled = false;
-        if (data.status === 'ok') afterAdd();
-        else showStatus(data.message || 'Błąd dodawania.', true);
-      })
-      .catch(() => { quickBtn.disabled = false; showStatus('Błąd sieci.', true); });
-  }
-
-  quickBtn.addEventListener('click', submitQuickAdd);
-  quickInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitQuickAdd(); });
-
-  // ── Dodawanie głosowe: nagranie -> transkrypcja (reużywa /api/agent/transcribe) -> parsowanie GTD ──
-  let mediaRecorder = null;
-  let audioChunks = [];
-  let recording = false;
-
-  async function startRecording() {
-    let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err) {
-      alert('Brak dostępu do mikrofonu: ' + err.message);
-      return;
-    }
-    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
-    const mimeType = candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
-    try {
-      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    } catch (err) {
-      alert('Nagrywanie audio nie jest wspierane w tej przeglądarce.');
-      stream.getTracks().forEach(t => t.stop());
-      return;
-    }
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop());
-      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || mimeType || 'audio/webm' });
-      uploadRecording(blob);
-    };
-    mediaRecorder.start();
-    recording = true;
-    voiceBtn.classList.add('recording');
-    showStatus('Nagrywanie… kliknij 🎙 ponownie, żeby zakończyć', false);
-  }
-
-  function stopRecording() {
-    if (mediaRecorder && recording) {
-      mediaRecorder.stop();
-      recording = false;
-      voiceBtn.classList.remove('recording');
-    }
-  }
-
-  function uploadRecording(blob) {
-    showStatus('Transkrybowanie…', false);
-    voiceBtn.disabled = true;
-    const ext = (blob.type.includes('mp4') || blob.type.includes('m4a')) ? 'm4a'
-      : blob.type.includes('ogg') ? 'ogg' : 'webm';
-    const form = new FormData();
-    form.append('audio', blob, 'zadanie.' + ext);
-    fetch(window.API_BASE + '/api/agent/transcribe', { method: 'POST', body: form })
-      .then(r => r.json())
-      .then(data => {
-        if (data.status !== 'ok') {
-          voiceBtn.disabled = false;
-          showStatus(data.message || 'Nie udało się przetranskrybować.', true);
-          return;
-        }
-        showStatus('Analizuję zadanie…', false);
-        return fetch(window.API_BASE + '/api/gtd/voice_add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: data.text }),
-        }).then(r => r.json()).then(result => {
-          voiceBtn.disabled = false;
-          if (result.status === 'ok') afterAdd();
-          else showStatus(result.message || 'Nie udało się dodać zadania.', true);
-        });
-      })
-      .catch(() => { voiceBtn.disabled = false; showStatus('Błąd sieci.', true); });
-  }
-
-  voiceBtn.addEventListener('click', () => {
-    if (!recording) startRecording(); else stopRecording();
-  });
-})();
-
 /* ── Odświeżenie treści strony GTD bez przeładowania (po dodaniu zadania) ──
    Pobiera aktualny widok przez fetch, podmienia #gtdContent świeżo wyrenderowaną
    treścią z serwera (ta sama logika co przy zwykłym GET, więc listy/liczniki
@@ -484,6 +361,64 @@ function gtdAddToMonth(monthStart, inputId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdAddToInbox(inputId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'inbox' }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdAddToNext(inputId, projectId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'next', parent_id: projectId || null }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdAddToWaiting(inputId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  const waitingOn = window.prompt('Na co/kogo czekasz?', '');
+  if (waitingOn === null) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'waiting', waiting_on: waitingOn }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdAddToSomeday(inputId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'someday' }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdGcalPush(taskId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/gcal_push', { method: 'POST' })
     .then(r => r.json())
@@ -638,12 +573,13 @@ function gtdSubmitEditTask() {
    dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
-                          presetScheduled, presetWeek, presetMonth, presetTitle) {
+                          presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus) {
   document.getElementById('gtdFollowUpTitle').value = presetTitle || '';
   document.getElementById('gtdFollowUpDue').value = '';
   document.getElementById('gtdFollowUpScheduled').value = presetScheduled || '';
   document.getElementById('gtdFollowUpWeek').value = presetWeek || '';
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
+  document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
   _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   if (currentDealId) {
@@ -670,10 +606,11 @@ function gtdSubmitFollowUp() {
   const crm_company_id = companyValue ? parseInt(companyValue, 10) : null;
   const dealValue = document.getElementById('gtdFollowUpDealPicker-hidden').value;
   const crm_deal_id = dealValue ? parseInt(dealValue, 10) : null;
+  const status = document.getElementById('gtdFollowUpStatus').value || 'next';
   fetch(window.API_BASE + '/api/gtd/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, status: 'next' }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, status }),
   })
     .then(r => r.json())
     .then(data => {
