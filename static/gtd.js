@@ -419,6 +419,22 @@ function gtdAddToSomeday(inputId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+/* ── Filtry widoku "Wszystkie zadania" (aktualizują URL i odświeżają listę bez przeładowania) ── */
+function gtdNextApplyFilter(param, value, focusId) {
+  const url = new URL(window.location.href);
+  if (value) url.searchParams.set(param, value); else url.searchParams.delete(param);
+  window.history.replaceState(null, '', url);
+  gtdRefreshContent(focusId);
+}
+
+let gtdNextSearchTimer = null;
+function gtdNextSearchInput(el) {
+  clearTimeout(gtdNextSearchTimer);
+  const val = el.value.trim();
+  if (val.length > 0 && val.length < 3) return;
+  gtdNextSearchTimer = setTimeout(() => gtdNextApplyFilter('q', val, el.id), 400);
+}
+
 function gtdGcalPush(taskId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/gcal_push', { method: 'POST' })
     .then(r => r.json())

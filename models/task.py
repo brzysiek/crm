@@ -442,17 +442,52 @@ def get_inbox_tasks() -> list[dict]:
         return cur.fetchall()
 
 
-def get_next_actions(project_id: int | None = None) -> list[dict]:
+def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
+                      company_id: int | None = None, search: str | None = None,
+                      include_done: bool = False) -> list[dict]:
     db = get_db()
-    sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='next' AND t.is_project=0 AND t.deleted_at IS NULL"
-    params = []
+    statuses = ('next', 'done') if include_done else ('next',)
+    placeholders = ','.join(['%s'] * len(statuses))
+    sql = (f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
+           f"WHERE t.status IN ({placeholders}) AND t.is_project=0 AND t.deleted_at IS NULL")
+    params = list(statuses)
     if project_id:
         sql += " AND t.parent_id=%s"
         params.append(project_id)
-    sql += " ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC"
+    if deal_id:
+        sql += " AND t.crm_deal_id=%s"
+        params.append(deal_id)
+    if company_id:
+        sql += " AND t.crm_company_id=%s"
+        params.append(company_id)
+    if search:
+        sql += " AND t.title LIKE %s"
+        params.append(f"%{search}%")
+    sql += " ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
     with db.cursor() as cur:
         cur.execute(sql, params)
         return cur.fetchall()
+
+
+def get_next_action_filter_options() -> dict:
+    """Deale i firmy przypisane do zadań next/done — do dropdownów filtra w Wszystkie zadania."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT cd.id, cd.name FROM tasks t "
+            "JOIN crm_deals cd ON cd.id = t.crm_deal_id "
+            "WHERE t.is_project=0 AND t.deleted_at IS NULL AND t.status IN ('next', 'done') "
+            "ORDER BY cd.name"
+        )
+        deals = cur.fetchall()
+        cur.execute(
+            "SELECT DISTINCT cco.id, cco.name, cco.short_name FROM tasks t "
+            "JOIN crm_companies cco ON cco.id = t.crm_company_id "
+            "WHERE t.is_project=0 AND t.deleted_at IS NULL AND t.status IN ('next', 'done') "
+            "ORDER BY cco.name"
+        )
+        companies = cur.fetchall()
+    return {'deals': deals, 'companies': companies}
 
 
 def get_waiting_tasks() -> list[dict]:

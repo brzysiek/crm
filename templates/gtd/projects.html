@@ -17,7 +17,7 @@
 </div>
 
 {% if not projects %}
-  <p class="text-muted">Brak aktywnych projektów. Dodaj nowy powyżej albo zamień zadanie w projekt z poziomu Inbox lub Next actions.</p>
+  <p class="text-muted">Brak aktywnych projektów. Dodaj nowy powyżej albo zamień zadanie w projekt z poziomu Nowe zadania lub Wszystkie zadania.</p>
 {% else %}
 {% set important_projects = projects|selectattr('is_important')|list %}
 {% set other_projects = projects|rejectattr('is_important')|list %}

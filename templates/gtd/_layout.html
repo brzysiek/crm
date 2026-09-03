@@ -8,8 +8,8 @@
   'jutro': 'Jutro',
   'tydzien': 'Tydzień',
   'miesiac': 'Miesiąc',
-  'inbox': 'Inbox',
-  'next': 'Next actions',
+  'inbox': 'Nowe zadania',
+  'next': 'Wszystkie zadania',
   'projekty': 'Projekty',
   'waiting': 'Czeka na',
   'someday': 'Kiedyś/może',
@@ -41,11 +41,11 @@
       </a>
       <a href="{{ url_for('gtd.inbox') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'inbox' }}">
-        <span class="gtd-nav-link-label"><span class="gtd-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"></path></svg></span>Inbox</span>
+        <span class="gtd-nav-link-label"><span class="gtd-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"></path></svg></span>Nowe zadania</span>
       </a>
       <a href="{{ url_for('gtd.next_actions') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'next' }}">
-        <span class="gtd-nav-link-label"><span class="gtd-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l14 9-14 9V3z"></path></svg></span>Next actions</span>
+        <span class="gtd-nav-link-label"><span class="gtd-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l14 9-14 9V3z"></path></svg></span>Wszystkie zadania</span>
       </a>
       <a href="{{ url_for('gtd.projects') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'projekty' }}">

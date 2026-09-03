@@ -1,34 +1,54 @@
 {% extends 'gtd/_layout.html' %}
 {% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
 {% from '_icons.html' import icon %}
-{% block title %}Next actions — GTD{% endblock %}
+{% block title %}Wszystkie zadania — GTD{% endblock %}
 
 {% block gtd_content %}
 <div class="rd-screen rd-zadania rd-zadania-next">
 <div class="page-header">
-  <h1>Next actions</h1>
+  <h1>Wszystkie zadania</h1>
 </div>
 
-<form class="filter-bar" method="get" action="{{ url_for('gtd.next_actions') }}">
-  <select name="project" class="filter-select" onchange="this.form.submit()">
+<div class="filter-bar" data-no-collapse style="gap:.5rem;flex-wrap:wrap">
+  <input type="text" id="gtdNextSearchQuery" class="filter-input" style="flex:1;min-width:180px"
+         placeholder="Szukaj po nazwie… (min. 3 znaki)" autocomplete="off"
+         value="{{ search_query }}" oninput="gtdNextSearchInput(this)">
+  <select class="filter-select" onchange="gtdNextApplyFilter('project', this.value)">
     <option value="">Wszystkie projekty</option>
     {% for p in projects %}
       <option value="{{ p.id }}" {{ 'selected' if selected_project == p.id }}>{{ p.title }}</option>
     {% endfor %}
   </select>
-</form>
+  <select class="filter-select" onchange="gtdNextApplyFilter('deal', this.value)">
+    <option value="">Wszystkie dealy</option>
+    {% for d in deals %}
+      <option value="{{ d.id }}" {{ 'selected' if selected_deal == d.id }}>{{ d.name }}</option>
+    {% endfor %}
+  </select>
+  <select class="filter-select" onchange="gtdNextApplyFilter('company', this.value)">
+    <option value="">Wszystkie firmy</option>
+    {% for c in companies %}
+      <option value="{{ c.id }}" {{ 'selected' if selected_company == c.id }}>{{ c.short_name or c.name }}</option>
+    {% endfor %}
+  </select>
+  <label style="display:flex;align-items:center;gap:.35rem;white-space:nowrap;font-size:.85rem">
+    <input type="checkbox" id="gtdNextShowDone" {{ 'checked' if include_done }}
+           onchange="gtdNextApplyFilter('done', this.checked ? '1' : '')">
+    Pokaż zakończone
+  </label>
+</div>
 
 <div class="filter-bar" data-no-collapse style="gap:.5rem">
   <input type="text" id="gtdNextAddInput" class="filter-input" style="flex:1"
-         placeholder="Dodaj next action…" autocomplete="off"
+         placeholder="Dodaj zadanie…" autocomplete="off"
          onkeydown="if(event.key==='Enter') gtdAddToNext('gtdNextAddInput', {{ selected_project or 'null' }})">
-  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToNext('gtdNextAddInput', {{ selected_project or 'null' }})">+ Dodaj do Next actions</button>
+  <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddToNext('gtdNextAddInput', {{ selected_project or 'null' }})">+ Dodaj zadanie</button>
   <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, projekt, kontakt, firma, deal)"
           onclick="gtdOpenFollowUp({{ selected_project or 'null' }}, null, null, null, null, null, null, null, document.getElementById('gtdNextAddInput').value, 'next')">{{ icon('edit', 14) }} Zaawansowane…</button>
 </div>
 
 {% if not tasks %}
-  <p class="text-muted">Brak zadań next action{{ ' w tym projekcie' if selected_project }}.</p>
+  <p class="text-muted">Brak zadań spełniających kryteria{{ ' filtra' if selected_project or selected_deal or selected_company or search_query }}.</p>
 {% else %}
 <div class="table-wrapper">
 <table class="data-table">

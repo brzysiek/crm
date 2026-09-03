@@ -395,11 +395,22 @@ def inbox():
 @bp.route('/gtd/next')
 def next_actions():
     project_id = request.args.get('project', type=int)
+    deal_id = request.args.get('deal', type=int)
+    company_id = request.args.get('company', type=int)
+    search = (request.args.get('q') or '').strip() or None
+    include_done = request.args.get('done') == '1'
+    filter_options = task_model.get_next_action_filter_options()
     return render_template(
         'gtd/next_actions.html', active_tab='next',
-        tasks=task_model.get_next_actions(project_id),
+        tasks=task_model.get_next_actions(project_id, deal_id, company_id, search, include_done),
         projects=task_model.get_projects(include_done=True),
+        deals=filter_options['deals'],
+        companies=filter_options['companies'],
         selected_project=project_id,
+        selected_deal=deal_id,
+        selected_company=company_id,
+        search_query=search or '',
+        include_done=include_done,
     )
 
 
