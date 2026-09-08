@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     name         VARCHAR(255) NOT NULL,
     subject      VARCHAR(500) NOT NULL,
-    body_text    TEXT NOT NULL,
+    body_html    MEDIUMTEXT NOT NULL,
     status       ENUM('draft','sending','sent') NOT NULL DEFAULT 'draft',
     created_by   INT NULL,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -408,6 +408,25 @@ CREATE TABLE IF NOT EXISTS email_unsubscribes (
     unsubscribed_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_email (email),
     FOREIGN KEY (campaign_id) REFERENCES email_campaigns(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS email_footers (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(255) NOT NULL,
+    html_content  MEDIUMTEXT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS email_campaign_attachments (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    campaign_id   INT NOT NULL,
+    filename      VARCHAR(255) NOT NULL,
+    mime_type     VARCHAR(127) NOT NULL,
+    size_bytes    INT NOT NULL,
+    data_base64   MEDIUMTEXT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (campaign_id) REFERENCES email_campaigns(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── CRM: Notatki i historia zmian — wspólne dla firm/kontaktów/interesów ────

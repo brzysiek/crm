@@ -74,10 +74,6 @@ def general():
             drive_token = request.form.get('google_drive_api_token', '').strip()
             if drive_token:
                 data['google_drive_api_token'] = drive_token
-        if section in ('email', 'all'):
-            data['gmail_sender_email'] = request.form.get('gmail_sender_email', '').strip()
-            data['email_daily_limit'] = request.form.get('email_daily_limit', '150').strip() or '150'
-            data['email_batch_per_run'] = request.form.get('email_batch_per_run', '3').strip() or '3'
         if section in ('gemini', 'all'):
             data['gemini_model'] = request.form.get('gemini_model', 'gemini-2.5-flash').strip()
             gemini_key = request.form.get('gemini_api_key', '').strip()
@@ -88,6 +84,77 @@ def general():
         return redirect(url_for('settings.general'))
     cfg = get_all_settings()
     return render_template('settings/general.html', active_tab='general', cfg=cfg)
+
+
+@bp.route('/email', methods=['GET', 'POST'])
+def email_settings():
+    from models.email_footers import get_all_footers
+    from models.settings import get_all_settings, set_many
+
+    if request.method == 'POST':
+        data = {
+            'gmail_sender_email': request.form.get('gmail_sender_email', '').strip(),
+            'email_daily_limit': request.form.get('email_daily_limit', '150').strip() or '150',
+            'email_batch_per_run': request.form.get('email_batch_per_run', '3').strip() or '3',
+        }
+        set_many(data)
+        flash('Konfiguracja wysyłki została zapisana.', 'success')
+        return redirect(url_for('settings.email_settings'))
+
+    cfg = get_all_settings()
+    return render_template('settings/email.html', active_tab='email', cfg=cfg, footers=get_all_footers())
+
+
+@bp.route('/email/footers/new', methods=['GET', 'POST'])
+def email_footer_new():
+    from models.email_footers import create_footer
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        html_content = request.form.get('html_content', '').strip()
+        if not name or not html_content:
+            flash('Nazwa i treść stopki są wymagane.', 'error')
+            return render_template('settings/email_footer_form.html', active_tab='email',
+                footer=request.form, action=url_for('settings.email_footer_new'), title='Nowa stopka')
+        create_footer(name, html_content)
+        flash('Stopka została zapisana.', 'success')
+        return redirect(url_for('settings.email_settings'))
+
+    return render_template('settings/email_footer_form.html', active_tab='email',
+        footer={}, action=url_for('settings.email_footer_new'), title='Nowa stopka')
+
+
+@bp.route('/email/footers/<int:footer_id>/edit', methods=['GET', 'POST'])
+def email_footer_edit(footer_id):
+    from models.email_footers import get_footer_by_id, update_footer
+
+    footer = get_footer_by_id(footer_id)
+    if not footer:
+        flash('Stopka nie istnieje.', 'error')
+        return redirect(url_for('settings.email_settings'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        html_content = request.form.get('html_content', '').strip()
+        if not name or not html_content:
+            flash('Nazwa i treść stopki są wymagane.', 'error')
+            return render_template('settings/email_footer_form.html', active_tab='email',
+                footer=request.form, action=url_for('settings.email_footer_edit', footer_id=footer_id),
+                title='Edytuj stopkę')
+        update_footer(footer_id, name, html_content)
+        flash('Stopka została zaktualizowana.', 'success')
+        return redirect(url_for('settings.email_settings'))
+
+    return render_template('settings/email_footer_form.html', active_tab='email',
+        footer=footer, action=url_for('settings.email_footer_edit', footer_id=footer_id), title='Edytuj stopkę')
+
+
+@bp.route('/email/footers/<int:footer_id>/delete', methods=['POST'])
+def email_footer_delete(footer_id):
+    from models.email_footers import delete_footer
+    delete_footer(footer_id)
+    flash('Stopka została usunięta.', 'success')
+    return redirect(url_for('settings.email_settings'))
 
 
 _ALLOWED_LOGO_MIMES = {

@@ -1,3 +1,4 @@
+import base64
 import secrets
 
 from database import get_db
@@ -55,13 +56,13 @@ def get_campaign_recipients(campaign_id: int) -> list[dict]:
         return cur.fetchall()
 
 
-def create_campaign(name: str, subject: str, body_text: str, tag_ids: list[int], created_by: int | None) -> int:
+def create_campaign(name: str, subject: str, body_html: str, tag_ids: list[int], created_by: int | None) -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                "INSERT INTO email_campaigns (name, subject, body_text, created_by) VALUES (%s,%s,%s,%s)",
-                (name, subject, body_text, created_by)
+                "INSERT INTO email_campaigns (name, subject, body_html, created_by) VALUES (%s,%s,%s,%s)",
+                (name, subject, body_html, created_by)
             )
             campaign_id = cur.lastrowid
             for tag_id in tag_ids:
@@ -74,6 +75,39 @@ def create_campaign(name: str, subject: str, body_text: str, tag_ids: list[int],
     except Exception:
         db.rollback()
         raise
+
+
+def add_campaign_attachment(campaign_id: int, filename: str, mime_type: str, data: bytes) -> int:
+    db = get_db()
+    encoded = base64.b64encode(data).decode('ascii')
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """INSERT INTO email_campaign_attachments
+                   (campaign_id, filename, mime_type, size_bytes, data_base64)
+                   VALUES (%s,%s,%s,%s,%s)""",
+                (campaign_id, filename, mime_type, len(data), encoded)
+            )
+            attachment_id = cur.lastrowid
+        db.commit()
+        return attachment_id
+    except Exception:
+        db.rollback()
+        raise
+
+
+def get_campaign_attachments(campaign_id: int) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT id, campaign_id, filename, mime_type, size_bytes, data_base64
+               FROM email_campaign_attachments WHERE campaign_id=%s ORDER BY id""",
+            (campaign_id,)
+        )
+        rows = cur.fetchall()
+    for row in rows:
+        row['data'] = base64.b64decode(row.pop('data_base64'))
+    return rows
 
 
 def resolve_recipient_contacts(tag_ids: list[int]) -> list[dict]:

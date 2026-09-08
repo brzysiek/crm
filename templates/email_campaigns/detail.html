@@ -22,7 +22,16 @@
   <p><strong>Tagi odbiorców:</strong> {{ tag_names | join(', ') if tag_names else '—' }}</p>
   <p><strong>Temat:</strong> {{ campaign.subject }}</p>
   <p><strong>Treść:</strong></p>
-  <pre style="white-space:pre-wrap;font-family:inherit">{{ campaign.body_text }}</pre>
+  <div class="html-editor-body" style="border:1px solid var(--border);border-radius:8px;">{{ campaign.body_html | safe }}</div>
+
+  {% if attachments %}
+  <p style="margin-top:16px;"><strong>Załączniki:</strong></p>
+  <div class="attachment-list">
+    {% for a in attachments %}
+    <span class="attachment-chip">{{ a.filename }} ({{ (a.size_bytes / 1024) | round(0, 'ceil') | int }} KB)</span>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 
 {% if recipients %}

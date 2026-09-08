@@ -4,7 +4,9 @@ delegation (patrz services/google_auth.py::get_service_account_token, param
 `gmail.send` (Security → API Controls → Domain-wide Delegation).
 """
 import base64
+import html as html_module
 import json
+import re
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
@@ -24,7 +26,17 @@ def _raise_for_status(resp: requests.Response) -> None:
         raise requests.HTTPError(f'{e} — treść odpowiedzi: {resp.text[:500]}', response=resp) from None
 
 
-def build_raw_message(sender_email: str, to: str, subject: str, body_text: str, unsubscribe_url: str) -> str:
+def _html_to_text(body_html: str) -> str:
+    text = re.sub(r'(?i)<(br|/p|/div|/tr|/li)\s*/?>', '\n', body_html)
+    text = re.sub(r'(?s)<[^>]+>', '', text)
+    text = html_module.unescape(text)
+    lines = [line.strip() for line in text.splitlines()]
+    text = '\n'.join(lines)
+    return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+
+def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, unsubscribe_url: str,
+                       attachments: list[dict] | None = None) -> str:
     msg = EmailMessage()
     msg['From'] = sender_email
     msg['To'] = to
@@ -34,15 +46,22 @@ def build_raw_message(sender_email: str, to: str, subject: str, body_text: str, 
     msg['List-Unsubscribe'] = f'<{unsubscribe_url}>, <mailto:{sender_email}?subject=unsubscribe>'
     msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
 
-    msg.set_content(f'{body_text}\n\n—\nWypisz się z tej listy: {unsubscribe_url}')
-    html_body = body_text.replace('\n', '<br>')
+    plain_body = _html_to_text(body_html)
+    msg.set_content(f'{plain_body}\n\n—\nWypisz się z tej listy: {unsubscribe_url}')
     msg.add_alternative(
-        f'<html><body><p>{html_body}</p>'
+        f'<html><body>{body_html}'
         f'<p style="color:#888;font-size:12px;margin-top:24px;">'
         f'<a href="{unsubscribe_url}">Wypisz się z tej listy</a></p>'
         f'</body></html>',
         subtype='html',
     )
+
+    for att in (attachments or []):
+        maintype, _, subtype = att['mime_type'].partition('/')
+        msg.add_attachment(
+            att['data'], maintype=maintype or 'application', subtype=subtype or 'octet-stream',
+            filename=att['filename'],
+        )
 
     return base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
@@ -61,9 +80,10 @@ class GmailSender:
         token = get_service_account_token(self._sa_json, GMAIL_SEND_SCOPE, subject=self.sender_email)
         return {'Authorization': f'Bearer {token}'}
 
-    def send(self, to: str, subject: str, body_text: str, unsubscribe_url: str) -> str:
+    def send(self, to: str, subject: str, body_html: str, unsubscribe_url: str,
+              attachments: list[dict] | None = None) -> str:
         """Wysyła wiadomość, zwraca Gmail message id."""
-        raw = build_raw_message(self.sender_email, to, subject, body_text, unsubscribe_url)
+        raw = build_raw_message(self.sender_email, to, subject, body_html, unsubscribe_url, attachments)
         resp = requests.post(
             f'{GMAIL_API}/users/me/messages/send',
             headers={**self._auth_headers(), 'Content-Type': 'application/json'},

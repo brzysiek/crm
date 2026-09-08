@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 from app import app
 from config import Config
-from models.email_campaigns import (count_sent_today, get_campaign_by_id, get_pending_batch,
-                                      is_unsubscribed, mark_failed, mark_sent,
+from models.email_campaigns import (count_sent_today, get_campaign_attachments, get_campaign_by_id,
+                                      get_pending_batch, is_unsubscribed, mark_failed, mark_sent,
                                       mark_skipped_unsubscribed, maybe_complete_campaign)
 from models.settings import get_setting
 from services.gmail_sender import GmailSender
@@ -53,6 +53,7 @@ def run():
 
         sender = GmailSender(api_token, sender_email)
         campaign_ids = set()
+        attachments_cache = {}
 
         for i, recipient in enumerate(batch):
             campaign_ids.add(recipient['campaign_id'])
@@ -63,13 +64,16 @@ def run():
 
             campaign = get_campaign_by_id(recipient['campaign_id'])
             unsubscribe_url = f"{Config.APP_BASE_URL}/email-campaigns/unsubscribe/{recipient['unsubscribe_token']}"
+            if campaign['id'] not in attachments_cache:
+                attachments_cache[campaign['id']] = get_campaign_attachments(campaign['id'])
 
             try:
                 message_id = sender.send(
                     to=recipient['email'],
                     subject=campaign['subject'],
-                    body_text=campaign['body_text'],
+                    body_html=campaign['body_html'],
                     unsubscribe_url=unsubscribe_url,
+                    attachments=attachments_cache[campaign['id']],
                 )
                 mark_sent(recipient['id'], message_id)
                 logger.info(f"Wysłano: {recipient['email']} (id={message_id})")

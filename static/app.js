@@ -1780,3 +1780,195 @@ function initDealsKanbanDragDrop() {
     });
   });
 }
+
+/* ── Edytor HTML w stylu Gmaila (contenteditable + execCommand) ──────────────
+ * Wymaga w DOM: <div id="{wrapId}"></div> (puste — toolbar i pole edycji są
+ * budowane przez JS) oraz <input type="hidden" id="{hiddenInputId}">, którego
+ * wartość jest synchronizowana z treścią edytora na bieżąco i tuż przed
+ * submitem formularza. `footers` to lista {id, name, html_content} do wstawiania
+ * przez przycisk „Wstaw stopkę” (pomijana, gdy opts.allowFooterInsert === false).
+ */
+function initHtmlEditor(wrapId, editorId, hiddenInputId, initialHtml, footers, opts) {
+  const wrap = document.getElementById(wrapId);
+  const hidden = document.getElementById(hiddenInputId);
+  if (!wrap || !hidden) return;
+  opts = opts || {};
+  footers = footers || [];
+  const allowFooterInsert = opts.allowFooterInsert !== false && footers.length > 0;
+
+  try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+
+  const FONT_FAMILIES = [
+    ['sans-serif', 'Sans Serif'],
+    ['serif', 'Serif'],
+    ["'Courier New', monospace", 'Fixed Width'],
+    ["'Arial Black', sans-serif", 'Wide'],
+    ["'Arial Narrow', sans-serif", 'Narrow'],
+    ["'Comic Sans MS', cursive", 'Comic Sans MS'],
+    ['Garamond, serif', 'Garamond'],
+    ['Georgia, serif', 'Georgia'],
+    ['Tahoma, sans-serif', 'Tahoma'],
+    ["'Trebuchet MS', sans-serif", 'Trebuchet MS'],
+    ['Verdana, sans-serif', 'Verdana'],
+  ];
+  const FONT_SIZES = [
+    ['2', 'small', 'Mała'],
+    ['3', 'medium', 'Normalna'],
+    ['5', 'large', 'Duża'],
+    ['7', 'xx-large', 'Bardzo duża'],
+  ];
+  const FONT_SIZE_KEYWORD = { '1': 'small', '2': 'small', '3': 'medium', '4': 'medium', '5': 'large', '6': 'large', '7': 'xx-large' };
+
+  wrap.classList.add('html-editor');
+  const toolbar = document.createElement('div');
+  toolbar.className = 'html-editor-toolbar';
+  const editor = document.createElement('div');
+  editor.id = editorId;
+  editor.className = 'html-editor-body';
+  editor.contentEditable = 'true';
+  editor.setAttribute('dir', 'ltr');
+  editor.innerHTML = initialHtml || '';
+  wrap.appendChild(toolbar);
+  wrap.appendChild(editor);
+
+  function convertFontTags() {
+    editor.querySelectorAll('font').forEach(f => {
+      const span = document.createElement('span');
+      if (f.hasAttribute('face')) span.style.fontFamily = f.getAttribute('face');
+      if (f.hasAttribute('size')) span.style.fontSize = FONT_SIZE_KEYWORD[f.getAttribute('size')] || 'medium';
+      if (f.hasAttribute('color')) span.style.color = f.getAttribute('color');
+      while (f.firstChild) span.appendChild(f.firstChild);
+      f.replaceWith(span);
+    });
+  }
+
+  function sync() { hidden.value = editor.innerHTML; }
+
+  function exec(cmd, value) {
+    editor.focus();
+    document.execCommand(cmd, false, value);
+    convertFontTags();
+    sync();
+  }
+
+  function addButton(title, label, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = title;
+    btn.className = 'html-editor-btn';
+    btn.textContent = label;
+    btn.onclick = onClick;
+    toolbar.appendChild(btn);
+    return btn;
+  }
+
+  function addSeparator() {
+    const sep = document.createElement('span');
+    sep.className = 'html-editor-sep';
+    toolbar.appendChild(sep);
+  }
+
+  addButton('Pogrubienie', 'B', () => exec('bold'));
+  addButton('Kursywa', 'I', () => exec('italic'));
+  addButton('Podkreślenie', 'U', () => exec('underline'));
+  addButton('Przekreślenie', 'S', () => exec('strikeThrough'));
+  addSeparator();
+
+  const fontSelect = document.createElement('select');
+  fontSelect.className = 'html-editor-select';
+  fontSelect.title = 'Czcionka';
+  const fontPlaceholder = document.createElement('option');
+  fontPlaceholder.value = '';
+  fontPlaceholder.textContent = 'Czcionka…';
+  fontPlaceholder.disabled = true;
+  fontPlaceholder.selected = true;
+  fontSelect.appendChild(fontPlaceholder);
+  FONT_FAMILIES.forEach(([value, label]) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    fontSelect.appendChild(opt);
+  });
+  fontSelect.onchange = () => { if (fontSelect.value) exec('fontName', fontSelect.value); fontSelect.selectedIndex = 0; };
+  toolbar.appendChild(fontSelect);
+
+  const sizeSelect = document.createElement('select');
+  sizeSelect.className = 'html-editor-select';
+  sizeSelect.title = 'Rozmiar czcionki';
+  const sizePlaceholder = document.createElement('option');
+  sizePlaceholder.value = '';
+  sizePlaceholder.textContent = 'Rozmiar…';
+  sizePlaceholder.disabled = true;
+  sizePlaceholder.selected = true;
+  sizeSelect.appendChild(sizePlaceholder);
+  FONT_SIZES.forEach(([value, keyword, label]) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    sizeSelect.appendChild(opt);
+  });
+  sizeSelect.onchange = () => { if (sizeSelect.value) exec('fontSize', sizeSelect.value); sizeSelect.selectedIndex = 0; };
+  toolbar.appendChild(sizeSelect);
+  addSeparator();
+
+  const foreColor = document.createElement('input');
+  foreColor.type = 'color';
+  foreColor.title = 'Kolor tekstu';
+  foreColor.className = 'html-editor-color';
+  foreColor.oninput = () => exec('foreColor', foreColor.value);
+  toolbar.appendChild(foreColor);
+
+  const hiliteColor = document.createElement('input');
+  hiliteColor.type = 'color';
+  hiliteColor.title = 'Kolor tła zaznaczenia';
+  hiliteColor.className = 'html-editor-color';
+  hiliteColor.value = '#ffff00';
+  hiliteColor.oninput = () => exec('hiliteColor', hiliteColor.value);
+  toolbar.appendChild(hiliteColor);
+  addSeparator();
+
+  addButton('Lista wypunktowana', '•', () => exec('insertUnorderedList'));
+  addButton('Lista numerowana', '1.', () => exec('insertOrderedList'));
+  addButton('Zmniejsz wcięcie', '⟸', () => exec('outdent'));
+  addButton('Zwiększ wcięcie', '⟹', () => exec('indent'));
+  addButton('Cytat', '❝', () => exec('formatBlock', 'blockquote'));
+  addSeparator();
+
+  addButton('Wyrównaj do lewej', '⟵', () => exec('justifyLeft'));
+  addButton('Wyśrodkuj', '≡', () => exec('justifyCenter'));
+  addButton('Wyrównaj do prawej', '⟶', () => exec('justifyRight'));
+  addSeparator();
+
+  addButton('Wstaw link', '🔗', () => {
+    const url = prompt('Adres URL:');
+    if (url) exec('createLink', url);
+  });
+  addButton('Usuń formatowanie', '⨯', () => exec('removeFormat'));
+
+  if (allowFooterInsert) {
+    addSeparator();
+    const footerSelect = document.createElement('select');
+    footerSelect.className = 'html-editor-select';
+    footerSelect.title = 'Stopka';
+    const footerPlaceholder = document.createElement('option');
+    footerPlaceholder.value = '';
+    footerPlaceholder.textContent = 'Wybierz stopkę…';
+    footerSelect.appendChild(footerPlaceholder);
+    footers.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.name;
+      footerSelect.appendChild(opt);
+    });
+    toolbar.appendChild(footerSelect);
+    addButton('Wstaw stopkę', 'Wstaw stopkę', () => {
+      const footer = footers.find(f => String(f.id) === footerSelect.value);
+      if (footer) exec('insertHTML', footer.html_content);
+    });
+  }
+
+  editor.addEventListener('input', sync);
+  const form = wrap.closest('form');
+  if (form) form.addEventListener('submit', sync);
+  sync();
+}

@@ -1,0 +1,94 @@
+{% extends 'settings/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block settings_content %}
+
+<h2>Email</h2>
+
+{# ── Konfiguracja wysyłki email (kampanie) ─────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Konfiguracja wysyłki (kampanie)</h3>
+  <form method="post" action="{{ url_for('settings.email_settings') }}">
+
+    <div class="form-group">
+      <label for="gmail_sender_email">Adres nadawcy (Google Workspace)</label>
+      <input type="email" id="gmail_sender_email" name="gmail_sender_email"
+             placeholder="np. kontakt@twoja-domena.pl"
+             value="{{ cfg.gmail_sender_email or '' }}">
+      <small class="text-muted">
+        Skrzynka, w imieniu której wysyłane są kampanie (przez konto usługi z
+        delegacją domenową — wykorzystywane jest to samo „Token / klucz API”
+        co w konfiguracji Google Drive w zakładce Integracje). Wymaga wcześniejszego
+        dodania scope'u <code>gmail.send</code> temu kontu usługi w Workspace
+        Admin Console (Security → API Controls → Domain-wide Delegation).
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="email_daily_limit">Dzienny limit wysyłek</label>
+      <input type="number" id="email_daily_limit" name="email_daily_limit" min="1"
+             value="{{ cfg.email_daily_limit or 150 }}">
+      <small class="text-muted">
+        Limit współdzielony z normalną pocztą wysyłaną z tego samego adresu —
+        ustaw wyraźnie poniżej pełnego limitu Google (2000/dzień na Workspace),
+        żeby nie zaszkodzić reputacji skrzynki.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="email_batch_per_run">Maili na jedno uruchomienie crona</label>
+      <input type="number" id="email_batch_per_run" name="email_batch_per_run" min="1"
+             value="{{ cfg.email_batch_per_run or 3 }}">
+      <small class="text-muted">Skrypt wysyłkowy odpalany cyklicznie z cPanel Cron Jobs.</small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz konfigurację wysyłki</button>
+    </div>
+  </form>
+</div>
+
+{# ── Stopki email ──────────────────────────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Stopki email</h3>
+  <p class="text-muted">
+    Nazwane stopki HTML, które można wstawić w treści kampanii przyciskiem
+    „Wstaw stopkę” w edytorze.
+  </p>
+
+  {% if footers %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nazwa</th>
+          <th>Zaktualizowano</th>
+          <th class="col-actions">Akcje</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in footers %}
+        <tr>
+          <td>{{ f.name }}</td>
+          <td>{{ f.updated_at.strftime('%Y-%m-%d %H:%M') if f.updated_at else '' }}</td>
+          <td class="col-actions nowrap">
+            <a class="action-btn" title="Edytuj" href="{{ url_for('settings.email_footer_edit', footer_id=f.id) }}">{{ icon('edit', 16) }}</a>
+            <form method="post" action="{{ url_for('settings.email_footer_delete', footer_id=f.id) }}"
+                  style="display:inline" onsubmit="return confirm('Usunąć stopkę „{{ f.name }}”?');">
+              <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 16) }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">Brak zapisanych stopek.</p>
+  {% endif %}
+
+  <div class="form-actions">
+    <a href="{{ url_for('settings.email_footer_new') }}" class="btn btn-primary">+ Nowa stopka</a>
+  </div>
+</div>
+
+{% endblock %}
