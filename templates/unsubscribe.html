@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ app_name }} – Wypisanie z listy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 4px 20px rgba(31, 41, 55, .07), 0 1px 3px rgba(31, 41, 55, .04);
+      padding: 2.5rem 2.5rem 2rem;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    .logo { margin-bottom: 1.4rem; }
+
+    .logo-img { max-width: 180px; max-height: 64px; margin-bottom: 0.6rem; }
+
+    .logo h1 {
+      font-size: 24px;
+      background: linear-gradient(to right, #3b82f6, #4f46e5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    p { color: #1f2937; font-size: 0.95rem; line-height: 1.5; }
+    p.muted { color: #6b7280; font-size: 0.85rem; margin-top: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      {% if logo_main %}
+      <img src="{{ logo_main }}" alt="{{ app_name }}" class="logo-img">
+      {% endif %}
+      <h1>{{ app_name }}</h1>
+    </div>
+
+    {% if found %}
+    <p>Zostałeś/-aś wypisany/-a z tej listy mailingowej. Nie otrzymasz więcej wiadomości z tej kampanii.</p>
+    {% else %}
+    <p>Link jest nieprawidłowy albo wygasł.</p>
+    {% endif %}
+    <p class="muted">Jeśli to pomyłka, skontaktuj się z nami bezpośrednio.</p>
+  </div>
+</body>
+</html>

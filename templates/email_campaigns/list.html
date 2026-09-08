@@ -1,0 +1,46 @@
+{% extends 'email_campaigns/_layout.html' %}
+{% block title %}Kampanie email{% endblock %}
+
+{% block ec_content %}
+<div class="rd-screen">
+<div class="page-header">
+  <h1>Kampanie email</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('email_campaigns.new_campaign') }}" class="btn btn-primary">+ Nowa kampania</a>
+  </div>
+</div>
+
+{% if campaigns %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nazwa</th>
+        <th>Temat</th>
+        <th>Status</th>
+        <th>Odbiorcy</th>
+        <th>Wysłano</th>
+        <th>Błędy</th>
+        <th>Utworzono</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in campaigns %}
+      <tr onclick="window.location='{{ url_for('email_campaigns.view_campaign', campaign_id=c.id) }}'" style="cursor:pointer">
+        <td>{{ c.name }}</td>
+        <td>{{ c.subject }}</td>
+        <td><span class="badge {{ status_badges[c.status] }}">{{ status_labels[c.status] }}</span></td>
+        <td>{{ c.recipient_count }}</td>
+        <td>{{ c.sent_count }}</td>
+        <td>{{ c.failed_count }}</td>
+        <td>{{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Brak kampanii. Utwórz pierwszą, żeby wysłać wiadomość do grupy kontaktów po tagu.</p>
+{% endif %}
+</div>
+{% endblock %}

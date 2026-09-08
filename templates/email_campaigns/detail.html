@@ -1,0 +1,66 @@
+{% extends 'email_campaigns/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ campaign.name }}{% endblock %}
+
+{% block ec_content %}
+<div class="rd-screen">
+<div class="page-header">
+  <h1>{{ campaign.name }}</h1>
+  <div class="header-actions">
+    {% if campaign.status == 'draft' %}
+    <form method="post" action="{{ url_for('email_campaigns.send_campaign', campaign_id=campaign.id) }}"
+          onsubmit="return confirm('Uruchomić wysyłkę do dopasowanych odbiorców? Lista zostanie zamrożona i nie da się jej już zmienić.');">
+      <button type="submit" class="btn btn-primary">Wyślij</button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('email_campaigns.list_campaigns') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+  </div>
+</div>
+
+<div class="form-card">
+  <p><strong>Status:</strong> <span class="badge {{ status_badges[campaign.status] }}">{{ status_labels[campaign.status] }}</span></p>
+  <p><strong>Tagi odbiorców:</strong> {{ tag_names | join(', ') if tag_names else '—' }}</p>
+  <p><strong>Temat:</strong> {{ campaign.subject }}</p>
+  <p><strong>Treść:</strong></p>
+  <pre style="white-space:pre-wrap;font-family:inherit">{{ campaign.body_text }}</pre>
+</div>
+
+{% if recipients %}
+<div class="form-card">
+  <p>
+    Oczekuje: {{ counts.pending }} &nbsp;·&nbsp;
+    Wysłano: {{ counts.sent }} &nbsp;·&nbsp;
+    Błędy: {{ counts.failed }} &nbsp;·&nbsp;
+    Pominięto (wypisani): {{ counts.skipped_unsubscribed }}
+  </p>
+</div>
+
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Kontakt</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Wysłano</th>
+        <th>Błąd</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recipients %}
+      <tr>
+        <td>{{ (r.first_name ~ ' ' ~ r.last_name).strip() if r.first_name else '—' }}</td>
+        <td>{{ r.email }}</td>
+        <td><span class="badge {{ recipient_status_badges[r.status] }}">{{ recipient_status_labels[r.status] }}</span></td>
+        <td>{{ r.sent_at.strftime('%Y-%m-%d %H:%M') if r.sent_at else '' }}</td>
+        <td class="text-muted small">{{ r.error_message or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Kampania jest jeszcze szkicem — lista odbiorców zostanie zamrożona po kliknięciu „Wyślij”.</p>
+{% endif %}
+</div>
+{% endblock %}

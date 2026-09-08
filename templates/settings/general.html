@@ -141,6 +141,50 @@
   </form>
 </div>
 
+{# ── Konfiguracja wysyłki email (kampanie) ─────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Konfiguracja wysyłki email (kampanie)</h3>
+  <form method="post" action="{{ url_for('settings.general') }}">
+    <input type="hidden" name="form_section" value="email">
+
+    <div class="form-group">
+      <label for="gmail_sender_email">Adres nadawcy (Google Workspace)</label>
+      <input type="email" id="gmail_sender_email" name="gmail_sender_email"
+             placeholder="np. kontakt@twoja-domena.pl"
+             value="{{ cfg.gmail_sender_email or '' }}">
+      <small class="text-muted">
+        Skrzynka, w imieniu której wysyłane są kampanie (przez konto usługi z
+        delegacją domenową — wykorzystywane jest to samo „Token / klucz API”
+        co w konfiguracji Google Drive powyżej). Wymaga wcześniejszego
+        dodania scope'u <code>gmail.send</code> temu kontu usługi w Workspace
+        Admin Console (Security → API Controls → Domain-wide Delegation).
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="email_daily_limit">Dzienny limit wysyłek</label>
+      <input type="number" id="email_daily_limit" name="email_daily_limit" min="1"
+             value="{{ cfg.email_daily_limit or 150 }}">
+      <small class="text-muted">
+        Limit współdzielony z normalną pocztą wysyłaną z tego samego adresu —
+        ustaw wyraźnie poniżej pełnego limitu Google (2000/dzień na Workspace),
+        żeby nie zaszkodzić reputacji skrzynki.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="email_batch_per_run">Maili na jedno uruchomienie crona</label>
+      <input type="number" id="email_batch_per_run" name="email_batch_per_run" min="1"
+             value="{{ cfg.email_batch_per_run or 3 }}">
+      <small class="text-muted">Skrypt wysyłkowy odpalany cyklicznie z cPanel Cron Jobs.</small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz konfigurację wysyłki</button>
+    </div>
+  </form>
+</div>
+
 {# ── Konfiguracja Gemini ───────────────────────────────────────────────────── #}
 <div class="settings-section">
   <h3>Konfiguracja Gemini (OCR)</h3>

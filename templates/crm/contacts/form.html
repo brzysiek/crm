@@ -78,6 +78,21 @@
     <textarea id="description" name="description" rows="3">{{ contact.description or '' }}</textarea>
   </div>
 
+  <div class="form-group">
+    <label>Tagi</label>
+    <div class="tag-input-wrap" id="tags-wrap">
+      <input type="text" id="tags-input" class="tag-input-field" placeholder="Dodaj tag…" autocomplete="off">
+      <div id="tags-suggestions" class="tag-suggestions"></div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="checkbox-label">
+      <input type="checkbox" name="marketing_consent" value="1" {{ 'checked' if consent else '' }}>
+      Zgoda na kontakt marketingowy (wysyłka email w ramach kampanii)
+    </label>
+  </div>
+
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz kontakt</button>
     <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">Anuluj</a>
@@ -100,5 +115,6 @@
 {% block scripts %}
 <script>
 initEntityPicker('company-picker', '/api/crm/companies/search');
+initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
 </script>
 {% endblock %}

@@ -21,14 +21,18 @@ def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
 
 
-def get_service_account_token(sa_json: dict, scope: str) -> str:
+def get_service_account_token(sa_json: dict, scope: str, subject: str | None = None) -> str:
     """Zwraca ważny token OAuth2 dla konta usługi, dla podanego zakresu (scope).
+
+    `subject` włącza domain-wide delegation — token działa "w imieniu" tego
+    adresu (wymaga nadania scope'u kontu usługi w Workspace Admin Console).
+    Bez `subject` zachowanie jak dotychczas (Calendar/Drive: `sub == iss`).
 
     Tokeny cache'owane przez 55 minut (Google wydaje tokeny na 1h).
     """
     client_email = sa_json['client_email']
     private_key_id = sa_json.get('private_key_id', '')
-    cache_key = (client_email, private_key_id, scope)
+    cache_key = (client_email, private_key_id, scope, subject)
 
     cached = _token_cache.get(cache_key)
     if cached:
@@ -40,7 +44,7 @@ def get_service_account_token(sa_json: dict, scope: str) -> str:
     header = {'alg': 'RS256', 'typ': 'JWT', 'kid': private_key_id}
     payload = {
         'iss': client_email,
-        'sub': client_email,
+        'sub': subject or client_email,
         'scope': scope,
         'aud': 'https://oauth2.googleapis.com/token',
         'iat': now,

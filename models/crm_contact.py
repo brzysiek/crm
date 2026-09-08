@@ -1,5 +1,6 @@
 from database import get_db
 from models.crm_notes import log_history, build_diff_summary
+from models.crm_tags import set_contact_tags
 from services.text_utils import format_phone
 
 FIELD_LABELS = {
@@ -94,7 +95,7 @@ def search_contacts(q: str, company_id: int = None, limit: int = 20) -> list[dic
         return cur.fetchall()
 
 
-def create_contact(data: dict, user_id: int | None) -> int:
+def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> int:
     data['phone'] = format_phone(data.get('phone'))
     db = get_db()
     try:
@@ -116,12 +117,14 @@ def create_contact(data: dict, user_id: int | None) -> int:
     except Exception:
         db.rollback()
         raise
+    if tags is not None:
+        set_contact_tags(contact_id, tags)
     log_history('contact', contact_id, user_id, 'create',
                 f"Utworzono kontakt „{data['first_name']} {data['last_name']}”.")
     return contact_id
 
 
-def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
+def update_contact(contact_id: int, data: dict, user_id: int | None, tags: list[str] = None) -> None:
     data['phone'] = format_phone(data.get('phone'))
     old = get_contact_by_id(contact_id)
     db = get_db()
@@ -144,6 +147,8 @@ def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
     except Exception:
         db.rollback()
         raise
+    if tags is not None:
+        set_contact_tags(contact_id, tags)
     if old:
         summary = build_diff_summary(old, data, FIELD_LABELS)
         if summary:
@@ -155,6 +160,26 @@ def set_starred(contact_id: int, starred: bool) -> None:
     try:
         with db.cursor() as cur:
             cur.execute("UPDATE crm_contacts SET is_starred=%s WHERE id=%s", (1 if starred else 0, contact_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def set_marketing_consent(contact_id: int, consent: bool) -> None:
+    """Zgoda na kontakt marketingowy (wymagana do umieszczenia w kampanii email).
+    Ustawiając zgodę zachowujemy oryginalną datę jej udzielenia (COALESCE) —
+    ponowne zaznaczenie checkboxa nie odświeża znacznika czasu."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            if consent:
+                cur.execute(
+                    "UPDATE crm_contacts SET marketing_consent_at=COALESCE(marketing_consent_at, NOW()) WHERE id=%s",
+                    (contact_id,)
+                )
+            else:
+                cur.execute("UPDATE crm_contacts SET marketing_consent_at=NULL WHERE id=%s", (contact_id,))
         db.commit()
     except Exception:
         db.rollback()

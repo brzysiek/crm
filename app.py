@@ -182,7 +182,7 @@ def handle_exception(e):
 
 @app.before_request
 def require_login():
-    open_endpoints = {'auth.login', 'auth.logout', 'static'}
+    open_endpoints = {'auth.login', 'auth.logout', 'static', 'email_campaigns.unsubscribe'}
     ep = request.endpoint or ''
     if ep in open_endpoints or ep.startswith('static'):
         return
@@ -2385,6 +2385,7 @@ from routes.crm_contacts import bp as crm_contacts_bp
 from routes.crm_deals import bp as crm_deals_bp
 from routes.crm_plan import bp as crm_plan_bp
 from routes.crm_invoices import bp as crm_invoices_bp
+from routes.email_campaigns import bp as email_campaigns_bp
 from routes.finance import bp as finance_bp
 from routes.expenses import bp as expenses_bp
 from routes.imports import bp as imports_bp
@@ -2400,6 +2401,7 @@ app.register_blueprint(crm_contacts_bp)
 app.register_blueprint(crm_deals_bp)
 app.register_blueprint(crm_plan_bp)
 app.register_blueprint(crm_invoices_bp)
+app.register_blueprint(email_campaigns_bp)
 app.register_blueprint(finance_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(imports_bp)

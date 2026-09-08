@@ -74,6 +74,10 @@ def general():
             drive_token = request.form.get('google_drive_api_token', '').strip()
             if drive_token:
                 data['google_drive_api_token'] = drive_token
+        if section in ('email', 'all'):
+            data['gmail_sender_email'] = request.form.get('gmail_sender_email', '').strip()
+            data['email_daily_limit'] = request.form.get('email_daily_limit', '150').strip() or '150'
+            data['email_batch_per_run'] = request.form.get('email_batch_per_run', '3').strip() or '3'
         if section in ('gemini', 'all'):
             data['gemini_model'] = request.form.get('gemini_model', 'gemini-2.5-flash').strip()
             gemini_key = request.form.get('gemini_api_key', '').strip()
