@@ -19,18 +19,19 @@
   </div>
 
   <div class="form-group">
-    <label>Odbiorcy — kontakty z tagiem <span class="req">*</span></label>
+    <label>Odbiorcy — kontakty z tagiem email <span class="req">*</span></label>
     <div class="tag-input-wrap" id="tags-wrap">
-      <input type="text" id="tags-input" class="tag-input-field" placeholder="Dodaj tag…" autocomplete="off">
+      <input type="text" id="tags-input" class="tag-input-field" placeholder="Dodaj tag email…" autocomplete="off">
       <div id="tags-suggestions" class="tag-suggestions"></div>
     </div>
     <small class="text-muted" id="recipient-preview">
-      Wybierz tag, żeby zobaczyć liczbę odbiorców.
+      Wybierz tag email, żeby zobaczyć liczbę odbiorców.
     </small>
     <small class="text-muted">
-      Wysyłka trafia tylko do kontaktów z zaznaczoną zgodą marketingową, które nie
-      wypisały się wcześniej z żadnej kampanii. Lista odbiorców zostaje zamrożona
-      w momencie kliknięcia „Wyślij”.
+      Odbiorcy to kontakty z wybranym tagiem email (nadanie tagu = zgoda na ten
+      cel komunikacji), które nie wypisały się wcześniej z żadnej kampanii. Link
+      wypisania możesz wstawić opcjonalnie przyciskiem w edytorze. Lista
+      odbiorców zostaje zamrożona w momencie kliknięcia „Wyślij”.
     </small>
   </div>
 
@@ -44,8 +45,9 @@
     <div id="body-editor-wrap"></div>
     <input type="hidden" id="body_html" name="body_html">
     <small class="text-muted">
-      Do treści automatycznie dodawany jest link do wypisania z listy
-      (wymóg RODO / jednoklikowego opt-out) — nie trzeba go wstawiać ręcznie.
+      Możesz opcjonalnie wstawić gotowy tekst wypisania z komunikacji (przycisk
+      w edytorze) — nie jest to wymagane, np. dla wysyłek, które nie są stricte
+      marketingowe.
     </small>
   </div>
 
@@ -70,9 +72,9 @@
 
 {% block scripts %}
 <script>
-initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
+initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'email', {{ tags | tojson }});
 initHtmlEditor('body-editor-wrap', 'body-editor-body', 'body_html',
-  {{ (campaign.body_html or '') | tojson }}, {{ footers | tojson }}, { allowFooterInsert: true });
+  {{ (campaign.body_html or '') | tojson }}, {{ footers | tojson }}, {{ unsubscribe_texts | tojson }}, { allowFooterInsert: true });
 
 (function initAttachmentPicker() {
   const input = document.getElementById('attachments-input');
@@ -110,17 +112,17 @@ initHtmlEditor('body-editor-wrap', 'body-editor-body', 'body_html',
 
 async function refreshRecipientPreview() {
   const el = document.getElementById('recipient-preview');
-  const chips = document.querySelectorAll('#tags-wrap input[name="tags[]"]');
+  const chips = document.querySelectorAll('#tags-wrap input[name="email_tags[]"]');
   const tagNames = Array.from(chips).map(i => i.value).filter(Boolean);
   if (!tagNames.length) {
-    el.textContent = 'Wybierz tag, żeby zobaczyć liczbę odbiorców.';
+    el.textContent = 'Wybierz tag email, żeby zobaczyć liczbę odbiorców.';
     return;
   }
   el.textContent = 'Liczenie odbiorców…';
   try {
     const r = await fetch(API_BASE + '/email-campaigns/api/preview-count?tags=' + encodeURIComponent(tagNames.join(',')), { credentials: 'same-origin' });
     const d = await r.json();
-    el.textContent = `Dopasowanych odbiorców (zgoda marketingowa, bez wypisanych): ${d.count}`;
+    el.textContent = `Dopasowanych odbiorców (tag email, bez wypisanych): ${d.count}`;
   } catch (e) {
     el.textContent = 'Nie udało się policzyć odbiorców.';
   }

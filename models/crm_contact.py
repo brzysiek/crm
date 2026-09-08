@@ -166,26 +166,6 @@ def set_starred(contact_id: int, starred: bool) -> None:
         raise
 
 
-def set_marketing_consent(contact_id: int, consent: bool) -> None:
-    """Zgoda na kontakt marketingowy (wymagana do umieszczenia w kampanii email).
-    Ustawiając zgodę zachowujemy oryginalną datę jej udzielenia (COALESCE) —
-    ponowne zaznaczenie checkboxa nie odświeża znacznika czasu."""
-    db = get_db()
-    try:
-        with db.cursor() as cur:
-            if consent:
-                cur.execute(
-                    "UPDATE crm_contacts SET marketing_consent_at=COALESCE(marketing_consent_at, NOW()) WHERE id=%s",
-                    (contact_id,)
-                )
-            else:
-                cur.execute("UPDATE crm_contacts SET marketing_consent_at=NULL WHERE id=%s", (contact_id,))
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-
-
 def assign_contacts_to_company(contact_ids: list[int], company_id: int, user_id: int | None) -> None:
     if not contact_ids:
         return

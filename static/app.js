@@ -881,7 +881,7 @@ function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
   const suggestBox = document.getElementById(suggestId);
   if (!wrap || !input || !suggestBox) return;
 
-  const TAG_FIELD_NAMES = { tag: 'tags[]', industry: 'industries[]', source: 'sources[]' };
+  const TAG_FIELD_NAMES = { tag: 'tags[]', industry: 'industries[]', source: 'sources[]', email: 'email_tags[]' };
   const fieldName = TAG_FIELD_NAMES[kind] || 'tags[]';
   let values = Array.isArray(initialValues) ? [...initialValues] : [];
 
@@ -1786,15 +1786,20 @@ function initDealsKanbanDragDrop() {
  * budowane przez JS) oraz <input type="hidden" id="{hiddenInputId}">, którego
  * wartość jest synchronizowana z treścią edytora na bieżąco i tuż przed
  * submitem formularza. `footers` to lista {id, name, html_content} do wstawiania
- * przez przycisk „Wstaw stopkę” (pomijana, gdy opts.allowFooterInsert === false).
+ * przez przycisk „Wstaw stopkę”, `unsubscribeTexts` to analogiczna lista tekstów
+ * wypisania z komunikacji do wstawienia przyciskiem „Wstaw tekst wypisania”
+ * (oba pomijane, gdy opts.allowFooterInsert === false).
  */
-function initHtmlEditor(wrapId, editorId, hiddenInputId, initialHtml, footers, opts) {
+function initHtmlEditor(wrapId, editorId, hiddenInputId, initialHtml, footers, unsubscribeTexts, opts) {
   const wrap = document.getElementById(wrapId);
   const hidden = document.getElementById(hiddenInputId);
   if (!wrap || !hidden) return;
   opts = opts || {};
   footers = footers || [];
-  const allowFooterInsert = opts.allowFooterInsert !== false && footers.length > 0;
+  unsubscribeTexts = unsubscribeTexts || [];
+  const allowInsert = opts.allowFooterInsert !== false;
+  const allowFooterInsert = allowInsert && footers.length > 0;
+  const allowUnsubscribeInsert = allowInsert && unsubscribeTexts.length > 0;
 
   try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
 
@@ -1964,6 +1969,28 @@ function initHtmlEditor(wrapId, editorId, hiddenInputId, initialHtml, footers, o
     addButton('Wstaw stopkę', 'Wstaw stopkę', () => {
       const footer = footers.find(f => String(f.id) === footerSelect.value);
       if (footer) exec('insertHTML', footer.html_content);
+    });
+  }
+
+  if (allowUnsubscribeInsert) {
+    addSeparator();
+    const unsubSelect = document.createElement('select');
+    unsubSelect.className = 'html-editor-select';
+    unsubSelect.title = 'Tekst wypisania';
+    const unsubPlaceholder = document.createElement('option');
+    unsubPlaceholder.value = '';
+    unsubPlaceholder.textContent = 'Wybierz tekst wypisania…';
+    unsubSelect.appendChild(unsubPlaceholder);
+    unsubscribeTexts.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      unsubSelect.appendChild(opt);
+    });
+    toolbar.appendChild(unsubSelect);
+    addButton('Wstaw tekst wypisania', 'Wstaw wypisanie', () => {
+      const t = unsubscribeTexts.find(x => String(x.id) === unsubSelect.value);
+      if (t) exec('insertHTML', t.html_content);
     });
   }
 

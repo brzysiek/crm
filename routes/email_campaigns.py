@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from models.crm_tags import get_or_create_tag_ids, get_tag_ids_by_names
+from models.crm_tags import get_or_create_tag_ids, get_tag_ids_by_names, remove_all_contact_email_tags
 from models.email_campaigns import (add_campaign_attachment, add_unsubscribe, create_campaign,
                                       freeze_recipients, get_all_campaigns, get_campaign_attachments,
                                       get_campaign_by_id, get_campaign_recipients, get_campaign_tag_names,
@@ -45,7 +45,7 @@ def new_campaign():
         name = request.form.get('name', '').strip()
         subject = request.form.get('subject', '').strip()
         body_html = request.form.get('body_html', '').strip()
-        tag_names = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
+        tag_names = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
         files = [f for f in request.files.getlist('attachments[]') if f and f.filename]
 
         errors = []
@@ -79,10 +79,10 @@ def new_campaign():
                 flash(e, 'error')
             return render_template('email_campaigns/form.html',
                 active_tab='email_campaigns', campaign=request.form, tags=tag_names,
-                footers=get_all_footers(),
+                footers=get_all_footers('footer'), unsubscribe_texts=get_all_footers('unsubscribe'),
                 action=url_for('email_campaigns.new_campaign'), title='Nowa kampania')
 
-        tag_ids = get_or_create_tag_ids('tag', tag_names)
+        tag_ids = get_or_create_tag_ids('email', tag_names)
         campaign_id = create_campaign(name, subject, body_html, tag_ids, session.get('user_id'))
         for f in files:
             ext = f.filename.rsplit('.', 1)[-1].lower()
@@ -91,7 +91,8 @@ def new_campaign():
         return redirect(url_for('email_campaigns.view_campaign', campaign_id=campaign_id))
 
     return render_template('email_campaigns/form.html',
-        active_tab='email_campaigns', campaign={}, tags=[], footers=get_all_footers(),
+        active_tab='email_campaigns', campaign={}, tags=[],
+        footers=get_all_footers('footer'), unsubscribe_texts=get_all_footers('unsubscribe'),
         action=url_for('email_campaigns.new_campaign'), title='Nowa kampania')
 
 
@@ -127,7 +128,7 @@ def send_campaign(campaign_id):
 
     count = freeze_recipients(campaign_id)
     if count == 0:
-        flash('Brak odbiorców spełniających warunki (tag, zgoda marketingowa, brak wypisania) — kampania nie została uruchomiona.', 'error')
+        flash('Brak odbiorców spełniających warunki (tag email, brak wypisania) — kampania nie została uruchomiona.', 'error')
     else:
         flash(f'Wysyłka uruchomiona — {count} odbiorców w kolejce. Maile będą wysyłane stopniowo przez cron.', 'success')
     return redirect(url_for('email_campaigns.view_campaign', campaign_id=campaign_id))
@@ -138,7 +139,7 @@ def preview_count():
     tag_names = [t.strip() for t in request.args.get('tags', '').split(',') if t.strip()]
     if not tag_names:
         return jsonify({'status': 'ok', 'count': 0})
-    tag_ids = get_tag_ids_by_names('tag', tag_names)
+    tag_ids = get_tag_ids_by_names('email', tag_names)
     count = len(resolve_recipient_contacts(tag_ids))
     return jsonify({'status': 'ok', 'count': count})
 
@@ -148,4 +149,6 @@ def unsubscribe(token):
     recipient = get_recipient_by_token(token)
     if recipient:
         add_unsubscribe(recipient['email'], recipient['campaign_id'])
+        if recipient.get('contact_id'):
+            remove_all_contact_email_tags(recipient['contact_id'])
     return render_template('unsubscribe.html', found=bool(recipient))

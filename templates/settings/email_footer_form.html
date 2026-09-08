@@ -9,21 +9,29 @@
 
 <div class="settings-section">
   <form method="post" action="{{ action }}" id="footer-form">
+    <input type="hidden" name="kind" value="{{ kind }}">
 
     <div class="form-group">
-      <label for="name">Nazwa stopki <span class="req">*</span></label>
+      <label for="name">{{ 'Nazwa tekstu wypisania' if kind == 'unsubscribe' else 'Nazwa stopki' }} <span class="req">*</span></label>
       <input type="text" id="name" name="name" required value="{{ footer.name or '' }}"
-             placeholder="np. Stopka standardowa">
+             placeholder="{{ 'np. Standardowe wypisanie' if kind == 'unsubscribe' else 'np. Stopka standardowa' }}">
     </div>
 
     <div class="form-group">
-      <label>Treść stopki (HTML) <span class="req">*</span></label>
+      <label>{{ 'Treść tekstu wypisania (HTML)' if kind == 'unsubscribe' else 'Treść stopki (HTML)' }} <span class="req">*</span></label>
       <div id="footer-editor-wrap"></div>
       <input type="hidden" id="html_content" name="html_content">
+      {% if kind == 'unsubscribe' %}
+      <small class="text-muted">
+        Aby link faktycznie wypisywał kontakt, wstaw link (przycisk 🔗) z adresem
+        dokładnie: <code>__UNSUBSCRIBE_URL__</code> — zostanie zamieniony na
+        prawdziwy link wypisania przy wysyłce.
+      </small>
+      {% endif %}
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Zapisz stopkę</button>
+      <button type="submit" class="btn btn-primary">Zapisz</button>
       <a href="{{ url_for('settings.email_settings') }}" class="btn btn-outline">Anuluj</a>
     </div>
   </form>
@@ -34,6 +42,6 @@
 {% block scripts %}
 <script>
 initHtmlEditor('footer-editor-wrap', 'footer-editor-body', 'html_content',
-  {{ (footer.html_content or '') | tojson }}, [], { allowFooterInsert: false });
+  {{ (footer.html_content or '') | tojson }}, [], [], { allowFooterInsert: false });
 </script>
 {% endblock %}

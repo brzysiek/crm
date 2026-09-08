@@ -297,7 +297,6 @@ CREATE TABLE IF NOT EXISTS crm_contacts (
     linkedin_url      VARCHAR(255),
     description       TEXT,
     is_starred        TINYINT(1) NOT NULL DEFAULT 0,
-    marketing_consent_at DATETIME NULL,
     archived_at       DATETIME NULL,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -342,7 +341,7 @@ CREATE TABLE IF NOT EXISTS crm_deal_payments (
 -- ── CRM: Wspólny słownik tagów/branż/źródeł (z podpowiedziami) ──────────────
 CREATE TABLE IF NOT EXISTS crm_tags (
     id    INT AUTO_INCREMENT PRIMARY KEY,
-    kind  ENUM('tag','industry','source') NOT NULL,
+    kind  ENUM('tag','industry','source','email') NOT NULL,
     name  VARCHAR(128) NOT NULL,
     UNIQUE KEY uq_kind_name (kind, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -412,6 +411,7 @@ CREATE TABLE IF NOT EXISTS email_unsubscribes (
 
 CREATE TABLE IF NOT EXISTS email_footers (
     id            INT AUTO_INCREMENT PRIMARY KEY,
+    kind          ENUM('footer','unsubscribe') NOT NULL DEFAULT 'footer',
     name          VARCHAR(255) NOT NULL,
     html_content  MEDIUMTEXT NOT NULL,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,

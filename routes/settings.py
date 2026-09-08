@@ -102,7 +102,8 @@ def email_settings():
         return redirect(url_for('settings.email_settings'))
 
     cfg = get_all_settings()
-    return render_template('settings/email.html', active_tab='email', cfg=cfg, footers=get_all_footers())
+    return render_template('settings/email.html', active_tab='email', cfg=cfg,
+        footers=get_all_footers('footer'), unsubscribe_texts=get_all_footers('unsubscribe'))
 
 
 @bp.route('/email/footers/new', methods=['GET', 'POST'])
@@ -110,18 +111,22 @@ def email_footer_new():
     from models.email_footers import create_footer
 
     if request.method == 'POST':
+        kind = request.form.get('kind', 'footer')
         name = request.form.get('name', '').strip()
         html_content = request.form.get('html_content', '').strip()
+        title = 'Nowy tekst wypisania' if kind == 'unsubscribe' else 'Nowa stopka'
         if not name or not html_content:
-            flash('Nazwa i treść stopki są wymagane.', 'error')
+            flash('Nazwa i treść są wymagane.', 'error')
             return render_template('settings/email_footer_form.html', active_tab='email',
-                footer=request.form, action=url_for('settings.email_footer_new'), title='Nowa stopka')
-        create_footer(name, html_content)
-        flash('Stopka została zapisana.', 'success')
+                footer=request.form, kind=kind, action=url_for('settings.email_footer_new'), title=title)
+        create_footer(name, html_content, kind)
+        flash('Zapisano.', 'success')
         return redirect(url_for('settings.email_settings'))
 
+    kind = request.args.get('kind', 'footer')
+    title = 'Nowy tekst wypisania' if kind == 'unsubscribe' else 'Nowa stopka'
     return render_template('settings/email_footer_form.html', active_tab='email',
-        footer={}, action=url_for('settings.email_footer_new'), title='Nowa stopka')
+        footer={}, kind=kind, action=url_for('settings.email_footer_new'), title=title)
 
 
 @bp.route('/email/footers/<int:footer_id>/edit', methods=['GET', 'POST'])
@@ -133,20 +138,23 @@ def email_footer_edit(footer_id):
         flash('Stopka nie istnieje.', 'error')
         return redirect(url_for('settings.email_settings'))
 
+    title = 'Edytuj tekst wypisania' if footer.get('kind') == 'unsubscribe' else 'Edytuj stopkę'
+
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         html_content = request.form.get('html_content', '').strip()
         if not name or not html_content:
-            flash('Nazwa i treść stopki są wymagane.', 'error')
+            flash('Nazwa i treść są wymagane.', 'error')
             return render_template('settings/email_footer_form.html', active_tab='email',
-                footer=request.form, action=url_for('settings.email_footer_edit', footer_id=footer_id),
-                title='Edytuj stopkę')
+                footer=request.form, kind=footer.get('kind', 'footer'),
+                action=url_for('settings.email_footer_edit', footer_id=footer_id), title=title)
         update_footer(footer_id, name, html_content)
-        flash('Stopka została zaktualizowana.', 'success')
+        flash('Zaktualizowano.', 'success')
         return redirect(url_for('settings.email_settings'))
 
     return render_template('settings/email_footer_form.html', active_tab='email',
-        footer=footer, action=url_for('settings.email_footer_edit', footer_id=footer_id), title='Edytuj stopkę')
+        footer=footer, kind=footer.get('kind', 'footer'),
+        action=url_for('settings.email_footer_edit', footer_id=footer_id), title=title)
 
 
 @bp.route('/email/footers/<int:footer_id>/delete', methods=['POST'])

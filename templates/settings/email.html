@@ -91,4 +91,49 @@
   </div>
 </div>
 
+{# ── Teksty wypisania z komunikacji ───────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Teksty wypisania z komunikacji</h3>
+  <p class="text-muted">
+    Gotowe teksty (z linkiem wypisania) do opcjonalnego wstawienia w treści
+    kampanii przyciskiem „Wstaw tekst wypisania” w edytorze. Wstawienie nie
+    jest wymagane — część wysyłek nie jest stricte marketingowa.
+  </p>
+
+  {% if unsubscribe_texts %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nazwa</th>
+          <th>Zaktualizowano</th>
+          <th class="col-actions">Akcje</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in unsubscribe_texts %}
+        <tr>
+          <td>{{ t.name }}</td>
+          <td>{{ t.updated_at.strftime('%Y-%m-%d %H:%M') if t.updated_at else '' }}</td>
+          <td class="col-actions nowrap">
+            <a class="action-btn" title="Edytuj" href="{{ url_for('settings.email_footer_edit', footer_id=t.id) }}">{{ icon('edit', 16) }}</a>
+            <form method="post" action="{{ url_for('settings.email_footer_delete', footer_id=t.id) }}"
+                  style="display:inline" onsubmit="return confirm('Usunąć tekst wypisania „{{ t.name }}”?');">
+              <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 16) }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">Brak zapisanych tekstów wypisania.</p>
+  {% endif %}
+
+  <div class="form-actions">
+    <a href="{{ url_for('settings.email_footer_new', kind='unsubscribe') }}" class="btn btn-primary">+ Nowy tekst wypisania</a>
+  </div>
+</div>
+
 {% endblock %}

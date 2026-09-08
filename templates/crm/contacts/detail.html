@@ -121,6 +121,15 @@
     </div>
     {% endif %}
 
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>Zgody email (tagi)</h4>
+      <div style="padding:.85rem">
+        {% if email_tags %}
+        <div class="detail-tags">{% for t in email_tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}</div>
+        {% else %}<p class="text-muted small">Brak zgód email.</p>{% endif %}
+      </div>
+    </div>
+
     <div style="margin-top:1rem">
       {% include 'crm/_files.html' %}
     </div>

@@ -26,8 +26,12 @@ def _raise_for_status(resp: requests.Response) -> None:
         raise requests.HTTPError(f'{e} — treść odpowiedzi: {resp.text[:500]}', response=resp) from None
 
 
+UNSUB_PLACEHOLDER = '__UNSUBSCRIBE_URL__'
+
+
 def _html_to_text(body_html: str) -> str:
-    text = re.sub(r'(?i)<(br|/p|/div|/tr|/li)\s*/?>', '\n', body_html)
+    text = re.sub(r'(?is)<a\s[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'\2 (\1)', body_html)
+    text = re.sub(r'(?i)<(br|/p|/div|/tr|/li)\s*/?>', '\n', text)
     text = re.sub(r'(?s)<[^>]+>', '', text)
     text = html_module.unescape(text)
     lines = [line.strip() for line in text.splitlines()]
@@ -46,15 +50,9 @@ def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, 
     msg['List-Unsubscribe'] = f'<{unsubscribe_url}>, <mailto:{sender_email}?subject=unsubscribe>'
     msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
 
-    plain_body = _html_to_text(body_html)
-    msg.set_content(f'{plain_body}\n\n—\nWypisz się z tej listy: {unsubscribe_url}')
-    msg.add_alternative(
-        f'<html><body>{body_html}'
-        f'<p style="color:#888;font-size:12px;margin-top:24px;">'
-        f'<a href="{unsubscribe_url}">Wypisz się z tej listy</a></p>'
-        f'</body></html>',
-        subtype='html',
-    )
+    html_body = body_html.replace(UNSUB_PLACEHOLDER, unsubscribe_url) if UNSUB_PLACEHOLDER in body_html else body_html
+    msg.set_content(_html_to_text(html_body))
+    msg.add_alternative(f'<html><body>{html_body}</body></html>', subtype='html')
 
     for att in (attachments or []):
         maintype, _, subtype = att['mime_type'].partition('/')

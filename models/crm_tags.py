@@ -1,4 +1,5 @@
 from database import get_db
+from models.crm_notes import log_history
 
 
 def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
@@ -124,6 +125,67 @@ def set_contact_tags(contact_id: int, names: list[str]) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+def get_contact_email_tags(contact_id: int) -> list[str]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT t.name FROM crm_tags t
+               JOIN crm_contact_tags ct ON ct.tag_id=t.id
+               WHERE ct.contact_id=%s AND t.kind='email' ORDER BY t.name""",
+            (contact_id,)
+        )
+        return [r['name'] for r in cur.fetchall()]
+
+
+def _replace_contact_tags_of_kind(contact_id: int, kind: str, tag_ids: list[int]) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """DELETE ct FROM crm_contact_tags ct
+                   JOIN crm_tags t ON t.id = ct.tag_id
+                   WHERE ct.contact_id=%s AND t.kind=%s""",
+                (contact_id, kind)
+            )
+            for tag_id in tag_ids:
+                cur.execute(
+                    "INSERT IGNORE INTO crm_contact_tags (contact_id, tag_id) VALUES (%s, %s)",
+                    (contact_id, tag_id)
+                )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def set_contact_email_tags(contact_id: int, names: list[str], user_id: int | None) -> None:
+    """Nadanie/odebranie tagu email jest jednocześnie udzieleniem/wycofaniem zgody
+    marketingowej na dany cel komunikacji — każda zmiana trafia do historii kontaktu."""
+    names = [n.strip() for n in names if n and n.strip()]
+    current = get_contact_email_tags(contact_id)
+    added = [n for n in names if n not in current]
+    removed = [n for n in current if n not in names]
+    tag_ids = get_or_create_tag_ids('email', names)
+    _replace_contact_tags_of_kind(contact_id, 'email', tag_ids)
+    for name in added:
+        log_history('contact', contact_id, user_id, 'update',
+                     f'Dodano tag email „{name}” (zgoda marketingowa).', entry_type='tag_add')
+    for name in removed:
+        log_history('contact', contact_id, user_id, 'update',
+                     f'Usunięto tag email „{name}” (wycofanie zgody).', entry_type='tag_remove')
+
+
+def remove_all_contact_email_tags(contact_id: int, user_id: int | None = None,
+                                   reason: str = 'Wypisano z newslettera (link unsubscribe).') -> None:
+    current = get_contact_email_tags(contact_id)
+    if not current:
+        return
+    _replace_contact_tags_of_kind(contact_id, 'email', [])
+    for name in current:
+        log_history('contact', contact_id, user_id, 'update',
+                     f'Usunięto tag email „{name}” ({reason})', entry_type='tag_remove')
 
 
 def get_tag_ids_by_names(kind: str, names: list[str]) -> list[int]:

@@ -111,8 +111,9 @@ def get_campaign_attachments(campaign_id: int) -> list[dict]:
 
 
 def resolve_recipient_contacts(tag_ids: list[int]) -> list[dict]:
-    """Kontakty pasujące do dowolnego z tagów (ANY), z aktywną zgodą marketingową,
-    nie zarchiwizowane, z adresem email, nieobecne na globalnej liście wypisań."""
+    """Kontakty pasujące do dowolnego z tagów email (ANY) — sama obecność tagu
+    email jest zgodą na dany cel komunikacji — nie zarchiwizowane, z adresem
+    email, nieobecne na globalnej liście wypisań."""
     if not tag_ids:
         return []
     db = get_db()
@@ -124,7 +125,6 @@ def resolve_recipient_contacts(tag_ids: list[int]) -> list[dict]:
                 WHERE ct.tag_id IN ({placeholders})
                   AND c.archived_at IS NULL
                   AND c.email IS NOT NULL AND c.email != ''
-                  AND c.marketing_consent_at IS NOT NULL
                   AND c.email NOT IN (SELECT email FROM email_unsubscribes)""",
             tag_ids
         )

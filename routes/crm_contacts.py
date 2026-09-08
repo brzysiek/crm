@@ -10,11 +10,11 @@ from models.crm_company import (RELATION_LABELS, get_companies_referred_by_compa
                                   get_companies_referred_by_contact,
                                   get_company_by_id, get_company_tags)
 from models.crm_contact import (create_contact, delete_contact, get_all_contacts,
-                                  get_contact_by_id, set_marketing_consent, set_starred, update_contact)
+                                  get_contact_by_id, set_starred, update_contact)
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
-from models.crm_tags import get_contact_tags
+from models.crm_tags import get_contact_email_tags, get_contact_tags, set_contact_email_tags
 from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
@@ -106,21 +106,22 @@ def new_contact():
         data = _parse_form(request.form)
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
-        consent = request.form.get('marketing_consent') == '1'
+        email_tags = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/contacts/form.html',
-                active_tab='contacts', contact=request.form, prefill_company=None, tags=tags, consent=consent,
+                active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
+                email_tags=email_tags,
                 action=url_for('crm_contacts.new_contact'), title='Nowy kontakt')
 
         contact_id = create_contact(data, session.get('user_id'), tags=tags)
-        set_marketing_consent(contact_id, consent)
+        set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
         flash('Kontakt został zapisany.', 'success')
         return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
 
     return render_template('crm/contacts/form.html',
-        active_tab='contacts', contact={'company_id': company_id} if company_id else {}, tags=[], consent=False,
+        active_tab='contacts', contact={'company_id': company_id} if company_id else {}, tags=[], email_tags=[],
         prefill_company=prefill_company,
         action=url_for('crm_contacts.new_contact'), title='Nowy kontakt')
 
@@ -136,24 +137,25 @@ def edit_contact(contact_id):
         data = _parse_form(request.form)
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
-        consent = request.form.get('marketing_consent') == '1'
+        email_tags = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/contacts/form.html',
-                active_tab='contacts', contact=request.form, prefill_company=None, tags=tags, consent=consent,
+                active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
+                email_tags=email_tags,
                 action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
                 title='Edytuj kontakt')
 
         update_contact(contact_id, data, session.get('user_id'), tags=tags)
-        set_marketing_consent(contact_id, consent)
+        set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
         flash('Kontakt został zaktualizowany.', 'success')
         return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
 
     prefill_company = get_company_by_id(contact['company_id']) if contact.get('company_id') else None
     return render_template('crm/contacts/form.html',
         active_tab='contacts', contact=contact, prefill_company=prefill_company,
-        tags=get_contact_tags(contact_id), consent=bool(contact.get('marketing_consent_at')),
+        tags=get_contact_tags(contact_id), email_tags=get_contact_email_tags(contact_id),
         action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
         title='Edytuj kontakt')
 
@@ -214,7 +216,8 @@ def view_contact(contact_id):
 
     return render_template('crm/contacts/detail.html',
         active_tab='contacts', contact=contact, company=company, company_tags=company_tags,
-        company_industries=company_industries, company_source=company_source, relation_labels=RELATION_LABELS,
+        company_industries=company_industries, company_source=company_source,
+        email_tags=get_contact_email_tags(contact_id), relation_labels=RELATION_LABELS,
         deals=deals, stage_labels=STAGE_LABELS,
         referred_companies=referred_companies,
         stage_badge_classes=STAGE_BADGE_CLASSES,
