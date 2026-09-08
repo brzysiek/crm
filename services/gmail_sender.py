@@ -6,6 +6,7 @@ delegation (patrz services/google_auth.py::get_service_account_token, param
 import base64
 import json
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 import requests
 
@@ -28,6 +29,8 @@ def build_raw_message(sender_email: str, to: str, subject: str, body_text: str, 
     msg['From'] = sender_email
     msg['To'] = to
     msg['Subject'] = subject
+    msg['Date'] = formatdate(localtime=True)
+    msg['Message-ID'] = make_msgid(domain=sender_email.split('@')[-1])
     msg['List-Unsubscribe'] = f'<{unsubscribe_url}>, <mailto:{sender_email}?subject=unsubscribe>'
     msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
 
