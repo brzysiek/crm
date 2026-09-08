@@ -3325,7 +3325,6 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .gtd-timeline-card.gtd-row-overdue .btn-ghost { color: rgba(255,255,255,.75); }
 .rd-screen .gtd-timeline-card.gtd-row-overdue .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
 .rd-screen .gtd-timeline-card.gtd-row-waiting { border-left-color: var(--rd-amber-solid); background: var(--rd-amber-bg); }
-.rd-screen .gtd-timeline-card.gtd-gcal-card { border-left-color: var(--rd-lime-tint-text); background: var(--rd-lime-tint-bg); }
 .rd-screen .gtd-timeline-card.gtd-row-done,
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-done { border-left-color: var(--rd-border); background: var(--rd-lime-tint-bg); opacity: .55; }
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-declined { border-left-color: var(--rd-red-text); background: var(--rd-red-bg); opacity: 1; }
