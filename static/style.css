@@ -3269,28 +3269,27 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .gtd-priority-panel > p.text-muted { color: var(--rd-text-muted); }
 .rd-screen .gtd-priority-panel .table-wrapper { background: transparent; border: none; border-radius: 0; }
 
-/* Kolory wierszy wg stanu zadania: zaległe = czerwone pełne (wysoki kontrast),
-   zwykłe todo = czerwone 30%, priorytetowe = bottle green (białe litery), done = lime i blade */
-.rd-screen .data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, 1); color: #fff; }
-.rd-screen .data-table tr.gtd-row-overdue .text-muted { color: rgba(255,255,255,.75); }
-.rd-screen .data-table tr.gtd-row-overdue .action-btn,
-.rd-screen .data-table tr.gtd-row-overdue .btn-ghost { color: rgba(255,255,255,.85); }
-.rd-screen .data-table tr.gtd-row-overdue .action-btn:hover,
-.rd-screen .data-table tr.gtd-row-overdue .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
-.rd-screen .data-table tr.gtd-row-overdue .term-hover-picker,
-.rd-screen .data-table tr.gtd-row-overdue .term-hover-picker .btn-ghost { color: var(--rd-text-muted); }
-.rd-screen .data-table tr.gtd-row-todo td { background: rgba(168, 66, 50, .3); }
+/* Kolory wierszy wg stanu zadania: zaległe = czerwone 30%, zwykłe todo = białe tło,
+   priorytetowe todo = czerwone pełne (białe litery), priorytetowe done = #1C4B40
+   (białe litery), zwykłe done = lime i blade */
+.rd-screen .data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, .3); }
+.rd-screen .data-table tr.gtd-row-todo td { background: #fff; }
 .rd-screen .data-table tr.gtd-row-waiting td { background: var(--rd-amber-bg); }
 .rd-screen .data-table tr.gtd-row-done td { background: var(--rd-lime-tint-bg); }
 .rd-screen .data-table tr.gtd-row-done { opacity: .55; }
 
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td { background: var(--rd-bottle-green); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td { background: rgba(168, 66, 50); color: #fff; }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .text-muted { color: rgba(255,255,255,.65); }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn { color: rgba(255,255,255,.85); }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost { color: rgba(255,255,255,.75); }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done td { background: var(--rd-card); color: var(--rd-text-body); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done td { background: #1C4B40; color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .text-muted { color: rgba(255,255,255,.65); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .action-btn { color: rgba(255,255,255,.85); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .btn-ghost { color: rgba(255,255,255,.75); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
 
 /* Mobile: kolor stanu na całą kartę (tr), nie tylko na komórki — inaczej
    przerwa przed przyciskami akcji (margin-top) prześwituje tłem panelu
@@ -3301,12 +3300,12 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .rd-zadania .data-table tr.gtd-row-waiting td,
   .rd-zadania .data-table tr.gtd-row-done td,
   .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo td { background: transparent; }
-  .rd-zadania .data-table tr.gtd-row-overdue { background: rgba(168, 66, 50, 1); border-color: rgba(168, 66, 50, 1); }
-  .rd-zadania .data-table tr.gtd-row-todo { background: rgba(168, 66, 50, .3); border-color: rgba(168, 66, 50, .3); }
+  .rd-zadania .data-table tr.gtd-row-overdue { background: rgba(168, 66, 50, .3); border-color: rgba(168, 66, 50, .3); }
+  .rd-zadania .data-table tr.gtd-row-todo { background: #fff; border-color: var(--rd-border); }
   .rd-zadania .data-table tr.gtd-row-waiting { background: var(--rd-amber-bg); border-color: var(--rd-amber-bg); }
   .rd-zadania .data-table tr.gtd-row-done { background: var(--rd-lime-tint-bg); }
-  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo { background: var(--rd-bottle-green); border-color: var(--rd-bottle-green); }
-  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-done { background: var(--rd-card); border-color: var(--rd-border-light); }
+  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo { background: rgba(168, 66, 50); border-color: rgba(168, 66, 50); }
+  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-done { background: #1C4B40; border-color: #1C4B40; }
 }
 
 .rd-screen .gtd-timeline-time { color: var(--rd-text-muted); font-family: var(--rd-font); }
