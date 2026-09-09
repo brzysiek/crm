@@ -3382,13 +3382,14 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 }
 .html-editor-btn:hover { background: var(--surface); border-color: var(--border); }
 .html-editor-select {
-  height: 28px;
+  min-height: 34px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
   color: var(--text-primary);
-  font-size: .78rem;
-  padding: 0 .3rem;
+  font-size: .8rem;
+  line-height: 1.4;
+  padding: .35rem .4rem;
 }
 .html-editor-color {
   width: 28px;
