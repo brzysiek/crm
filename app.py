@@ -1872,7 +1872,7 @@ def api_crm_suggest():
     if kind == 'source':
         from models.crm_tags import suggest_sources
         return jsonify(suggest_sources(q))
-    if kind in ('tag', 'industry'):
+    if kind in ('tag', 'industry', 'email'):
         from models.crm_tags import suggest_tags
         return jsonify(suggest_tags(kind, q))
     return jsonify([])
