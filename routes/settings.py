@@ -94,6 +94,7 @@ def email_settings():
     if request.method == 'POST':
         data = {
             'gmail_sender_email': request.form.get('gmail_sender_email', '').strip(),
+            'gmail_sender_name': request.form.get('gmail_sender_name', '').strip(),
             'email_daily_limit': request.form.get('email_daily_limit', '150').strip() or '150',
             'email_batch_per_run': request.form.get('email_batch_per_run', '3').strip() or '3',
         }

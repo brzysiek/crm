@@ -8,7 +8,7 @@ import html as html_module
 import json
 import re
 from email.message import EmailMessage
-from email.utils import formatdate, make_msgid
+from email.utils import formataddr, formatdate, make_msgid
 
 import requests
 
@@ -40,9 +40,9 @@ def _html_to_text(body_html: str) -> str:
 
 
 def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, unsubscribe_url: str,
-                       attachments: list[dict] | None = None) -> str:
+                       attachments: list[dict] | None = None, sender_name: str | None = None) -> str:
     msg = EmailMessage()
-    msg['From'] = sender_email
+    msg['From'] = formataddr((sender_name, sender_email)) if sender_name else sender_email
     msg['To'] = to
     msg['Subject'] = subject
     msg['Date'] = formatdate(localtime=True)
@@ -65,7 +65,7 @@ def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, 
 
 
 class GmailSender:
-    def __init__(self, api_token: str, sender_email: str):
+    def __init__(self, api_token: str, sender_email: str, sender_name: str | None = None):
         token_str = api_token.strip()
         if not token_str.startswith('{'):
             raise ValueError(
@@ -73,6 +73,7 @@ class GmailSender:
             )
         self._sa_json = json.loads(token_str)
         self.sender_email = sender_email
+        self.sender_name = sender_name
 
     def _auth_headers(self) -> dict:
         token = get_service_account_token(self._sa_json, GMAIL_SEND_SCOPE, subject=self.sender_email)
@@ -81,7 +82,7 @@ class GmailSender:
     def send(self, to: str, subject: str, body_html: str, unsubscribe_url: str,
               attachments: list[dict] | None = None) -> str:
         """Wysyła wiadomość, zwraca Gmail message id."""
-        raw = build_raw_message(self.sender_email, to, subject, body_html, unsubscribe_url, attachments)
+        raw = build_raw_message(self.sender_email, to, subject, body_html, unsubscribe_url, attachments, self.sender_name)
         resp = requests.post(
             f'{GMAIL_API}/users/me/messages/send',
             headers={**self._auth_headers(), 'Content-Type': 'application/json'},

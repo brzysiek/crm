@@ -46,12 +46,13 @@ def run():
             return
 
         sender_email = get_setting('gmail_sender_email', '')
+        sender_name = get_setting('gmail_sender_name', '')
         api_token = get_setting('google_drive_api_token', '')
         if not sender_email or not api_token:
             logger.warning('Brak konfiguracji wysyłki (adres nadawcy / token konta usługi) — Ustawienia → Ogólne.')
             return
 
-        sender = GmailSender(api_token, sender_email)
+        sender = GmailSender(api_token, sender_email, sender_name or None)
         campaign_ids = set()
         attachments_cache = {}
 

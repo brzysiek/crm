@@ -24,6 +24,17 @@
     </div>
 
     <div class="form-group">
+      <label for="gmail_sender_name">Nazwa nadawcy</label>
+      <input type="text" id="gmail_sender_name" name="gmail_sender_name"
+             placeholder="np. Łukasz Brzyski"
+             value="{{ cfg.gmail_sender_name or '' }}">
+      <small class="text-muted">
+        Wyświetlana nazwa nadawcy w skrzynce odbiorcy (np. „Łukasz Brzyski
+        &lt;kontakt@twoja-domena.pl&gt;”). Zostaw puste, żeby pokazywał się sam adres.
+      </small>
+    </div>
+
+    <div class="form-group">
       <label for="email_daily_limit">Dzienny limit wysyłek</label>
       <input type="number" id="email_daily_limit" name="email_daily_limit" min="1"
              value="{{ cfg.email_daily_limit or 150 }}">
