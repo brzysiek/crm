@@ -469,9 +469,11 @@ function gtdSubmitTimeBlock() {
 /* ── Modal edycji terminu ── */
 let _gtdProjectsCache = null;
 
-function _gtdFillProjectSelect(taskId, currentParentId, selectId) {
+function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerId, companyPickerId) {
   const select = document.getElementById(selectId || 'gtdEditTaskProject');
+  let projectsList = [];
   const render = (projects) => {
+    projectsList = projects;
     select.innerHTML = '<option value="">— brak —</option>';
     projects
       .filter(p => p.id !== taskId)
@@ -482,6 +484,12 @@ function _gtdFillProjectSelect(taskId, currentParentId, selectId) {
         if (currentParentId && p.id === currentParentId) opt.selected = true;
         select.appendChild(opt);
       });
+    if (contactPickerId && companyPickerId) {
+      select.onchange = () => {
+        const project = projectsList.find(p => p.id === parseInt(select.value, 10));
+        _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId);
+      };
+    }
   };
   if (_gtdProjectsCache) {
     render(_gtdProjectsCache);
@@ -542,7 +550,7 @@ function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, curr
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
   document.getElementById('gtdEditTaskScheduled').value = currentScheduled || '';
   document.getElementById('gtdEditTaskWeek').value = currentWeek || '';
-  _gtdFillProjectSelect(taskId, currentParentId || null);
+  _gtdFillProjectSelect(taskId, currentParentId || null, 'gtdEditTaskProject', 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
   if (currentDealId) {
     selectEntityPicker('gtdEditTaskDealPicker', currentDealId, currentDealName || ('Deal #' + currentDealId));
@@ -596,7 +604,7 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpWeek').value = presetWeek || '';
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
-  _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject');
+  _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject', 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   if (currentDealId) {
     selectEntityPicker('gtdFollowUpDealPicker', currentDealId, currentDealName || ('Deal #' + currentDealId));
@@ -687,7 +695,7 @@ function gtdReopenProject(projectId) {
 function gtdOpenGcalProject(eventId, eventDate, currentProjectId, currentContactId, currentCompanyId) {
   document.getElementById('gtdGcalProjectEventId').value = eventId;
   document.getElementById('gtdGcalProjectEventDate').value = eventDate;
-  _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect');
+  _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect', 'gtdGcalProjectContactPicker', 'gtdGcalProjectCompanyPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdGcalProjectContactPicker', 'gtdGcalProjectCompanyPicker');
   document.getElementById('gtdGcalProjectModal').classList.add('open');
 }
@@ -740,6 +748,19 @@ function gtdSetWeekday(taskId, weekStartIso, dayIndex) {
 function _gtdAutoFillCompanyFromContact(contact, companyPickerId) {
   if (contact.company_id) {
     selectEntityPicker(companyPickerId, contact.company_id, contact.company_name || ('Firma #' + contact.company_id));
+  }
+}
+
+/* Po wybraniu projektu w pickerze, jeśli projekt ma przypisanego klienta (kontakt/firmę),
+   nadpisz nim dotychczasowy kontakt/firmę zadania (lub wydarzenia) — klient projektu ma
+   pierwszeństwo nad tym, co było wcześniej ustawione ręcznie. */
+function _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId) {
+  if (!project) return;
+  if (project.crm_contact_id) {
+    selectEntityPicker(contactPickerId, project.crm_contact_id, project.crm_contact_name || ('Kontakt #' + project.crm_contact_id));
+  }
+  if (project.crm_company_id) {
+    selectEntityPicker(companyPickerId, project.crm_company_id, project.crm_company_name || ('Firma #' + project.crm_company_id));
   }
 }
 

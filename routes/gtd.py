@@ -526,7 +526,14 @@ def api_create_task():
 @bp.route('/api/gtd/projects')
 def api_projects():
     projects = task_model.get_projects()
-    return jsonify([{'id': p['id'], 'title': p['title']} for p in projects])
+    return jsonify([{
+        'id': p['id'],
+        'title': p['title'],
+        'crm_contact_id': p.get('crm_contact_id'),
+        'crm_contact_name': ' '.join(filter(None, [p.get('crm_contact_first_name'), p.get('crm_contact_last_name')])) or None,
+        'crm_company_id': p.get('crm_company_id'),
+        'crm_company_name': p.get('crm_company_short_name') or p.get('crm_company_name'),
+    } for p in projects])
 
 
 @bp.route('/api/gtd/tasks/<int:task_id>', methods=['PATCH'])
