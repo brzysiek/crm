@@ -34,11 +34,20 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="{{ url_for('gtd.day') }}" class="sidebar-logo">
-        {% if logo_main %}
-          <img src="{{ logo_main }}" alt="{{ app_name }}" class="sidebar-logo-img">
-        {% else %}
-          <span class="sidebar-logo-badge">{{ (app_name or 'B')[0] }}</span>
-        {% endif %}
+        <span class="sidebar-logo-full">
+          {% if logo_main %}
+            <img src="{{ logo_main }}" alt="{{ app_name }}" class="sidebar-logo-img">
+          {% else %}
+            <span class="sidebar-logo-badge">{{ (app_name or 'B')[0] }}</span>
+          {% endif %}
+        </span>
+        <span class="sidebar-logo-thumb">
+          {% if logo_thumb %}
+            <img src="{{ logo_thumb }}" alt="{{ app_name }}" class="sidebar-logo-thumb-img">
+          {% else %}
+            <span class="sidebar-logo-badge">{{ (app_name or 'B')[0] }}</span>
+          {% endif %}
+        </span>
       </a>
     </div>
 

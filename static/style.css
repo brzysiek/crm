@@ -181,6 +181,11 @@ html.sidebar-collapsed .sidebar-header { padding: 22px 0 18px; justify-content: 
   font-weight: 700; color: var(--rd-deep-green); font-size: 15px; flex-shrink: 0;
 }
 .sidebar-logo-img { height: 30px; width: auto; max-width: 200px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
+.sidebar-logo-full { display: flex; align-items: center; min-width: 0; }
+.sidebar-logo-thumb { display: none; align-items: center; }
+.sidebar-logo-thumb-img { height: 30px; width: 30px; object-fit: contain; border-radius: 8px; flex-shrink: 0; }
+html.sidebar-collapsed .sidebar-logo-full { display: none; }
+html.sidebar-collapsed .sidebar-logo-thumb { display: flex; }
 
 .sidebar-nav { flex: 1; padding-bottom: 8px; }
 
