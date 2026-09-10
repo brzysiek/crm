@@ -1080,9 +1080,10 @@ function initEntityPicker(pickerId, searchUrl, onSelect) {
     clearTimeout(timer);
     timer = setTimeout(async () => {
       const q = input.value.trim();
-      const sep = searchUrl.includes('?') ? '&' : '?';
+      const resolvedUrl = typeof searchUrl === 'function' ? searchUrl() : searchUrl;
+      const sep = resolvedUrl.includes('?') ? '&' : '?';
       try {
-        const resp = await fetch(window.API_BASE + searchUrl + sep + 'q=' + encodeURIComponent(q));
+        const resp = await fetch(window.API_BASE + resolvedUrl + sep + 'q=' + encodeURIComponent(q));
         lastItems = await resp.json();
       } catch (_) { lastItems = []; }
       if (lastItems.length === 0) {

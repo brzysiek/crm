@@ -68,6 +68,7 @@
 {% for group in groups %}
 {% set ctx_key = group.context.id if group.context else 0 %}
 {% set hdr_style = ('background:' ~ group.context.badge_color ~ '40;color:' ~ group.context.text_color ~ ';border-color:' ~ group.context.badge_color ~ '55') if group.context else '' %}
+{% set group_bar_style = ('background:' ~ group.context.badge_color ~ '40;border-color:' ~ group.context.badge_color ~ '55') if group.context else '' %}
 <div class="gtd-context-section">
   <div class="gtd-context-section-title">
     {% if group.context %}
@@ -77,7 +78,7 @@
     {% endif %}
   </div>
 
-  <div class="filter-bar" data-no-collapse style="gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+  <div class="filter-bar" data-no-collapse style="gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem{{ ';' ~ group_bar_style if group_bar_style }}">
     <input type="text" id="gtdBoardCtxSearch{{ ctx_key }}" class="filter-input" style="flex:1;min-width:160px"
            placeholder="Szukaj w tym kontekście…" autocomplete="off"
            value="{{ group.filter.q }}" oninput="gtdBoardContextSearchInput({{ ctx_key }}, this)">
@@ -102,7 +103,7 @@
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdBoardApplyContextFilter({{ ctx_key }}, 'q', document.getElementById('gtdBoardCtxSearch{{ ctx_key }}').value.trim())">Filtruj</button>
   </div>
 
-  <div class="filter-bar" data-no-collapse style="gap:.5rem;margin-bottom:.6rem">
+  <div class="filter-bar" data-no-collapse style="gap:.5rem;margin-bottom:.6rem{{ ';' ~ group_bar_style if group_bar_style }}">
     <input type="text" id="gtdBoardAddProject{{ loop.index }}" class="filter-input" style="flex:1;min-width:160px"
            placeholder="Nowy projekt…" autocomplete="off"
            onkeydown="if(event.key==='Enter') gtdBoardAddProject('gtdBoardAddProject{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">

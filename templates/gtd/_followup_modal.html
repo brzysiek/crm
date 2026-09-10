@@ -31,18 +31,18 @@
         <input type="date" id="gtdFollowUpMonth" class="filter-input" style="width:100%">
       </div>
       <div class="agent-confirm-row">
-        <label>Projekt</label>
-        <select id="gtdFollowUpProject" class="filter-input" style="width:100%">
-          <option value="">— brak —</option>
-        </select>
-      </div>
-      <div class="agent-confirm-row">
         <label>Kontekst</label>
         <select id="gtdFollowUpContext" class="filter-input" style="width:100%">
           <option value="">— brak —</option>
           {% for ctx in gtd_contexts() %}
           <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
           {% endfor %}
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label>Projekt</label>
+        <select id="gtdFollowUpProject" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
         </select>
       </div>
       <div class="agent-confirm-row">

@@ -2300,7 +2300,8 @@ def api_crm_contacts_search():
 def api_crm_deals_search():
     from models.crm_deal import get_all_deals
     q = request.args.get('q', '').strip()
-    deals = get_all_deals(search=q or None)[:20]
+    context_id = request.args.get('context_id', type=int)
+    deals = get_all_deals(search=q or None, context_ids=[context_id] if context_id else None)[:20]
     return jsonify([{'id': d['id'], 'name': d['name']} for d in deals])
 
 

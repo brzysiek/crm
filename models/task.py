@@ -493,7 +493,7 @@ def get_inbox_tasks() -> list[dict]:
 
 def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
                       company_id: int | None = None, search: str | None = None,
-                      include_done: bool = False) -> list[dict]:
+                      include_done: bool = False, context_ids: list[int] | None = None) -> list[dict]:
     db = get_db()
     statuses = ('next', 'done') if include_done else ('next',)
     placeholders = ','.join(['%s'] * len(statuses))
@@ -512,6 +512,13 @@ def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
     if search:
         sql += " AND t.title LIKE %s"
         params.append(f"%{search}%")
+    if context_ids:
+        ctx_placeholders = ','.join(['%s'] * len(context_ids))
+        clause = f"t.context_id IN ({ctx_placeholders})"
+        if 0 in context_ids:
+            clause = f"({clause} OR t.context_id IS NULL)"
+        sql += f" AND {clause}"
+        params.extend(context_ids)
     sql += " ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
     with db.cursor() as cur:
         cur.execute(sql, params)

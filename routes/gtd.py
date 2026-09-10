@@ -413,13 +413,17 @@ def next_actions():
     company_id = request.args.get('company', type=int)
     search = (request.args.get('q') or '').strip() or None
     include_done = request.args.get('done') == '1'
+    contexts_param = (request.args.get('contexts') or '').strip()
+    context_ids = [int(x) for x in contexts_param.split(',') if x.strip().isdigit()] if contexts_param else None
     filter_options = task_model.get_next_action_filter_options()
     return render_template(
         'gtd/next_actions.html', active_tab='next',
-        tasks=task_model.get_next_actions(project_id, deal_id, company_id, search, include_done),
+        tasks=task_model.get_next_actions(project_id, deal_id, company_id, search, include_done, context_ids),
         projects=task_model.get_projects(include_done=True),
         deals=filter_options['deals'],
         companies=filter_options['companies'],
+        all_contexts=gtd_context_model.get_all_contexts(),
+        selected_context_ids=context_ids,
         selected_project=project_id,
         selected_deal=deal_id,
         selected_company=company_id,

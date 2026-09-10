@@ -496,12 +496,15 @@ let _gtdProjectsCache = null;
 
 function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerId, companyPickerId, contextSelectId, dealPickerId) {
   const select = document.getElementById(selectId || 'gtdEditTaskProject');
-  let projectsList = [];
-  const render = (projects) => {
-    projectsList = projects;
+  const contextSelect = contextSelectId ? document.getElementById(contextSelectId) : null;
+  let allProjects = [];
+  const render = () => {
+    const currentContext = contextSelect ? contextSelect.value : '';
+    const currentValue = select.value;
     select.innerHTML = '<option value="">— brak —</option>';
-    projects
+    allProjects
       .filter(p => p.id !== taskId)
+      .filter(p => !currentContext || String(p.context_id || '') === currentContext)
       .forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
@@ -509,20 +512,25 @@ function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerI
         if (currentParentId && p.id === currentParentId) opt.selected = true;
         select.appendChild(opt);
       });
+    if (!currentParentId && currentValue && select.querySelector('option[value="' + currentValue + '"]')) {
+      select.value = currentValue;
+    }
     if (contactPickerId && companyPickerId) {
       select.onchange = () => {
-        const project = projectsList.find(p => p.id === parseInt(select.value, 10));
+        const project = allProjects.find(p => p.id === parseInt(select.value, 10));
         _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId, contextSelectId, dealPickerId);
       };
     }
   };
+  if (contextSelect) contextSelect.onchange = render;
   if (_gtdProjectsCache) {
-    render(_gtdProjectsCache);
+    allProjects = _gtdProjectsCache;
+    render();
     return;
   }
   fetch(window.API_BASE + '/api/gtd/projects')
     .then(r => r.json())
-    .then(projects => { _gtdProjectsCache = projects; render(projects); })
+    .then(projects => { _gtdProjectsCache = projects; allProjects = projects; render(); })
     .catch(() => {});
 }
 
@@ -962,6 +970,14 @@ function _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId
   }
 }
 
+/* Zwraca URL wyszukiwarki dealów zawężony do kontekstu wybranego w danym
+   selekcie kontekstu modala (jeśli coś wybrano) — dealPicker wywołuje to
+   przy każdym wpisaniu frazy, więc zmiana kontekstu w locie od razu zawęża wyniki. */
+function _gtdDealSearchUrlForContext(contextSelectId) {
+  const ctx = document.getElementById(contextSelectId);
+  return '/api/crm/deals/search' + (ctx && ctx.value ? ('?context_id=' + encodeURIComponent(ctx.value)) : '');
+}
+
 /* ── Init wyszukiwarek CRM w modalach GTD — initEntityPicker pochodzi z app.js,
    ładowanego wcześniej. Modale są osadzane niezależnie (np. gtdFollowUpModal
    jest dostępny też poza stronami GTD, np. na widoku dealu), więc każdy blok
@@ -970,7 +986,7 @@ if (document.getElementById('gtdEditTaskContactPicker')) {
   initEntityPicker('gtdEditTaskContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdEditTaskCompanyPicker'));
   initEntityPicker('gtdEditTaskCompanyPicker', '/api/crm/companies/search');
-  initEntityPicker('gtdEditTaskDealPicker', '/api/crm/deals/search');
+  initEntityPicker('gtdEditTaskDealPicker', () => _gtdDealSearchUrlForContext('gtdEditTaskContext'));
 }
 if (document.getElementById('gtdGcalProjectContactPicker')) {
   initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search',
@@ -981,7 +997,7 @@ if (document.getElementById('gtdFollowUpContactPicker')) {
   initEntityPicker('gtdFollowUpContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdFollowUpCompanyPicker'));
   initEntityPicker('gtdFollowUpCompanyPicker', '/api/crm/companies/search');
-  initEntityPicker('gtdFollowUpDealPicker', '/api/crm/deals/search');
+  initEntityPicker('gtdFollowUpDealPicker', () => _gtdDealSearchUrlForContext('gtdFollowUpContext'));
 }
 if (document.getElementById('gtdBulkAssignContactPicker')) {
   initEntityPicker('gtdBulkAssignContactPicker', '/api/crm/contacts/search');

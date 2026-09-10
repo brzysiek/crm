@@ -13,6 +13,30 @@
   <input type="text" id="gtdNextSearchQuery" class="filter-input" style="flex:1;min-width:180px"
          placeholder="Szukaj po nazwie… (min. 3 znaki)" autocomplete="off"
          value="{{ search_query }}" oninput="gtdNextSearchInput(this)">
+  <div class="col-toggle" id="gtdBoardContextFilter">
+    <button type="button" id="gtdBoardContextFilterBtn" class="btn btn-outline btn-sm">
+      Konteksty ({{ selected_context_ids|length if selected_context_ids is not none else all_contexts|length + 1 }}) {{ icon('chevron-down', 12) }}
+    </button>
+    <div id="gtdBoardContextFilterMenu" class="col-toggle-menu">
+      <div class="col-toggle-item col-toggle-actions">
+        <a href="#" onclick="gtdBoardSetAllContexts(true); return false;">Zaznacz wszystkie</a>
+        <a href="#" onclick="gtdBoardSetAllContexts(false); return false;">Odznacz wszystkie</a>
+      </div>
+      {% for ctx in all_contexts %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" class="gtd-board-context-checkbox" value="{{ ctx.id }}"
+               {{ 'checked' if not selected_context_ids or ctx.id in selected_context_ids }}> @{{ ctx.name }}</label>
+      </div>
+      {% endfor %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" class="gtd-board-context-checkbox" value="0"
+               {{ 'checked' if not selected_context_ids or 0 in selected_context_ids }}> Brak kontekstu</label>
+      </div>
+      <div class="col-toggle-item" style="border-top:1px solid var(--border);margin-top:.3rem;padding-top:.4rem">
+        <button type="button" class="btn btn-primary btn-sm" style="flex:1" onclick="gtdBoardApplyContexts()">Zastosuj</button>
+      </div>
+    </div>
+  </div>
   <select class="filter-select" onchange="gtdNextApplyFilter('project', this.value)">
     <option value="">Wszystkie projekty</option>
     {% for p in projects %}
