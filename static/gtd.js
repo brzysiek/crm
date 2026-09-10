@@ -12,6 +12,7 @@ function gtdRefreshContent(focusInputId) {
       const fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('gtdContent');
       if (!fresh) { location.reload(); return; }
       container.innerHTML = fresh.innerHTML;
+      initDropdownToggle('gtdBoardContextFilterBtn', 'gtdBoardContextFilterMenu');
       if (focusInputId) {
         const input = document.getElementById(focusInputId);
         if (input) input.focus();
