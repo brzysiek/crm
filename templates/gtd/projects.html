@@ -75,6 +75,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
 function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
