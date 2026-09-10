@@ -220,6 +220,15 @@
         </select>
       </div>
       <div class="agent-confirm-row">
+        <label>Kontekst</label>
+        <select id="gtdFollowUpContext" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+          {% for ctx in gtd_contexts() %}
+          <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="agent-confirm-row">
         <label>Kontakt</label>
         <div class="entity-picker" id="gtdFollowUpContactPicker">
           <input type="text" id="gtdFollowUpContactPicker-input" class="filter-input" style="width:100%"

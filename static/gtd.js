@@ -607,6 +607,7 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpWeek').value = presetWeek || '';
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
+  document.getElementById('gtdFollowUpContext').value = '';
   _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject', 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   if (currentDealId) {
@@ -634,10 +635,12 @@ function gtdSubmitFollowUp() {
   const dealValue = document.getElementById('gtdFollowUpDealPicker-hidden').value;
   const crm_deal_id = dealValue ? parseInt(dealValue, 10) : null;
   const status = document.getElementById('gtdFollowUpStatus').value || 'next';
+  const contextValue = document.getElementById('gtdFollowUpContext').value;
+  const context_id = contextValue ? parseInt(contextValue, 10) : null;
   fetch(window.API_BASE + '/api/gtd/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, status }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, status, context_id }),
   })
     .then(r => r.json())
     .then(data => {
