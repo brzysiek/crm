@@ -198,7 +198,7 @@
     {% if c.tags_list or c.context_id %}
     <div class="rd-card-chips">
       {% if c.context_id %}{{ m.context_badge(c) }}{% endif %}
-      {% for t in c.tags_list.split(', ') if c.tags_list %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+      {% for t in (c.tags_list.split(', ') if c.tags_list else []) %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
     </div>
     {% endif %}
     <div class="rd-card-actions">
