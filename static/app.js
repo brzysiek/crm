@@ -1329,17 +1329,19 @@ function initColumnToggle(tableId, storageKey, btnId, menuId, defaultHidden) {
     // w miejscu, gdzie zaczynał się ten blok.
     table.querySelectorAll('tr').forEach(row => {
       const cells = {};
-      let anchor = null;
-      let anchorIndex = -1;
+      let lastIndex = -1;
       Array.from(row.children).forEach((cell, idx) => {
         const col = cell.dataset.col;
         if (col && order.includes(col)) {
           cells[col] = cell;
-          if (anchorIndex === -1) anchorIndex = idx;
+          lastIndex = idx;
         }
       });
-      if (anchorIndex === -1) return;
-      anchor = row.children[anchorIndex] || null;
+      if (lastIndex === -1) return;
+      // Kotwica musi być węzłem POZA przestawianym blokiem (inaczej po jej
+      // przesunięciu kolejne insertBefore trafiają w złe miejsce) — bierzemy
+      // węzeł zaraz za blokiem, albo null (koniec wiersza), nigdy komórkę z `cells`.
+      const anchor = row.children[lastIndex + 1] || null;
       order.forEach(col => {
         const cell = cells[col];
         if (cell) row.insertBefore(cell, anchor);
