@@ -31,7 +31,7 @@
           <input type="file" id="cardScanFront" accept="image/*" capture="environment" style="display:none">
         </div>
         <div class="card-scan-side">
-          <div class="card-scan-label">Tył wizytówki <span class="text-muted">(opcjonalnie)</span></div>
+          <div class="card-scan-label">Tył wizytówki</div>
           <div class="card-scan-drop" onclick="document.getElementById('cardScanBack').click()">
             <img id="cardScanBackPreview" class="card-scan-preview" style="display:none">
             <span id="cardScanBackPlaceholder" class="card-scan-placeholder">{{ icon('camera', 16) }} Zrób zdjęcie</span>
@@ -41,13 +41,13 @@
       </div>
 
       <button type="button" class="btn btn-primary" id="cardScanSubmitBtn" onclick="cardScanSubmit()"
-              style="width:100%;margin-top:1rem" disabled>Skanuj</button>
+              style="width:100%;margin-top:1rem" disabled>Skanuj zdjęcie powyżej</button>
 
       <div class="card-scan-divider">lub wklej tekst stopki z maila</div>
       <textarea id="cardScanTextInput" class="card-scan-textarea" rows="5"
                 placeholder="Wklej tutaj stopkę z podpisem z wiadomości email…"></textarea>
       <button type="button" class="btn btn-primary" id="cardScanTextSubmitBtn" onclick="cardScanTextSubmit()"
-              style="width:100%;margin-top:.5rem" disabled>Skanuj tekst</button>
+              style="width:100%;margin-top:.5rem" disabled>Skanuj tekst powyżej</button>
 
       <div class="card-scan-queue" id="cardScanQueue"
            data-company-url="{{ url_for('crm_companies.view_company', company_id=0) }}"
