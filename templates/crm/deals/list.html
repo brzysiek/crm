@@ -141,7 +141,7 @@
             {{ deal_type_labels[d.deal_type] }}
           </span>
         </td>
-        <td data-col="context_id">{{ m.context_badge(d) }}</td>
+        <td data-col="context_id">{{ m.deal_context_picker(d, all_contexts) }}</td>
         <td data-col="amount" class="text-right nowrap">{{ d.amount|pln if d.amount is not none else '—' }}</td>
         <td data-col="company_name">
           {% if d.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=d.company_id) }}">{{ d.company_short_name or d.company_name }}</a>{% else %}<span class="text-muted">—</span>{% endif %}

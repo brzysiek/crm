@@ -762,6 +762,18 @@ function crmSetStatus(el, text, color) {
   el.style.color = color || '';
 }
 
+/* ── CRM: przypisanie kontekstu dealowi z hover-pickera na liście deali ─────── */
+function crmSetDealContext(dealId, contextId) {
+  fetch(window.API_BASE + '/crm/deals/' + dealId + '/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ context_id: contextId }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 /* ── CRM: usuwanie (archiwizacja) firmy z pytaniem o powiązane kontakty ────────── */
 function crmConfirmDeleteCompany(form, contactsCount) {
   if (!confirm('Usunąć tę firmę?')) return false;

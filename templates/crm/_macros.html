@@ -53,6 +53,26 @@
   {% endif %}
 {% endmacro %}
 
+{% macro deal_context_picker(d, all_contexts) %}
+<span class="term-cell gtd-context-cell">
+  {% if d.context_id %}
+    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ d.context_badge_color }}40;color:{{ d.context_text_color }};border:1px solid {{ d.context_badge_color }}55">@{{ d.context_name }}</span>
+  {% else %}
+    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst">@</span>
+  {% endif %}
+  <div class="term-hover-picker">
+    {% for ctx in all_contexts %}
+    <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem;color:{{ ctx.badge_color }}"
+            onclick="crmSetDealContext({{ d.id }}, {{ ctx.id }})">@{{ ctx.name }}</button>
+    {% endfor %}
+    {% if d.context_id %}
+    <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+            onclick="crmSetDealContext({{ d.id }}, null)">{{ icon('x', 12) }} Brak</button>
+    {% endif %}
+  </div>
+</span>
+{% endmacro %}
+
 {% macro file_icon_button(file) %}
   {% set ext = (file.file_name.rsplit('.', 1)[-1].lower() if '.' in file.file_name else '') %}
   {% set known = ['pdf', 'docx', 'xlsx', 'jpg', 'jpeg', 'png', 'heic', 'xml'] %}

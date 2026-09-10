@@ -283,6 +283,25 @@ def update_deal_stage(deal_id: int, stage: str, user_id: int | None) -> int | No
     return probability
 
 
+def update_deal_context(deal_id: int, context_id: int | None, user_id: int | None) -> None:
+    old = get_deal_by_id(deal_id)
+    if not old:
+        return
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_deals SET context_id=%s WHERE id=%s", (context_id, deal_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if old.get('context_id') != context_id:
+        context_names = {c['id']: c['name'] for c in gtd_context_model.get_all_contexts()}
+        old_label = f"@{context_names[old['context_id']]}" if old.get('context_id') in context_names else '—'
+        new_label = f"@{context_names[context_id]}" if context_id in context_names else '—'
+        log_history('deal', deal_id, user_id, 'update', f"Kontekst: „{old_label}” → „{new_label}”.")
+
+
 def delete_deal(deal_id: int, user_id: int | None) -> None:
     deal = get_deal_by_id(deal_id)
     db = get_db()

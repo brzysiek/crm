@@ -5,7 +5,8 @@ from models.crm_contact import get_contact_by_id
 from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, FORCED_PROBABILITY_BY_STAGE,
                               KANBAN_DEFAULT_HIDDEN_STAGES, PROBABILITY_CHOICES, STAGE_BADGE_CLASSES,
                               STAGE_LABELS, create_deal, delete_deal, get_all_deals, get_deal_by_id,
-                              probability_row_class, update_deal, update_deal_probability, update_deal_stage)
+                              probability_row_class, update_deal, update_deal_context, update_deal_probability,
+                              update_deal_stage)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
 from models.crm_file import get_files_for_company
@@ -247,6 +248,18 @@ def api_set_probability(deal_id):
         'probability_label': f"{new_probability}%" if new_probability is not None else '—',
         'probability_class': probability_row_class(deal['stage'], new_probability),
     })
+
+
+@bp.route('/<int:deal_id>/context', methods=['POST'])
+def api_set_context(deal_id):
+    deal = get_deal_by_id(deal_id)
+    if not deal:
+        return jsonify({'status': 'error', 'message': 'Deal nie istnieje.'}), 404
+    data = request.get_json(silent=True) or {}
+    context_id = data.get('context_id')
+    context_id = int(context_id) if context_id else None
+    update_deal_context(deal_id, context_id, session.get('user_id'))
+    return jsonify({'status': 'ok'})
 
 
 @bp.route('/<int:deal_id>/delete', methods=['POST'])
