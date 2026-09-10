@@ -115,6 +115,7 @@ def list_contacts():
         sort=sort, direction=direction, filters={'search': search},
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
         page=page, page_size=page_size, total=total, total_pages=total_pages,
+        relation_labels=RELATION_LABELS,
     )
 
 

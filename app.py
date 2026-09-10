@@ -1947,6 +1947,22 @@ def api_crm_companies_bulk_context():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/crm/companies/bulk-relation', methods=['POST'])
+def api_crm_companies_bulk_relation():
+    from models.crm_company import RELATION_LABELS, bulk_set_relation_type
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    relation_type = data.get('relation_type', '')
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych firm.'})
+    if relation_type not in RELATION_LABELS:
+        return jsonify({'status': 'error', 'message': 'Nieznana relacja.'})
+
+    affected = bulk_set_relation_type(ids, relation_type, session.get('user_id'))
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/crm/contacts/bulk-context', methods=['POST'])
 def api_crm_contacts_bulk_context():
     from models.crm_contact import bulk_set_context
@@ -2394,13 +2410,18 @@ def api_crm_business_cards_scan():
         return jsonify({'ok': False, 'error': 'Dodaj przynajmniej jedno zdjęcie wizytówki (przód).'})
 
     context_id = request.form.get('context_id', type=int)
+    relation_type = request.form.get('relation_type') or None
+    tags = [t for t in request.form.getlist('tags[]') if t.strip()]
+    source = [s for s in request.form.getlist('source[]') if s.strip()]
+    email_tags = [t for t in request.form.getlist('email_tags[]') if t.strip()]
     api_key = get_setting('gemini_api_key', '')
     model = get_setting('gemini_model', 'gemini-2.5-flash')
     drive_api_token = get_setting('google_drive_api_token', '')
     drive_root_id = get_setting('google_drive_crm_folder_id', '')
 
     result = process_business_card(front, back, api_key, model, drive_api_token, drive_root_id,
-                                    session.get('user_id'), context_id=context_id)
+                                    session.get('user_id'), context_id=context_id, relation_type=relation_type,
+                                    tags=tags, source=source, email_tags=email_tags)
     return jsonify(result)
 
 
@@ -2413,6 +2434,10 @@ def api_crm_business_cards_scan_text():
     text = data.get('text', '')
     context_id = data.get('context_id')
     context_id = int(context_id) if context_id else None
+    relation_type = data.get('relation_type') or None
+    tags = [t for t in (data.get('tags') or []) if t and t.strip()]
+    source = [s for s in (data.get('source') or []) if s and s.strip()]
+    email_tags = [t for t in (data.get('email_tags') or []) if t and t.strip()]
 
     api_key = get_setting('gemini_api_key', '')
     model = get_setting('gemini_model', 'gemini-2.5-flash')
@@ -2420,7 +2445,9 @@ def api_crm_business_cards_scan_text():
     drive_root_id = get_setting('google_drive_crm_folder_id', '')
 
     result = process_business_card_from_text(text, api_key, model, drive_api_token, drive_root_id,
-                                              session.get('user_id'), context_id=context_id)
+                                              session.get('user_id'), context_id=context_id,
+                                              relation_type=relation_type, tags=tags, source=source,
+                                              email_tags=email_tags)
     return jsonify(result)
 
 

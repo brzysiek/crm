@@ -7,6 +7,7 @@ import time
 from models.crm_company import create_company, derive_short_name, get_company_by_domain, get_company_by_nip, \
     search_companies
 from models.crm_contact import create_contact, search_contacts
+from models.crm_tags import set_contact_email_tags
 from models.crm_file import ALLOWED_EXTENSIONS, add_file
 from services.company_lookup import lookup_by_nip
 from services.company_profile import build_company_profile
@@ -70,7 +71,9 @@ def _first(*values) -> str:
 
 def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, str] | None,
                            api_key: str, model: str, drive_api_token: str, drive_root_id: str,
-                           user_id: int | None, context_id: int | None = None) -> dict:
+                           user_id: int | None, context_id: int | None = None,
+                           relation_type: str | None = None, tags: list[str] | None = None,
+                           source: list[str] | None = None, email_tags: list[str] | None = None) -> dict:
     """Przetwarza zdjęcia wizytówki (przód i/lub tył, każde jako (bytes, mime_type)):
     OCR -> enrichment (WWW / NIP) -> dopasowanie lub utworzenie firmy i kontaktu ->
     zapis zdjęć w Google Drive. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
@@ -92,12 +95,15 @@ def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, st
         uploads.append((*front, 'przod'))
 
     return _process_extracted(ocr, api_key, model, drive_api_token, drive_root_id, user_id, uploads,
-                               context_id=context_id)
+                               context_id=context_id, relation_type=relation_type, tags=tags, source=source,
+                               email_tags=email_tags)
 
 
 def process_business_card_from_text(text: str, api_key: str, model: str, drive_api_token: str,
                                      drive_root_id: str, user_id: int | None,
-                                     context_id: int | None = None) -> dict:
+                                     context_id: int | None = None, relation_type: str | None = None,
+                                     tags: list[str] | None = None, source: list[str] | None = None,
+                                     email_tags: list[str] | None = None) -> dict:
     """Przetwarza wklejony tekst stopki maila: ekstrakcja danych -> enrichment (WWW / NIP) ->
     dopasowanie lub utworzenie firmy i kontaktu. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
     if not api_key:
@@ -112,12 +118,15 @@ def process_business_card_from_text(text: str, api_key: str, model: str, drive_a
         return {'ok': False, 'error': f'Błąd odczytu stopki maila: {extracted["error"]}'}
 
     return _process_extracted(extracted, api_key, model, drive_api_token, drive_root_id, user_id, [],
-                               context_id=context_id)
+                               context_id=context_id, relation_type=relation_type, tags=tags, source=source,
+                               email_tags=email_tags)
 
 
 def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_token: str, drive_root_id: str,
                         user_id: int | None, uploads: list[tuple[bytes, str, str]],
-                        context_id: int | None = None) -> dict:
+                        context_id: int | None = None, relation_type: str | None = None,
+                        tags: list[str] | None = None, source: list[str] | None = None,
+                        email_tags: list[str] | None = None) -> dict:
     """Wspólna logika po uzyskaniu wyekstrahowanych danych (z OCR wizytówki lub z tekstu stopki maila):
     enrichment (WWW / NIP) -> dopasowanie lub utworzenie firmy i kontaktu -> zapis plików (jeśli podano)."""
     ocr = extracted
@@ -148,7 +157,7 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
     company_data = {
         'name': final_name,
         'short_name': final_short_name,
-        'relation_type': 'lead',
+        'relation_type': relation_type or 'lead',
         'country': lookup_data.get('country') or 'Polska',
         'city': _first(ocr.get('company_city'), lookup_data.get('city'), profile_data.get('city')),
         'street': _first(ocr.get('company_street'), lookup_data.get('street'), profile_data.get('street')),
@@ -181,7 +190,7 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
         company_id = company['id']
         company_display_name = _company_label(company) or final_name
     else:
-        company_id = create_company(company_data, user_id, tags=[], industries=industries)
+        company_id = create_company(company_data, user_id, tags=[], industries=industries, source=source or [])
         company_created = True
         company_display_name = final_short_name or final_name
 
@@ -206,9 +215,11 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
                 'phone': _first(ocr.get('contact_phone'), ocr.get('company_phone')) or None,
                 'context_id': context_id,
             }
-            contact_id = create_contact(contact_data, user_id)
+            contact_id = create_contact(contact_data, user_id, tags=tags or [])
             contact_created = True
             contact_display_name = hint
+            if email_tags:
+                set_contact_email_tags(contact_id, email_tags, user_id)
 
     warning = None
     if uploads:

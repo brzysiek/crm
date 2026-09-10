@@ -484,6 +484,27 @@ def bulk_set_context(company_ids: list[int], context_id: int | None, user_id: in
     return len(company_ids)
 
 
+def bulk_set_relation_type(company_ids: list[int], relation_type: str, user_id: int | None) -> int:
+    if not company_ids:
+        return 0
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(company_ids))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                f"UPDATE crm_companies SET relation_type=%s WHERE id IN ({placeholders})",
+                [relation_type] + company_ids,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    summary = f'Ustawiono relację na {RELATION_LABELS.get(relation_type, relation_type)}.'
+    for company_id in company_ids:
+        log_history('company', company_id, user_id, 'update', summary)
+    return len(company_ids)
+
+
 def _insert(data: dict) -> int:
     db = get_db()
     with db.cursor() as cur:

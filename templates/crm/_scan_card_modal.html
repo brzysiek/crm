@@ -21,6 +21,35 @@
           {% endfor %}
         </select>
       </div>
+      <div class="form-group">
+        <label for="cardScanRelation">Relacja (firma)</label>
+        <select id="cardScanRelation">
+          {% for val, label in relation_labels.items() %}
+            <option value="{{ val }}" {{ 'selected' if val == 'lead' }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tagi (kontakt)</label>
+        <div class="tag-input-wrap" id="cardScanTagsWrap">
+          <input type="text" id="cardScanTagsInput" class="tag-input-field" placeholder="Dodaj tag…" autocomplete="off">
+          <div id="cardScanTagsSuggestions" class="tag-suggestions"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Źródło (firma)</label>
+        <div class="tag-input-wrap" id="cardScanSourceWrap">
+          <input type="text" id="cardScanSourceInput" class="tag-input-field" placeholder="Dodaj źródło…" autocomplete="off">
+          <div id="cardScanSourceSuggestions" class="tag-suggestions"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tagi email (kontakt)</label>
+        <div class="tag-input-wrap" id="cardScanEmailTagsWrap">
+          <input type="text" id="cardScanEmailTagsInput" class="tag-input-field" placeholder="Dodaj tag email…" autocomplete="off">
+          <div id="cardScanEmailTagsSuggestions" class="tag-suggestions"></div>
+        </div>
+      </div>
       <div class="card-scan-sides">
         <div class="card-scan-side">
           <div class="card-scan-label">Przód wizytówki</div>
@@ -72,6 +101,14 @@
 
   const companyUrlTpl = queue.dataset.companyUrl;
   const contactUrlTpl = queue.dataset.contactUrl;
+
+  initTagInput('cardScanTagsWrap', 'cardScanTagsInput', 'cardScanTagsSuggestions', 'tag', []);
+  initTagInput('cardScanSourceWrap', 'cardScanSourceInput', 'cardScanSourceSuggestions', 'source', []);
+  initTagInput('cardScanEmailTagsWrap', 'cardScanEmailTagsInput', 'cardScanEmailTagsSuggestions', 'email', []);
+
+  function tagValues(wrapId) {
+    return [...document.querySelectorAll('#' + wrapId + ' input[type=hidden]')].map(el => el.value);
+  }
 
   function updateSubmitState() {
     submitBtn.disabled = !(frontInput.files[0] || backInput.files[0]);
@@ -143,6 +180,10 @@
     if (back) form.append('back', back);
     const contextId = document.getElementById('cardScanContext').value;
     if (contextId) form.append('context_id', contextId);
+    form.append('relation_type', document.getElementById('cardScanRelation').value);
+    tagValues('cardScanTagsWrap').forEach(v => form.append('tags[]', v));
+    tagValues('cardScanSourceWrap').forEach(v => form.append('source[]', v));
+    tagValues('cardScanEmailTagsWrap').forEach(v => form.append('email_tags[]', v));
 
     const item = document.createElement('div');
     item.className = 'card-scan-item card-scan-pending';
@@ -177,7 +218,13 @@
     fetch(window.API_BASE + '/api/crm/business-cards/scan-text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, context_id: contextId || null }),
+      body: JSON.stringify({
+        text, context_id: contextId || null,
+        relation_type: document.getElementById('cardScanRelation').value,
+        tags: tagValues('cardScanTagsWrap'),
+        source: tagValues('cardScanSourceWrap'),
+        email_tags: tagValues('cardScanEmailTagsWrap'),
+      }),
     })
       .then(r => r.json())
       .then(data => renderResult(item, data))

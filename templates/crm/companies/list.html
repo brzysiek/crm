@@ -89,6 +89,13 @@
       {% endfor %}
     </select>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
+
+    <select id="bulkRelationSelect" class="filter-select">
+      {% for val, label in relation_labels.items() %}
+        <option value="{{ val }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRelation">Ustaw relację</button>
   </div>
 </div>
 
@@ -328,6 +335,29 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   const btnContext = document.getElementById('btnBulkContext');
   if (btnContext) btnContext.addEventListener('click', bulkSetContext);
+
+  async function bulkSetRelation() {
+    const ids = getCheckedIds();
+    if (!ids.length) return;
+    const relationType = document.getElementById('bulkRelationSelect').value;
+    try {
+      const r = await fetch(API_BASE + '/api/crm/companies/bulk-relation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, relation_type: relationType }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        location.reload();
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  }
+  const btnRelation = document.getElementById('btnBulkRelation');
+  if (btnRelation) btnRelation.addEventListener('click', bulkSetRelation);
 
   async function bulkStar(starred) {
     const ids = getCheckedIds();
