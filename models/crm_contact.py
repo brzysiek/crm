@@ -11,9 +11,49 @@ FIELD_LABELS = {
 }
 
 
+def _contacts_where(search: str = None, company_id: int = None,
+                     context_ids: list[int] | None = None) -> tuple[str, list]:
+    where = "WHERE ct.archived_at IS NULL"
+    params = []
+    if company_id:
+        where += " AND ct.company_id = %s"
+        params.append(company_id)
+    if search:
+        where += (" AND (ct.first_name LIKE %s OR ct.last_name LIKE %s OR ct.email LIKE %s "
+                  "OR ct.phone LIKE %s OR co.name LIKE %s)")
+        like = f"%{search}%"
+        params.extend([like, like, like, like, like])
+    if context_ids is not None:
+        # Sentinel 0 oznacza koszyk „Brak kontekstu” (ct.context_id IS NULL).
+        real_ids = [c for c in context_ids if c]
+        conds = []
+        if real_ids:
+            placeholders = ','.join(['%s'] * len(real_ids))
+            conds.append(f"ct.context_id IN ({placeholders})")
+            params.extend(real_ids)
+        if 0 in context_ids:
+            conds.append("ct.context_id IS NULL")
+        where += f" AND ({' OR '.join(conds)})" if conds else " AND 1=0"
+    return where, params
+
+
+def count_contacts(search: str = None, company_id: int = None,
+                    context_ids: list[int] | None = None) -> int:
+    where, params = _contacts_where(search, company_id, context_ids)
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT COUNT(*) AS cnt FROM crm_contacts ct "
+            f"LEFT JOIN crm_companies co ON co.id = ct.company_id {where}",
+            params
+        )
+        return cur.fetchone()['cnt']
+
+
 def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
                       search: str = None, company_id: int = None,
-                      context_ids: list[int] | None = None) -> list[dict]:
+                      context_ids: list[int] | None = None,
+                      limit: int | None = None, offset: int = 0) -> list[dict]:
     allowed_sort = {'first_name', 'last_name', 'position', 'email', 'phone', 'created_at', 'company_name'}
     if sort not in allowed_sort:
         sort = 'last_name'
@@ -35,29 +75,13 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "(SELECT f.mime_type FROM crm_files f WHERE f.contact_id=ct.id AND f.category='business_card' "
            "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
-           "LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id "
-           "WHERE ct.archived_at IS NULL")
-    params = []
-    if company_id:
-        sql += " AND ct.company_id = %s"
-        params.append(company_id)
-    if search:
-        sql += (" AND (ct.first_name LIKE %s OR ct.last_name LIKE %s OR ct.email LIKE %s "
-                 "OR ct.phone LIKE %s OR co.name LIKE %s)")
-        like = f"%{search}%"
-        params.extend([like, like, like, like, like])
-    if context_ids is not None:
-        # Sentinel 0 oznacza koszyk „Brak kontekstu” (ct.context_id IS NULL).
-        real_ids = [c for c in context_ids if c]
-        conds = []
-        if real_ids:
-            placeholders = ','.join(['%s'] * len(real_ids))
-            conds.append(f"ct.context_id IN ({placeholders})")
-            params.extend(real_ids)
-        if 0 in context_ids:
-            conds.append("ct.context_id IS NULL")
-        sql += f" AND ({' OR '.join(conds)})" if conds else " AND 1=0"
+           "LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id ")
+    where, params = _contacts_where(search, company_id, context_ids)
+    sql += where
     sql += f" ORDER BY ct.is_starred DESC, {sort_col} {direction}, ct.id DESC"
+    if limit is not None:
+        sql += " LIMIT %s OFFSET %s"
+        params = params + [limit, offset]
 
     with db.cursor() as cur:
         cur.execute(sql, params)

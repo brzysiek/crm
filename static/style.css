@@ -1172,6 +1172,20 @@ input[type="file"]:hover::-webkit-file-upload-button {
   gap: .75rem;
   flex-wrap: wrap;
 }
+.pagination-bar {
+  margin-top: .75rem;
+  font-size: .85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.pagination-size { display: flex; align-items: center; gap: .4rem; }
+.pagination-size label { color: var(--text-muted); white-space: nowrap; }
+.pagination-nav { display: flex; align-items: center; gap: .6rem; }
+.pagination-info { color: var(--text-muted); white-space: nowrap; }
+
 .checkbox-label {
   display: inline-flex;
   align-items: center;
@@ -1698,6 +1712,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 
 /* ── CRM: wyszukiwarka firmy / kontaktu (combobox) ───────────────────────────── */
 .entity-picker { position: relative; }
+.entity-picker.picker-disabled { opacity: .5; pointer-events: none; }
 .entity-picker-selected {
   display: flex;
   align-items: center;

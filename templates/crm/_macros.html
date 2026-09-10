@@ -12,6 +12,39 @@
   </th>
 {% endmacro %}
 
+{% macro pagination_bar(page, total_pages, total, page_size, endpoint) %}
+  {% set base_args = request.args.to_dict(flat=False) %}
+  <div class="pagination-bar">
+    <div class="pagination-size">
+      <label for="{{ endpoint }}-page-size">Pozycji na stronę:</label>
+      <select id="{{ endpoint }}-page-size" class="filter-select" onchange="location.href=this.value">
+        {% for val, label in [('50', '50'), ('100', '100'), ('200', '200'), ('all', 'Wszystkie')] %}
+          {% set opt_args = base_args.copy() %}
+          {% set _ = opt_args.update({'page_size': [val], 'page': ['1']}) %}
+          <option value="{{ url_for(endpoint, **opt_args) }}" {{ 'selected' if page_size == val }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if total_pages > 1 %}
+    <div class="pagination-nav">
+      {% if page > 1 %}
+        {% set prev_args = base_args.copy() %}
+        {% set _ = prev_args.update({'page': [page - 1]}) %}
+        <a class="btn btn-outline btn-sm" href="{{ url_for(endpoint, **prev_args) }}">‹ Poprzednia</a>
+      {% endif %}
+      <span class="pagination-info">Strona {{ page }} z {{ total_pages }} ({{ total }} pozycji)</span>
+      {% if page < total_pages %}
+        {% set next_args = base_args.copy() %}
+        {% set _ = next_args.update({'page': [page + 1]}) %}
+        <a class="btn btn-outline btn-sm" href="{{ url_for(endpoint, **next_args) }}">Następna ›</a>
+      {% endif %}
+    </div>
+    {% else %}
+    <span class="pagination-info">{{ total }} pozycji</span>
+    {% endif %}
+  </div>
+{% endmacro %}
+
 {% macro context_badge(item) %}
   {% if item.context_id %}
   <span class="badge" style="background:{{ item.context_badge_color }}40;color:{{ item.context_text_color }};border:1px solid {{ item.context_badge_color }}55">@{{ item.context_name }}</span>

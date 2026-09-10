@@ -184,7 +184,7 @@
     </tbody>
   </table>
 </div>
-<div class="table-count">{{ companies|length }} firm</div>
+{{ m.pagination_bar(page, total_pages, total, page_size, 'crm_companies.list_companies') }}
 
 <div class="rd-card-list">
   {% for c in companies %}

@@ -45,20 +45,9 @@ def derive_short_name(name: str) -> str:
     return short or name.strip()
 
 
-def get_all_companies(sort: str = 'name', direction: str = 'asc',
-                       search: str = None, relation_type: str = None,
-                       tag: str = None, industry: str = None, source: str = None,
-                       context_ids: list[int] | None = None) -> list[dict]:
-    allowed_sort = {
-        'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
-        'nip', 'created_at',
-    }
-    if sort not in allowed_sort:
-        sort = 'name'
-    direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
-    order_col = f'c.{sort}'
-
-    db = get_db()
+def _companies_filters(search: str = None, relation_type: str = None,
+                        tag: str = None, industry: str = None, source: str = None,
+                        context_ids: list[int] | None = None) -> tuple[list, list, list]:
     params = []
     joins = []
     where = ["c.archived_at IS NULL"]
@@ -98,6 +87,38 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
             conds.append("c.context_id IS NULL")
         where.append(f"({' OR '.join(conds)})" if conds else "1=0")
 
+    return joins, where, params
+
+
+def count_companies(search: str = None, relation_type: str = None,
+                     tag: str = None, industry: str = None, source: str = None,
+                     context_ids: list[int] | None = None) -> int:
+    joins, where, params = _companies_filters(search, relation_type, tag, industry, source, context_ids)
+    db = get_db()
+    sql = (f"SELECT COUNT(DISTINCT c.id) AS cnt FROM crm_companies c "
+           f"{' '.join(joins)} WHERE {' AND '.join(where)}")
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        return cur.fetchone()['cnt']
+
+
+def get_all_companies(sort: str = 'name', direction: str = 'asc',
+                       search: str = None, relation_type: str = None,
+                       tag: str = None, industry: str = None, source: str = None,
+                       context_ids: list[int] | None = None,
+                       limit: int | None = None, offset: int = 0) -> list[dict]:
+    allowed_sort = {
+        'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
+        'nip', 'created_at',
+    }
+    if sort not in allowed_sort:
+        sort = 'name'
+    direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
+    order_col = f'c.{sort}'
+
+    db = get_db()
+    joins, where, params = _companies_filters(search, relation_type, tag, industry, source, context_ids)
+
     sql = f"""SELECT DISTINCT c.*,
         gc.name AS context_name, gc.badge_color AS context_badge_color, gc.text_color AS context_text_color,
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
@@ -119,6 +140,9 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
         LEFT JOIN gtd_contexts gc ON gc.id = c.context_id
         {' '.join(joins)} WHERE {' AND '.join(where)}"""
     sql += f" ORDER BY c.is_starred DESC, {order_col} {direction}, c.id DESC"
+    if limit is not None:
+        sql += " LIMIT %s OFFSET %s"
+        params = params + [limit, offset]
 
     with db.cursor() as cur:
         cur.execute(sql, params)

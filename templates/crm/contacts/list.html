@@ -136,7 +136,7 @@
     </tbody>
   </table>
 </div>
-<div class="table-count">{{ contacts|length }} kontaktów</div>
+{{ m.pagination_bar(page, total_pages, total, page_size, 'crm_contacts.list_contacts') }}
 
 <div class="rd-card-list">
   {% for c in contacts %}

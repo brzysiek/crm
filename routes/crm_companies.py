@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
-from models.crm_company import (RELATION_LABELS, create_company, delete_company,
+from models.crm_company import (RELATION_LABELS, count_companies, create_company, delete_company,
                                   derive_short_name, get_all_companies,
                                   get_companies_referred_by_company,
                                   get_company_by_id, get_company_tags,
@@ -11,6 +11,7 @@ from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, 
                                 get_history_multi, get_notes_multi)
 from models.gtd_context import get_all_contexts
 from models.user import get_active_users
+from models.user_settings import get_user_setting, set_user_setting
 from routes.crm_contacts import build_gtd_items
 
 bp = Blueprint('crm_companies', __name__, url_prefix='/crm/companies')
@@ -64,16 +65,32 @@ def list_companies():
     else:
         context_ids = None
 
+    page_size_key = 'crm_companies_page_size'
+    if 'page_size' in request.args:
+        page_size = request.args.get('page_size')
+        set_user_setting(session['user_id'], page_size_key, page_size)
+    else:
+        page_size = get_user_setting(session['user_id'], page_size_key, '50')
+    page = request.args.get('page', 1, type=int)
+    limit = None if page_size == 'all' else int(page_size)
+    offset = (page - 1) * limit if limit else 0
+
+    total = count_companies(
+        search=search or None, relation_type=relation_type or None, tag=tag or None,
+        industry=industry or None, source=source or None, context_ids=context_ids,
+    )
     companies = get_all_companies(
         sort=sort, direction=direction, search=search or None,
         relation_type=relation_type or None, tag=tag or None, industry=industry or None,
-        source=source or None, context_ids=context_ids,
+        source=source or None, context_ids=context_ids, limit=limit, offset=offset,
     )
+    total_pages = 1 if not limit else max(1, -(-total // limit))
     return render_template('crm/companies/list.html',
         active_tab='companies', companies=companies, relation_labels=RELATION_LABELS,
         sort=sort, direction=direction,
         filters={'search': search, 'relation_type': relation_type, 'tag': tag, 'industry': industry, 'source': source},
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
+        page=page, page_size=page_size, total=total, total_pages=total_pages,
     )
 
 
