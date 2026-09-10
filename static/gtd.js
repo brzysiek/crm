@@ -600,14 +600,14 @@ function gtdSubmitEditTask() {
    dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
-                          presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus) {
+                          presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus, presetContextId) {
   document.getElementById('gtdFollowUpTitle').value = presetTitle || '';
   document.getElementById('gtdFollowUpDue').value = '';
   document.getElementById('gtdFollowUpScheduled').value = presetScheduled || '';
   document.getElementById('gtdFollowUpWeek').value = presetWeek || '';
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
-  document.getElementById('gtdFollowUpContext').value = '';
+  document.getElementById('gtdFollowUpContext').value = presetContextId || '';
   _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject', 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker', 'gtdFollowUpContext', 'gtdFollowUpDealPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   if (currentDealId) {
