@@ -1280,6 +1280,8 @@ input[type="file"]:hover::-webkit-file-upload-button {
   max-width: 440px;
   padding: 1.5rem;
   box-shadow: 0 16px 48px rgba(31,41,55,.22);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .modal-header {
   display: flex;
@@ -1350,7 +1352,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 }
 
 @media (max-width: 560px) {
-  .modal { padding: 1rem; max-height: 90vh; overflow-y: auto; }
+  .modal { padding: 1rem; }
   .modal-header { margin-bottom: .75rem; }
   .agent-confirm-row { margin-bottom: .55rem; }
   .agent-confirm-row label { margin-bottom: .2rem; font-size: .8rem; }

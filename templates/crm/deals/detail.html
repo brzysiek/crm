@@ -119,7 +119,7 @@
       <div class="inv-section-header">
         <h4>Zadania</h4>
         <button type="button" class="btn btn-outline btn-sm"
-                onclick="gtdOpenFollowUp(null, null, null, {{ deal.id }}, {{ deal.name|tojson|forceescape }}, null, null, null, null, 'next')">+ Dodaj zadanie</button>
+                onclick="gtdOpenFollowUp(null, {{ deal.contact_id or 'null' }}, {{ deal.company_id or 'null' }}, {{ deal.id }}, {{ deal.name|tojson|forceescape }}, null, null, null, null, 'next')">+ Dodaj zadanie</button>
       </div>
       <div style="padding:.85rem">
         {% if gtd_items %}
