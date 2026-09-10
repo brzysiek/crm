@@ -12,12 +12,12 @@
   </th>
 {% endmacro %}
 
-{% macro pagination_bar(page, total_pages, total, page_size, endpoint) %}
+{% macro pagination_bar(page, total_pages, total, page_size, endpoint, id_suffix='') %}
   {% set base_args = request.args.to_dict(flat=False) %}
   <div class="pagination-bar">
     <div class="pagination-size">
-      <label for="{{ endpoint }}-page-size">Pozycji na stronę:</label>
-      <select id="{{ endpoint }}-page-size" class="filter-select" onchange="location.href=this.value">
+      <label for="{{ endpoint }}-page-size{{ id_suffix }}">Pozycji na stronę:</label>
+      <select id="{{ endpoint }}-page-size{{ id_suffix }}" class="filter-select" onchange="location.href=this.value">
         {% for val, label in [('50', '50'), ('100', '100'), ('200', '200'), ('all', 'Wszystkie')] %}
           {% set opt_args = base_args.copy() %}
           {% set _ = opt_args.update({'page_size': [val], 'page': ['1']}) %}

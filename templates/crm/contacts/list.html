@@ -50,22 +50,25 @@
 
 {% if contacts %}
 <div class="bulk-select-bar">
-  <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
-  <div class="bulk-actions" id="bulkActions" style="display:none">
-    <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
+  <div class="bulk-select-bar-left">
+    <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
+    <div class="bulk-actions" id="bulkActions" style="display:none">
+      <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
 
-    <select id="bulkContextSelect" class="filter-select">
-      <option value="">Brak kontekstu</option>
-      {% for ctx in all_contexts %}
-        <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
+      <select id="bulkContextSelect" class="filter-select">
+        <option value="">Brak kontekstu</option>
+        {% for ctx in all_contexts %}
+          <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
 
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkDelete">Usuń zaznaczone</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkDelete">Usuń zaznaczone</button>
+    </div>
   </div>
+  {{ m.pagination_bar(page, total_pages, total, page_size, 'crm_contacts.list_contacts', id_suffix='-top') }}
 </div>
 
 <div class="table-wrapper">

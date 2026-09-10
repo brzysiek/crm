@@ -63,40 +63,43 @@
 
 {% if companies %}
 <div class="bulk-select-bar">
-  <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
-  <div class="bulk-actions" id="bulkActions" style="display:none">
-    <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+  <div class="bulk-select-bar-left">
+    <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
+    <div class="bulk-actions" id="bulkActions" style="display:none">
+      <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
 
-    <select id="bulkField" class="filter-select">
-      <option value="tag">Tag</option>
-      <option value="industry">Branża</option>
-      <option value="source">Źródło</option>
-      <option value="description">Opis</option>
-    </select>
-    <div class="suggest-wrap" style="min-width:140px">
-      <input type="text" id="bulkValue" class="filter-input" placeholder="Wartość" autocomplete="off" style="width:100%">
-      <div id="bulkValueSuggestions" class="tag-suggestions"></div>
+      <select id="bulkField" class="filter-select">
+        <option value="tag">Tag</option>
+        <option value="industry">Branża</option>
+        <option value="source">Źródło</option>
+        <option value="description">Opis</option>
+      </select>
+      <div class="suggest-wrap" style="min-width:140px">
+        <input type="text" id="bulkValue" class="filter-input" placeholder="Wartość" autocomplete="off" style="width:100%">
+        <div id="bulkValueSuggestions" class="tag-suggestions"></div>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="btnBulkAdd">Dodaj</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkRemove">Usuń</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
+
+      <select id="bulkContextSelect" class="filter-select">
+        <option value="">Brak kontekstu</option>
+        {% for ctx in all_contexts %}
+          <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
+
+      <select id="bulkRelationSelect" class="filter-select">
+        {% for val, label in relation_labels.items() %}
+          <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkRelation">Ustaw relację</button>
     </div>
-    <button type="button" class="btn btn-primary btn-sm" id="btnBulkAdd">Dodaj</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRemove">Usuń</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
-
-    <select id="bulkContextSelect" class="filter-select">
-      <option value="">Brak kontekstu</option>
-      {% for ctx in all_contexts %}
-        <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
-
-    <select id="bulkRelationSelect" class="filter-select">
-      {% for val, label in relation_labels.items() %}
-        <option value="{{ val }}">{{ label }}</option>
-      {% endfor %}
-    </select>
-    <button type="button" class="btn btn-outline btn-sm" id="btnBulkRelation">Ustaw relację</button>
   </div>
+  {{ m.pagination_bar(page, total_pages, total, page_size, 'crm_companies.list_companies', id_suffix='-top') }}
 </div>
 
 <div class="table-wrapper">

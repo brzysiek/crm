@@ -1174,9 +1174,12 @@ input[type="file"]:hover::-webkit-file-upload-button {
   font-size: .85rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: .75rem;
   flex-wrap: wrap;
 }
+.bulk-select-bar-left { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.bulk-select-bar .pagination-bar { margin-top: 0; }
 .pagination-bar {
   margin-top: .75rem;
   font-size: .85rem;
