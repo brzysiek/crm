@@ -1,5 +1,6 @@
 {% extends 'crm/_layout.html' %}
 {% from '_icons.html' import icon %}
+{% import 'crm/_macros.html' as m %}
 {% block title %}{{ deal.name }}{% endblock %}
 
 {% block crm_content %}
@@ -40,6 +41,7 @@
         <dd>{% if deal.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=deal.company_id) }}">{{ deal.company_short_name or deal.company_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Kontakt</dt>
         <dd>{% if deal.contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=deal.contact_id) }}">{{ deal.contact_first_name }} {{ deal.contact_last_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Kontekst</dt><dd>{{ m.context_badge(deal) }}</dd>
         <dt>Kwota</dt><dd>{{ deal.amount|pln if deal.amount is not none else '—' }}</dd>
         <dt>Prawdopodobieństwo</dt><dd>{{ deal.probability ~ '%' if deal.probability is not none else '—' }}</dd>
         <dt>Data rozpoczęcia</dt><dd>{{ deal.start_date|ddmmyyyy if deal.start_date else '—' }}</dd>

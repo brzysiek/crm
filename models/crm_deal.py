@@ -1,5 +1,6 @@
 from database import get_db
 from models.crm_notes import log_history, build_diff_summary
+import models.gtd_context as gtd_context_model
 
 STAGE_LABELS = {
     'new': 'Lead', 'in_progress': 'Kwalifikacja', 'won': 'Wygrany', 'in_delivery': 'W toku projektu',
@@ -34,7 +35,7 @@ DEAL_TYPE_BADGE_CLASSES = {
 FIELD_LABELS = {
     'name': 'Nazwa', 'description': 'Opis', 'amount': 'Kwota', 'stage': 'Etap',
     'deal_type': 'Typ', 'probability': 'Prawdopodobieństwo',
-    'start_date': 'Data rozpoczęcia', 'end_date': 'Data zakończenia',
+    'start_date': 'Data rozpoczęcia', 'end_date': 'Data zakończenia', 'context_id': 'Kontekst',
 }
 
 
@@ -57,7 +58,8 @@ def probability_row_class(stage: str, probability: int | None) -> str:
 
 def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
                    search: str = None, stage: str | list[str] = None, deal_type: str = None,
-                   company_id: int = None, contact_id: int = None) -> list[dict]:
+                   company_id: int = None, contact_id: int = None,
+                   context_ids: list[int] | None = None) -> list[dict]:
     allowed_sort = {'name', 'amount', 'stage', 'probability', 'start_date', 'end_date', 'created_at'}
     if sort not in allowed_sort:
         sort = 'created_at'
@@ -65,10 +67,12 @@ def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
 
     db = get_db()
     sql = ("SELECT d.*, co.name AS company_name, co.short_name AS company_short_name, "
-           "ct.first_name AS contact_first_name, ct.last_name AS contact_last_name "
+           "ct.first_name AS contact_first_name, ct.last_name AS contact_last_name, "
+           "gc.name AS context_name, gc.badge_color AS context_badge_color, gc.text_color AS context_text_color "
            "FROM crm_deals d "
            "LEFT JOIN crm_companies co ON co.id = d.company_id "
-           "LEFT JOIN crm_contacts ct ON ct.id = d.contact_id WHERE 1=1")
+           "LEFT JOIN crm_contacts ct ON ct.id = d.contact_id "
+           "LEFT JOIN gtd_contexts gc ON gc.id = d.context_id WHERE 1=1")
     params = []
     if stage:
         stages = [stage] if isinstance(stage, str) else list(stage)
@@ -84,6 +88,17 @@ def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
     if contact_id:
         sql += " AND d.contact_id = %s"
         params.append(contact_id)
+    if context_ids is not None:
+        # Sentinel 0 oznacza koszyk „Brak kontekstu” (d.context_id IS NULL).
+        real_ids = [c for c in context_ids if c]
+        conds = []
+        if real_ids:
+            placeholders = ','.join(['%s'] * len(real_ids))
+            conds.append(f"d.context_id IN ({placeholders})")
+            params.extend(real_ids)
+        if 0 in context_ids:
+            conds.append("d.context_id IS NULL")
+        sql += f" AND ({' OR '.join(conds)})" if conds else " AND 1=0"
     if search:
         sql += " AND (d.name LIKE %s OR d.description LIKE %s OR co.name LIKE %s)"
         like = f"%{search}%"
@@ -108,10 +123,13 @@ def get_deal_by_id(deal_id: int) -> dict | None:
     with db.cursor() as cur:
         cur.execute(
             """SELECT d.*, co.name AS company_name, co.short_name AS company_short_name,
-                      ct.first_name AS contact_first_name, ct.last_name AS contact_last_name
+                      ct.first_name AS contact_first_name, ct.last_name AS contact_last_name,
+                      gc.name AS context_name, gc.badge_color AS context_badge_color,
+                      gc.text_color AS context_text_color
                FROM crm_deals d
                LEFT JOIN crm_companies co ON co.id = d.company_id
                LEFT JOIN crm_contacts ct ON ct.id = d.contact_id
+               LEFT JOIN gtd_contexts gc ON gc.id = d.context_id
                WHERE d.id=%s""",
             (deal_id,)
         )
@@ -127,13 +145,14 @@ def create_deal(data: dict, user_id: int | None) -> int:
             cur.execute(
                 """INSERT INTO crm_deals
                    (name, description, amount, company_id, contact_id, stage, probability, deal_type,
-                    start_date, end_date, owner_user_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    start_date, end_date, owner_user_id, context_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['name'], data.get('description') or None, data.get('amount') or None,
                     data.get('company_id') or None, data.get('contact_id') or None,
                     stage, probability, data.get('deal_type', 'inne'), data.get('start_date') or None,
                     data.get('end_date') or None, data.get('owner_user_id') or None,
+                    data.get('context_id') or None,
                 )
             )
         db.commit()
@@ -155,13 +174,15 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
             cur.execute(
                 """UPDATE crm_deals SET
                    name=%s, description=%s, amount=%s, company_id=%s, contact_id=%s,
-                   stage=%s, probability=%s, deal_type=%s, start_date=%s, end_date=%s, owner_user_id=%s
+                   stage=%s, probability=%s, deal_type=%s, start_date=%s, end_date=%s, owner_user_id=%s,
+                   context_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('description') or None, data.get('amount') or None,
                     data.get('company_id') or None, data.get('contact_id') or None,
                     stage, probability, data.get('deal_type', 'inne'), data.get('start_date') or None,
                     data.get('end_date') or None, data.get('owner_user_id') or None,
+                    data.get('context_id') or None,
                     deal_id,
                 )
             )
@@ -170,6 +191,7 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
         db.rollback()
         raise
     if old:
+        context_names = {c['id']: c['name'] for c in gtd_context_model.get_all_contexts()}
         old_disp = dict(old)
         new_disp = dict(data)
         new_disp['probability'] = probability
@@ -179,6 +201,8 @@ def update_deal(deal_id: int, data: dict, user_id: int | None) -> None:
         new_disp['deal_type'] = DEAL_TYPE_LABELS.get(data.get('deal_type'), data.get('deal_type'))
         old_disp['probability'] = f"{old.get('probability')}%" if old.get('probability') is not None else None
         new_disp['probability'] = f"{probability}%" if probability is not None else None
+        old_disp['context_id'] = f"@{context_names[old['context_id']]}" if old.get('context_id') in context_names else None
+        new_disp['context_id'] = f"@{context_names[data['context_id']]}" if data.get('context_id') in context_names else None
         summary = build_diff_summary(old_disp, new_disp, FIELD_LABELS)
         if summary:
             log_history('deal', deal_id, user_id, 'update', summary)

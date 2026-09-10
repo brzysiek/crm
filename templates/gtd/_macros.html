@@ -4,7 +4,7 @@
 {% macro context_picker(t) %}
 <span class="term-cell gtd-context-cell" style="margin-left:.4rem">
   {% if t.context_id %}
-    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ t.context_badge_color }}22;color:{{ t.context_text_color }};border:1px solid {{ t.context_badge_color }}55">@{{ t.context_name }}</span>
+    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ t.context_badge_color }}40;color:{{ t.context_text_color }};border:1px solid {{ t.context_badge_color }}55">@{{ t.context_name }}</span>
   {% else %}
     <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst">@</span>
   {% endif %}
@@ -24,7 +24,7 @@
 {% macro gcal_context_picker(e) %}
 <span class="term-cell gtd-context-cell" style="margin-left:.4rem">
   {% if e.context_id %}
-    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ e.context_badge_color }}22;color:{{ e.context_text_color }};border:1px solid {{ e.context_badge_color }}55">@{{ e.context_name }}</span>
+    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ e.context_badge_color }}40;color:{{ e.context_text_color }};border:1px solid {{ e.context_badge_color }}55">@{{ e.context_name }}</span>
   {% else %}
     <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst">@</span>
   {% endif %}

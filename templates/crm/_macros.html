@@ -12,6 +12,14 @@
   </th>
 {% endmacro %}
 
+{% macro context_badge(item) %}
+  {% if item.context_id %}
+  <span class="badge" style="background:{{ item.context_badge_color }}40;color:{{ item.context_text_color }};border:1px solid {{ item.context_badge_color }}55">@{{ item.context_name }}</span>
+  {% else %}
+  <span class="text-muted">—</span>
+  {% endif %}
+{% endmacro %}
+
 {% macro file_icon_button(file) %}
   {% set ext = (file.file_name.rsplit('.', 1)[-1].lower() if '.' in file.file_name else '') %}
   {% set known = ['pdf', 'docx', 'xlsx', 'jpg', 'jpeg', 'png', 'heic', 'xml'] %}

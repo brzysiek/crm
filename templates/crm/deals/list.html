@@ -14,7 +14,7 @@
     </div>
     <div id="deals-col-toggle-wrap">
       {{ m.col_toggle('deals-col-btn', 'deals-col-menu', [
-        ('stage', 'Etap'), ('probability', 'Szansa'), ('deal_type', 'Typ'), ('amount', 'Kwota'), ('company_name', 'Firma'),
+        ('stage', 'Etap'), ('probability', 'Szansa'), ('deal_type', 'Typ'), ('context_id', 'Kontekst'), ('amount', 'Kwota'), ('company_name', 'Firma'),
         ('contact_name', 'Kontakt'), ('start_date', 'Rozpoczęcie'), ('end_date', 'Zakończenie'),
       ]) }}
     </div>
@@ -54,6 +54,22 @@
       <option value="{{ val }}" {{ 'selected' if filters.deal_type == val }}>{{ label }}</option>
     {% endfor %}
   </select>
+  <input type="hidden" name="context_filter" value="1">
+  <div class="col-toggle" id="deals-context-filter">
+    <button type="button" id="deals-context-filter-btn" class="btn btn-outline btn-sm">
+      Konteksty ({{ filters.context|length if filters.context is not none else all_contexts|length + 1 }}) {{ icon('chevron-down', 12) }}
+    </button>
+    <div id="deals-context-filter-menu" class="col-toggle-menu">
+      {% for ctx in all_contexts %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="context" value="{{ ctx.id }}" {{ 'checked' if filters.context is none or ctx.id in filters.context }}> @{{ ctx.name }}</label>
+      </div>
+      {% endfor %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="context" value="0" {{ 'checked' if filters.context is none or 0 in filters.context }}> Brak kontekstu</label>
+      </div>
+    </div>
+  </div>
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-ghost">Wyczyść</a>
   {% set prob_next_dir = 'desc' if sort == 'probability' and direction == 'asc' else 'asc' %}
@@ -77,6 +93,7 @@
         {{ m.sort_th('Etap', 'stage', sort, direction, 'crm_deals.list_deals', 'stage') }}
         {{ m.sort_th('Szansa', 'probability', sort, direction, 'crm_deals.list_deals', 'probability') }}
         <th data-col="deal_type">Typ</th>
+        <th data-col="context_id">Kontekst</th>
         {{ m.sort_th('Kwota', 'amount', sort, direction, 'crm_deals.list_deals', 'amount') }}
         <th data-col="company_name">Firma</th>
         <th data-col="contact_name">Kontakt</th>
@@ -125,6 +142,7 @@
             {{ deal_type_labels[d.deal_type] }}
           </span>
         </td>
+        <td data-col="context_id">{{ m.context_badge(d) }}</td>
         <td data-col="amount" class="text-right nowrap">{{ d.amount|pln if d.amount is not none else '—' }}</td>
         <td data-col="company_name">
           {% if d.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=d.company_id) }}">{{ d.company_short_name or d.company_name }}</a>{% else %}<span class="text-muted">—</span>{% endif %}
@@ -163,6 +181,7 @@
     </div>
     <div class="rd-card-chips">
       <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
+      {% if d.context_id %}{{ m.context_badge(d) }}{% endif %}
     </div>
     <div class="rd-card-actions">
       <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
@@ -205,6 +224,7 @@
             <div class="kanban-card-sub">{{ d.company_short_name or d.company_name }}</div>
             {% endif %}
             <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
+            {% if d.context_id %}{{ m.context_badge(d) }}{% endif %}
             <div class="kanban-card-amount">{{ d.amount|pln if d.amount is not none else '—' }}</div>
             <div class="kanban-card-prob" data-prob-label>{{ d.probability ~ '%' if d.probability is not none else '—' }}</div>
           </a>
@@ -230,6 +250,7 @@
 <script>
 initColumnToggle('deals-table', 'crm_deals_columns', 'deals-col-btn', 'deals-col-menu');
 initDropdownToggle('deals-stage-filter-btn', 'deals-stage-filter-menu');
+initDropdownToggle('deals-context-filter-btn', 'deals-context-filter-menu');
 initDealsViewToggle();
 initKanbanStageToggle({{ kanban_default_hidden_stages|tojson }});
 initDealStagePicker();

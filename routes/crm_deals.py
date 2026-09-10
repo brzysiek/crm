@@ -11,6 +11,7 @@ from models.crm_deal_payment import (add_payment, delete_payment, get_payments_f
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history, get_notes)
+from models.gtd_context import get_all_contexts
 from models.user import get_active_users
 from routes.crm_contacts import build_gtd_items
 
@@ -37,6 +38,7 @@ def _parse_form(form):
         'start_date': form.get('start_date', '').strip() or None,
         'end_date': form.get('end_date', '').strip() or None,
         'owner_user_id': form.get('owner_user_id', type=int),
+        'context_id': form.get('context_id', type=int),
     }
 
 
@@ -61,22 +63,34 @@ def list_deals():
     else:
         stage_list = list(DEFAULT_LIST_STAGES)
 
+    # Znacznik 'context_filter' odróżnia "formularz wysłany bez zaznaczonych
+    # kontekstów" (pokaż nic) od "strona wczytana bez parametrów" (pokaż wszystkie).
+    # W obu przypadkach — w przeciwieństwie do etapu — filtr kontekstu dotyczy
+    # zarówno listy, jak i Kanbanu, więc jest stosowany już w get_all_deals().
+    all_contexts = get_all_contexts()
+    if 'context_filter' in request.args:
+        context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
+    else:
+        context_ids = None
+
     # Pełny zbiór dealów (bez filtra etapu) — używany przez widok Kanban, który
     # pokazuje wszystkie etapy niezależnie od filtra listy.
     deals = get_all_deals(sort=sort, direction=direction, search=search or None,
-                           deal_type=deal_type or None)
+                           deal_type=deal_type or None, context_ids=context_ids)
     list_deals_view = [d for d in deals if d['stage'] in stage_list]
 
     return render_template('crm/deals/list.html',
         active_tab='deals', deals=deals, list_deals=list_deals_view,
         stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
-        sort=sort, direction=direction, filters={'search': search, 'stage': stage_list, 'deal_type': deal_type},
+        sort=sort, direction=direction,
+        filters={'search': search, 'stage': stage_list, 'deal_type': deal_type, 'context': context_ids},
         default_list_stages=DEFAULT_LIST_STAGES,
         kanban_default_hidden_stages=KANBAN_DEFAULT_HIDDEN_STAGES,
         probability_row_class=probability_row_class,
         probability_choices=PROBABILITY_CHOICES,
         forced_probability_by_stage=FORCED_PROBABILITY_BY_STAGE,
+        all_contexts=all_contexts,
     )
 
 
@@ -99,7 +113,7 @@ def new_deal():
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
                 deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
-                probability_choices=PROBABILITY_CHOICES,
+                probability_choices=PROBABILITY_CHOICES, all_contexts=get_all_contexts(),
                 prefill_company=None, prefill_contact=None,
                 action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
@@ -116,7 +130,7 @@ def new_deal():
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
-        probability_choices=PROBABILITY_CHOICES,
+        probability_choices=PROBABILITY_CHOICES, all_contexts=get_all_contexts(),
         prefill_company=prefill_company, prefill_contact=prefill_contact,
         action=url_for('crm_deals.new_deal'), title='Nowy deal')
 
@@ -139,7 +153,7 @@ def edit_deal(deal_id):
             return render_template('crm/deals/form.html',
                 active_tab='deals', deal=request.form, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
                 deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
-                probability_choices=PROBABILITY_CHOICES,
+                probability_choices=PROBABILITY_CHOICES, all_contexts=get_all_contexts(),
                 prefill_company=None, prefill_contact=None,
                 action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
@@ -153,7 +167,7 @@ def edit_deal(deal_id):
     return render_template('crm/deals/form.html',
         active_tab='deals', deal=deal, owners=owners, stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         deal_type_labels=DEAL_TYPE_LABELS, deal_type_badge_classes=DEAL_TYPE_BADGE_CLASSES,
-        probability_choices=PROBABILITY_CHOICES,
+        probability_choices=PROBABILITY_CHOICES, all_contexts=get_all_contexts(),
         prefill_company=prefill_company, prefill_contact=prefill_contact,
         action=url_for('crm_deals.edit_deal', deal_id=deal_id), title='Edytuj deal')
 
