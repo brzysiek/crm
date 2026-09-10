@@ -109,6 +109,11 @@
         <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path></svg></span>
         <span class="sidebar-nav-label">Projekty</span>
       </a>
+      <a href="{{ url_for('gtd.context_board') }}" title="Wg kontekstu"
+         class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.context_board' else '' }}">
+        <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span>
+        <span class="sidebar-nav-label">Wg kontekstu</span>
+      </a>
       <a href="{{ url_for('gtd.waiting') }}" title="Czeka na"
          class="sidebar-nav-item {{ 'active' if request.endpoint == 'gtd.waiting' else '' }}">
         <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg></span>
