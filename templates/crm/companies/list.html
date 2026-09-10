@@ -110,7 +110,6 @@
         <th data-col="industries">Branże</th>
         <th data-col="short_description">Krótki opis</th>
         <th data-col="description">Opis</th>
-        <th class="col-actions"></th>
       </tr>
     </thead>
     <tbody>
@@ -180,14 +179,6 @@
             <span class="desc-cell" title="{{ c.description }}">{{ c.description }}</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
-        <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-          <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=c.id) }}"
-                class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ c.contacts_count or 0 }})">
-            <input type="hidden" name="archive_contacts" value="0">
-            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
-          </form>
-        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -216,12 +207,6 @@
     <div class="rd-card-actions">
       <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
               onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
-      <a href="{{ url_for('crm_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-      <form method="post" action="{{ url_for('crm_companies.delete_company_view', company_id=c.id) }}"
-            class="inline-form" onsubmit="return crmConfirmDeleteCompany(this, {{ c.contacts_count or 0 }})">
-        <input type="hidden" name="archive_contacts" value="0">
-        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
-      </form>
     </div>
   </div>
   {% endfor %}

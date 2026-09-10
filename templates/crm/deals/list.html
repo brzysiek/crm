@@ -99,7 +99,6 @@
         <th data-col="contact_name">Kontakt</th>
         {{ m.sort_th('Rozpoczęcie', 'start_date', sort, direction, 'crm_deals.list_deals', 'start_date') }}
         {{ m.sort_th('Zakończenie', 'end_date', sort, direction, 'crm_deals.list_deals', 'end_date') }}
-        <th class="col-actions"></th>
       </tr>
     </thead>
     <tbody>
@@ -152,13 +151,6 @@
         </td>
         <td data-col="start_date" class="nowrap">{{ d.start_date|ddmmyyyy if d.start_date else '—' }}</td>
         <td data-col="end_date" class="nowrap">{{ d.end_date|ddmmyyyy if d.end_date else '—' }}</td>
-        <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-          <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
-                class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
-            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
-          </form>
-        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -182,13 +174,6 @@
     <div class="rd-card-chips">
       <span class="badge {{ deal_type_badge_classes[d.deal_type] }}">{{ deal_type_labels[d.deal_type] }}</span>
       {% if d.context_id %}{{ m.context_badge(d) }}{% endif %}
-    </div>
-    <div class="rd-card-actions">
-      <a href="{{ url_for('crm_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-      <form method="post" action="{{ url_for('crm_deals.delete_deal_view', deal_id=d.id) }}"
-            class="inline-form" onsubmit="return confirm('Usunąć ten deal?')">
-        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
-      </form>
     </div>
   </div>
   {% endfor %}

@@ -81,7 +81,6 @@
         <th data-col="context_id">Kontekst</th>
         <th data-col="company_tags" title="Tagi przypisane do firmy kontaktu">Tagi <span class="text-muted">(firma)</span></th>
         <th data-col="company_industries" title="Branże przypisane do firmy kontaktu">Branże <span class="text-muted">(firma)</span></th>
-        <th class="col-actions"></th>
       </tr>
     </thead>
     <tbody>
@@ -132,14 +131,6 @@
             {% endfor %}
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
-        <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-          <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
-                class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if c.company_id else 'false' }})">
-            <input type="hidden" name="archive_company" value="0">
-            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
-          </form>
-        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -166,12 +157,6 @@
     <div class="rd-card-actions">
       <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
               onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
-      <a href="{{ url_for('crm_contacts.edit_contact', contact_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-      <form method="post" action="{{ url_for('crm_contacts.delete_contact_view', contact_id=c.id) }}"
-            class="inline-form" onsubmit="return crmConfirmDeleteContact(this, {{ 'true' if c.company_id else 'false' }})">
-        <input type="hidden" name="archive_company" value="0">
-        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
-      </form>
     </div>
   </div>
   {% endfor %}
