@@ -135,6 +135,15 @@
         </select>
       </div>
       <div class="agent-confirm-row">
+        <label>Kontekst</label>
+        <select id="gtdEditTaskContext" class="filter-input" style="width:100%">
+          <option value="">— brak —</option>
+          {% for ctx in gtd_contexts() %}
+          <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="agent-confirm-row">
         <label>Kontakt</label>
         <div class="entity-picker" id="gtdEditTaskContactPicker">
           <input type="text" id="gtdEditTaskContactPicker-input" class="filter-input" style="width:100%"

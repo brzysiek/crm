@@ -1,0 +1,68 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<h2 class="settings-section-title">Konteksty</h2>
+<p class="text-muted" style="margin-bottom:1.5rem">
+  Konteksty (np. „@dom”, „@praca”) do grupowania zadań i projektów GTD. Każde
+  zadanie/projekt może mieć przypisany co najwyżej jeden kontekst — widoczny
+  jako badge zaraz za nazwą na liście, w kolorze ustawionym poniżej.
+</p>
+
+<div class="settings-card" style="margin-bottom:1.5rem">
+  {% if contexts %}
+  <table class="data-table data-table-sm" style="margin-bottom:1rem">
+    <thead>
+      <tr>
+        <th>Podgląd</th>
+        <th>Nazwa</th>
+        <th>Kolor</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ctx in contexts %}
+      <tr>
+        <td>
+          <span class="badge" style="background:{{ ctx.badge_color }}22;color:{{ ctx.badge_color }};border:1px solid {{ ctx.badge_color }}55">@{{ ctx.name }}</span>
+        </td>
+        <td colspan="2">
+          <form method="post" action="{{ url_for('settings.gtd_context_update', context_id=ctx.id) }}"
+                class="dict-add-form">
+            <input type="text" name="name" value="{{ ctx.name }}" required
+                   class="filter-input" style="max-width:180px">
+            <input type="color" name="badge_color" value="{{ ctx.badge_color }}"
+                   style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+            <button type="submit" class="btn btn-outline btn-sm">Zapisz</button>
+          </form>
+        </td>
+        <td style="text-align:right">
+          <form method="post"
+                action="{{ url_for('settings.gtd_context_delete', context_id=ctx.id) }}"
+                onsubmit="return confirm('Usunąć kontekst „@{{ ctx.name }}”? Zostanie odpięty od zadań/projektów, które go używają.')"
+                style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm">Usuń</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted small" style="margin-bottom:1rem">Brak zdefiniowanych kontekstów.</p>
+  {% endif %}
+
+  <h3 style="margin:1rem 0 .75rem">Nowy kontekst</h3>
+  <form method="post" action="{{ url_for('settings.gtd_context_add') }}" class="dict-add-form">
+    <input type="text" name="name" placeholder="np. dom" required
+           class="filter-input" style="max-width:180px">
+    <input type="color" name="badge_color" value="#3B82F6"
+           style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+    <button type="submit" class="btn btn-outline btn-sm">+ Dodaj</button>
+  </form>
+</div>
+
+<style>
+.dict-add-form { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+</style>
+
+{% endblock %}

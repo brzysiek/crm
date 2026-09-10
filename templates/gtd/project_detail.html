@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, task_extra_actions, row_class, timeline_item %}
+{% from 'gtd/_macros.html' import task_cells, task_extra_actions, row_class, timeline_item, context_picker %}
 {% from '_icons.html' import icon %}
 {% block title %}{{ project.title }} — Projekt — GTD{% endblock %}
 
@@ -11,6 +11,7 @@
             title="{{ 'Usuń z ważnych' if project.is_important else 'Oznacz jako ważny' }}"
             onclick="gtdToggleStar({{ project.id }}, 'toggle_important')">{{ icon('star', 16) if project.is_important else icon('star-outline', 16) }}</button>
     {{ icon('folder', 18) }} {{ project.title }}
+    {{ context_picker(project) }}
     {% if project.status == 'done' %}<span class="badge badge-green" style="margin-left:.4rem">zakończony</span>{% endif %}
     {% if project.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=project.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</a>{% endif %}
     {% if project.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=project.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ project.crm_company_short_name or project.crm_company_name }}</a>{% endif %}
@@ -23,7 +24,7 @@
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdCloseProject({{ project.id }})">{{ icon('check', 14) }} Zakończ projekt</button>
     {% endif %}
     <button type="button" class="btn btn-outline btn-sm"
-            onclick="gtdOpenEditTask({{ project.id }}, '{{ project.due_date or '' }}', {{ project.parent_id or 'null' }}, {{ project.title|tojson|forceescape }}, {{ project.crm_contact_id or 'null' }}, {{ project.crm_company_id or 'null' }}, '{{ project.scheduled_date or '' }}', '{{ project.planned_week or '' }}', {{ project.crm_deal_id or 'null' }}, {{ project.crm_deal_name|tojson|forceescape if project.crm_deal_name else 'null' }})">{{ icon('link', 14) }} Przypisz klienta</button>
+            onclick="gtdOpenEditTask({{ project.id }}, '{{ project.due_date or '' }}', {{ project.parent_id or 'null' }}, {{ project.title|tojson|forceescape }}, {{ project.crm_contact_id or 'null' }}, {{ project.crm_company_id or 'null' }}, '{{ project.scheduled_date or '' }}', '{{ project.planned_week or '' }}', {{ project.crm_deal_id or 'null' }}, {{ project.crm_deal_name|tojson|forceescape if project.crm_deal_name else 'null' }}, {{ project.context_id or 'null' }})">{{ icon('link', 14) }} Przypisz klienta</button>
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdRenameProject({{ project.id }}, {{ project.title|tojson|forceescape }})">{{ icon('edit', 14) }} Zmień nazwę</button>
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdFlattenProject({{ project.id }})">Cofnij do zwykłego zadania</button>
     <button type="button" class="btn btn-ghost btn-sm" onclick="gtdArchiveProject({{ project.id }})">{{ icon('archive', 14) }} Archiwizuj projekt</button>

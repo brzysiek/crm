@@ -15,13 +15,15 @@ STATUS_LABELS = {
 _LIST_FIELDS = """t.*, p.title AS project_title,
                   cc.first_name AS crm_contact_first_name, cc.last_name AS crm_contact_last_name,
                   cco.name AS crm_company_name, cco.short_name AS crm_company_short_name,
-                  cd.name AS crm_deal_name"""
+                  cd.name AS crm_deal_name,
+                  gc.name AS context_name, gc.badge_color AS context_badge_color"""
 
 _LIST_JOINS = """FROM tasks t
                  LEFT JOIN tasks p ON p.id = t.parent_id
                  LEFT JOIN crm_contacts cc ON cc.id = t.crm_contact_id
                  LEFT JOIN crm_companies cco ON cco.id = t.crm_company_id
-                 LEFT JOIN crm_deals cd ON cd.id = t.crm_deal_id"""
+                 LEFT JOIN crm_deals cd ON cd.id = t.crm_deal_id
+                 LEFT JOIN gtd_contexts gc ON gc.id = t.context_id"""
 
 _STATUS_SORT_SQL = "CASE WHEN {col}='done' THEN 2 WHEN {col}='waiting' THEN 1 ELSE 0 END"
 
@@ -80,7 +82,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
 def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
-               'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id')
+               'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id', 'context_id')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
@@ -92,6 +94,8 @@ def update_task(task_id: int, data: dict) -> None:
         fields['crm_company_id'] = fields['crm_company_id'] or None
     if 'crm_deal_id' in fields:
         fields['crm_deal_id'] = fields['crm_deal_id'] or None
+    if 'context_id' in fields:
+        fields['context_id'] = fields['context_id'] or None
     db = get_db()
     try:
         with db.cursor() as cur:

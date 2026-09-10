@@ -294,3 +294,45 @@ def crm_tag_delete(tag_id):
     delete_tag(tag_id)
     return redirect(url_for('settings.crm_settings'))
 
+
+@bp.route('/gtd-contexts', methods=['GET'])
+def gtd_contexts():
+    from models.gtd_context import get_all_contexts
+    return render_template('settings/gtd_contexts.html', active_tab='gtd_contexts',
+        contexts=get_all_contexts())
+
+
+@bp.route('/gtd-contexts/add', methods=['POST'])
+def gtd_context_add():
+    from models.gtd_context import create_context
+    name = request.form.get('name', '').strip().lstrip('@')
+    badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
+    if name:
+        try:
+            create_context(name, badge_color)
+        except Exception:
+            flash(f'Kontekst „{name}" już istnieje.', 'error')
+    return redirect(url_for('settings.gtd_contexts'))
+
+
+@bp.route('/gtd-contexts/<int:context_id>/update', methods=['POST'])
+def gtd_context_update(context_id):
+    from models.gtd_context import update_context
+    name = request.form.get('name', '').strip().lstrip('@')
+    badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
+    if name:
+        try:
+            update_context(context_id, name, badge_color)
+            flash('Kontekst został zaktualizowany.', 'success')
+        except Exception:
+            flash(f'Kontekst „{name}" już istnieje.', 'error')
+    return redirect(url_for('settings.gtd_contexts'))
+
+
+@bp.route('/gtd-contexts/<int:context_id>/delete', methods=['POST'])
+def gtd_context_delete(context_id):
+    from models.gtd_context import delete_context
+    delete_context(context_id)
+    flash('Kontekst został usunięty.', 'success')
+    return redirect(url_for('settings.gtd_contexts'))
+

@@ -30,6 +30,10 @@
          class="settings-nav-item {{ 'active' if active_tab == 'crm' }}">
         CRM
       </a>
+      <a href="{{ url_for('settings.gtd_contexts') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'gtd_contexts' }}">
+        Konteksty
+      </a>
       <a href="{{ url_for('settings.dictionary') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'dictionary' }}">
         Słownik

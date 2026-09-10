@@ -2538,6 +2538,9 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   height: .25rem;
 }
 .term-cell:hover .term-hover-picker { display: flex; }
+.gtd-context-badge, .gtd-context-badge-empty { cursor: pointer; }
+.gtd-context-badge-empty { opacity: .55; }
+.gtd-context-cell:hover .gtd-context-badge-empty { opacity: 1; }
 
 /* ── CRM: blueprint-grid backdrop + glass surfaces (Fluxa) ─────────────────── */
 .crm-fluxa { position: relative; }

@@ -1,4 +1,4 @@
-from flask import Flask, Response, jsonify, redirect, request, session, url_for
+from flask import Flask, Response, g, jsonify, redirect, request, session, url_for
 from flask.json.provider import DefaultJSONProvider
 from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException
@@ -165,6 +165,15 @@ def drive_image_url(value):
     if m:
         return f"https://drive.google.com/thumbnail?id={m.group(1)}&sz=w1000"
     return value
+
+
+@app.template_global('gtd_contexts')
+def _jinja_gtd_contexts():
+    """Lista kontekstów GTD (dla pickerów w listach zadań/projektów) — cache'owana per-request."""
+    if not hasattr(g, '_gtd_contexts'):
+        from models.gtd_context import get_all_contexts
+        g._gtd_contexts = get_all_contexts()
+    return g._gtd_contexts
 
 
 @app.errorhandler(Exception)
