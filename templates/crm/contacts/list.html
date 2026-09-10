@@ -10,7 +10,7 @@
   <div class="header-actions">
     {{ m.col_toggle('contacts-col-btn', 'contacts-col-menu', [
       ('position', 'Stanowisko'), ('company_name', 'Firma'), ('email', 'Email'), ('phone', 'Telefon'),
-      ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
+      ('context_id', 'Kontekst'), ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
     ]) }}
     {% include 'crm/_scan_card_modal.html' %}
     <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">+ Dodaj kontakt</a>
@@ -20,6 +20,24 @@
 <form class="filter-bar" method="get" action="{{ url_for('crm_contacts.list_contacts') }}">
   <input type="text" id="contacts-search" name="search" placeholder="Szukaj imienia, email, firmy…"
          value="{{ filters.search }}" class="filter-input" autocomplete="off">
+
+  <input type="hidden" name="context_filter" value="1">
+  <div class="col-toggle" id="contacts-context-filter">
+    <button type="button" id="contacts-context-filter-btn" class="btn btn-outline btn-sm">
+      Konteksty ({{ selected_context_ids|length if selected_context_ids is not none else all_contexts|length + 1 }}) {{ icon('chevron-down', 12) }}
+    </button>
+    <div id="contacts-context-filter-menu" class="col-toggle-menu">
+      {% for ctx in all_contexts %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="context" value="{{ ctx.id }}" {{ 'checked' if selected_context_ids is none or ctx.id in selected_context_ids }}> @{{ ctx.name }}</label>
+      </div>
+      {% endfor %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="context" value="0" {{ 'checked' if selected_context_ids is none or 0 in selected_context_ids }}> Brak kontekstu</label>
+      </div>
+    </div>
+  </div>
+
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
@@ -47,6 +65,7 @@
         {{ m.sort_th('Firma', 'company_name', sort, direction, 'crm_contacts.list_contacts', 'company_name') }}
         {{ m.sort_th('Email', 'email', sort, direction, 'crm_contacts.list_contacts', 'email') }}
         {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_contacts.list_contacts', 'phone') }}
+        <th data-col="context_id">Kontekst</th>
         <th data-col="company_tags" title="Tagi przypisane do firmy kontaktu">Tagi <span class="text-muted">(firma)</span></th>
         <th data-col="company_industries" title="Branże przypisane do firmy kontaktu">Branże <span class="text-muted">(firma)</span></th>
         <th class="col-actions"></th>
@@ -83,6 +102,7 @@
         </td>
         <td data-col="email">{{ c.email or '—' }}</td>
         <td data-col="phone">{{ c.phone|phone_link }}</td>
+        <td data-col="context_id">{{ m.context_badge(c) }}</td>
         <td data-col="company_tags">
           {% if c.company_tags_list %}
             {% for t in c.company_tags_list.split(', ') %}
@@ -127,6 +147,9 @@
       {% endif %}
     </div>
     <div class="rd-card-meta">{{ c.position or '—' }}{% if c.company_id %} · {{ c.company_short_name or c.company_name }}{% endif %}</div>
+    {% if c.context_id %}
+    <div class="rd-card-chips">{{ m.context_badge(c) }}</div>
+    {% endif %}
     <div class="rd-card-actions">
       <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
               onclick="toggleRowStar(this)" title="{{ 'Usuń z ulubionych' if c.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if c.is_starred else icon('star-outline', 16) }}</button>
@@ -176,6 +199,7 @@ function openBusinessCardModal(url, mime) {
 initColumnToggle('contacts-table', 'crm_contacts_columns', 'contacts-col-btn', 'contacts-col-menu',
   ['company_tags', 'company_industries']);
 initLiveTableSearch('contacts-search', 'contacts-table', 'kontaktów');
+initDropdownToggle('contacts-context-filter-btn', 'contacts-context-filter-menu');
 
 function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));

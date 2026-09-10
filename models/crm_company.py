@@ -1,6 +1,7 @@
 import re
 
 from database import get_db
+import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
 from models.crm_tags import get_or_create_tag_ids
 from services.company_profile import get_favicon_url
@@ -19,6 +20,7 @@ FIELD_LABELS = {
     'house_number': 'Nr domu', 'flat_number': 'Nr lokalu', 'postal_code': 'Kod pocztowy',
     'email': 'Email', 'phone': 'Telefon', 'nip': 'NIP', 'krs': 'KRS', 'website': 'Strona WWW',
     'linkedin_url': 'LinkedIn', 'description': 'Opis', 'short_description': 'Krótki opis',
+    'context_id': 'Kontekst',
 }
 
 # Sufiksy odmian nazw spółek, usuwane przy automatycznym tworzeniu nazwy skróconej
@@ -45,7 +47,8 @@ def derive_short_name(name: str) -> str:
 
 def get_all_companies(sort: str = 'name', direction: str = 'asc',
                        search: str = None, relation_type: str = None,
-                       tag: str = None, industry: str = None, source: str = None) -> list[dict]:
+                       tag: str = None, industry: str = None, source: str = None,
+                       context_ids: list[int] | None = None) -> list[dict]:
     allowed_sort = {
         'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
         'nip', 'created_at',
@@ -83,8 +86,20 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
                       "OR c.nip LIKE %s OR c.city LIKE %s)")
         like = f"%{search}%"
         params.extend([like, like, like, like, like])
+    if context_ids is not None:
+        # Sentinel 0 oznacza koszyk „Brak kontekstu” (c.context_id IS NULL).
+        real_ids = [c for c in context_ids if c]
+        conds = []
+        if real_ids:
+            placeholders = ','.join(['%s'] * len(real_ids))
+            conds.append(f"c.context_id IN ({placeholders})")
+            params.extend(real_ids)
+        if 0 in context_ids:
+            conds.append("c.context_id IS NULL")
+        where.append(f"({' OR '.join(conds)})" if conds else "1=0")
 
     sql = f"""SELECT DISTINCT c.*,
+        gc.name AS context_name, gc.badge_color AS context_badge_color, gc.text_color AS context_text_color,
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
            FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id
            WHERE ct.company_id=c.id AND t.kind='tag') AS tags_list,
@@ -100,7 +115,9 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
            WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_name,
         (SELECT COUNT(*) FROM crm_contacts ct2
            WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL) AS contacts_count
-        FROM crm_companies c {' '.join(joins)} WHERE {' AND '.join(where)}"""
+        FROM crm_companies c
+        LEFT JOIN gtd_contexts gc ON gc.id = c.context_id
+        {' '.join(joins)} WHERE {' AND '.join(where)}"""
     sql += f" ORDER BY c.is_starred DESC, {order_col} {direction}, c.id DESC"
 
     with db.cursor() as cur:
@@ -111,7 +128,14 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
 def get_company_by_id(company_id: int) -> dict | None:
     db = get_db()
     with db.cursor() as cur:
-        cur.execute("SELECT * FROM crm_companies WHERE id=%s AND archived_at IS NULL", (company_id,))
+        cur.execute(
+            """SELECT c.*, gc.name AS context_name, gc.badge_color AS context_badge_color,
+                      gc.text_color AS context_text_color
+               FROM crm_companies c
+               LEFT JOIN gtd_contexts gc ON gc.id = c.context_id
+               WHERE c.id=%s AND c.archived_at IS NULL""",
+            (company_id,)
+        )
         return cur.fetchone()
 
 
@@ -431,8 +455,8 @@ def _insert(data: dict) -> int:
             """INSERT INTO crm_companies
                (name, short_name, relation_type, country, city, voivodeship, street, house_number,
                 flat_number, postal_code, email, phone, nip, krs, website, linkedin_url, favicon_url,
-                description, short_description, owner_user_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                description, short_description, owner_user_id, context_id)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (
                 data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
                 data.get('country') or 'Polska', data.get('city') or None, data.get('voivodeship') or None,
@@ -442,7 +466,7 @@ def _insert(data: dict) -> int:
                 data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
                 data.get('linkedin_url') or None, data.get('favicon_url') or None,
                 data.get('description') or None, data.get('short_description') or None,
-                data.get('owner_user_id') or None,
+                data.get('owner_user_id') or None, data.get('context_id') or None,
             )
         )
         return cur.lastrowid
@@ -487,7 +511,7 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                    name=%s, short_name=%s, relation_type=%s, country=%s, city=%s, voivodeship=%s, street=%s,
                    house_number=%s, flat_number=%s, postal_code=%s, email=%s, phone=%s,
                    nip=%s, krs=%s, website=%s, linkedin_url=%s, favicon_url=%s, description=%s,
-                   short_description=%s, owner_user_id=%s
+                   short_description=%s, owner_user_id=%s, context_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('short_name') or None, data.get('relation_type', 'lead'),
@@ -498,7 +522,7 @@ def update_company(company_id: int, data: dict, user_id: int | None,
                     data.get('nip') or None, data.get('krs') or None, data.get('website') or None,
                     data.get('linkedin_url') or None, data.get('favicon_url') or None,
                     data.get('description') or None, data.get('short_description') or None,
-                    data.get('owner_user_id') or None,
+                    data.get('owner_user_id') or None, data.get('context_id') or None,
                     company_id,
                 )
             )
@@ -519,6 +543,9 @@ def update_company(company_id: int, data: dict, user_id: int | None,
         new_disp = dict(data)
         old_disp['relation_type'] = RELATION_LABELS.get(old.get('relation_type'), old.get('relation_type'))
         new_disp['relation_type'] = RELATION_LABELS.get(data.get('relation_type'), data.get('relation_type'))
+        context_names = {c['id']: c['name'] for c in gtd_context_model.get_all_contexts()}
+        old_disp['context_id'] = f"@{context_names[old['context_id']]}" if old.get('context_id') in context_names else None
+        new_disp['context_id'] = f"@{context_names[data['context_id']]}" if data.get('context_id') in context_names else None
         summary = build_diff_summary(old_disp, new_disp, FIELD_LABELS)
         if summary:
             log_history('company', company_id, user_id, 'update', summary)

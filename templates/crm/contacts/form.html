@@ -78,6 +78,19 @@
     <textarea id="description" name="description" rows="3">{{ contact.description or '' }}</textarea>
   </div>
 
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="context_id">Kontekst</label>
+      {% set cur_context = contact.context_id|int if contact.context_id else None %}
+      <select id="context_id" name="context_id">
+        <option value="">— brak —</option>
+        {% for ctx in all_contexts %}
+          <option value="{{ ctx.id }}" {{ 'selected' if cur_context == ctx.id }}>@{{ ctx.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
   <div class="form-group">
     <label>Tagi</label>
     <div class="tag-input-wrap" id="tags-wrap">

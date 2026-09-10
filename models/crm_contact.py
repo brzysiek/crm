@@ -1,4 +1,5 @@
 from database import get_db
+import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
 from models.crm_tags import set_contact_tags
 from services.text_utils import format_phone
@@ -6,12 +7,13 @@ from services.text_utils import format_phone
 FIELD_LABELS = {
     'first_name': 'Imię', 'last_name': 'Nazwisko', 'position': 'Stanowisko',
     'email': 'Email', 'phone': 'Telefon',
-    'linkedin_url': 'LinkedIn', 'description': 'Opis',
+    'linkedin_url': 'LinkedIn', 'description': 'Opis', 'context_id': 'Kontekst',
 }
 
 
 def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
-                      search: str = None, company_id: int = None) -> list[dict]:
+                      search: str = None, company_id: int = None,
+                      context_ids: list[int] | None = None) -> list[dict]:
     allowed_sort = {'first_name', 'last_name', 'position', 'email', 'phone', 'created_at', 'company_name'}
     if sort not in allowed_sort:
         sort = 'last_name'
@@ -21,6 +23,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
     db = get_db()
     sql = ("SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name, "
            "co.favicon_url AS company_favicon_url, "
+           "gc.name AS context_name, gc.badge_color AS context_badge_color, gc.text_color AS context_text_color, "
            "(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ') "
            "   FROM crm_company_tags cct JOIN crm_tags t ON t.id=cct.tag_id "
            "   WHERE cct.company_id=co.id AND t.kind='tag') AS company_tags_list, "
@@ -32,6 +35,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "(SELECT f.mime_type FROM crm_files f WHERE f.contact_id=ct.id AND f.category='business_card' "
            "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
+           "LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id "
            "WHERE ct.archived_at IS NULL")
     params = []
     if company_id:
@@ -42,6 +46,17 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
                  "OR ct.phone LIKE %s OR co.name LIKE %s)")
         like = f"%{search}%"
         params.extend([like, like, like, like, like])
+    if context_ids is not None:
+        # Sentinel 0 oznacza koszyk „Brak kontekstu” (ct.context_id IS NULL).
+        real_ids = [c for c in context_ids if c]
+        conds = []
+        if real_ids:
+            placeholders = ','.join(['%s'] * len(real_ids))
+            conds.append(f"ct.context_id IN ({placeholders})")
+            params.extend(real_ids)
+        if 0 in context_ids:
+            conds.append("ct.context_id IS NULL")
+        sql += f" AND ({' OR '.join(conds)})" if conds else " AND 1=0"
     sql += f" ORDER BY ct.is_starred DESC, {sort_col} {direction}, ct.id DESC"
 
     with db.cursor() as cur:
@@ -54,8 +69,12 @@ def get_contact_by_id(contact_id: int) -> dict | None:
     with db.cursor() as cur:
         cur.execute(
             """SELECT ct.*, co.name AS company_name, co.short_name AS company_short_name,
-                      co.website AS company_website
-               FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id
+                      co.website AS company_website,
+                      gc.name AS context_name, gc.badge_color AS context_badge_color,
+                      gc.text_color AS context_text_color
+               FROM crm_contacts ct
+               LEFT JOIN crm_companies co ON co.id = ct.company_id
+               LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id
                WHERE ct.id=%s AND ct.archived_at IS NULL""",
             (contact_id,)
         )
@@ -103,13 +122,14 @@ def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> i
             cur.execute(
                 """INSERT INTO crm_contacts
                    (company_id, first_name, last_name, position, email, phone,
-                    linkedin_url, description)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    linkedin_url, description, context_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data.get('company_id') or None, data['first_name'], data['last_name'],
                     data.get('position') or None, data.get('email') or None,
                     data.get('phone') or None,
                     data.get('linkedin_url') or None, data.get('description') or None,
+                    data.get('context_id') or None,
                 )
             )
         db.commit()
@@ -133,13 +153,14 @@ def update_contact(contact_id: int, data: dict, user_id: int | None, tags: list[
             cur.execute(
                 """UPDATE crm_contacts SET
                    company_id=%s, first_name=%s, last_name=%s, position=%s,
-                   email=%s, phone=%s, linkedin_url=%s, description=%s
+                   email=%s, phone=%s, linkedin_url=%s, description=%s, context_id=%s
                    WHERE id=%s""",
                 (
                     data.get('company_id') or None, data['first_name'], data['last_name'],
                     data.get('position') or None, data.get('email') or None,
                     data.get('phone') or None,
                     data.get('linkedin_url') or None, data.get('description') or None,
+                    data.get('context_id') or None,
                     contact_id,
                 )
             )
@@ -150,7 +171,12 @@ def update_contact(contact_id: int, data: dict, user_id: int | None, tags: list[
     if tags is not None:
         set_contact_tags(contact_id, tags)
     if old:
-        summary = build_diff_summary(old, data, FIELD_LABELS)
+        old_disp = dict(old)
+        new_disp = dict(data)
+        context_names = {c['id']: c['name'] for c in gtd_context_model.get_all_contexts()}
+        old_disp['context_id'] = f"@{context_names[old['context_id']]}" if old.get('context_id') in context_names else None
+        new_disp['context_id'] = f"@{context_names[data['context_id']]}" if data.get('context_id') in context_names else None
+        summary = build_diff_summary(old_disp, new_disp, FIELD_LABELS)
         if summary:
             log_history('contact', contact_id, user_id, 'update', summary)
 

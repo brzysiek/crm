@@ -11,7 +11,7 @@
     {{ m.col_toggle('companies-col-btn', 'companies-col-menu', [
       ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
       ('email', 'Email'), ('phone', 'Telefon'), ('nip', 'NIP'), ('source', 'Źródło'),
-      ('primary_contact', 'Kontakt'), ('tags', 'Tagi'), ('industries', 'Branże'),
+      ('primary_contact', 'Kontakt'), ('context_id', 'Kontekst'), ('tags', 'Tagi'), ('industries', 'Branże'),
       ('short_description', 'Krótki opis'), ('description', 'Opis'),
     ]) }}
     {% include 'crm/_scan_card_modal.html' %}
@@ -33,6 +33,23 @@
   <input type="text" name="tag" placeholder="Tag" value="{{ filters.tag }}" class="filter-input" style="min-width:100px">
   <input type="text" name="industry" placeholder="Branża" value="{{ filters.industry }}" class="filter-input" style="min-width:100px">
   <input type="text" name="source" placeholder="Źródło" value="{{ filters.source }}" class="filter-input" style="min-width:100px">
+
+  <input type="hidden" name="context_filter" value="1">
+  <div class="col-toggle" id="companies-context-filter">
+    <button type="button" id="companies-context-filter-btn" class="btn btn-outline btn-sm">
+      Konteksty ({{ selected_context_ids|length if selected_context_ids is not none else all_contexts|length + 1 }}) {{ icon('chevron-down', 12) }}
+    </button>
+    <div id="companies-context-filter-menu" class="col-toggle-menu">
+      {% for ctx in all_contexts %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="context" value="{{ ctx.id }}" {{ 'checked' if selected_context_ids is none or ctx.id in selected_context_ids }}> @{{ ctx.name }}</label>
+      </div>
+      {% endfor %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="context" value="0" {{ 'checked' if selected_context_ids is none or 0 in selected_context_ids }}> Brak kontekstu</label>
+      </div>
+    </div>
+  </div>
 
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-ghost">Wyczyść</a>
@@ -76,6 +93,7 @@
         {{ m.sort_th('NIP', 'nip', sort, direction, 'crm_companies.list_companies', 'nip') }}
         <th data-col="source">Źródło</th>
         <th data-col="primary_contact">Kontakt</th>
+        <th data-col="context_id">Kontekst</th>
         <th data-col="tags">Tagi</th>
         <th data-col="industries">Branże</th>
         <th data-col="short_description">Krótki opis</th>
@@ -123,6 +141,7 @@
             <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.primary_contact_id) }}">{{ c.primary_contact_name }}</a>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
+        <td data-col="context_id">{{ m.context_badge(c) }}</td>
         <td data-col="tags">
           {% if c.tags_list %}
             {% for t in c.tags_list.split(', ') %}
@@ -176,9 +195,10 @@
       <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[c.relation_type] }}">{{ relation_labels[c.relation_type] }}</span>
     </div>
     <div class="rd-card-meta">{{ c.city or '—' }}{% if c.primary_contact_name %} · {{ c.primary_contact_name }}{% endif %}</div>
-    {% if c.tags_list %}
+    {% if c.tags_list or c.context_id %}
     <div class="rd-card-chips">
-      {% for t in c.tags_list.split(', ') %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+      {% if c.context_id %}{{ m.context_badge(c) }}{% endif %}
+      {% for t in c.tags_list.split(', ') if c.tags_list %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
     </div>
     {% endif %}
     <div class="rd-card-actions">
@@ -209,6 +229,7 @@
 initColumnToggle('companies-table', 'crm_companies_columns', 'companies-col-btn', 'companies-col-menu',
   ['city', 'email', 'phone', 'nip', 'source', 'short_description', 'description']);
 initLiveTableSearch('companies-search', 'companies-table', 'firm');
+initDropdownToggle('companies-context-filter-btn', 'companies-context-filter-menu');
 
 function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));

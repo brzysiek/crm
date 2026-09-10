@@ -12,6 +12,15 @@
       <button class="modal-close" onclick="document.getElementById('scanCardModal').classList.remove('open')">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
+      <div class="form-group">
+        <label for="cardScanContext">Kontekst</label>
+        <select id="cardScanContext">
+          <option value="">— brak —</option>
+          {% for ctx in all_contexts %}
+            <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="card-scan-sides">
         <div class="card-scan-side">
           <div class="card-scan-label">Przód wizytówki</div>
@@ -132,6 +141,8 @@
     const form = new FormData();
     if (front) form.append('front', front);
     if (back) form.append('back', back);
+    const contextId = document.getElementById('cardScanContext').value;
+    if (contextId) form.append('context_id', contextId);
 
     const item = document.createElement('div');
     item.className = 'card-scan-item card-scan-pending';
@@ -161,10 +172,12 @@
     textInput.value = '';
     textSubmitBtn.disabled = true;
 
+    const contextId = document.getElementById('cardScanContext').value;
+
     fetch(window.API_BASE + '/api/crm/business-cards/scan-text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, context_id: contextId || null }),
     })
       .then(r => r.json())
       .then(data => renderResult(item, data))

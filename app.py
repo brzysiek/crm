@@ -2363,13 +2363,14 @@ def api_crm_business_cards_scan():
     if not front and not back:
         return jsonify({'ok': False, 'error': 'Dodaj przynajmniej jedno zdjęcie wizytówki (przód).'})
 
+    context_id = request.form.get('context_id', type=int)
     api_key = get_setting('gemini_api_key', '')
     model = get_setting('gemini_model', 'gemini-2.5-flash')
     drive_api_token = get_setting('google_drive_api_token', '')
     drive_root_id = get_setting('google_drive_crm_folder_id', '')
 
     result = process_business_card(front, back, api_key, model, drive_api_token, drive_root_id,
-                                    session.get('user_id'))
+                                    session.get('user_id'), context_id=context_id)
     return jsonify(result)
 
 
@@ -2380,6 +2381,8 @@ def api_crm_business_cards_scan_text():
 
     data = request.get_json(silent=True) or {}
     text = data.get('text', '')
+    context_id = data.get('context_id')
+    context_id = int(context_id) if context_id else None
 
     api_key = get_setting('gemini_api_key', '')
     model = get_setting('gemini_model', 'gemini-2.5-flash')
@@ -2387,7 +2390,7 @@ def api_crm_business_cards_scan_text():
     drive_root_id = get_setting('google_drive_crm_folder_id', '')
 
     result = process_business_card_from_text(text, api_key, model, drive_api_token, drive_root_id,
-                                              session.get('user_id'))
+                                              session.get('user_id'), context_id=context_id)
     return jsonify(result)
 
 

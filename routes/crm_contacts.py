@@ -15,6 +15,7 @@ from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
 from models.crm_tags import get_contact_email_tags, get_contact_tags, set_contact_email_tags
+from models.gtd_context import get_all_contexts
 from services.vcard import build_vcard
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
@@ -70,6 +71,7 @@ def _parse_form(form):
         'linkedin_url': form.get('linkedin_url', '').strip(),
         'description': form.get('description', '').strip(),
         'company_id': form.get('company_id', type=int),
+        'context_id': form.get('context_id', type=int),
     }
 
 
@@ -87,11 +89,16 @@ def list_contacts():
     sort = request.args.get('sort', 'created_at')
     direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
+    if 'context_filter' in request.args:
+        context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
+    else:
+        context_ids = None
 
-    contacts = get_all_contacts(sort=sort, direction=direction, search=search or None)
+    contacts = get_all_contacts(sort=sort, direction=direction, search=search or None, context_ids=context_ids)
     return render_template('crm/contacts/list.html',
         active_tab='contacts', contacts=contacts,
         sort=sort, direction=direction, filters={'search': search},
+        all_contexts=get_all_contexts(), selected_context_ids=context_ids,
     )
 
 
@@ -113,7 +120,7 @@ def new_contact():
             return render_template('crm/contacts/form.html',
                 active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
                 email_tags=email_tags,
-                action=url_for('crm_contacts.new_contact'), title='Nowy kontakt')
+                action=url_for('crm_contacts.new_contact'), title='Nowy kontakt', all_contexts=get_all_contexts())
 
         contact_id = create_contact(data, session.get('user_id'), tags=tags)
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
@@ -123,7 +130,7 @@ def new_contact():
     return render_template('crm/contacts/form.html',
         active_tab='contacts', contact={'company_id': company_id} if company_id else {}, tags=[], email_tags=[],
         prefill_company=prefill_company,
-        action=url_for('crm_contacts.new_contact'), title='Nowy kontakt')
+        action=url_for('crm_contacts.new_contact'), title='Nowy kontakt', all_contexts=get_all_contexts())
 
 
 @bp.route('/<int:contact_id>/edit', methods=['GET', 'POST'])
@@ -145,7 +152,7 @@ def edit_contact(contact_id):
                 active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
                 email_tags=email_tags,
                 action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
-                title='Edytuj kontakt')
+                title='Edytuj kontakt', all_contexts=get_all_contexts())
 
         update_contact(contact_id, data, session.get('user_id'), tags=tags)
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
@@ -157,7 +164,7 @@ def edit_contact(contact_id):
         active_tab='contacts', contact=contact, prefill_company=prefill_company,
         tags=get_contact_tags(contact_id), email_tags=get_contact_email_tags(contact_id),
         action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
-        title='Edytuj kontakt')
+        title='Edytuj kontakt', all_contexts=get_all_contexts())
 
 
 @bp.route('/<int:contact_id>')

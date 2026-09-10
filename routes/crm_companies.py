@@ -9,6 +9,7 @@ from models.crm_company import (RELATION_LABELS, create_company, delete_company,
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
+from models.gtd_context import get_all_contexts
 from models.user import get_active_users
 from routes.crm_contacts import build_gtd_items
 
@@ -38,6 +39,7 @@ def _parse_form(form):
         'description': form.get('description', '').strip(),
         'short_description': form.get('short_description', '').strip(),
         'owner_user_id': form.get('owner_user_id', type=int),
+        'context_id': form.get('context_id', type=int),
     }
 
 
@@ -57,16 +59,21 @@ def list_companies():
     tag = request.args.get('tag', '')
     industry = request.args.get('industry', '')
     source = request.args.get('source', '')
+    if 'context_filter' in request.args:
+        context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
+    else:
+        context_ids = None
 
     companies = get_all_companies(
         sort=sort, direction=direction, search=search or None,
         relation_type=relation_type or None, tag=tag or None, industry=industry or None,
-        source=source or None,
+        source=source or None, context_ids=context_ids,
     )
     return render_template('crm/companies/list.html',
         active_tab='companies', companies=companies, relation_labels=RELATION_LABELS,
         sort=sort, direction=direction,
         filters={'search': search, 'relation_type': relation_type, 'tag': tag, 'industry': industry, 'source': source},
+        all_contexts=get_all_contexts(), selected_context_ids=context_ids,
     )
 
 
@@ -90,7 +97,7 @@ def new_company():
                 active_tab='companies', company=request.form, owners=owners, tags=tags, industries=industries,
                 source=source, assigned_contacts=assigned_contacts,
                 action=url_for('crm_companies.new_company'),
-                title='Nowa firma', relation_labels=RELATION_LABELS)
+                title='Nowa firma', relation_labels=RELATION_LABELS, all_contexts=get_all_contexts())
 
         company_id = create_company(data, session.get('user_id'), tags=tags, industries=industries, source=source)
 
@@ -121,7 +128,7 @@ def new_company():
         active_tab='companies', company={}, owners=owners, tags=[], industries=[], source=[],
         assigned_contacts=[],
         action=url_for('crm_companies.new_company'),
-        title='Nowa firma', relation_labels=RELATION_LABELS)
+        title='Nowa firma', relation_labels=RELATION_LABELS, all_contexts=get_all_contexts())
 
 
 @bp.route('/<int:company_id>/edit', methods=['GET', 'POST'])
@@ -150,7 +157,7 @@ def edit_company(company_id):
                 active_tab='companies', company=request.form, owners=owners, tags=tags, industries=industries,
                 source=source, assigned_contacts=assigned_contacts,
                 action=url_for('crm_companies.edit_company', company_id=company_id),
-                title='Edytuj firmę', relation_labels=RELATION_LABELS)
+                title='Edytuj firmę', relation_labels=RELATION_LABELS, all_contexts=get_all_contexts())
 
         update_company(company_id, data, session.get('user_id'), tags=tags, industries=industries, source=source)
 
@@ -192,7 +199,7 @@ def edit_company(company_id):
         assigned_contacts=[{'id': c['id'], 'label': f"{c['first_name']} {c['last_name']}".strip()} for c in contacts],
         action=url_for('crm_companies.edit_company', company_id=company_id),
         title='Edytuj firmę', relation_labels=RELATION_LABELS,
-        contacts_count=len(contacts))
+        contacts_count=len(contacts), all_contexts=get_all_contexts())
 
 
 @bp.route('/<int:company_id>')

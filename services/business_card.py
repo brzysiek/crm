@@ -70,7 +70,7 @@ def _first(*values) -> str:
 
 def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, str] | None,
                            api_key: str, model: str, drive_api_token: str, drive_root_id: str,
-                           user_id: int | None) -> dict:
+                           user_id: int | None, context_id: int | None = None) -> dict:
     """Przetwarza zdjęcia wizytówki (przód i/lub tył, każde jako (bytes, mime_type)):
     OCR -> enrichment (WWW / NIP) -> dopasowanie lub utworzenie firmy i kontaktu ->
     zapis zdjęć w Google Drive. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
@@ -91,11 +91,13 @@ def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, st
     if front:
         uploads.append((*front, 'przod'))
 
-    return _process_extracted(ocr, api_key, model, drive_api_token, drive_root_id, user_id, uploads)
+    return _process_extracted(ocr, api_key, model, drive_api_token, drive_root_id, user_id, uploads,
+                               context_id=context_id)
 
 
 def process_business_card_from_text(text: str, api_key: str, model: str, drive_api_token: str,
-                                     drive_root_id: str, user_id: int | None) -> dict:
+                                     drive_root_id: str, user_id: int | None,
+                                     context_id: int | None = None) -> dict:
     """Przetwarza wklejony tekst stopki maila: ekstrakcja danych -> enrichment (WWW / NIP) ->
     dopasowanie lub utworzenie firmy i kontaktu. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
     if not api_key:
@@ -109,11 +111,13 @@ def process_business_card_from_text(text: str, api_key: str, model: str, drive_a
     if extracted.get('error'):
         return {'ok': False, 'error': f'Błąd odczytu stopki maila: {extracted["error"]}'}
 
-    return _process_extracted(extracted, api_key, model, drive_api_token, drive_root_id, user_id, [])
+    return _process_extracted(extracted, api_key, model, drive_api_token, drive_root_id, user_id, [],
+                               context_id=context_id)
 
 
 def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_token: str, drive_root_id: str,
-                        user_id: int | None, uploads: list[tuple[bytes, str, str]]) -> dict:
+                        user_id: int | None, uploads: list[tuple[bytes, str, str]],
+                        context_id: int | None = None) -> dict:
     """Wspólna logika po uzyskaniu wyekstrahowanych danych (z OCR wizytówki lub z tekstu stopki maila):
     enrichment (WWW / NIP) -> dopasowanie lub utworzenie firmy i kontaktu -> zapis plików (jeśli podano)."""
     ocr = extracted
@@ -160,6 +164,7 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
         'nip': _first(nip, lookup_data.get('nip'), profile_data.get('nip')),
         'krs': _first(ocr.get('company_krs'), lookup_data.get('krs')),
         'description': profile_data.get('description') or None,
+        'context_id': context_id,
     }
     industries = profile_data.get('industries') or []
 
@@ -199,6 +204,7 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
                 'position': (ocr.get('position') or '').strip() or None,
                 'email': _first(ocr.get('contact_email'), ocr.get('company_email')) or None,
                 'phone': _first(ocr.get('contact_phone'), ocr.get('company_phone')) or None,
+                'context_id': context_id,
             }
             contact_id = create_contact(contact_data, user_id)
             contact_created = True
