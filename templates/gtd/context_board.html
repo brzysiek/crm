@@ -67,6 +67,7 @@
 {% else %}
 {% for group in groups %}
 {% set ctx_key = group.context.id if group.context else 0 %}
+{% set hdr_style = ('background:' ~ group.context.badge_color ~ '40;color:' ~ group.context.text_color ~ ';border-color:' ~ group.context.badge_color ~ '55') if group.context else '' %}
 <div class="gtd-context-section">
   <div class="gtd-context-section-title">
     {% if group.context %}
@@ -121,9 +122,9 @@
   <table class="data-table">
     <thead>
       <tr>
-        <th>Projekt</th>
-        <th>Postęp</th>
-        <th class="col-actions" style="width:160px"></th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Projekt</th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Postęp</th>
+        <th class="col-actions" style="width:160px{{ ';' ~ hdr_style if hdr_style }}"></th>
       </tr>
     </thead>
     <tbody>
@@ -176,8 +177,8 @@
   <table class="data-table">
     <thead>
       <tr>
-        <th>Deal</th>
-        <th class="col-actions" style="width:160px"></th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Deal</th>
+        <th class="col-actions" style="width:160px{{ ';' ~ hdr_style if hdr_style }}"></th>
       </tr>
     </thead>
     <tbody>
@@ -220,11 +221,11 @@
   <table class="data-table">
     <thead>
       <tr>
-        <th class="col-checkbox"></th>
-        <th>Zadanie</th>
-        <th>Termin</th>
-        <th style="width:4.2rem" title="Priorytety"></th>
-        <th class="col-actions" style="width:180px"></th>
+        <th class="col-checkbox"{% if hdr_style %} style="{{ hdr_style }}"{% endif %}></th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Zadanie</th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Termin</th>
+        <th style="width:4.2rem{{ ';' ~ hdr_style if hdr_style }}" title="Priorytety"></th>
+        <th class="col-actions" style="width:180px{{ ';' ~ hdr_style if hdr_style }}"></th>
       </tr>
     </thead>
     <tbody>
