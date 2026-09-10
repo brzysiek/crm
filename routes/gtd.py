@@ -472,6 +472,7 @@ def project_detail(project_id):
         'gtd/project_detail.html', active_tab='projekty',
         project=project, subtasks=task_model.get_project_subtasks(project_id),
         gcal_day_groups=_project_gcal_day_groups(project),
+        status_labels=task_model.STATUS_LABELS,
     )
 
 
@@ -482,7 +483,8 @@ def task_detail(task_id):
         return redirect(url_for('gtd.inbox'))
     if task['is_project']:
         return redirect(url_for('gtd.project_detail', project_id=task_id))
-    return render_template('gtd/task_detail.html', active_tab=None, task=task)
+    return render_template('gtd/task_detail.html', active_tab=None, task=task,
+                            status_labels=task_model.STATUS_LABELS)
 
 
 # ── Wg kontekstu ─────────────────────────────────────────────────────────────

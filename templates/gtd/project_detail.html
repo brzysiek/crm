@@ -32,13 +32,67 @@
   </div>
 </div>
 
-<div class="inv-section" style="margin-top:.75rem;max-width:760px">
-  <div class="inv-section-header">
-    <h4>Opis</h4>
-    <button type="button" class="btn btn-outline btn-sm" id="projectNotesSaveBtn" onclick="gtdSaveNotes({{ project.id }}, 'projectNotesInput', 'projectNotesSaveBtn')">Zapisz</button>
+<div class="detail-grid detail-grid-narrow-left" style="margin-top:.75rem">
+  <div>
+
+    <div class="inv-section">
+      <h4>Dane projektu</h4>
+      <dl class="inv-dl">
+        <dt>Status</dt>
+        <dd><span class="badge {{ 'badge-green' if project.status == 'done' else ('badge-waiting' if project.status == 'waiting' else 'badge-red') }}">{{ 'Zrobione' if project.status == 'done' else ('Czeka' if project.status == 'waiting' else status_labels.get(project.status, project.status)) }}</span></dd>
+        <dt>Ważny</dt>
+        <dd>{{ 'Tak' if project.is_important else 'Nie' }}</dd>
+        <dt>Kontekst</dt>
+        <dd>{% if project.context_id %}<span class="badge" style="background:{{ project.context_badge_color }}40;color:{{ project.context_text_color }};border:1px solid {{ project.context_badge_color }}55">@{{ project.context_name }}</span>{% else %}—{% endif %}</dd>
+        <dt>Kontakt</dt>
+        <dd>{% if project.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=project.crm_contact_id) }}">{{ project.crm_contact_first_name }} {{ project.crm_contact_last_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Firma</dt>
+        <dd>{% if project.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=project.crm_company_id) }}">{{ project.crm_company_short_name or project.crm_company_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Deal</dt>
+        <dd>{% if project.crm_deal_id %}<a href="{{ url_for('crm_deals.view_deal', deal_id=project.crm_deal_id) }}">{{ project.crm_deal_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Czeka na</dt>
+        <dd>{{ project.waiting_on or '—' }}</dd>
+        <dt>Termin</dt>
+        <dd>{{ project.due_date|ddmmyyyy if project.due_date else '—' }}</dd>
+        <dt>Zaplanowano na</dt>
+        <dd>{% if project.scheduled_date %}{{ project.scheduled_date|ddmmyyyy }}{% if project.scheduled_time %} {{ project.scheduled_time|hhmm }}{% endif %}{% else %}—{% endif %}</dd>
+        <dt>Blok tygodniowy</dt>
+        <dd>{{ project.planned_week|ddmmyyyy if project.planned_week else '—' }}</dd>
+        <dt>Blok miesięczny</dt>
+        <dd>{{ project.planned_month|ddmmyyyy if project.planned_month else '—' }}</dd>
+        <dt>Priorytet dnia</dt>
+        <dd>{{ 'Tak' if project.is_today_priority else 'Nie' }}</dd>
+        <dt>Priorytet tygodnia</dt>
+        <dd>{{ 'Tak' if project.is_week_priority else 'Nie' }}</dd>
+        <dt>Postęp podzadań</dt>
+        <dd>{% if subtasks %}{{ subtasks|selectattr('status', 'equalto', 'done')|list|length }}/{{ subtasks|length }}{% else %}—{% endif %}</dd>
+        <dt>Google Calendar</dt>
+        <dd>{% if project.gcal_event_id %}<span class="badge badge-green">{{ icon('calendar-check', 12) }} zsynchronizowano</span>{% else %}<button type="button" class="btn btn-outline btn-sm" onclick="gtdGcalPush({{ project.id }})">{{ icon('calendar', 14) }} Wyślij do kalendarza</button>{% endif %}</dd>
+        <dt>Zakończono</dt>
+        <dd>{{ (project.completed_at|ddmmyyyy ~ ' ' ~ project.completed_at|hhmm) if project.completed_at else '—' }}</dd>
+        <dt>Utworzono</dt>
+        <dd>{{ (project.created_at|ddmmyyyy ~ ' ' ~ project.created_at|hhmm) if project.created_at else '—' }}</dd>
+        {% if project.deleted_at %}
+        <dt>Zarchiwizowano</dt>
+        <dd>{{ project.deleted_at|ddmmyyyy }} {{ project.deleted_at|hhmm }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+
   </div>
-  <div style="padding:.85rem">
-    <textarea id="projectNotesInput" rows="6" style="width:100%" placeholder="Dłuższy opis projektu…">{{ project.notes or '' }}</textarea>
+
+  <div>
+
+    <div class="inv-section">
+      <div class="inv-section-header">
+        <h4>Opis</h4>
+        <button type="button" class="btn btn-outline btn-sm" id="projectNotesSaveBtn" onclick="gtdSaveNotes({{ project.id }}, 'projectNotesInput', 'projectNotesSaveBtn')">Zapisz</button>
+      </div>
+      <div style="padding:.85rem">
+        <textarea id="projectNotesInput" rows="8" style="width:100%" placeholder="Dłuższy opis projektu…">{{ project.notes or '' }}</textarea>
+      </div>
+    </div>
+
   </div>
 </div>
 
