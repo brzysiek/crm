@@ -279,6 +279,48 @@ html.sidebar-collapsed .sidebar-user-name { display: none; }
   .sidebar { display: none; }
 }
 
+/* ── Mobile full menu (przycisk "Menu" w dolnym pasku) — otwiera sidebar desktopowy jako nakładkę ── */
+.sidebar-mobile-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #A9C4BB;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sidebar-mobile-close:hover { background: rgba(245,245,243,.08); }
+.mobile-menu-backdrop { display: none; }
+button.mobile-tabbar-item { background: none; border: none; font-family: inherit; }
+@media (max-width: 880px) {
+  .sidebar-mobile-close { display: flex; }
+  html.mobile-menu-open .sidebar {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 210;
+    box-shadow: 8px 0 32px rgba(0,0,0,.3);
+  }
+  html.mobile-menu-open.sidebar-collapsed .sidebar { width: 240px; }
+  html.mobile-menu-open.sidebar-collapsed .sidebar-header { justify-content: flex-start; }
+  html.mobile-menu-open.sidebar-collapsed .sidebar-logo-full { display: flex; }
+  html.mobile-menu-open.sidebar-collapsed .sidebar-logo-thumb { display: none; }
+  html.mobile-menu-open .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(13,40,32,.5);
+    z-index: 205;
+  }
+}
+
 /* ── nav-user dropdown (reused: sidebar footer on desktop, mobile top bar avatar on mobile) ── */
 .nav-user { position: relative; }
 .nav-user-menu {
