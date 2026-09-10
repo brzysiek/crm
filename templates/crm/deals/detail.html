@@ -118,6 +118,8 @@
     <div class="inv-section" style="margin-top:1rem">
       <div class="inv-section-header">
         <h4>Zadania</h4>
+        <button type="button" class="btn btn-outline btn-sm"
+                onclick="gtdOpenFollowUp(null, null, null, {{ deal.id }}, {{ deal.name|tojson|forceescape }}, null, null, null, null, 'next')">+ Dodaj zadanie</button>
       </div>
       <div style="padding:.85rem">
         {% if gtd_items %}
@@ -146,4 +148,10 @@
   </div>
 </div>
 </div>
+
+{% include 'gtd/_followup_modal.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='gtd.js') }}"></script>
 {% endblock %}

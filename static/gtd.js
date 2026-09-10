@@ -837,16 +837,22 @@ function _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId
   }
 }
 
-/* ── Init wyszukiwarek CRM w modalach GTD (elementy z _layout.html, obecne na
-   każdej stronie GTD) — initEntityPicker pochodzi z app.js, ładowanego wcześniej. */
+/* ── Init wyszukiwarek CRM w modalach GTD — initEntityPicker pochodzi z app.js,
+   ładowanego wcześniej. Modale są osadzane niezależnie (np. gtdFollowUpModal
+   jest dostępny też poza stronami GTD, np. na widoku dealu), więc każdy blok
+   inicjuje się osobno, tylko gdy jego elementy są obecne na stronie. */
 if (document.getElementById('gtdEditTaskContactPicker')) {
   initEntityPicker('gtdEditTaskContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdEditTaskCompanyPicker'));
   initEntityPicker('gtdEditTaskCompanyPicker', '/api/crm/companies/search');
   initEntityPicker('gtdEditTaskDealPicker', '/api/crm/deals/search');
+}
+if (document.getElementById('gtdGcalProjectContactPicker')) {
   initEntityPicker('gtdGcalProjectContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdGcalProjectCompanyPicker'));
   initEntityPicker('gtdGcalProjectCompanyPicker', '/api/crm/companies/search');
+}
+if (document.getElementById('gtdFollowUpContactPicker')) {
   initEntityPicker('gtdFollowUpContactPicker', '/api/crm/contacts/search',
     it => _gtdAutoFillCompanyFromContact(it, 'gtdFollowUpCompanyPicker'));
   initEntityPicker('gtdFollowUpCompanyPicker', '/api/crm/companies/search');
