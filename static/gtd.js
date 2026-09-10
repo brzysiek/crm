@@ -740,6 +740,61 @@ function gtdSetContext(taskId, contextId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+/* ── Przypisanie kontekstu do wydarzenia z Google Calendar (hover-picker na liście) ── */
+function gtdSetGcalContext(eventId, eventDate, contextId) {
+  fetch(window.API_BASE + '/api/gtd/gcal_events/' + encodeURIComponent(eventId) + '/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_date: eventDate, context_id: contextId }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+/* ── Widok „Wg kontekstu”: rozwijanie podzadań, filtr kontekstów, dodawanie ── */
+function gtdBoardToggleProject(projectId) {
+  const row = document.getElementById('gtdBoardSubtasks' + projectId);
+  const chevron = document.getElementById('gtdBoardChevron' + projectId);
+  if (!row) return;
+  const opening = row.hidden;
+  row.hidden = !opening;
+  if (chevron) chevron.classList.toggle('open', opening);
+}
+
+function gtdBoardApplyContexts() {
+  const ids = Array.from(document.querySelectorAll('.gtd-board-context-checkbox:checked')).map(el => el.value);
+  gtdNextApplyFilter('contexts', ids.join(','));
+}
+
+function gtdBoardAddProject(inputId, contextId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, is_project: true, status: 'next', context_id: contextId }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdBoardAddTask(inputId, contextId) {
+  const input = document.getElementById(inputId);
+  const title = input.value.trim();
+  if (!title) return;
+  fetch(window.API_BASE + '/api/gtd/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: 'next', context_id: contextId }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 /* ── Przypisanie zadania do konkretnego dnia tygodnia (hover-picker w widoku tygodnia) ── */
 function gtdSetWeekday(taskId, weekStartIso, dayIndex) {
   const [y, m, d] = weekStartIso.split('-').map(Number);

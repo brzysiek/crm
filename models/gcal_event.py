@@ -5,11 +5,11 @@ from database import get_db
 
 def get_event_meta(start_date: date, end_date: date) -> dict:
     """Zwraca event_id -> {'is_done', 'is_today_priority', 'project_id',
-    'crm_contact_id', 'crm_company_id'} dla zakresu dat."""
+    'crm_contact_id', 'crm_company_id', 'context_id'} dla zakresu dat."""
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            "SELECT event_id, done_at, is_today_priority, project_id, crm_contact_id, crm_company_id "
+            "SELECT event_id, done_at, is_today_priority, project_id, crm_contact_id, crm_company_id, context_id "
             "FROM gcal_event_done WHERE event_date BETWEEN %s AND %s",
             (start_date, end_date)
         )
@@ -20,6 +20,7 @@ def get_event_meta(start_date: date, end_date: date) -> dict:
                 'project_id': row['project_id'],
                 'crm_contact_id': row['crm_contact_id'],
                 'crm_company_id': row['crm_company_id'],
+                'context_id': row['context_id'],
             }
             for row in cur.fetchall()
         }
@@ -132,6 +133,25 @@ def set_crm_link(event_id: str, event_date: str, contact_id: int | None, company
         raise
 
 
+def set_context(event_id: str, event_date: str, context_id: int | None) -> None:
+    """Przypisuje (lub odpina, gdy context_id=None) wydarzenie z kalendarza do kontekstu GTD."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            if context_id:
+                cur.execute(
+                    """INSERT INTO gcal_event_done (event_id, event_date, context_id) VALUES (%s, %s, %s)
+                       ON DUPLICATE KEY UPDATE event_date=VALUES(event_date), context_id=VALUES(context_id)""",
+                    (event_id, event_date, context_id)
+                )
+            else:
+                cur.execute("UPDATE gcal_event_done SET context_id=NULL WHERE event_id=%s", (event_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 def get_events_for_crm(contact_id: int | None = None, company_id: int | None = None) -> list[dict]:
     """Surowe metadane wydarzeń kalendarza przypisanych do kontaktu/firmy CRM (bez
     tytułu — patrz enrich_with_titles) — do sekcji „Zadania/Projekty/Spotkania”."""
@@ -163,7 +183,7 @@ def get_events_for_project(project_id: int) -> list[dict]:
     with db.cursor() as cur:
         cur.execute(
             "SELECT event_id, event_date, done_at, is_today_priority, "
-            "crm_contact_id, crm_company_id FROM gcal_event_done "
+            "crm_contact_id, crm_company_id, context_id FROM gcal_event_done "
             "WHERE project_id=%s ORDER BY event_date DESC",
             (project_id,)
         )

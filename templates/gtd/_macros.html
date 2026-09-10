@@ -4,7 +4,7 @@
 {% macro context_picker(t) %}
 <span class="term-cell gtd-context-cell" style="margin-left:.4rem">
   {% if t.context_id %}
-    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ t.context_badge_color }}22;color:{{ t.context_badge_color }};border:1px solid {{ t.context_badge_color }}55">@{{ t.context_name }}</span>
+    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ t.context_badge_color }}22;color:{{ t.context_text_color }};border:1px solid {{ t.context_badge_color }}55">@{{ t.context_name }}</span>
   {% else %}
     <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst">@</span>
   {% endif %}
@@ -21,9 +21,33 @@
 </span>
 {% endmacro %}
 
-{% macro project_row(p) %}
+{% macro gcal_context_picker(e) %}
+<span class="term-cell gtd-context-cell" style="margin-left:.4rem">
+  {% if e.context_id %}
+    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ e.context_badge_color }}22;color:{{ e.context_text_color }};border:1px solid {{ e.context_badge_color }}55">@{{ e.context_name }}</span>
+  {% else %}
+    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst">@</span>
+  {% endif %}
+  <div class="term-hover-picker">
+    {% for ctx in gtd_contexts() %}
+    <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem;color:{{ ctx.badge_color }}"
+            onclick="gtdSetGcalContext({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ ctx.id }})">@{{ ctx.name }}</button>
+    {% endfor %}
+    {% if e.context_id %}
+    <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+            onclick="gtdSetGcalContext({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null)">{{ icon('x', 12) }} Brak</button>
+    {% endif %}
+  </div>
+</span>
+{% endmacro %}
+
+{% macro project_row(p, board_toggle=false) %}
 <tr>
   <td>
+    {% if board_toggle %}
+    <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń podzadania"
+            onclick="gtdBoardToggleProject({{ p.id }})"><span id="gtdBoardChevron{{ p.id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
+    {% endif %}
     <a href="{{ url_for('gtd.project_detail', project_id=p.id) }}" style="font-weight:600">{{ p.title }}</a>
     {{ context_picker(p) }}
     {% if p.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ p.due_date|ddmmyyyy }}</span>{% endif %}
@@ -131,14 +155,15 @@
             onclick="gtdToggleGcalDone({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ 'false' if e.is_done else 'true' }})">{{ 'DONE' if e.is_done else 'TODO' }}</span>
       {% endif %}
       <strong{% if e.is_done or e.is_declined %} style="text-decoration:line-through"{% endif %} title="Wydarzenie z Google Calendar">{{ icon('calendar', 13) }} {{ e.title }}</strong>
+      {{ gcal_context_picker(e) }}
       {% if e.is_declined %}<span class="badge badge-red" style="margin-left:.4rem" title="Odrzucone w Google Calendar">{{ icon('x', 12) }} odrzucone</span>{% endif %}
       {% if e.project_title %}
       <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer"
             title="Zmień przypisany projekt"
             onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }} {{ e.project_title }}</span>
       {% else %}
-      <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
-              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }} Przypisz do projektu</button>
+      <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer;opacity:.55" title="Przypisz do projektu"
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }}</span>
       {% endif %}
       {% if e.crm_contact_name %}
       <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
@@ -149,8 +174,8 @@
             onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id }})">{{ icon('building', 12) }} {{ e.crm_company_name }}</span>
       {% endif %}
       {% if not e.crm_contact_name and not e.crm_company_name %}
-      <button type="button" class="btn-ghost btn-sm" style="font-size:.78rem;padding:.1rem .3rem;margin-left:.4rem"
-              onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">{{ icon('user', 12) }} Przypisz klienta</button>
+      <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer;opacity:.55" title="Przypisz klienta"
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">{{ icon('user', 12) }}</span>
       {% endif %}
       <button type="button" class="action-btn" style="margin-left:.4rem" title="Priorytet dnia"
               onclick="gtdToggleGcalStar({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }})">{{ icon('star', 16) if e.is_today_priority else icon('star-outline', 16) }}</button>
@@ -166,6 +191,7 @@
           <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-waiting' if t.status == 'waiting' else 'badge-red') }}"
                 onclick="{% if t.status == 'waiting' %}gtdUnwait({{ t.id }}){% else %}gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}'){% endif %}">{{ 'DONE' if t.status == 'done' else ('WAITING' if t.status == 'waiting' else 'TODO') }}</span>
           <strong style="margin-left:.4rem">{{ t.title }}</strong>
+          {{ context_picker(t) }}
           {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
           {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
           {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}

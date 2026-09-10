@@ -307,9 +307,10 @@ def gtd_context_add():
     from models.gtd_context import create_context
     name = request.form.get('name', '').strip().lstrip('@')
     badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
+    text_color = request.form.get('text_color', '').strip() or '#1F2937'
     if name:
         try:
-            create_context(name, badge_color)
+            create_context(name, badge_color, text_color)
         except Exception:
             flash(f'Kontekst „{name}" już istnieje.', 'error')
     return redirect(url_for('settings.gtd_contexts'))
@@ -320,9 +321,10 @@ def gtd_context_update(context_id):
     from models.gtd_context import update_context
     name = request.form.get('name', '').strip().lstrip('@')
     badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
+    text_color = request.form.get('text_color', '').strip() or '#1F2937'
     if name:
         try:
-            update_context(context_id, name, badge_color)
+            update_context(context_id, name, badge_color, text_color)
             flash('Kontekst został zaktualizowany.', 'success')
         except Exception:
             flash(f'Kontekst „{name}" już istnieje.', 'error')

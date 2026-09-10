@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from database import get_db
+import models.gtd_context as gtd_context_model
 
 VALID_STATUSES = ('inbox', 'next', 'waiting', 'someday', 'done')
 
@@ -16,7 +17,8 @@ _LIST_FIELDS = """t.*, p.title AS project_title,
                   cc.first_name AS crm_contact_first_name, cc.last_name AS crm_contact_last_name,
                   cco.name AS crm_company_name, cco.short_name AS crm_company_short_name,
                   cd.name AS crm_deal_name,
-                  gc.name AS context_name, gc.badge_color AS context_badge_color"""
+                  gc.name AS context_name, gc.badge_color AS context_badge_color,
+                  gc.text_color AS context_text_color"""
 
 _LIST_JOINS = """FROM tasks t
                  LEFT JOIN tasks p ON p.id = t.parent_id
@@ -53,8 +55,8 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                 """INSERT INTO tasks
                    (title, notes, is_project, parent_id, status, waiting_on,
                     due_date, scheduled_date, scheduled_time, scheduled_duration_min,
-                    is_today_priority, is_week_priority, created_by)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    is_today_priority, is_week_priority, context_id, created_by)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     title,
                     fields.get('notes') or None,
@@ -68,6 +70,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     fields.get('scheduled_duration_min') or None,
                     1 if fields.get('is_today_priority') else 0,
                     1 if fields.get('is_week_priority') else 0,
+                    fields.get('context_id') or None,
                     _valid_user_id(user_id),
                 )
             )
@@ -544,6 +547,94 @@ def get_project_subtasks(project_id: int) -> list[dict]:
             (project_id,)
         )
         return cur.fetchall()
+
+
+def get_context_board_filter_options() -> dict:
+    """Deale i firmy przypisane do aktywnych zadań/projektów — dropdowny filtra w Wg kontekstu."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT cd.id, cd.name FROM tasks t "
+            "JOIN crm_deals cd ON cd.id = t.crm_deal_id "
+            "WHERE t.deleted_at IS NULL AND t.status != 'done' ORDER BY cd.name"
+        )
+        deals = cur.fetchall()
+        cur.execute(
+            "SELECT DISTINCT cco.id, cco.name, cco.short_name FROM tasks t "
+            "JOIN crm_companies cco ON cco.id = t.crm_company_id "
+            "WHERE t.deleted_at IS NULL AND t.status != 'done' ORDER BY cco.name"
+        )
+        companies = cur.fetchall()
+    return {'deals': deals, 'companies': companies}
+
+
+def get_context_board(context_ids: list[int] | None = None, deal_id: int | None = None,
+                       company_id: int | None = None, search: str | None = None) -> list[dict]:
+    """Dane widoku „Wg kontekstu”: aktywne projekty (z pełną listą podzadań) i luźne
+    zadania, pogrupowane wg przypisanego kontekstu (plus koszyk „Brak kontekstu”,
+    wybierany w filtrze sentinelem context_id=0).
+
+    Projekt jest widoczny, gdy on sam pasuje do filtra szukaj/deal/firma, albo pasuje
+    do niego którekolwiek z jego podzadań — w obu przypadkach pod projektem wyświetlana
+    jest pełna, nieprzefiltrowana lista podzadań (bez częściowego ukrywania)."""
+    db = get_db()
+    search_lower = search.lower() if search else None
+
+    def matches(row: dict) -> bool:
+        if deal_id and row.get('crm_deal_id') != deal_id:
+            return False
+        if company_id and row.get('crm_company_id') != company_id:
+            return False
+        if search_lower and search_lower not in (row.get('title') or '').lower():
+            return False
+        return True
+
+    with db.cursor() as cur:
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1 AND t.deleted_at IS NULL "
+            f"AND t.status != 'done' ORDER BY t.is_important DESC, t.created_at DESC, t.id DESC"
+        )
+        projects = cur.fetchall()
+        for proj in projects:
+            cur.execute(
+                f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s AND t.deleted_at IS NULL "
+                f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id ASC",
+                (proj['id'],)
+            )
+            proj['subtasks'] = cur.fetchall()
+            proj['subtask_total'] = len(proj['subtasks'])
+            proj['subtask_done'] = sum(1 for s in proj['subtasks'] if s['status'] == 'done')
+
+        cur.execute(
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=0 AND t.parent_id IS NULL "
+            f"AND t.deleted_at IS NULL AND t.status != 'done' "
+            f"ORDER BY t.is_today_priority DESC, t.due_date IS NULL, t.due_date ASC, t.id DESC"
+        )
+        loose_tasks = cur.fetchall()
+
+    visible_projects = [p for p in projects if matches(p) or any(matches(s) for s in p['subtasks'])]
+    visible_tasks = [t for t in loose_tasks if matches(t)]
+
+    contexts = gtd_context_model.get_all_contexts()
+    selected = set(context_ids) if context_ids else None
+
+    groups = []
+    for ctx in contexts:
+        if selected is not None and ctx['id'] not in selected:
+            continue
+        group_projects = [p for p in visible_projects if p['context_id'] == ctx['id']]
+        group_tasks = [t for t in visible_tasks if t['context_id'] == ctx['id']]
+        if not group_projects and not group_tasks:
+            continue
+        groups.append({'context': ctx, 'projects': group_projects, 'tasks': group_tasks})
+
+    if selected is None or 0 in selected:
+        no_ctx_projects = [p for p in visible_projects if not p['context_id']]
+        no_ctx_tasks = [t for t in visible_tasks if not t['context_id']]
+        if no_ctx_projects or no_ctx_tasks:
+            groups.append({'context': None, 'projects': no_ctx_projects, 'tasks': no_ctx_tasks})
+
+    return groups
 
 
 def get_tasks_for_day(day: date) -> list[dict]:

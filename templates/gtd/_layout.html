@@ -11,6 +11,7 @@
   'inbox': 'Nowe zadania',
   'next': 'Wszystkie zadania',
   'projekty': 'Projekty',
+  'kontekst': 'Wg kontekstu',
   'waiting': 'Czeka na',
   'someday': 'Kiedyś/może',
   'archiwum': 'Archiwum',
@@ -50,6 +51,10 @@
       <a href="{{ url_for('gtd.projects') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'projekty' }}">
         <span class="gtd-nav-link-label"><span class="gtd-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path></svg></span>Projekty</span>
+      </a>
+      <a href="{{ url_for('gtd.context_board') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'kontekst' }}">
+        <span class="gtd-nav-link-label"><span class="gtd-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span>Wg kontekstu</span>
       </a>
       <a href="{{ url_for('gtd.waiting') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'waiting' }}">

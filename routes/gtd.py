@@ -8,6 +8,7 @@ import models.task as task_model
 import models.gcal_event as gcal_event_model
 import models.crm_contact as crm_contact_model
 import models.crm_company as crm_company_model
+import models.gtd_context as gtd_context_model
 
 bp = Blueprint('gtd', __name__)
 
@@ -158,6 +159,7 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     company_ids = {m['crm_company_id'] for m in event_meta.values() if m.get('crm_company_id')}
     contact_names = crm_contact_model.get_names_by_ids(list(contact_ids)) if contact_ids else {}
     company_names = crm_company_model.get_names_by_ids(list(company_ids)) if company_ids else {}
+    contexts_by_id = {c['id']: c for c in gtd_context_model.get_all_contexts()}
     by_day: dict = {}
     for e in raw:
         parsed = _parse_gcal_raw_event(e)
@@ -168,6 +170,7 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
         project_id = meta.get('project_id')
         crm_contact_id = meta.get('crm_contact_id')
         crm_company_id = meta.get('crm_company_id')
+        context = contexts_by_id.get(meta.get('context_id'))
         by_day.setdefault(parsed['date'], []).append({
             'id': event_id,
             'date': parsed['date'].isoformat(),
@@ -183,6 +186,10 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
             'crm_contact_name': contact_names.get(crm_contact_id) if crm_contact_id else None,
             'crm_company_id': crm_company_id,
             'crm_company_name': company_names.get(crm_company_id) if crm_company_id else None,
+            'context_id': context['id'] if context else None,
+            'context_name': context['name'] if context else None,
+            'context_badge_color': context['badge_color'] if context else None,
+            'context_text_color': context['text_color'] if context else None,
         })
     for events in by_day.values():
         events.sort(key=lambda e: (e['time'] is None, e['time'] or ''))
@@ -203,6 +210,7 @@ def _project_gcal_day_groups(project: dict) -> list[dict]:
     company_ids = {r['crm_company_id'] for r in rows if r.get('crm_company_id')}
     contact_names = crm_contact_model.get_names_by_ids(list(contact_ids)) if contact_ids else {}
     company_names = crm_company_model.get_names_by_ids(list(company_ids)) if company_ids else {}
+    contexts_by_id = {c['id']: c for c in gtd_context_model.get_all_contexts()}
 
     by_day: dict = {}
     for r in rows:
@@ -215,6 +223,7 @@ def _project_gcal_day_groups(project: dict) -> list[dict]:
             continue
         crm_contact_id = r.get('crm_contact_id')
         crm_company_id = r.get('crm_company_id')
+        context = contexts_by_id.get(r.get('context_id'))
         by_day.setdefault(parsed['date'], []).append({
             'id': r['event_id'],
             'date': parsed['date'].isoformat(),
@@ -230,6 +239,10 @@ def _project_gcal_day_groups(project: dict) -> list[dict]:
             'crm_contact_name': contact_names.get(crm_contact_id) if crm_contact_id else None,
             'crm_company_id': crm_company_id,
             'crm_company_name': company_names.get(crm_company_id) if crm_company_id else None,
+            'context_id': context['id'] if context else None,
+            'context_name': context['name'] if context else None,
+            'context_badge_color': context['badge_color'] if context else None,
+            'context_text_color': context['text_color'] if context else None,
         })
 
     groups = []
@@ -461,6 +474,29 @@ def project_detail(project_id):
     )
 
 
+# ── Wg kontekstu ─────────────────────────────────────────────────────────────
+
+@bp.route('/gtd/wg-kontekstu')
+def context_board():
+    contexts_param = (request.args.get('contexts') or '').strip()
+    context_ids = [int(x) for x in contexts_param.split(',') if x.strip().isdigit()] if contexts_param else None
+    deal_id = request.args.get('deal', type=int)
+    company_id = request.args.get('company', type=int)
+    search = (request.args.get('q') or '').strip() or None
+    filter_options = task_model.get_context_board_filter_options()
+    return render_template(
+        'gtd/context_board.html', active_tab='kontekst',
+        groups=task_model.get_context_board(context_ids, deal_id, company_id, search),
+        all_contexts=gtd_context_model.get_all_contexts(),
+        selected_context_ids=context_ids,
+        deals=filter_options['deals'],
+        companies=filter_options['companies'],
+        selected_deal=deal_id,
+        selected_company=company_id,
+        search_query=search or '',
+    )
+
+
 # ── API: szybkie dodawanie ───────────────────────────────────────────────────
 
 @bp.route('/api/gtd/quick_add', methods=['POST'])
@@ -519,6 +555,7 @@ def api_create_task():
         scheduled_time=data.get('scheduled_time') or None,
         scheduled_duration_min=data.get('scheduled_duration_min') or None,
         is_today_priority=data.get('is_today_priority'),
+        context_id=data.get('context_id') or None,
     )
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
@@ -622,6 +659,17 @@ def api_gcal_event_crm_link(event_id):
     contact_id = data.get('crm_contact_id') or None
     company_id = data.get('crm_company_id') or None
     gcal_event_model.set_crm_link(event_id, event_date, contact_id, company_id)
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/gcal_events/<event_id>/context', methods=['POST'])
+def api_gcal_event_context(event_id):
+    data = request.get_json(silent=True) or {}
+    event_date = data.get('event_date')
+    if not event_date:
+        return jsonify({'status': 'error', 'message': 'Brak daty wydarzenia.'})
+    context_id = data.get('context_id') or None
+    gcal_event_model.set_context(event_id, event_date, context_id)
     return jsonify({'status': 'ok'})
 
 

@@ -15,7 +15,8 @@
       <tr>
         <th>Podgląd</th>
         <th>Nazwa</th>
-        <th>Kolor</th>
+        <th>Kolor tła</th>
+        <th>Kolor tekstu</th>
         <th></th>
       </tr>
     </thead>
@@ -23,14 +24,16 @@
       {% for ctx in contexts %}
       <tr>
         <td>
-          <span class="badge" style="background:{{ ctx.badge_color }}22;color:{{ ctx.badge_color }};border:1px solid {{ ctx.badge_color }}55">@{{ ctx.name }}</span>
+          <span class="badge" style="background:{{ ctx.badge_color }}22;color:{{ ctx.text_color }};border:1px solid {{ ctx.badge_color }}55">@{{ ctx.name }}</span>
         </td>
-        <td colspan="2">
+        <td colspan="3">
           <form method="post" action="{{ url_for('settings.gtd_context_update', context_id=ctx.id) }}"
                 class="dict-add-form">
             <input type="text" name="name" value="{{ ctx.name }}" required
                    class="filter-input" style="max-width:180px">
-            <input type="color" name="badge_color" value="{{ ctx.badge_color }}"
+            <input type="color" name="badge_color" value="{{ ctx.badge_color }}" title="Kolor tła"
+                   style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+            <input type="color" name="text_color" value="{{ ctx.text_color }}" title="Kolor tekstu"
                    style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
             <button type="submit" class="btn btn-outline btn-sm">Zapisz</button>
           </form>
@@ -55,7 +58,9 @@
   <form method="post" action="{{ url_for('settings.gtd_context_add') }}" class="dict-add-form">
     <input type="text" name="name" placeholder="np. dom" required
            class="filter-input" style="max-width:180px">
-    <input type="color" name="badge_color" value="#3B82F6"
+    <input type="color" name="badge_color" value="#3B82F6" title="Kolor tła"
+           style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+    <input type="color" name="text_color" value="#1F2937" title="Kolor tekstu"
            style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
     <button type="submit" class="btn btn-outline btn-sm">+ Dodaj</button>
   </form>

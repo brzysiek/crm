@@ -1,0 +1,160 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import project_row, task_cells, task_extra_actions, priority_stars, row_class %}
+{% from '_icons.html' import icon %}
+{% block title %}Wg kontekstu — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="rd-screen rd-zadania rd-zadania-kontekst">
+<div class="page-header">
+  <h1>Wg kontekstu</h1>
+</div>
+
+<div class="filter-bar" data-no-collapse style="gap:.4rem .8rem;flex-wrap:wrap;align-items:center">
+  <span class="text-muted" style="font-size:.8rem">Konteksty:</span>
+  {% for ctx in all_contexts %}
+  <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;white-space:nowrap;cursor:pointer">
+    <input type="checkbox" class="gtd-board-context-checkbox" value="{{ ctx.id }}"
+           {{ 'checked' if not selected_context_ids or ctx.id in selected_context_ids }}
+           onchange="gtdBoardApplyContexts()">
+    <span class="badge" style="background:{{ ctx.badge_color }}22;color:{{ ctx.text_color }};border:1px solid {{ ctx.badge_color }}55">@{{ ctx.name }}</span>
+  </label>
+  {% endfor %}
+  <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;white-space:nowrap;cursor:pointer">
+    <input type="checkbox" class="gtd-board-context-checkbox" value="0"
+           {{ 'checked' if not selected_context_ids or 0 in selected_context_ids }}
+           onchange="gtdBoardApplyContexts()">
+    <span class="badge badge-gray">Brak kontekstu</span>
+  </label>
+</div>
+
+<div class="filter-bar" data-no-collapse style="gap:.5rem;flex-wrap:wrap">
+  <input type="text" id="gtdBoardSearchQuery" class="filter-input" style="flex:1;min-width:180px"
+         placeholder="Szukaj po nazwie… (min. 3 znaki)" autocomplete="off"
+         value="{{ search_query }}" oninput="gtdNextSearchInput(this)">
+  <select class="filter-select" onchange="gtdNextApplyFilter('deal', this.value)">
+    <option value="">Wszystkie dealy</option>
+    {% for d in deals %}
+      <option value="{{ d.id }}" {{ 'selected' if selected_deal == d.id }}>{{ d.name }}</option>
+    {% endfor %}
+  </select>
+  <select class="filter-select" onchange="gtdNextApplyFilter('company', this.value)">
+    <option value="">Wszystkie firmy</option>
+    {% for c in companies %}
+      <option value="{{ c.id }}" {{ 'selected' if selected_company == c.id }}>{{ c.short_name or c.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+{% if not groups %}
+  <p class="text-muted">Brak projektów/zadań spełniających kryteria{{ ' filtra' if selected_context_ids or selected_deal or selected_company or search_query }}.</p>
+{% else %}
+{% for group in groups %}
+<div class="gtd-context-section">
+  <div class="gtd-context-section-title">
+    {% if group.context %}
+    <span class="badge" style="background:{{ group.context.badge_color }}22;color:{{ group.context.text_color }};border:1px solid {{ group.context.badge_color }}55">@{{ group.context.name }}</span>
+    {% else %}
+    <span class="badge badge-gray">Brak kontekstu</span>
+    {% endif %}
+  </div>
+
+  <div class="filter-bar" data-no-collapse style="gap:.5rem;margin-bottom:.6rem">
+    <input type="text" id="gtdBoardAddProject{{ loop.index }}" class="filter-input" style="flex:1;min-width:160px"
+           placeholder="Nowy projekt…" autocomplete="off"
+           onkeydown="if(event.key==='Enter') gtdBoardAddProject('gtdBoardAddProject{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdBoardAddProject('gtdBoardAddProject{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">+ Projekt</button>
+    <input type="text" id="gtdBoardAddTask{{ loop.index }}" class="filter-input" style="flex:1;min-width:160px"
+           placeholder="Nowe zadanie bez projektu…" autocomplete="off"
+           onkeydown="if(event.key==='Enter') gtdBoardAddTask('gtdBoardAddTask{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdBoardAddTask('gtdBoardAddTask{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">+ Zadanie</button>
+  </div>
+
+  {% if group.projects %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Projekt</th>
+        <th>Postęp</th>
+        <th class="col-actions" style="width:160px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in group.projects %}
+      {{ project_row(p, board_toggle=true) }}
+      <tr id="gtdBoardSubtasks{{ p.id }}" hidden>
+        <td colspan="3" class="gtd-board-subtasks-cell">
+          {% if p.subtasks %}
+          <table class="data-table data-table-sm">
+            <thead>
+              <tr>
+                <th class="col-checkbox"></th>
+                <th>Zadanie</th>
+                <th>Termin</th>
+                <th class="col-actions" style="width:220px"></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for t in p.subtasks %}
+            <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+              {{ task_cells(t, inline_actions=false) }}
+              <td class="col-actions nowrap">
+                {{ task_extra_actions(t) }}
+                <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
+                <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-muted small" style="margin:.3rem 0">Brak podzadań.</p>
+          {% endif %}
+          <div class="filter-bar" data-no-collapse style="gap:.5rem">
+            <input type="text" id="gtdBoardSubtaskInput{{ p.id }}" class="filter-input" style="flex:1"
+                   placeholder="Dodaj podzadanie…" autocomplete="off"
+                   onkeydown="if(event.key==='Enter') gtdAddSubtask({{ p.id }}, 'gtdBoardSubtaskInput{{ p.id }}')">
+            <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddSubtask({{ p.id }}, 'gtdBoardSubtaskInput{{ p.id }}')">+ Dodaj</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  {% if group.tasks %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-checkbox"></th>
+        <th>Zadanie</th>
+        <th>Termin</th>
+        <th style="width:4.2rem" title="Priorytety"></th>
+        <th class="col-actions" style="width:180px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in group.tasks %}
+      <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+        {{ task_cells(t) }}
+        <td class="nowrap">{{ priority_stars(t) }}</td>
+        <td class="col-actions nowrap">
+          <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>
+          <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
+          <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+</div>
+{% endblock %}

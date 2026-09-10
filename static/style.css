@@ -2500,6 +2500,21 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .gtd-day-section.gtd-day-collapsed .gtd-day-toggle-icon { transform: rotate(-90deg); }
 .gtd-day-section.gtd-day-collapsed .gtd-day-body { display: none; }
 
+/* ── GTD: widok „Wg kontekstu” (tablica projektów/zadań grupowana wg kontekstu) ── */
+.gtd-context-section { margin: 0 0 1.8rem; }
+.gtd-context-section-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 .6rem;
+}
+.gtd-context-section-title .badge { font-size: .85rem; padding: .3rem .7rem; }
+.gtd-context-section h3 { margin: 1.1rem 0 .5rem; font-size: .85rem; color: var(--text-muted); }
+.gtd-board-chevron { display: inline-flex; transition: transform .15s; }
+.gtd-board-chevron.open { transform: rotate(90deg); }
+.gtd-board-subtasks-cell { padding: .6rem 1rem 1rem 2.4rem !important; background: var(--surface-secondary); }
+.gtd-board-subtasks-cell .data-table { margin-bottom: .6rem; }
+
 .gtd-archive-project-row { cursor: pointer; user-select: none; }
 .gtd-archive-toggle-icon {
   display: inline-block;

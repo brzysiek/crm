@@ -15,11 +15,14 @@ def get_context(context_id: int) -> dict | None:
         return cur.fetchone()
 
 
-def create_context(name: str, badge_color: str) -> int:
+def create_context(name: str, badge_color: str, text_color: str) -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("INSERT INTO gtd_contexts (name, badge_color) VALUES (%s,%s)", (name, badge_color))
+            cur.execute(
+                "INSERT INTO gtd_contexts (name, badge_color, text_color) VALUES (%s,%s,%s)",
+                (name, badge_color, text_color)
+            )
             new_id = cur.lastrowid
         db.commit()
         return new_id
@@ -28,11 +31,14 @@ def create_context(name: str, badge_color: str) -> int:
         raise
 
 
-def update_context(context_id: int, name: str, badge_color: str) -> None:
+def update_context(context_id: int, name: str, badge_color: str, text_color: str) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
-            cur.execute("UPDATE gtd_contexts SET name=%s, badge_color=%s WHERE id=%s", (name, badge_color, context_id))
+            cur.execute(
+                "UPDATE gtd_contexts SET name=%s, badge_color=%s, text_color=%s WHERE id=%s",
+                (name, badge_color, text_color, context_id)
+            )
         db.commit()
     except Exception:
         db.rollback()
