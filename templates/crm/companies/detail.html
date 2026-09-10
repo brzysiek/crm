@@ -19,6 +19,7 @@
       <span class="badge {{ {'lead': 'badge-gray', 'client': 'badge-green', 'partner': 'badge-blue', 'inne': 'badge-purple', 'dostawca': 'badge-yellow'}[company.relation_type] }}">
         {{ relation_labels[company.relation_type] }}
       </span>
+      {% if company.context_id %}{{ m.context_badge(company) }}{% endif %}
     </h1>
     {% if company.short_name %}<div class="detail-subtitle">{{ company.name }}</div>{% endif %}
     </div>

@@ -8,6 +8,7 @@
 <div class="detail-header">
   <div>
     <h1>{{ deal.name }}
+      {% if deal.context_id %}{{ m.context_badge(deal) }}{% endif %}
       <span class="badge {{ stage_badge_classes[deal.stage] }}">
         {{ stage_labels[deal.stage] }}
       </span>

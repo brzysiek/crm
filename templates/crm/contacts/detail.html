@@ -14,6 +14,7 @@
         <button type="submit" class="star-toggle {{ 'starred' if contact.is_starred }}" title="{{ 'Usuń z ulubionych' if contact.is_starred else 'Oznacz gwiazdką' }}">{{ icon('star', 16) if contact.is_starred else icon('star-outline', 16) }}</button>
       </form>
       {{ contact.first_name }} {{ contact.last_name }}
+      {% if contact.context_id %}{{ m.context_badge(contact) }}{% endif %}
     </h1>
     {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}</div>{% endif %}
     </div>
