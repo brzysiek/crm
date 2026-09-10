@@ -488,6 +488,7 @@ def context_board():
     company_id = request.args.get('company', type=int)
     project_id = request.args.get('project', type=int)
     search = (request.args.get('q') or '').strip() or None
+    show_done = request.args.get('show_done') == '1'
 
     ctx_filters: dict[int, dict] = {}
     for key, value in request.args.items():
@@ -498,7 +499,8 @@ def context_board():
     filter_options = task_model.get_context_board_filter_options()
     return render_template(
         'gtd/context_board.html', active_tab='kontekst',
-        groups=task_model.get_context_board(context_ids, deal_id, company_id, project_id, search, ctx_filters),
+        groups=task_model.get_context_board(context_ids, deal_id, company_id, project_id, search,
+                                             ctx_filters, show_done),
         all_contexts=gtd_context_model.get_all_contexts(),
         selected_context_ids=context_ids,
         deals=filter_options['deals'],
@@ -508,6 +510,7 @@ def context_board():
         selected_company=company_id,
         selected_project=project_id,
         search_query=search or '',
+        show_done=show_done,
     )
 
 

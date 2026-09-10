@@ -136,6 +136,28 @@ def get_deal_by_id(deal_id: int) -> dict | None:
         return cur.fetchone()
 
 
+def get_deals_by_ids(ids: list[int]) -> dict[int, dict]:
+    if not ids:
+        return {}
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    with db.cursor() as cur:
+        cur.execute(
+            f"""SELECT d.id, d.context_id, d.contact_id, d.company_id,
+                      co.name AS company_name, co.short_name AS company_short_name,
+                      ct.first_name AS contact_first_name, ct.last_name AS contact_last_name,
+                      gc.name AS context_name, gc.badge_color AS context_badge_color,
+                      gc.text_color AS context_text_color
+               FROM crm_deals d
+               LEFT JOIN crm_companies co ON co.id = d.company_id
+               LEFT JOIN crm_contacts ct ON ct.id = d.contact_id
+               LEFT JOIN gtd_contexts gc ON gc.id = d.context_id
+               WHERE d.id IN ({placeholders})""",
+            tuple(ids)
+        )
+        return {row['id']: row for row in cur.fetchall()}
+
+
 def create_deal(data: dict, user_id: int | None) -> int:
     stage = data.get('stage', 'new')
     probability = resolve_probability(stage, data.get('probability'))

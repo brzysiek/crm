@@ -83,6 +83,9 @@
     <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń zadania"
             onclick="gtdBoardToggleDeal('{{ ctx_key }}_{{ d.deal_id }}')"><span id="gtdBoardDealChevron{{ ctx_key }}_{{ d.deal_id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
     <a href="{{ url_for('crm_deals.view_deal', deal_id=d.deal_id) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ d.deal_name }}</a>
+    {% if d.context_id %}<span class="badge" style="margin-left:.4rem;background:{{ d.context_badge_color }}40;color:{{ d.context_text_color }};border:1px solid {{ d.context_badge_color }}55">@{{ d.context_name }}</span>{% endif %}
+    {% if d.contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=d.contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ d.contact_first_name }} {{ d.contact_last_name }}</a>{% endif %}
+    {% if d.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=d.company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ d.company_short_name or d.company_name }}</a>{% endif %}
   </td>
   <td>
     <span class="text-muted" style="font-size:.8rem">{{ d.tasks|length }} zad.</span>

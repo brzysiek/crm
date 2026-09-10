@@ -49,6 +49,10 @@
       <option value="{{ c.id }}" {{ 'selected' if selected_company == c.id }}>{{ c.short_name or c.name }}</option>
     {% endfor %}
   </select>
+  <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;white-space:nowrap;cursor:pointer">
+    <input type="checkbox" {{ 'checked' if show_done }} onchange="gtdNextApplyFilter('show_done', this.checked ? '1' : '')">
+    Pokaż zakończone
+  </label>
 </div>
 
 {% if not groups %}

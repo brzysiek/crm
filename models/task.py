@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 
 from database import get_db
 import models.gtd_context as gtd_context_model
+import models.crm_deal as crm_deal_model
 
 VALID_STATUSES = ('inbox', 'next', 'waiting', 'someday', 'done')
 
@@ -592,7 +593,8 @@ def get_context_board_filter_options() -> dict:
 
 def get_context_board(context_ids: list[int] | None = None, deal_id: int | None = None,
                        company_id: int | None = None, project_id: int | None = None,
-                       search: str | None = None, ctx_filters: dict | None = None) -> list[dict]:
+                       search: str | None = None, ctx_filters: dict | None = None,
+                       show_done: bool = False) -> list[dict]:
     """Dane widoku „Wg kontekstu”: aktywne projekty (z pełną listą podzadań), luźne zadania
     pogrupowane wg deala i reszta bez projektu/deala — wszystko pogrupowane wg przypisanego
     kontekstu (plus koszyk „Brak kontekstu”, wybierany w filtrze sentinelem context_id=0).
@@ -603,8 +605,13 @@ def get_context_board(context_ids: list[int] | None = None, deal_id: int | None 
 
     ctx_filters: opcjonalny dodatkowy filtr per-kontekst (klucz = context_id, 0 = brak
     kontekstu), np. {5: {'q': 'foo', 'deal': '3'}} — zawężenie WEWNĄTRZ danego kontekstu,
-    stosowane na wynikach filtrów globalnych powyżej (deal_id/company_id/project_id/search)."""
+    stosowane na wynikach filtrów globalnych powyżej (deal_id/company_id/project_id/search).
+
+    show_done: domyślnie ukrywa zakończone i zarchiwizowane (usunięte) projekty/zadania;
+    gdy True, pokazuje też je."""
     db = get_db()
+    extra_clause = '' if show_done else " AND t.deleted_at IS NULL AND t.status != 'done'"
+    subtask_clause = '' if show_done else " AND t.deleted_at IS NULL"
     ctx_filters = ctx_filters or {}
     search_lower = search.lower() if search else None
 
@@ -621,13 +628,13 @@ def get_context_board(context_ids: list[int] | None = None, deal_id: int | None 
 
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1 AND t.deleted_at IS NULL "
-            f"AND t.status != 'done' ORDER BY t.is_important DESC, t.created_at DESC, t.id DESC"
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=1{extra_clause} "
+            f"ORDER BY t.is_important DESC, t.created_at DESC, t.id DESC"
         )
         projects = cur.fetchall()
         for proj in projects:
             cur.execute(
-                f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s AND t.deleted_at IS NULL "
+                f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.parent_id=%s{subtask_clause} "
                 f"ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), t.due_date IS NULL, t.due_date ASC, t.id ASC",
                 (proj['id'],)
             )
@@ -636,8 +643,7 @@ def get_context_board(context_ids: list[int] | None = None, deal_id: int | None 
             proj['subtask_done'] = sum(1 for s in proj['subtasks'] if s['status'] == 'done')
 
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=0 AND t.parent_id IS NULL "
-            f"AND t.deleted_at IS NULL AND t.status != 'done' "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.is_project=0 AND t.parent_id IS NULL{extra_clause} "
             f"ORDER BY t.is_today_priority DESC, t.due_date IS NULL, t.due_date ASC, t.id DESC"
         )
         loose_tasks = cur.fetchall()
@@ -718,6 +724,9 @@ def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dic
             d['tasks'].append(t)
         else:
             bare_tasks.append(t)
+    deal_info = crm_deal_model.get_deals_by_ids(list(deal_map.keys()))
+    for did, d in deal_map.items():
+        d.update(deal_info.get(did, {}))
     group_deals = sorted(deal_map.values(), key=lambda d: (d['deal_name'] or '').lower())
 
     return {
