@@ -74,7 +74,7 @@
     </div>
     <div class="form-group">
       <label for="context_id">Kontekst</label>
-      {% set cur_context = deal.context_id|int if deal.context_id else None %}
+      {% set cur_context = deal.context_id|int if deal.context_id else (None if deal.id else (prefill_company.context_id if prefill_company and prefill_company.context_id else (prefill_contact.context_id if prefill_contact and prefill_contact.context_id else (all_contexts | selectattr('is_default') | map(attribute='id') | first)))) %}
       <select id="context_id" name="context_id">
         <option value="">— brak —</option>
         {% for ctx in all_contexts %}

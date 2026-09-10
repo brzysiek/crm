@@ -81,7 +81,7 @@
   <div class="form-grid form-grid-2">
     <div class="form-group">
       <label for="context_id">Kontekst</label>
-      {% set cur_context = contact.context_id|int if contact.context_id else None %}
+      {% set cur_context = contact.context_id|int if contact.context_id else (None if contact.id else (prefill_company.context_id if prefill_company and prefill_company.context_id else (all_contexts | selectattr('is_default') | map(attribute='id') | first))) %}
       <select id="context_id" name="context_id">
         <option value="">— brak —</option>
         {% for ctx in all_contexts %}
