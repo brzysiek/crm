@@ -4,6 +4,7 @@ from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException
 from config import Config
 import database
+import subprocess
 import traceback as _tb
 import logging
 import os
@@ -12,6 +13,22 @@ from datetime import datetime as _dt, timedelta as _timedelta
 from logging.handlers import RotatingFileHandler
 
 _BUILD_ID = _dt.now().strftime('%Y%m%d.%H%M')
+
+
+def _get_git_commit():
+    """Krótki hash aktualnie wdrożonego commita — do weryfikacji, czy serwer
+    faktycznie działa na najnowszym kodzie po deployu."""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return None
+
+
+_GIT_COMMIT = _get_git_commit()
 
 
 class _AppJSONProvider(DefaultJSONProvider):
@@ -263,6 +280,7 @@ def inject_globals():
         'vat_rates':            vat_rates,
         'payment_methods':      payment_methods,
         'build_id':             _BUILD_ID,
+        'git_commit':           _GIT_COMMIT,
         'current_user': {
             'id':        session.get('user_id'),
             'username':  session.get('username', ''),

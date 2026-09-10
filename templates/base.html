@@ -227,7 +227,7 @@
     </div>
 
     <footer class="app-footer">
-      <span class="build-id">Build {{ build_id }}</span>
+      <span class="build-id">Build {{ build_id }}{% if git_commit %} ({{ git_commit }}){% endif %}</span>
     </footer>
 
     <nav class="mobile-tabbar">
