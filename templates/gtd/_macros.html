@@ -41,8 +41,13 @@
 </span>
 {% endmacro %}
 
-{% macro project_row(p, board_toggle=false) %}
+{% macro project_row(p, board_toggle=false, selectable=false) %}
 <tr>
+  {% if selectable %}
+  <td class="col-checkbox">
+    <input type="checkbox" class="row-checkbox" value="{{ p.id }}" onchange="updateBulkBar()" style="display:none">
+  </td>
+  {% endif %}
   <td>
     {% if board_toggle %}
     <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń podzadania"

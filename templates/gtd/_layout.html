@@ -227,6 +227,65 @@
   </div>
 </div>
 
+{# ── Modal: masowe przypisanie kontekstu/projektu/firmy/kontaktu/deala ───── #}
+<div id="gtdBulkAssignModal" class="modal-overlay rd-screen" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Przypisz do zaznaczonych</h3>
+      <button onclick="document.getElementById('gtdBulkAssignModal').classList.remove('open')" class="modal-close" title="Zamknij">{{ icon('x', 16) }}</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted small">Zaznacz pola, które chcesz zmienić — pozostałe pozostaną bez zmian.</p>
+      <div class="agent-confirm-row">
+        <label><input type="checkbox" id="gtdBulkAssignContextEnable" onchange="document.getElementById('gtdBulkAssignContext').disabled = !this.checked"> Kontekst</label>
+        <select id="gtdBulkAssignContext" class="filter-input" style="width:100%" disabled>
+          <option value="">— brak —</option>
+          {% for ctx in gtd_contexts() %}
+          <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label><input type="checkbox" id="gtdBulkAssignProjectEnable" onchange="document.getElementById('gtdBulkAssignProject').disabled = !this.checked"> Projekt</label>
+        <select id="gtdBulkAssignProject" class="filter-input" style="width:100%" disabled>
+          <option value="">— brak —</option>
+        </select>
+      </div>
+      <div class="agent-confirm-row">
+        <label><input type="checkbox" id="gtdBulkAssignContactEnable" onchange="document.getElementById('gtdBulkAssignContactPicker').classList.toggle('picker-disabled', !this.checked)"> Kontakt</label>
+        <div class="entity-picker picker-disabled" id="gtdBulkAssignContactPicker">
+          <input type="text" id="gtdBulkAssignContactPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj kontaktu…" autocomplete="off">
+          <div id="gtdBulkAssignContactPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdBulkAssignContactPicker-hidden">
+        </div>
+      </div>
+      <div class="agent-confirm-row">
+        <label><input type="checkbox" id="gtdBulkAssignCompanyEnable" onchange="document.getElementById('gtdBulkAssignCompanyPicker').classList.toggle('picker-disabled', !this.checked)"> Firma / klient</label>
+        <div class="entity-picker picker-disabled" id="gtdBulkAssignCompanyPicker">
+          <input type="text" id="gtdBulkAssignCompanyPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj firmy…" autocomplete="off">
+          <div id="gtdBulkAssignCompanyPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdBulkAssignCompanyPicker-hidden">
+        </div>
+      </div>
+      <div class="agent-confirm-row">
+        <label><input type="checkbox" id="gtdBulkAssignDealEnable" onchange="document.getElementById('gtdBulkAssignDealPicker').classList.toggle('picker-disabled', !this.checked)"> Deal</label>
+        <div class="entity-picker picker-disabled" id="gtdBulkAssignDealPicker">
+          <input type="text" id="gtdBulkAssignDealPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj deala…" autocomplete="off">
+          <div id="gtdBulkAssignDealPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdBulkAssignDealPicker-hidden">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="gtdSubmitBulkAssign()">Zapisz</button>
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('gtdBulkAssignModal').classList.remove('open')">Anuluj</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}

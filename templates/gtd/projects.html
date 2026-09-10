@@ -22,6 +22,14 @@
 {% set important_projects = projects|selectattr('is_important')|list %}
 {% set other_projects = projects|rejectattr('is_important')|list %}
 
+<div class="bulk-select-bar">
+  <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
+  <div class="bulk-actions" id="bulkActions" style="display:none">
+    <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
+    <button type="button" class="btn btn-primary btn-sm" onclick="gtdOpenBulkAssign(getCheckedIds())">Przypisz…</button>
+  </div>
+</div>
+
 {% if important_projects %}
 <div class="gtd-priority-panel">
 <h3><span class="gtd-priority-star">{{ icon('star', 16) }}</span> Ważne projekty</h3>
@@ -29,13 +37,14 @@
 <table class="data-table">
   <thead>
     <tr>
+      <th class="col-checkbox"></th>
       <th>Projekt</th>
       <th>Postęp</th>
       <th class="col-actions" style="width:160px"></th>
     </tr>
   </thead>
   <tbody>
-    {% for p in important_projects %}{{ project_row(p) }}{% endfor %}
+    {% for p in important_projects %}{{ project_row(p, selectable=true) }}{% endfor %}
   </tbody>
 </table>
 </div>
@@ -47,13 +56,14 @@
 <table class="data-table">
   <thead>
     <tr>
+      <th class="col-checkbox"></th>
       <th>Projekt</th>
       <th>Postęp</th>
       <th class="col-actions" style="width:160px"></th>
     </tr>
   </thead>
   <tbody>
-    {% for p in other_projects %}{{ project_row(p) }}{% endfor %}
+    {% for p in other_projects %}{{ project_row(p, selectable=true) }}{% endfor %}
   </tbody>
 </table>
 </div>
@@ -62,4 +72,31 @@
 
 <button type="button" class="rd-fab" title="Nowy projekt" onclick="var i=document.getElementById('gtdNewProjectInput'); if(i){ i.scrollIntoView({block:'center'}); i.focus(); }">+</button>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCheckedIds() {
+  return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
+}
+
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  const bar = document.getElementById('bulkActions');
+  const cnt = document.getElementById('bulkCount');
+  if (!bar) return;
+  bar.style.display = ids.length > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = ids.length + ' zaznaczon' + (ids.length === 1 ? 'e' : 'ych');
+}
+
+let selectionMode = false;
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  document.querySelectorAll('.row-checkbox').forEach(el => { el.style.display = selectionMode ? '' : 'none'; if (!selectionMode) el.checked = false; });
+  const btn = document.getElementById('btnToggleSelect');
+  if (btn) btn.textContent = selectionMode ? 'Anuluj zaznaczanie' : 'Zaznacz';
+  updateBulkBar();
+}
+</script>
 {% endblock %}

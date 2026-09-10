@@ -621,6 +621,73 @@ function gtdSubmitEditTask() {
     .catch(() => alert('Błąd sieci.'));
 }
 
+/* ── Modal masowego przypisania (Wszystkie zadania / Projekty — zaznaczone wiersze) ──
+   Każde pole ma własny checkbox "włącz zmianę" — tylko zaznaczone pola trafiają
+   do `updates`, reszta zadań/projektów zostaje bez zmian (jak w bulk-edit firm). */
+let _gtdBulkAssignIds = [];
+
+function _gtdResetPicker(pickerId) {
+  const hidden = document.getElementById(pickerId + '-hidden');
+  if (hidden) hidden.value = '';
+  const selected = document.getElementById(pickerId + '-selected');
+  if (selected) selected.remove();
+  const input = document.getElementById(pickerId + '-input');
+  if (input) { input.style.display = ''; input.value = ''; }
+}
+
+function gtdOpenBulkAssign(ids) {
+  if (!ids || !ids.length) { alert('Zaznacz co najmniej jedną pozycję.'); return; }
+  _gtdBulkAssignIds = ids;
+  ['Context', 'Project'].forEach(name => {
+    document.getElementById('gtdBulkAssign' + name + 'Enable').checked = false;
+    document.getElementById('gtdBulkAssign' + name).disabled = true;
+    document.getElementById('gtdBulkAssign' + name).value = '';
+  });
+  ['Contact', 'Company', 'Deal'].forEach(name => {
+    document.getElementById('gtdBulkAssign' + name + 'Enable').checked = false;
+    document.getElementById('gtdBulkAssign' + name + 'Picker').classList.add('picker-disabled');
+    _gtdResetPicker('gtdBulkAssign' + name + 'Picker');
+  });
+  _gtdFillProjectSelect(null, null, 'gtdBulkAssignProject');
+  document.getElementById('gtdBulkAssignModal').classList.add('open');
+}
+
+function gtdSubmitBulkAssign() {
+  const updates = {};
+  if (document.getElementById('gtdBulkAssignContextEnable').checked) {
+    const v = document.getElementById('gtdBulkAssignContext').value;
+    updates.context_id = v ? parseInt(v, 10) : null;
+  }
+  if (document.getElementById('gtdBulkAssignProjectEnable').checked) {
+    const v = document.getElementById('gtdBulkAssignProject').value;
+    updates.parent_id = v ? parseInt(v, 10) : null;
+  }
+  if (document.getElementById('gtdBulkAssignContactEnable').checked) {
+    const v = document.getElementById('gtdBulkAssignContactPicker-hidden').value;
+    updates.crm_contact_id = v ? parseInt(v, 10) : null;
+  }
+  if (document.getElementById('gtdBulkAssignCompanyEnable').checked) {
+    const v = document.getElementById('gtdBulkAssignCompanyPicker-hidden').value;
+    updates.crm_company_id = v ? parseInt(v, 10) : null;
+  }
+  if (document.getElementById('gtdBulkAssignDealEnable').checked) {
+    const v = document.getElementById('gtdBulkAssignDealPicker-hidden').value;
+    updates.crm_deal_id = v ? parseInt(v, 10) : null;
+  }
+  if (!Object.keys(updates).length) { alert('Zaznacz co najmniej jedno pole do zmiany.'); return; }
+  fetch(window.API_BASE + '/api/gtd/tasks/bulk-assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids: _gtdBulkAssignIds, updates }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
+      location.reload();
+    })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 /* ── Modal nowego zadania (follow-up z pierwotnego zadania, albo zaawansowane
    dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
@@ -915,4 +982,9 @@ if (document.getElementById('gtdFollowUpContactPicker')) {
     it => _gtdAutoFillCompanyFromContact(it, 'gtdFollowUpCompanyPicker'));
   initEntityPicker('gtdFollowUpCompanyPicker', '/api/crm/companies/search');
   initEntityPicker('gtdFollowUpDealPicker', '/api/crm/deals/search');
+}
+if (document.getElementById('gtdBulkAssignContactPicker')) {
+  initEntityPicker('gtdBulkAssignContactPicker', '/api/crm/contacts/search');
+  initEntityPicker('gtdBulkAssignCompanyPicker', '/api/crm/companies/search');
+  initEntityPicker('gtdBulkAssignDealPicker', '/api/crm/deals/search');
 }

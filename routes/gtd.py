@@ -616,6 +616,20 @@ def api_update_task(task_id):
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
 
+@bp.route('/api/gtd/tasks/bulk-assign', methods=['POST'])
+def api_bulk_assign_tasks():
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids') or []
+    updates = data.get('updates') or {}
+    allowed = {'context_id', 'parent_id', 'crm_company_id', 'crm_contact_id', 'crm_deal_id'}
+    fields = {k: v for k, v in updates.items() if k in allowed}
+    if not ids or not fields:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych pozycji lub pól do zmiany.'}), 400
+    for task_id in ids:
+        task_model.update_task(task_id, fields)
+    return jsonify({'status': 'ok'})
+
+
 @bp.route('/api/gtd/tasks/<int:task_id>', methods=['DELETE'])
 def api_delete_task(task_id):
     task_model.delete_task(task_id)
