@@ -70,6 +70,25 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     crm_contact_id = crm_contact_id or parent['crm_contact_id']
                     crm_company_id = crm_company_id or parent['crm_company_id']
                     crm_deal_id = crm_deal_id or parent['crm_deal_id']
+            if not context_id and crm_deal_id:
+                cur.execute("SELECT context_id FROM crm_deals WHERE id=%s", (crm_deal_id,))
+                row = cur.fetchone()
+                if row:
+                    context_id = row['context_id']
+            if not context_id and crm_company_id:
+                cur.execute("SELECT context_id FROM crm_companies WHERE id=%s", (crm_company_id,))
+                row = cur.fetchone()
+                if row:
+                    context_id = row['context_id']
+            if not context_id and crm_contact_id:
+                cur.execute("SELECT context_id FROM crm_contacts WHERE id=%s", (crm_contact_id,))
+                row = cur.fetchone()
+                if row:
+                    context_id = row['context_id']
+            if not context_id:
+                # Brak kontekstu do odziedziczenia (z projektu, deala, firmy ani
+                # kontaktu) — użyj kontekstu domyślnego ustawionego w Ustawieniach.
+                context_id = gtd_context_model.get_default_context_id()
             cur.execute(
                 """INSERT INTO tasks
                    (title, notes, is_project, parent_id, status, waiting_on,

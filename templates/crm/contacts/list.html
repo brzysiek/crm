@@ -27,6 +27,10 @@
       Konteksty ({{ selected_context_ids|length if selected_context_ids is not none else all_contexts|length + 1 }}) {{ icon('chevron-down', 12) }}
     </button>
     <div id="contacts-context-filter-menu" class="col-toggle-menu">
+      <div class="col-toggle-item col-toggle-actions">
+        <a href="#" onclick="setAllCheckboxes('contacts-context-filter-menu', true); return false;">Zaznacz wszystkie</a>
+        <a href="#" onclick="setAllCheckboxes('contacts-context-filter-menu', false); return false;">Odznacz wszystkie</a>
+      </div>
       {% for ctx in all_contexts %}
       <div class="col-toggle-item">
         <label><input type="checkbox" name="context" value="{{ ctx.id }}" {{ 'checked' if selected_context_ids is none or ctx.id in selected_context_ids }}> @{{ ctx.name }}</label>
@@ -51,6 +55,15 @@
     <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkUnstar">{{ icon('star-outline', 14) }} Odznacz</button>
+
+    <select id="bulkContextSelect" class="filter-select">
+      <option value="">Brak kontekstu</option>
+      {% for ctx in all_contexts %}
+        <option value="{{ ctx.id }}">@{{ ctx.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
+
     <button type="button" class="btn btn-outline btn-sm" id="btnBulkDelete">Usuń zaznaczone</button>
   </div>
 </div>
@@ -290,6 +303,29 @@ document.addEventListener('DOMContentLoaded', function () {
   const btnUnstar = document.getElementById('btnBulkUnstar');
   if (btnStar) btnStar.addEventListener('click', () => bulkStar(true));
   if (btnUnstar) btnUnstar.addEventListener('click', () => bulkStar(false));
+
+  async function bulkSetContext() {
+    const ids = getCheckedIds();
+    if (!ids.length) return;
+    const contextId = document.getElementById('bulkContextSelect').value;
+    try {
+      const r = await fetch(window.API_BASE + '/api/crm/contacts/bulk-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, context_id: contextId || null }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        location.reload();
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  }
+  const btnContext = document.getElementById('btnBulkContext');
+  if (btnContext) btnContext.addEventListener('click', bulkSetContext);
 });
 </script>
 {% endblock %}

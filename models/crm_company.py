@@ -448,6 +448,18 @@ def bulk_set_description(company_ids: list[int], value: str | None, user_id: int
     return len(company_ids)
 
 
+def bulk_set_context(company_ids: list[int], context_id: int | None, user_id: int | None) -> int:
+    """Ustawia kontekst GTD dla zaznaczonych firm i kaskadowo dla ich kontaktów."""
+    if not company_ids:
+        return 0
+    ctx = gtd_context_model.get_context(context_id) if context_id else None
+    summary = f'Ustawiono kontekst na @{ctx["name"]}.' if ctx else 'Usunięto kontekst.'
+    for company_id in company_ids:
+        gtd_context_model.sync_company_context_group(company_id, context_id)
+        log_history('company', company_id, user_id, 'update', summary)
+    return len(company_ids)
+
+
 def _insert(data: dict) -> int:
     db = get_db()
     with db.cursor() as cur:
@@ -477,6 +489,7 @@ def create_company(data: dict, user_id: int | None,
                     source: list[str] = None) -> int:
     data['phone'] = format_phone(data.get('phone'))
     data['favicon_url'] = get_favicon_url(data['website']) if data.get('website') else None
+    data['context_id'] = data.get('context_id') or gtd_context_model.get_default_context_id()
     db = get_db()
     try:
         company_id = _insert(data)
@@ -530,6 +543,8 @@ def update_company(company_id: int, data: dict, user_id: int | None,
     except Exception:
         db.rollback()
         raise
+    if not old or old.get('context_id') != data.get('context_id'):
+        gtd_context_model.sync_company_context_group(company_id, data.get('context_id') or None)
     if tags is not None:
         set_company_tags(company_id, 'tag', tags)
     if industries is not None:

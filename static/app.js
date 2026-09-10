@@ -1232,6 +1232,14 @@ function initDropdownToggle(btnId, menuId) {
   });
 }
 
+/* ── Zaznacza/odznacza wszystkie checkboxy w danym menu (np. dropdown filtra
+ * kontekstu) — samo zaznaczenie nie submituje formularza, to robi „Filtruj”. */
+function setAllCheckboxes(menuId, checked) {
+  const menu = document.getElementById(menuId);
+  if (!menu) return;
+  menu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = checked; });
+}
+
 /* ── CRM: dynamiczne wyszukiwanie w liście (filtruje już wczytane wiersze
  * po każdej wpisanej literze, bez przeładowania strony). Dopasowanie po całym
  * tekście wiersza — obejmuje też kolumny aktualnie ukryte przez initColumnToggle.

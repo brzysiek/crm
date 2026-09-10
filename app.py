@@ -1932,6 +1932,36 @@ def api_crm_companies_bulk():
     return jsonify({'status': 'ok', 'affected': affected})
 
 
+@app.route('/api/crm/companies/bulk-context', methods=['POST'])
+def api_crm_companies_bulk_context():
+    from models.crm_company import bulk_set_context
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    context_id = data.get('context_id')
+    context_id = int(context_id) if str(context_id).isdigit() else None
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych firm.'})
+
+    affected = bulk_set_context(ids, context_id, session.get('user_id'))
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/crm/contacts/bulk-context', methods=['POST'])
+def api_crm_contacts_bulk_context():
+    from models.crm_contact import bulk_set_context
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    context_id = data.get('context_id')
+    context_id = int(context_id) if str(context_id).isdigit() else None
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych kontaktów.'})
+
+    affected = bulk_set_context(ids, context_id, session.get('user_id'))
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
 @app.route('/api/crm/companies/<int:company_id>/toggle-star', methods=['POST'])
 def api_crm_company_toggle_star(company_id):
     from models.crm_company import get_company_by_id, set_starred

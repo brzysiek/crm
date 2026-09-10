@@ -164,6 +164,18 @@ def create_deal(data: dict, user_id: int | None) -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
+            if not data.get('context_id') and data.get('company_id'):
+                cur.execute("SELECT context_id FROM crm_companies WHERE id=%s", (data['company_id'],))
+                row = cur.fetchone()
+                if row:
+                    data['context_id'] = row['context_id']
+            if not data.get('context_id') and data.get('contact_id'):
+                cur.execute("SELECT context_id FROM crm_contacts WHERE id=%s", (data['contact_id'],))
+                row = cur.fetchone()
+                if row:
+                    data['context_id'] = row['context_id']
+            if not data.get('context_id'):
+                data['context_id'] = gtd_context_model.get_default_context_id()
             cur.execute(
                 """INSERT INTO crm_deals
                    (name, description, amount, company_id, contact_id, stage, probability, deal_type,

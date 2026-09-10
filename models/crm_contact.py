@@ -117,6 +117,13 @@ def search_contacts(q: str, company_id: int = None, limit: int = 20) -> list[dic
 def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> int:
     data['phone'] = format_phone(data.get('phone'))
     db = get_db()
+    if not data.get('context_id') and data.get('company_id'):
+        with db.cursor() as cur:
+            cur.execute("SELECT context_id FROM crm_companies WHERE id=%s", (data['company_id'],))
+            row = cur.fetchone()
+            if row:
+                data['context_id'] = row['context_id']
+    data['context_id'] = data.get('context_id') or gtd_context_model.get_default_context_id()
     try:
         with db.cursor() as cur:
             cur.execute(
@@ -139,6 +146,8 @@ def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> i
         raise
     if tags is not None:
         set_contact_tags(contact_id, tags)
+    if data.get('company_id'):
+        gtd_context_model.sync_company_context_group(data['company_id'], data.get('context_id') or None)
     log_history('contact', contact_id, user_id, 'create',
                 f"Utworzono kontakt „{data['first_name']} {data['last_name']}”.")
     return contact_id
@@ -170,6 +179,8 @@ def update_contact(contact_id: int, data: dict, user_id: int | None, tags: list[
         raise
     if tags is not None:
         set_contact_tags(contact_id, tags)
+    if data.get('company_id') and (not old or old.get('context_id') != data.get('context_id')):
+        gtd_context_model.sync_company_context_group(data['company_id'], data.get('context_id') or None)
     if old:
         old_disp = dict(old)
         new_disp = dict(data)
@@ -245,6 +256,32 @@ def bulk_set_starred(contact_ids: list[int], starred: bool) -> int:
     except Exception:
         db.rollback()
         raise
+    return len(contact_ids)
+
+
+def bulk_set_context(contact_ids: list[int], context_id: int | None, user_id: int | None) -> int:
+    """Ustawia kontekst GTD dla zaznaczonych kontaktów; jeśli kontakt ma
+    przypisaną firmę, kaskadowo ujednolica kontekst na całej grupie firma+kontakty."""
+    if not contact_ids:
+        return 0
+    ctx = gtd_context_model.get_context(context_id) if context_id else None
+    summary = f'Ustawiono kontekst na @{ctx["name"]}.' if ctx else 'Usunięto kontekst.'
+    db = get_db()
+    for contact_id in contact_ids:
+        contact = get_contact_by_id(contact_id)
+        if not contact:
+            continue
+        if contact.get('company_id'):
+            gtd_context_model.sync_company_context_group(contact['company_id'], context_id)
+        else:
+            try:
+                with db.cursor() as cur:
+                    cur.execute("UPDATE crm_contacts SET context_id=%s WHERE id=%s", (context_id, contact_id))
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+        log_history('contact', contact_id, user_id, 'update', summary)
     return len(contact_ids)
 
 

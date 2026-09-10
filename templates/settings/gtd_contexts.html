@@ -17,6 +17,7 @@
         <th>Nazwa</th>
         <th>Kolor tła</th>
         <th>Kolor tekstu</th>
+        <th>Domyślny</th>
         <th></th>
       </tr>
     </thead>
@@ -37,6 +38,18 @@
                    style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
             <button type="submit" class="btn btn-outline btn-sm">Zapisz</button>
           </form>
+        </td>
+        <td>
+          {% if ctx.is_default %}
+          <span class="badge badge-green">Domyślny</span>
+          <form method="post" action="{{ url_for('settings.gtd_context_clear_default') }}" style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm">Wyczyść</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('settings.gtd_context_set_default', context_id=ctx.id) }}" style="display:inline">
+            <button type="submit" class="btn btn-outline btn-sm">Ustaw domyślny</button>
+          </form>
+          {% endif %}
         </td>
         <td style="text-align:right">
           <form method="post"

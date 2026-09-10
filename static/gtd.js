@@ -795,6 +795,11 @@ function gtdBoardApplyContexts() {
   gtdNextApplyFilter('contexts', ids.join(','));
 }
 
+function gtdBoardSetAllContexts(checked) {
+  document.querySelectorAll('.gtd-board-context-checkbox').forEach(el => { el.checked = checked; });
+  gtdBoardApplyContexts();
+}
+
 function gtdBoardToggleDeal(key) {
   const row = document.getElementById('gtdBoardDealSubtasks' + key);
   const chevron = document.getElementById('gtdBoardDealChevron' + key);

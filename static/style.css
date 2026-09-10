@@ -2028,6 +2028,20 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   flex: 1;
 }
 .col-toggle-item:hover { background: var(--surface-secondary); }
+.col-toggle-actions {
+  display: flex;
+  gap: .6rem;
+  padding: .1rem .4rem .45rem;
+  margin-bottom: .3rem;
+  border-bottom: 1px solid var(--border);
+}
+.col-toggle-actions a {
+  font-size: .78rem;
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+.col-toggle-actions a:hover { text-decoration: underline; }
 .col-toggle-handle {
   cursor: grab;
   color: var(--text-muted);

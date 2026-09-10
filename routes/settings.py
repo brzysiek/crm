@@ -338,3 +338,19 @@ def gtd_context_delete(context_id):
     flash('Kontekst został usunięty.', 'success')
     return redirect(url_for('settings.gtd_contexts'))
 
+
+@bp.route('/gtd-contexts/<int:context_id>/set-default', methods=['POST'])
+def gtd_context_set_default(context_id):
+    from models.gtd_context import set_default_context
+    set_default_context(context_id)
+    flash('Ustawiono kontekst domyślny.', 'success')
+    return redirect(url_for('settings.gtd_contexts'))
+
+
+@bp.route('/gtd-contexts/clear-default', methods=['POST'])
+def gtd_context_clear_default():
+    from models.gtd_context import set_default_context
+    set_default_context(None)
+    flash('Wyczyszczono kontekst domyślny.', 'success')
+    return redirect(url_for('settings.gtd_contexts'))
+
