@@ -77,6 +77,19 @@
 </tr>
 {% endmacro %}
 
+{% macro deal_row(d, ctx_key) %}
+<tr>
+  <td>
+    <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń zadania"
+            onclick="gtdBoardToggleDeal('{{ ctx_key }}_{{ d.deal_id }}')"><span id="gtdBoardDealChevron{{ ctx_key }}_{{ d.deal_id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
+    <a href="{{ url_for('crm_deals.view_deal', deal_id=d.deal_id) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ d.deal_name }}</a>
+  </td>
+  <td>
+    <span class="text-muted" style="font-size:.8rem">{{ d.tasks|length }} zad.</span>
+  </td>
+</tr>
+{% endmacro %}
+
 {% macro task_cells(t, today=none, week_start=none, day_actions=false, inline_actions=true) %}
   <td class="col-checkbox">
     <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-waiting' if t.status == 'waiting' else 'badge-red') }}"

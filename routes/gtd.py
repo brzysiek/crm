@@ -1,4 +1,5 @@
 import calendar
+import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -476,23 +477,36 @@ def project_detail(project_id):
 
 # ── Wg kontekstu ─────────────────────────────────────────────────────────────
 
+_CTX_FILTER_RE = re.compile(r'^cf(\d+)_(q|deal|company|project)$')
+
+
 @bp.route('/gtd/wg-kontekstu')
 def context_board():
     contexts_param = (request.args.get('contexts') or '').strip()
     context_ids = [int(x) for x in contexts_param.split(',') if x.strip().isdigit()] if contexts_param else None
     deal_id = request.args.get('deal', type=int)
     company_id = request.args.get('company', type=int)
+    project_id = request.args.get('project', type=int)
     search = (request.args.get('q') or '').strip() or None
+
+    ctx_filters: dict[int, dict] = {}
+    for key, value in request.args.items():
+        m = _CTX_FILTER_RE.match(key)
+        if m and value:
+            ctx_filters.setdefault(int(m.group(1)), {})[m.group(2)] = value
+
     filter_options = task_model.get_context_board_filter_options()
     return render_template(
         'gtd/context_board.html', active_tab='kontekst',
-        groups=task_model.get_context_board(context_ids, deal_id, company_id, search),
+        groups=task_model.get_context_board(context_ids, deal_id, company_id, project_id, search, ctx_filters),
         all_contexts=gtd_context_model.get_all_contexts(),
         selected_context_ids=context_ids,
         deals=filter_options['deals'],
         companies=filter_options['companies'],
+        projects=task_model.get_projects(),
         selected_deal=deal_id,
         selected_company=company_id,
+        selected_project=project_id,
         search_query=search or '',
     )
 

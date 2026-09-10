@@ -591,21 +591,29 @@ def get_context_board_filter_options() -> dict:
 
 
 def get_context_board(context_ids: list[int] | None = None, deal_id: int | None = None,
-                       company_id: int | None = None, search: str | None = None) -> list[dict]:
-    """Dane widoku „Wg kontekstu”: aktywne projekty (z pełną listą podzadań) i luźne
-    zadania, pogrupowane wg przypisanego kontekstu (plus koszyk „Brak kontekstu”,
-    wybierany w filtrze sentinelem context_id=0).
+                       company_id: int | None = None, project_id: int | None = None,
+                       search: str | None = None, ctx_filters: dict | None = None) -> list[dict]:
+    """Dane widoku „Wg kontekstu”: aktywne projekty (z pełną listą podzadań), luźne zadania
+    pogrupowane wg deala i reszta bez projektu/deala — wszystko pogrupowane wg przypisanego
+    kontekstu (plus koszyk „Brak kontekstu”, wybierany w filtrze sentinelem context_id=0).
 
-    Projekt jest widoczny, gdy on sam pasuje do filtra szukaj/deal/firma, albo pasuje
-    do niego którekolwiek z jego podzadań — w obu przypadkach pod projektem wyświetlana
-    jest pełna, nieprzefiltrowana lista podzadań (bez częściowego ukrywania)."""
+    Projekt jest widoczny, gdy on sam pasuje do filtra szukaj/deal/firma/projekt, albo
+    pasuje do niego którekolwiek z jego podzadań — w obu przypadkach pod projektem
+    wyświetlana jest pełna, nieprzefiltrowana lista podzadań (bez częściowego ukrywania).
+
+    ctx_filters: opcjonalny dodatkowy filtr per-kontekst (klucz = context_id, 0 = brak
+    kontekstu), np. {5: {'q': 'foo', 'deal': '3'}} — zawężenie WEWNĄTRZ danego kontekstu,
+    stosowane na wynikach filtrów globalnych powyżej (deal_id/company_id/project_id/search)."""
     db = get_db()
+    ctx_filters = ctx_filters or {}
     search_lower = search.lower() if search else None
 
     def matches(row: dict) -> bool:
         if deal_id and row.get('crm_deal_id') != deal_id:
             return False
         if company_id and row.get('crm_company_id') != company_id:
+            return False
+        if project_id and row.get('id') != project_id and row.get('parent_id') != project_id:
             return False
         if search_lower and search_lower not in (row.get('title') or '').lower():
             return False
@@ -648,15 +656,80 @@ def get_context_board(context_ids: list[int] | None = None, deal_id: int | None 
         group_tasks = [t for t in visible_tasks if t['context_id'] == ctx['id']]
         if not group_projects and not group_tasks:
             continue
-        groups.append({'context': ctx, 'projects': group_projects, 'tasks': group_tasks})
+        groups.append(_build_context_group(ctx, group_projects, group_tasks, ctx_filters.get(ctx['id'])))
 
     if selected is None or 0 in selected:
         no_ctx_projects = [p for p in visible_projects if not p['context_id']]
         no_ctx_tasks = [t for t in visible_tasks if not t['context_id']]
         if no_ctx_projects or no_ctx_tasks:
-            groups.append({'context': None, 'projects': no_ctx_projects, 'tasks': no_ctx_tasks})
+            groups.append(_build_context_group(None, no_ctx_projects, no_ctx_tasks, ctx_filters.get(0)))
 
     return groups
+
+
+def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dict],
+                          cfilter: dict | None) -> dict:
+    """Buduje jedną sekcję widoku „Wg kontekstu”: dzieli luźne zadania na grupy wg deala
+    i resztę bez deala, wylicza opcje filtra (projekty/deale/firmy obecne w TYM kontekście)
+    i stosuje ewentualny dodatkowy filtr per-kontekst (cfilter) na wyświetlanej zawartości."""
+    cfilter = cfilter or {}
+    c_project_id = int(cfilter['project']) if str(cfilter.get('project', '')).isdigit() else None
+    c_deal_id = int(cfilter['deal']) if str(cfilter.get('deal', '')).isdigit() else None
+    c_company_id = int(cfilter['company']) if str(cfilter.get('company', '')).isdigit() else None
+    c_search = (cfilter.get('q') or '').strip().lower() or None
+
+    def cmatches(row: dict) -> bool:
+        if c_deal_id and row.get('crm_deal_id') != c_deal_id:
+            return False
+        if c_company_id and row.get('crm_company_id') != c_company_id:
+            return False
+        if c_project_id and row.get('id') != c_project_id and row.get('parent_id') != c_project_id:
+            return False
+        if c_search and c_search not in (row.get('title') or '').lower():
+            return False
+        return True
+
+    task_pool = list(tasks)
+    for p in projects:
+        task_pool.extend(p['subtasks'])
+
+    filter_projects = sorted({(p['id'], p['title']) for p in projects}, key=lambda x: x[1].lower())
+    filter_deals = sorted(
+        {(t['crm_deal_id'], t['crm_deal_name']) for t in task_pool if t.get('crm_deal_id')},
+        key=lambda x: (x[1] or '').lower()
+    )
+    company_pool = [t for t in task_pool if t.get('crm_company_id')] + \
+        [p for p in projects if p.get('crm_company_id')]
+    filter_companies = sorted(
+        {(row['crm_company_id'], row.get('crm_company_short_name') or row.get('crm_company_name'))
+         for row in company_pool},
+        key=lambda x: (x[1] or '').lower()
+    )
+
+    f_projects = [p for p in projects if cmatches(p) or any(cmatches(s) for s in p['subtasks'])]
+    f_tasks = [t for t in tasks if cmatches(t)]
+
+    deal_map: dict[int, dict] = {}
+    bare_tasks = []
+    for t in f_tasks:
+        if t.get('crm_deal_id'):
+            d = deal_map.setdefault(t['crm_deal_id'],
+                                     {'deal_id': t['crm_deal_id'], 'deal_name': t.get('crm_deal_name'), 'tasks': []})
+            d['tasks'].append(t)
+        else:
+            bare_tasks.append(t)
+    group_deals = sorted(deal_map.values(), key=lambda d: (d['deal_name'] or '').lower())
+
+    return {
+        'context': ctx,
+        'projects': f_projects,
+        'deals': group_deals,
+        'tasks': bare_tasks,
+        'filter_projects': filter_projects,
+        'filter_deals': filter_deals,
+        'filter_companies': filter_companies,
+        'filter': {'q': cfilter.get('q', ''), 'project': c_project_id, 'deal': c_deal_id, 'company': c_company_id},
+    }
 
 
 def get_tasks_for_day(day: date) -> list[dict]:

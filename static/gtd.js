@@ -770,6 +770,27 @@ function gtdBoardApplyContexts() {
   gtdNextApplyFilter('contexts', ids.join(','));
 }
 
+function gtdBoardToggleDeal(key) {
+  const row = document.getElementById('gtdBoardDealSubtasks' + key);
+  const chevron = document.getElementById('gtdBoardDealChevron' + key);
+  if (!row) return;
+  const opening = row.hidden;
+  row.hidden = !opening;
+  if (chevron) chevron.classList.toggle('open', opening);
+}
+
+function gtdBoardApplyContextFilter(ctxKey, field, value, focusId) {
+  gtdNextApplyFilter('cf' + ctxKey + '_' + field, value, focusId);
+}
+
+let gtdBoardCtxSearchTimers = {};
+function gtdBoardContextSearchInput(ctxKey, el) {
+  clearTimeout(gtdBoardCtxSearchTimers[ctxKey]);
+  const val = el.value.trim();
+  if (val.length > 0 && val.length < 3) return;
+  gtdBoardCtxSearchTimers[ctxKey] = setTimeout(() => gtdBoardApplyContextFilter(ctxKey, 'q', val, el.id), 400);
+}
+
 function gtdBoardAddProject(inputId, contextId) {
   const input = document.getElementById(inputId);
   const title = input.value.trim();
