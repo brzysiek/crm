@@ -25,14 +25,15 @@
       {% for ctx in all_contexts %}
       <div class="col-toggle-item">
         <label><input type="checkbox" class="gtd-board-context-checkbox" value="{{ ctx.id }}"
-               {{ 'checked' if not selected_context_ids or ctx.id in selected_context_ids }}
-               onchange="gtdBoardApplyContexts()"> @{{ ctx.name }}</label>
+               {{ 'checked' if not selected_context_ids or ctx.id in selected_context_ids }}> @{{ ctx.name }}</label>
       </div>
       {% endfor %}
       <div class="col-toggle-item">
         <label><input type="checkbox" class="gtd-board-context-checkbox" value="0"
-               {{ 'checked' if not selected_context_ids or 0 in selected_context_ids }}
-               onchange="gtdBoardApplyContexts()"> Brak kontekstu</label>
+               {{ 'checked' if not selected_context_ids or 0 in selected_context_ids }}> Brak kontekstu</label>
+      </div>
+      <div class="col-toggle-item" style="border-top:1px solid var(--border);margin-top:.3rem;padding-top:.4rem">
+        <button type="button" class="btn btn-primary btn-sm" style="flex:1" onclick="gtdBoardApplyContexts()">Zastosuj</button>
       </div>
     </div>
   </div>

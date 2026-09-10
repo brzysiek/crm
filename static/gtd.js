@@ -797,7 +797,6 @@ function gtdBoardApplyContexts() {
 
 function gtdBoardSetAllContexts(checked) {
   document.querySelectorAll('.gtd-board-context-checkbox').forEach(el => { el.checked = checked; });
-  gtdBoardApplyContexts();
 }
 
 function gtdBoardToggleDeal(key) {
