@@ -556,6 +556,9 @@ def api_create_task():
         scheduled_duration_min=data.get('scheduled_duration_min') or None,
         is_today_priority=data.get('is_today_priority'),
         context_id=data.get('context_id') or None,
+        crm_contact_id=data.get('crm_contact_id') or None,
+        crm_company_id=data.get('crm_company_id') or None,
+        crm_deal_id=data.get('crm_deal_id') or None,
     )
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
@@ -570,6 +573,10 @@ def api_projects():
         'crm_contact_name': ' '.join(filter(None, [p.get('crm_contact_first_name'), p.get('crm_contact_last_name')])) or None,
         'crm_company_id': p.get('crm_company_id'),
         'crm_company_name': p.get('crm_company_short_name') or p.get('crm_company_name'),
+        'crm_deal_id': p.get('crm_deal_id'),
+        'crm_deal_name': p.get('crm_deal_name'),
+        'context_id': p.get('context_id'),
+        'context_name': p.get('context_name'),
     } for p in projects])
 
 

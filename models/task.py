@@ -49,19 +49,38 @@ def get_task(task_id: int) -> dict | None:
 def create_task(title: str, user_id: int | None, is_project: bool = False,
                  status: str = 'inbox', **fields) -> int:
     db = get_db()
+    parent_id = fields.get('parent_id') or None
+    context_id = fields.get('context_id') or None
+    crm_contact_id = fields.get('crm_contact_id') or None
+    crm_company_id = fields.get('crm_company_id') or None
+    crm_deal_id = fields.get('crm_deal_id') or None
     try:
         with db.cursor() as cur:
+            if parent_id and not (context_id and crm_contact_id and crm_company_id and crm_deal_id):
+                # Podzadanie dziedziczy po projekcie kontekst/kontakt/firmę/deal,
+                # o ile nie zostały podane wprost przy tworzeniu.
+                cur.execute(
+                    "SELECT context_id, crm_contact_id, crm_company_id, crm_deal_id FROM tasks WHERE id=%s",
+                    (parent_id,)
+                )
+                parent = cur.fetchone()
+                if parent:
+                    context_id = context_id or parent['context_id']
+                    crm_contact_id = crm_contact_id or parent['crm_contact_id']
+                    crm_company_id = crm_company_id or parent['crm_company_id']
+                    crm_deal_id = crm_deal_id or parent['crm_deal_id']
             cur.execute(
                 """INSERT INTO tasks
                    (title, notes, is_project, parent_id, status, waiting_on,
                     due_date, scheduled_date, scheduled_time, scheduled_duration_min,
-                    is_today_priority, is_week_priority, context_id, created_by)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    is_today_priority, is_week_priority, context_id,
+                    crm_contact_id, crm_company_id, crm_deal_id, created_by)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     title,
                     fields.get('notes') or None,
                     1 if is_project else 0,
-                    fields.get('parent_id') or None,
+                    parent_id,
                     status if status in VALID_STATUSES else 'inbox',
                     fields.get('waiting_on') or None,
                     fields.get('due_date') or None,
@@ -70,7 +89,10 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     fields.get('scheduled_duration_min') or None,
                     1 if fields.get('is_today_priority') else 0,
                     1 if fields.get('is_week_priority') else 0,
-                    fields.get('context_id') or None,
+                    context_id,
+                    crm_contact_id,
+                    crm_company_id,
+                    crm_deal_id,
                     _valid_user_id(user_id),
                 )
             )

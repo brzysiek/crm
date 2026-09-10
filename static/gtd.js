@@ -469,7 +469,7 @@ function gtdSubmitTimeBlock() {
 /* ── Modal edycji terminu ── */
 let _gtdProjectsCache = null;
 
-function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerId, companyPickerId) {
+function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerId, companyPickerId, contextSelectId, dealPickerId) {
   const select = document.getElementById(selectId || 'gtdEditTaskProject');
   let projectsList = [];
   const render = (projects) => {
@@ -487,7 +487,7 @@ function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerI
     if (contactPickerId && companyPickerId) {
       select.onchange = () => {
         const project = projectsList.find(p => p.id === parseInt(select.value, 10));
-        _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId);
+        _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId, contextSelectId, dealPickerId);
       };
     }
   };
@@ -551,7 +551,7 @@ function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, curr
   document.getElementById('gtdEditTaskScheduled').value = currentScheduled || '';
   document.getElementById('gtdEditTaskWeek').value = currentWeek || '';
   document.getElementById('gtdEditTaskContext').value = currentContextId || '';
-  _gtdFillProjectSelect(taskId, currentParentId || null, 'gtdEditTaskProject', 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
+  _gtdFillProjectSelect(taskId, currentParentId || null, 'gtdEditTaskProject', 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker', 'gtdEditTaskContext', 'gtdEditTaskDealPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
   if (currentDealId) {
     selectEntityPicker('gtdEditTaskDealPicker', currentDealId, currentDealName || ('Deal #' + currentDealId));
@@ -608,7 +608,7 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
   document.getElementById('gtdFollowUpContext').value = '';
-  _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject', 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
+  _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject', 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker', 'gtdFollowUpContext', 'gtdFollowUpDealPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   if (currentDealId) {
     selectEntityPicker('gtdFollowUpDealPicker', currentDealId, currentDealName || ('Deal #' + currentDealId));
@@ -824,16 +824,24 @@ function _gtdAutoFillCompanyFromContact(contact, companyPickerId) {
   }
 }
 
-/* Po wybraniu projektu w pickerze, jeśli projekt ma przypisanego klienta (kontakt/firmę),
-   nadpisz nim dotychczasowy kontakt/firmę zadania (lub wydarzenia) — klient projektu ma
-   pierwszeństwo nad tym, co było wcześniej ustawione ręcznie. */
-function _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId) {
+/* Po wybraniu projektu w pickerze, jeśli projekt ma przypisanego klienta (kontakt/firmę/deal)
+   lub kontekst, nadpisz nimi dotychczasowe wartości zadania (lub wydarzenia) — projekt ma
+   pierwszeństwo nad tym, co było wcześniej ustawione ręcznie. contextSelectId/dealPickerId
+   są opcjonalne (np. modal przypisania wydarzenia do projektu ich nie ma). */
+function _gtdAutoFillClientFromProject(project, contactPickerId, companyPickerId, contextSelectId, dealPickerId) {
   if (!project) return;
   if (project.crm_contact_id) {
     selectEntityPicker(contactPickerId, project.crm_contact_id, project.crm_contact_name || ('Kontakt #' + project.crm_contact_id));
   }
   if (project.crm_company_id) {
     selectEntityPicker(companyPickerId, project.crm_company_id, project.crm_company_name || ('Firma #' + project.crm_company_id));
+  }
+  if (contextSelectId && project.context_id) {
+    const contextSelect = document.getElementById(contextSelectId);
+    if (contextSelect) contextSelect.value = project.context_id;
+  }
+  if (dealPickerId && project.crm_deal_id) {
+    selectEntityPicker(dealPickerId, project.crm_deal_id, project.crm_deal_name || ('Deal #' + project.crm_deal_id));
   }
 }
 
