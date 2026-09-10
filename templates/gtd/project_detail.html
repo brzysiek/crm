@@ -32,11 +32,17 @@
   </div>
 </div>
 
-{% if project.notes %}
-  <p class="text-muted">{{ project.notes|linkify }}</p>
-{% endif %}
+<div class="inv-section" style="margin-top:.75rem;max-width:760px">
+  <div class="inv-section-header">
+    <h4>Opis</h4>
+    <button type="button" class="btn btn-outline btn-sm" id="projectNotesSaveBtn" onclick="gtdSaveNotes({{ project.id }}, 'projectNotesInput', 'projectNotesSaveBtn')">Zapisz</button>
+  </div>
+  <div style="padding:.85rem">
+    <textarea id="projectNotesInput" rows="6" style="width:100%" placeholder="Dłuższy opis projektu…">{{ project.notes or '' }}</textarea>
+  </div>
+</div>
 
-<div class="filter-bar" data-no-collapse style="gap:.5rem">
+<div class="filter-bar" data-no-collapse style="gap:.5rem;margin-top:1rem">
   <input type="text" id="gtdSubtaskInput" class="filter-input" style="flex:1"
          placeholder="Dodaj podzadanie…" autocomplete="off"
          onkeydown="if(event.key==='Enter') gtdAddSubtask({{ project.id }}, 'gtdSubtaskInput')">

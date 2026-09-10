@@ -475,6 +475,16 @@ def project_detail(project_id):
     )
 
 
+@bp.route('/gtd/zadania/<int:task_id>')
+def task_detail(task_id):
+    task = task_model.get_task(task_id)
+    if not task:
+        return redirect(url_for('gtd.inbox'))
+    if task['is_project']:
+        return redirect(url_for('gtd.project_detail', project_id=task_id))
+    return render_template('gtd/task_detail.html', active_tab=None, task=task)
+
+
 # ── Wg kontekstu ─────────────────────────────────────────────────────────────
 
 _CTX_FILTER_RE = re.compile(r'^cf(\d+)_(q|deal|company|project)$')

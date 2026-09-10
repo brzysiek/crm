@@ -100,7 +100,7 @@
   </td>
   <td>
     <div style="font-weight:600">
-      {{ t.title }}
+      <a href="{{ url_for('gtd.project_detail', project_id=t.id) if t.is_project else url_for('gtd.task_detail', task_id=t.id) }}">{{ t.title }}</a>
       {{ context_picker(t) }}
       {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
       {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
@@ -206,7 +206,7 @@
         <div>
           <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-waiting' if t.status == 'waiting' else 'badge-red') }}"
                 onclick="{% if t.status == 'waiting' %}gtdUnwait({{ t.id }}){% else %}gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}'){% endif %}">{{ 'DONE' if t.status == 'done' else ('WAITING' if t.status == 'waiting' else 'TODO') }}</span>
-          <strong style="margin-left:.4rem">{{ t.title }}</strong>
+          <strong style="margin-left:.4rem"><a href="{{ url_for('gtd.project_detail', project_id=t.id) if t.is_project else url_for('gtd.task_detail', task_id=t.id) }}">{{ t.title }}</a></strong>
           {{ context_picker(t) }}
           {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}
           {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}

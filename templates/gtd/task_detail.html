@@ -1,0 +1,50 @@
+{% extends 'gtd/_layout.html' %}
+{% from 'gtd/_macros.html' import context_picker %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ task.title }} — Zadanie — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="rd-screen rd-zadania rd-zadania-projekt">
+<div class="page-header">
+  <h1>
+    <button type="button" class="star-toggle {{ 'starred' if task.is_today_priority }}"
+            title="Priorytet dnia" onclick="gtdToggleStar({{ task.id }}, 'toggle_today')">{{ icon('star', 16) if task.is_today_priority else icon('star-outline', 16) }}</button>
+    <span class="gtd-status-badge badge {{ 'badge-green' if task.status == 'done' else ('badge-waiting' if task.status == 'waiting' else 'badge-red') }}"
+          onclick="{% if task.status == 'waiting' %}gtdUnwait({{ task.id }}){% else %}gtdToggleDone({{ task.id }}, {{ 'false' if task.status == 'done' else 'true' }}, '{{ 'next' if task.status == 'done' else task.status }}'){% endif %}">{{ 'DONE' if task.status == 'done' else ('WAITING' if task.status == 'waiting' else 'TODO') }}</span>
+    {{ task.title }}
+    {{ context_picker(task) }}
+    {% if task.deleted_at %}<span class="badge badge-gray" style="margin-left:.4rem">zarchiwizowane</span>{% endif %}
+    {% if task.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=task.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ task.project_title }}</a>{% endif %}
+    {% if task.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=task.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ task.crm_contact_first_name }} {{ task.crm_contact_last_name }}</a>{% endif %}
+    {% if task.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=task.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ task.crm_company_short_name or task.crm_company_name }}</a>{% endif %}
+    {% if task.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=task.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ task.crm_deal_name }}</a>{% endif %}
+    {% if task.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ task.waiting_on }}</span>{% endif %}
+  </h1>
+  <div class="header-actions">
+    <a class="btn btn-outline btn-sm" href="javascript:history.back()">{{ icon('arrow-left', 14) }} Wróć</a>
+    <button type="button" class="btn btn-outline btn-sm"
+            onclick="gtdOpenEditTask({{ task.id }}, '{{ task.due_date or '' }}', {{ task.parent_id or 'null' }}, {{ task.title|tojson|forceescape }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, '{{ task.scheduled_date or '' }}', '{{ task.planned_week or '' }}', {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }}, {{ task.context_id or 'null' }})">{{ icon('edit', 14) }} Edytuj termin</button>
+    <button type="button" class="btn btn-outline btn-sm"
+            onclick="gtdOpenFollowUp({{ task.parent_id or 'null' }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }})">{{ icon('reply', 14) }} Nowe follow-up</button>
+    {% if task.status != 'waiting' %}
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetWaiting({{ task.id }})">{{ icon('hourglass', 14) }} Czeka na…</button>
+    {% endif %}
+    {% if task.deleted_at %}
+    <button type="button" class="btn btn-outline btn-sm" onclick="gtdRestoreTask({{ task.id }})">{{ icon('rotate-ccw', 14) }} Przywróć</button>
+    {% else %}
+    <button type="button" class="btn btn-ghost btn-sm" onclick="gtdDeleteTask({{ task.id }})">{{ icon('archive', 14) }} Archiwizuj</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="inv-section" style="margin-top:1rem;max-width:760px">
+  <div class="inv-section-header">
+    <h4>Opis</h4>
+    <button type="button" class="btn btn-outline btn-sm" id="taskNotesSaveBtn" onclick="gtdSaveNotes({{ task.id }}, 'taskNotesInput', 'taskNotesSaveBtn')">Zapisz</button>
+  </div>
+  <div style="padding:.85rem">
+    <textarea id="taskNotesInput" rows="7" style="width:100%" placeholder="Dłuższy opis zadania…">{{ task.notes or '' }}</textarea>
+  </div>
+</div>
+</div>
+{% endblock %}

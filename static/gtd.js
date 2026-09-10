@@ -213,6 +213,30 @@ function gtdDeleteTask(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdSaveNotes(taskId, textareaId, btnId) {
+  const textarea = document.getElementById(textareaId);
+  const btn = document.getElementById(btnId);
+  const notes = textarea.value.trim();
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes: notes || null }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      if (data.status === 'ok') {
+        btn.textContent = 'Zapisano ✓';
+        setTimeout(() => { btn.textContent = originalLabel; }, 1500);
+      } else {
+        alert(data.message || 'Błąd.');
+      }
+    })
+    .catch(() => { btn.disabled = false; alert('Błąd sieci.'); });
+}
+
 function gtdRestoreTask(taskId) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/restore', { method: 'POST' })
     .then(r => r.json())

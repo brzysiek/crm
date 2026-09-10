@@ -94,7 +94,7 @@
       <td class="col-checkbox"></td>
       <td>
         <div style="font-weight:600;text-decoration:line-through">
-          {{ t.title }}
+          <a href="{{ url_for('gtd.project_detail', project_id=t.id) if t.is_project else url_for('gtd.task_detail', task_id=t.id) }}">{{ t.title }}</a>
           {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} projekt</span>{% endif %}
         </div>
       </td>

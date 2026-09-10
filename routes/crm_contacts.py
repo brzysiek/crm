@@ -45,7 +45,8 @@ def build_gtd_items(contact_id=None, company_id=None, deal_id=None):
             'title': t['title'],
             'done': t['status'] == 'done',
             'date': sort_date,
-            'url': url_for('gtd.project_detail', project_id=t['id']) if t['is_project'] else None,
+            'url': url_for('gtd.project_detail', project_id=t['id']) if t['is_project']
+                   else url_for('gtd.task_detail', task_id=t['id']),
         })
     for e in events:
         if not e.get('title'):
