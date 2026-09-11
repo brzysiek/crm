@@ -1,5 +1,37 @@
+import re
+
 from database import get_db
 from models.crm_notes import log_history
+
+
+def _normalize_word(word: str) -> str:
+    letters = [c for c in word if c.isalpha()]
+    if not letters:
+        return word
+    if all(c.isupper() for c in letters):
+        return word
+    out, capitalized = [], False
+    for c in word:
+        if not c.isalpha():
+            out.append(c)
+        elif not capitalized:
+            out.append(c.upper())
+            capitalized = True
+        else:
+            out.append(c.lower())
+    return ''.join(out)
+
+
+def normalize_tag_name(name: str) -> str:
+    """Ujednolica zapis tagu do formatu Tytułowego: każde słowo z wielkiej litery
+    (np. "fundusz inwestycyjny" -> "Fundusz Inwestycyjny"). Słowa zapisane w
+    całości wielkimi literami zostają bez zmian, żeby nie niszczyć akronimów
+    (IT, BNI, CRM, M&A, B2B). Dzieli też złożenia typu "IT/Edukacja" czy
+    "e-commerce" po / i -, żeby capitalizacja działała po obu stronach separatora."""
+    def norm_compound(token: str) -> str:
+        parts = re.split(r'([/-])', token)
+        return ''.join(p if p in ('/', '-') else _normalize_word(p) for p in parts)
+    return ' '.join(norm_compound(w) for w in name.split())
 
 
 def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
@@ -69,6 +101,7 @@ def get_tags(kind: str) -> list[dict]:
 
 def add_tag(kind: str, name: str) -> int:
     db = get_db()
+    name = normalize_tag_name(name.strip())
     try:
         with db.cursor() as cur:
             cur.execute(
@@ -163,7 +196,7 @@ def _replace_contact_tags_of_kind(contact_id: int, kind: str, tag_ids: list[int]
 def set_contact_email_tags(contact_id: int, names: list[str], user_id: int | None) -> None:
     """Nadanie/odebranie tagu email jest jednocześnie udzieleniem/wycofaniem zgody
     marketingowej na dany cel komunikacji — każda zmiana trafia do historii kontaktu."""
-    names = [n.strip() for n in names if n and n.strip()]
+    names = [normalize_tag_name(n.strip()) for n in names if n and n.strip()]
     current = get_contact_email_tags(contact_id)
     added = [n for n in names if n not in current]
     removed = [n for n in current if n not in names]
@@ -210,15 +243,17 @@ def get_or_create_tag_ids(kind: str, names: list[str]) -> list[int]:
     try:
         with db.cursor() as cur:
             for raw_name in names:
-                name = raw_name.strip()
+                name = normalize_tag_name(raw_name.strip())
                 if not name:
                     continue
                 cur.execute(
-                    "SELECT id FROM crm_tags WHERE kind=%s AND name=%s",
+                    "SELECT id, name FROM crm_tags WHERE kind=%s AND name=%s",
                     (kind, name)
                 )
                 row = cur.fetchone()
                 if row:
+                    if row['name'] != name:
+                        cur.execute("UPDATE crm_tags SET name=%s WHERE id=%s", (name, row['id']))
                     ids.append(row['id'])
                 else:
                     cur.execute(

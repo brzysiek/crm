@@ -3,7 +3,7 @@ import re
 from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
-from models.crm_tags import get_or_create_tag_ids
+from models.crm_tags import get_or_create_tag_ids, normalize_tag_name
 from services.company_profile import get_favicon_url
 from services.text_utils import format_phone
 
@@ -421,6 +421,7 @@ def bulk_set_starred(company_ids: list[int], starred: bool) -> int:
 
 def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:
     label = TAG_KIND_LABELS.get(kind, kind)
+    name = normalize_tag_name(name.strip())
     affected = 0
     for company_id in company_ids:
         current = get_company_tags(company_id, kind)
@@ -439,6 +440,7 @@ def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | No
 
 def bulk_remove_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:
     label = TAG_KIND_LABELS.get(kind, kind)
+    name = normalize_tag_name(name.strip())
     affected = 0
     for company_id in company_ids:
         current = get_company_tags(company_id, kind)
