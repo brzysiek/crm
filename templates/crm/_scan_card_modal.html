@@ -86,7 +86,7 @@
 </div>
 
 <script>
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   const frontInput = document.getElementById('cardScanFront');
   const backInput = document.getElementById('cardScanBack');
   const frontPreview = document.getElementById('cardScanFrontPreview');
@@ -233,5 +233,5 @@
         item.innerHTML = `<div>❌ Błąd sieci: ${e.message}</div>`;
       });
   };
-})();
+});
 </script>
