@@ -15,6 +15,13 @@
       <label for="full_name">Imię i nazwisko</label>
       <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}" required>
     </div>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ user.email or '' }}">
+      <p class="text-muted small" style="margin-top:.25rem">
+        Używany m.in. do wysyłki wizytówek kontaktów (Ustawienia → CRM).
+      </p>
+    </div>
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Zapisz dane konta</button>
     </div>

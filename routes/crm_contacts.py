@@ -16,10 +16,25 @@ from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, 
                                 get_history_multi, get_notes_multi)
 from models.crm_tags import get_contact_email_tags, get_contact_tags, set_contact_email_tags
 from models.gtd_context import get_all_contexts
+from models.settings import get_setting
+from models.user import get_user_by_id
 from models.user_settings import get_user_setting, set_user_setting
-from services.vcard import build_vcard
+from services.vcard import build_vcard, send_vcard_email
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
+
+
+def _maybe_send_vcard_email(contact_id: int, setting_key: str) -> None:
+    if get_setting(setting_key) != '1':
+        return
+    user = get_user_by_id(session.get('user_id'))
+    if not user or not user.get('email'):
+        flash('Nie wysłano wizytówki mailem — uzupełnij swój adres email w Ustawieniach → Moje konto.', 'error')
+        return
+    try:
+        send_vcard_email(get_contact_by_id(contact_id), user['email'])
+    except Exception as e:
+        flash(f'Nie udało się wysłać wizytówki mailem: {e}', 'error')
 
 
 def _as_date(value):
@@ -141,6 +156,7 @@ def new_contact():
 
         contact_id = create_contact(data, session.get('user_id'), tags=tags)
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
+        _maybe_send_vcard_email(contact_id, 'crm_vcard_email_on_create')
         flash('Kontakt został zapisany.', 'success')
         return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
 
@@ -173,6 +189,7 @@ def edit_contact(contact_id):
 
         update_contact(contact_id, data, session.get('user_id'), tags=tags)
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
+        _maybe_send_vcard_email(contact_id, 'crm_vcard_email_on_edit')
         flash('Kontakt został zaktualizowany.', 'success')
         return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
 

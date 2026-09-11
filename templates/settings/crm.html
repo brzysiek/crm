@@ -2,6 +2,35 @@
 {% block settings_content %}
 
 <h2 class="settings-section-title">CRM</h2>
+
+<div class="settings-card" style="margin-bottom:1.5rem">
+  <h3 style="margin:0 0 1rem">Wizytówka mailem</h3>
+  <p class="text-muted small" style="margin-bottom:1rem">
+    Po zapisaniu kontaktu wyślij wizytówkę (.vcf) mailem na adres zalogowanego
+    użytkownika — do zapisania w telefonie. Wymaga uzupełnionego adresu email
+    w Ustawieniach → Moje konto oraz skonfigurowanej wysyłki w Ustawieniach → Email.
+  </p>
+  <form method="post" action="{{ url_for('settings.crm_settings') }}">
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="crm_vcard_email_on_create" value="1"
+               {{ 'checked' if cfg.get('crm_vcard_email_on_create') == '1' }}>
+        Po dodaniu nowego kontaktu
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="crm_vcard_email_on_edit" value="1"
+               {{ 'checked' if cfg.get('crm_vcard_email_on_edit') == '1' }}>
+        Po edycji kontaktu
+      </label>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-sm">Zapisz</button>
+    </div>
+  </form>
+</div>
+
 <p class="text-muted" style="margin-bottom:1.5rem">
   Słowniki podpowiedzi używane przy firmach i kontaktach w CRM.
 </p>

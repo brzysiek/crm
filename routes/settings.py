@@ -20,6 +20,7 @@ def account():
         if request.form.get('form') == 'profile':
             username = request.form.get('username', '').strip()
             full_name = request.form.get('full_name', '').strip()
+            email = request.form.get('email', '').strip()
 
             errors = []
             if not username:
@@ -35,7 +36,7 @@ def account():
                 for e in errors:
                     flash(e, 'error')
             else:
-                update_user_profile(session['user_id'], username, full_name)
+                update_user_profile(session['user_id'], username, full_name, email)
                 session['username'] = username
                 session['full_name'] = full_name
                 flash('Dane konta zostały zaktualizowane.', 'success')
@@ -264,11 +265,22 @@ def dictionary_delete(item_id):
     return redirect(url_for(target))
 
 
-@bp.route('/crm', methods=['GET'])
+@bp.route('/crm', methods=['GET', 'POST'])
 def crm_settings():
     from models.crm_tags import get_tags
+    from models.settings import get_all_settings, set_many
+
+    if request.method == 'POST':
+        set_many({
+            'crm_vcard_email_on_create': '1' if request.form.get('crm_vcard_email_on_create') == '1' else '0',
+            'crm_vcard_email_on_edit': '1' if request.form.get('crm_vcard_email_on_edit') == '1' else '0',
+        })
+        flash('Konfiguracja CRM została zapisana.', 'success')
+        return redirect(url_for('settings.crm_settings'))
+
     return render_template('settings/crm.html',
         active_tab='crm',
+        cfg=get_all_settings(),
         tags=get_tags('tag'),
         industries=get_tags('industry'),
         sources=get_tags('source'),

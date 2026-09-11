@@ -77,13 +77,13 @@ def update_user(user_id: int, full_name: str, email: str,
         raise
 
 
-def update_user_profile(user_id: int, username: str, full_name: str) -> None:
+def update_user_profile(user_id: int, username: str, full_name: str, email: str = None) -> None:
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
-                "UPDATE users SET username=%s, full_name=%s WHERE id = %s",
-                (username, full_name, user_id)
+                "UPDATE users SET username=%s, full_name=%s, email=%s WHERE id = %s",
+                (username, full_name, email or None, user_id)
             )
         db.commit()
     except Exception:

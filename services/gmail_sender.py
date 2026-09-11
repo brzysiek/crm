@@ -39,7 +39,7 @@ def _html_to_text(body_html: str) -> str:
     return re.sub(r'\n{3,}', '\n\n', text).strip()
 
 
-def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, unsubscribe_url: str,
+def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, unsubscribe_url: str | None = None,
                        attachments: list[dict] | None = None, sender_name: str | None = None) -> str:
     msg = EmailMessage()
     msg['From'] = formataddr((sender_name, sender_email)) if sender_name else sender_email
@@ -47,10 +47,11 @@ def build_raw_message(sender_email: str, to: str, subject: str, body_html: str, 
     msg['Subject'] = subject
     msg['Date'] = formatdate(localtime=True)
     msg['Message-ID'] = make_msgid(domain=sender_email.split('@')[-1])
-    msg['List-Unsubscribe'] = f'<{unsubscribe_url}>, <mailto:{sender_email}?subject=unsubscribe>'
-    msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+    if unsubscribe_url:
+        msg['List-Unsubscribe'] = f'<{unsubscribe_url}>, <mailto:{sender_email}?subject=unsubscribe>'
+        msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
 
-    html_body = body_html.replace(UNSUB_PLACEHOLDER, unsubscribe_url) if UNSUB_PLACEHOLDER in body_html else body_html
+    html_body = body_html.replace(UNSUB_PLACEHOLDER, unsubscribe_url) if unsubscribe_url and UNSUB_PLACEHOLDER in body_html else body_html
     msg.set_content(_html_to_text(html_body))
     msg.add_alternative(f'<html><body>{html_body}</body></html>', subtype='html')
 
@@ -79,7 +80,7 @@ class GmailSender:
         token = get_service_account_token(self._sa_json, GMAIL_SEND_SCOPE, subject=self.sender_email)
         return {'Authorization': f'Bearer {token}'}
 
-    def send(self, to: str, subject: str, body_html: str, unsubscribe_url: str,
+    def send(self, to: str, subject: str, body_html: str, unsubscribe_url: str | None = None,
               attachments: list[dict] | None = None) -> str:
         """Wysyła wiadomość, zwraca Gmail message id."""
         raw = build_raw_message(self.sender_email, to, subject, body_html, unsubscribe_url, attachments, self.sender_name)
