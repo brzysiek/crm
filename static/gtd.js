@@ -494,12 +494,12 @@ function gtdSubmitTimeBlock() {
 /* ── Modal edycji terminu ── */
 let _gtdProjectsCache = null;
 
-function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerId, companyPickerId, contextSelectId, dealPickerId) {
+function _gtdFillProjectSelect(taskId, currentParentId, selectId, contactPickerId, companyPickerId, contextSelectId, dealPickerId, fixedContextId) {
   const select = document.getElementById(selectId || 'gtdEditTaskProject');
   const contextSelect = contextSelectId ? document.getElementById(contextSelectId) : null;
   let allProjects = [];
   const render = () => {
-    const currentContext = contextSelect ? contextSelect.value : '';
+    const currentContext = contextSelect ? contextSelect.value : (fixedContextId != null ? String(fixedContextId) : '');
     const currentValue = select.value;
     select.innerHTML = '<option value="">— brak —</option>';
     allProjects
@@ -803,10 +803,10 @@ function gtdReopenProject(projectId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
-function gtdOpenGcalProject(eventId, eventDate, currentProjectId, currentContactId, currentCompanyId) {
+function gtdOpenGcalProject(eventId, eventDate, currentProjectId, currentContactId, currentCompanyId, eventContextId) {
   document.getElementById('gtdGcalProjectEventId').value = eventId;
   document.getElementById('gtdGcalProjectEventDate').value = eventDate;
-  _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect', 'gtdGcalProjectContactPicker', 'gtdGcalProjectCompanyPicker');
+  _gtdFillProjectSelect(null, currentProjectId || null, 'gtdGcalProjectSelect', 'gtdGcalProjectContactPicker', 'gtdGcalProjectCompanyPicker', null, null, eventContextId || null);
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdGcalProjectContactPicker', 'gtdGcalProjectCompanyPicker');
   document.getElementById('gtdGcalProjectModal').classList.add('open');
 }

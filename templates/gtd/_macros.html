@@ -181,22 +181,22 @@
       {% if e.project_title %}
       <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer"
             title="Zmień przypisany projekt"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }} {{ e.project_title }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }}, {{ e.context_id or 'null' }})">{{ icon('folder', 12) }} {{ e.project_title }}</span>
       {% else %}
       <span class="badge badge-gray" style="margin-left:.4rem;cursor:pointer;opacity:.55" title="Przypisz do projektu"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }})">{{ icon('folder', 12) }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, null, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id or 'null' }}, {{ e.context_id or 'null' }})">{{ icon('folder', 12) }}</span>
       {% endif %}
       {% if e.crm_contact_name %}
       <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id }}, {{ e.crm_company_id or 'null' }})">{{ icon('user', 12) }} {{ e.crm_contact_name }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id }}, {{ e.crm_company_id or 'null' }}, {{ e.context_id or 'null' }})">{{ icon('user', 12) }} {{ e.crm_contact_name }}</span>
       {% endif %}
       {% if e.crm_company_name %}
       <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer" title="Zmień przypisany kontakt/firmę"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id }})">{{ icon('building', 12) }} {{ e.crm_company_name }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, {{ e.crm_contact_id or 'null' }}, {{ e.crm_company_id }}, {{ e.context_id or 'null' }})">{{ icon('building', 12) }} {{ e.crm_company_name }}</span>
       {% endif %}
       {% if not e.crm_contact_name and not e.crm_company_name %}
       <span class="badge badge-blue" style="margin-left:.4rem;cursor:pointer;opacity:.55" title="Przypisz klienta"
-            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null)">{{ icon('user', 12) }}</span>
+            onclick="gtdOpenGcalProject({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }}, {{ e.project_id or 'null' }}, null, null, {{ e.context_id or 'null' }})">{{ icon('user', 12) }}</span>
       {% endif %}
       <button type="button" class="action-btn" style="margin-left:.4rem" title="Priorytet dnia"
               onclick="gtdToggleGcalStar({{ e.id|tojson|forceescape }}, {{ e.date|tojson|forceescape }})">{{ icon('star', 16) if e.is_today_priority else icon('star-outline', 16) }}</button>
