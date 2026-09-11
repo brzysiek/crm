@@ -1,6 +1,112 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from database import get_db
+
+WARSAW_TZ = ZoneInfo('Europe/Warsaw')
+
+
+def parse_raw_event(e: dict) -> dict | None:
+    """Wyciąga datę/godzinę/czas trwania/status odrzucenia/tytuł z surowego
+    wydarzenia Google Calendar — współdzielone między widokiem dnia/tygodnia/
+    miesiąca, harmonogramem projektu i sekcjami CRM."""
+    start_info = e.get('start', {})
+    end_info = e.get('end', {})
+    duration_min = None
+    if start_info.get('dateTime'):
+        dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
+        d = dt.date()
+        time_label = dt.strftime('%H:%M')
+        if end_info.get('dateTime'):
+            end_dt = datetime.fromisoformat(end_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
+            duration_min = max(0, int((end_dt - dt).total_seconds()) // 60)
+    elif start_info.get('date'):
+        d = datetime.strptime(start_info['date'], '%Y-%m-%d').date()
+        time_label = None
+    else:
+        return None
+    self_attendee = next((a for a in e.get('attendees') or [] if a.get('self')), None)
+    is_declined = e.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
+    return {
+        'date': d,
+        'time': time_label,
+        'duration_min': duration_min,
+        'is_declined': is_declined,
+        'title': e.get('summary') or ('🔒 Wydarzenie prywatne' if e.get('visibility') == 'private' else '(bez tytułu)'),
+    }
+
+
+def cache_snapshot(event_id: str, event_date: str, title: str, event_time: str | None,
+                    duration_min: int | None, is_declined: bool) -> None:
+    """Zapisuje lokalną kopię tytułu/godziny/czasu trwania wydarzenia właśnie
+    pobranego z Google Calendar — żeby dało się je później pokazać (np. na
+    listach GTD) bez ponownego zapytania do API."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """INSERT INTO gcal_event_done (event_id, event_date, title, event_time, duration_min, is_declined)
+                   VALUES (%s, %s, %s, %s, %s, %s)
+                   ON DUPLICATE KEY UPDATE event_date=VALUES(event_date), title=VALUES(title),
+                   event_time=VALUES(event_time), duration_min=VALUES(duration_min), is_declined=VALUES(is_declined)""",
+                (event_id, event_date, title, event_time, duration_min, int(is_declined))
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def parse_and_cache(raw_event: dict) -> dict | None:
+    """Parsuje surowe wydarzenie Google Calendar i od razu zapisuje jego
+    tytuł/godzinę/czas trwania do lokalnego cache (patrz cache_snapshot)."""
+    parsed = parse_raw_event(raw_event)
+    if not parsed:
+        return None
+    cache_snapshot(raw_event.get('id'), parsed['date'].isoformat(), parsed['title'],
+                    parsed['time'], parsed['duration_min'], parsed['is_declined'])
+    return parsed
+
+
+def get_cached_past_events(context_ids: list[int] | None = None, project_id: int | None = None,
+                            limit: int = 200) -> list[dict]:
+    """Przeszłe wydarzenia z kalendarza, których tytuł mamy już zapisany
+    lokalnie (patrz cache_snapshot) — pozwala pokazać je na listach GTD
+    (Wszystkie zadania, Wg kontekstu) bez odpytywania Google Calendar."""
+    db = get_db()
+    sql = ("SELECT event_id, event_date, title, event_time, duration_min, is_declined, "
+           "done_at, is_today_priority, project_id, crm_contact_id, crm_company_id, context_id "
+           "FROM gcal_event_done WHERE title IS NOT NULL AND event_date < CURDATE()")
+    params: list = []
+    if context_ids:
+        ctx_placeholders = ','.join(['%s'] * len(context_ids))
+        clause = f"context_id IN ({ctx_placeholders})"
+        if 0 in context_ids:
+            clause = f"({clause} OR context_id IS NULL)"
+        sql += f" AND {clause}"
+        params.extend(context_ids)
+    if project_id:
+        sql += " AND project_id=%s"
+        params.append(project_id)
+    sql += " ORDER BY event_date DESC, event_time DESC LIMIT %s"
+    params.append(limit)
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        return cur.fetchall()
+
+
+def get_backfill_candidates() -> list[str]:
+    """event_id-y wpisów z metadanymi (projekt/kontekst/kontakt/firma) sprzed
+    wprowadzenia cache'owania tytułu/godziny — zapisanych, zanim gcal_event_done
+    zyskała te kolumny, więc title jest u nich puste mimo powiązania z GTD/CRM."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT event_id FROM gcal_event_done WHERE title IS NULL "
+            "AND (project_id IS NOT NULL OR context_id IS NOT NULL "
+            "OR crm_contact_id IS NOT NULL OR crm_company_id IS NOT NULL)"
+        )
+        return [r['event_id'] for r in cur.fetchall()]
 
 
 def get_event_meta(start_date: date, end_date: date) -> dict:
@@ -191,8 +297,9 @@ def get_events_for_project(project_id: int) -> list[dict]:
 
 
 def enrich_with_titles(events: list[dict]) -> list[dict]:
-    """Dogrywa tytuł wydarzenia z Google Calendar — nie przechowujemy go lokalnie,
-    tylko metadane (patrz nagłówek modułu). Ciche pominięcie błędu per-wydarzenie
+    """Dogrywa tytuł wydarzenia z Google Calendar, zapisując go od razu do
+    lokalnego cache (patrz parse_and_cache) — do sekcji „Zadania/Projekty/
+    Spotkania” na karcie kontaktu/firmy. Ciche pominięcie błędu per-wydarzenie
     (np. usunięte w kalendarzu), żeby jedno zepsute wydarzenie nie wywaliło całej sekcji."""
     if not events:
         return events
@@ -209,7 +316,8 @@ def enrich_with_titles(events: list[dict]) -> list[dict]:
     for e in events:
         try:
             _, ev = client.get_event_any(calendar_ids, e['event_id'])
-            e['title'] = ev.get('summary') or '(bez tytułu)'
+            parsed = parse_and_cache(ev)
+            e['title'] = parsed['title'] if parsed else (ev.get('summary') or '(bez tytułu)')
         except Exception:
             e['title'] = None
     return events

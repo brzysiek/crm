@@ -700,7 +700,7 @@ function gtdSubmitBulkAssign() {
    dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
-                          presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus, presetContextId) {
+                          presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus, presetContextId, isProject) {
   document.getElementById('gtdFollowUpTitle').value = presetTitle || '';
   document.getElementById('gtdFollowUpDue').value = '';
   document.getElementById('gtdFollowUpScheduled').value = presetScheduled || '';
@@ -708,6 +708,10 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
   document.getElementById('gtdFollowUpContext').value = presetContextId || '';
+  document.getElementById('gtdFollowUpIsProject').value = isProject ? '1' : '0';
+  document.getElementById('gtdFollowUpModalTitle').textContent = isProject ? 'Nowy projekt' : 'Nowe zadanie';
+  document.getElementById('gtdFollowUpTitle').placeholder = isProject ? 'Nazwa nowego projektu…' : 'Nazwa nowego zadania…';
+  document.getElementById('gtdFollowUpProjectRow').style.display = isProject ? 'none' : '';
   _gtdFillProjectSelect(null, currentParentId || null, 'gtdFollowUpProject', 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker', 'gtdFollowUpContext', 'gtdFollowUpDealPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
   if (currentDealId) {
@@ -737,10 +741,11 @@ function gtdSubmitFollowUp() {
   const status = document.getElementById('gtdFollowUpStatus').value || 'next';
   const contextValue = document.getElementById('gtdFollowUpContext').value;
   const context_id = contextValue ? parseInt(contextValue, 10) : null;
+  const is_project = document.getElementById('gtdFollowUpIsProject').value === '1';
   fetch(window.API_BASE + '/api/gtd/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, status, context_id }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id: is_project ? null : parent_id, status, context_id, is_project }),
   })
     .then(r => r.json())
     .then(data => {

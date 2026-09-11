@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class %}
+{% from 'gtd/_macros.html' import task_cells, priority_stars, row_class, timeline_item %}
 {% from '_icons.html' import icon %}
 {% block title %}Wszystkie zadania — GTD{% endblock %}
 
@@ -113,6 +113,17 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
+{% endif %}
+
+{% if past_events %}
+<div class="page-header" style="margin-top:1.5rem">
+  <h3 style="margin:0">Przeszłe wydarzenia z kalendarza</h3>
+</div>
+<div class="gtd-timeline">
+  {% for e in past_events %}
+    {{ timeline_item({'kind': 'gcal', 'event': e}) }}
+  {% endfor %}
 </div>
 {% endif %}
 

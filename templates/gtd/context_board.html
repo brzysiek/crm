@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import project_row, deal_row, task_cells, task_extra_actions, priority_stars, row_class %}
+{% from 'gtd/_macros.html' import project_row, deal_row, task_cells, task_extra_actions, priority_stars, row_class, timeline_item %}
 {% from '_icons.html' import icon %}
 {% block title %}Wg kontekstu — GTD{% endblock %}
 
@@ -108,13 +108,17 @@
            placeholder="Nowy projekt…" autocomplete="off"
            onkeydown="if(event.key==='Enter') gtdBoardAddProject('gtdBoardAddProject{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdBoardAddProject('gtdBoardAddProject{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">+ Projekt</button>
+    <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie projektu (termin, kontakt, firma, deal)"
+            onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, null, document.getElementById('gtdBoardAddProject{{ loop.index }}').value, 'next', {{ group.context.id if group.context else 'null' }}, true)">{{ icon('edit', 14) }} Zaawansowane…</button>
     <input type="text" id="gtdBoardAddTask{{ loop.index }}" class="filter-input" style="flex:1;min-width:160px"
            placeholder="Nowe zadanie bez projektu…" autocomplete="off"
            onkeydown="if(event.key==='Enter') gtdBoardAddTask('gtdBoardAddTask{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdBoardAddTask('gtdBoardAddTask{{ loop.index }}', {{ group.context.id if group.context else 'null' }})">+ Zadanie</button>
+    <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie zadania (termin, projekt, kontakt, firma, deal)"
+            onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, null, document.getElementById('gtdBoardAddTask{{ loop.index }}').value, 'next', {{ group.context.id if group.context else 'null' }})">{{ icon('edit', 14) }} Zaawansowane…</button>
   </div>
 
-  {% if not group.projects and not group.deals and not group.tasks %}
+  {% if not group.projects and not group.deals and not group.tasks and not group.events %}
   <p class="text-muted small">Brak wyników filtra w tym kontekście.</p>
   {% endif %}
 
@@ -243,6 +247,15 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
+  {% endif %}
+
+  {% if group.events %}
+  <h4 style="margin:.8rem 0 .4rem;font-size:.85rem;color:var(--text-muted)">Przeszłe wydarzenia z kalendarza</h4>
+  <div class="gtd-timeline">
+    {% for e in group.events %}
+      {{ timeline_item({'kind': 'gcal', 'event': e}) }}
+    {% endfor %}
   </div>
   {% endif %}
 </div>

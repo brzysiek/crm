@@ -5,11 +5,12 @@
 <div id="gtdFollowUpModal" class="modal-overlay rd-screen" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal">
     <div class="modal-header">
-      <h3>Nowe zadanie</h3>
+      <h3 id="gtdFollowUpModalTitle">Nowe zadanie</h3>
       <button onclick="document.getElementById('gtdFollowUpModal').classList.remove('open')" class="modal-close" title="Zamknij">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="gtdFollowUpStatus" value="next">
+      <input type="hidden" id="gtdFollowUpIsProject" value="0">
       <div class="agent-confirm-row">
         <label>Nazwa</label>
         <input type="text" id="gtdFollowUpTitle" class="filter-input" style="width:100%" placeholder="Nazwa nowego zadania…">
@@ -39,7 +40,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="agent-confirm-row">
+      <div class="agent-confirm-row" id="gtdFollowUpProjectRow">
         <label>Projekt</label>
         <select id="gtdFollowUpProject" class="filter-input" style="width:100%">
           <option value="">— brak —</option>

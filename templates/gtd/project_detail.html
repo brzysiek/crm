@@ -101,6 +101,8 @@
          placeholder="Dodaj podzadanie…" autocomplete="off"
          onkeydown="if(event.key==='Enter') gtdAddSubtask({{ project.id }}, 'gtdSubtaskInput')">
   <button type="button" class="btn btn-outline btn-sm" onclick="gtdAddSubtask({{ project.id }}, 'gtdSubtaskInput')">+ Dodaj podzadanie</button>
+  <button type="button" class="btn btn-outline btn-sm" title="Zaawansowane dodawanie (termin, kontakt, firma, deal)"
+          onclick="gtdOpenFollowUp({{ project.id }}, {{ project.crm_contact_id or 'null' }}, {{ project.crm_company_id or 'null' }}, null, null, null, null, null, document.getElementById('gtdSubtaskInput').value, 'next', {{ project.context_id or 'null' }})">{{ icon('edit', 14) }} Zaawansowane…</button>
 </div>
 
 {% if not subtasks %}

@@ -136,8 +136,10 @@
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Zapisz konfigurację Google Drive</button>
       <button type="button" class="btn btn-outline" id="btnTestDrive">Testuj połączenie</button>
+      <button type="button" class="btn btn-outline" id="btnGcalBackfill">Uzupełnij tytuły przeszłych wydarzeń</button>
     </div>
     <div id="driveTestResult" class="api-result" style="display:none"></div>
+    <div id="gcalBackfillResult" class="api-result" style="display:none"></div>
   </form>
 </div>
 
@@ -246,6 +248,27 @@ async function apiTest(url, loadingText, elId) {
 
 document.getElementById('btnTest').addEventListener('click', () =>
   apiTest('/api/fakturownia/test', 'Testowanie…', 'testResult'));
+
+document.getElementById('btnGcalBackfill').addEventListener('click', async () => {
+  const el = document.getElementById('gcalBackfillResult');
+  el.style.display = 'block';
+  el.className = 'api-result api-loading';
+  el.textContent = 'Uzupełnianie tytułów przeszłych wydarzeń — może to potrwać dłuższą chwilę…';
+  try {
+    const r = await fetch(API_BASE + '/api/gtd/gcal_backfill_titles', { method: 'POST', credentials: 'same-origin' });
+    const d = await r.json();
+    if (d.status !== 'ok') {
+      el.className = 'api-result api-error';
+      el.textContent = d.message || 'Błąd.';
+      return;
+    }
+    el.className = 'api-result api-ok';
+    el.textContent = `Sprawdzono ${d.total} wpisów: uzupełniono ${d.updated}, nie udało się ${d.failed} (np. usunięte w kalendarzu).`;
+  } catch (e) {
+    el.className = 'api-result api-error';
+    el.textContent = 'Błąd sieci: ' + e.message;
+  }
+});
 
 document.getElementById('btnTestDrive').addEventListener('click', () =>
   apiTest('/api/gdrive/test', 'Testowanie połączenia z Google Drive…', 'driveTestResult'));

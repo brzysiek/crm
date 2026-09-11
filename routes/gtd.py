@@ -1,7 +1,6 @@
 import calendar
 import re
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
@@ -97,39 +96,6 @@ def _day_groups(week_start: date, week_end: date, gcal_by_day: dict | None = Non
     return groups
 
 
-WARSAW_TZ = ZoneInfo('Europe/Warsaw')
-
-
-def _parse_gcal_raw_event(e: dict) -> dict | None:
-    """Wyciąga datę/godzinę/czas trwania/status odrzucenia z surowego wydarzenia
-    Google Calendar — współdzielone między widokiem dnia/tygodnia/miesiąca
-    a harmonogramem wydarzeń na stronie projektu."""
-    start_info = e.get('start', {})
-    end_info = e.get('end', {})
-    duration_min = None
-    if start_info.get('dateTime'):
-        dt = datetime.fromisoformat(start_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
-        d = dt.date()
-        time_label = dt.strftime('%H:%M')
-        if end_info.get('dateTime'):
-            end_dt = datetime.fromisoformat(end_info['dateTime'].replace('Z', '+00:00')).astimezone(WARSAW_TZ)
-            duration_min = max(0, int((end_dt - dt).total_seconds()) // 60)
-    elif start_info.get('date'):
-        d = datetime.strptime(start_info['date'], '%Y-%m-%d').date()
-        time_label = None
-    else:
-        return None
-    self_attendee = next((a for a in e.get('attendees') or [] if a.get('self')), None)
-    is_declined = e.get('status') == 'cancelled' or (self_attendee is not None and self_attendee.get('responseStatus') == 'declined')
-    return {
-        'date': d,
-        'time': time_label,
-        'duration_min': duration_min,
-        'is_declined': is_declined,
-        'title': e.get('summary') or ('🔒 Wydarzenie prywatne' if e.get('visibility') == 'private' else '(bez tytułu)'),
-    }
-
-
 def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     """Read-only: wydarzenia z Google Calendar w przedziale [start, end] (włącznie),
     pogrupowane po dniu. Zwraca ({}, None) jeśli integracja nie jest skonfigurowana.
@@ -163,7 +129,7 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     contexts_by_id = {c['id']: c for c in gtd_context_model.get_all_contexts()}
     by_day: dict = {}
     for e in raw:
-        parsed = _parse_gcal_raw_event(e)
+        parsed = gcal_event_model.parse_and_cache(e)
         if not parsed:
             continue
         event_id = e.get('id')
@@ -197,6 +163,49 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     return by_day, ('; '.join(errors) if errors else None)
 
 
+def _enrich_cached_events(rows: list[dict]) -> list[dict]:
+    """Dogrywa tytuły projektów/kontaktów/firm/kontekstów do wierszy z lokalnego
+    cache wydarzeń kalendarza (gcal_event_done) — bez odpytywania Google Calendar.
+    Zwraca w tym samym kształcie co _gcal_events_by_day, żeby dało się je renderować
+    tym samym makrem timeline_item na listach GTD."""
+    if not rows:
+        return []
+    project_ids = {r['project_id'] for r in rows if r.get('project_id')}
+    contact_ids = {r['crm_contact_id'] for r in rows if r.get('crm_contact_id')}
+    company_ids = {r['crm_company_id'] for r in rows if r.get('crm_company_id')}
+    project_titles = task_model.get_titles_by_ids(list(project_ids)) if project_ids else {}
+    contact_names = crm_contact_model.get_names_by_ids(list(contact_ids)) if contact_ids else {}
+    company_names = crm_company_model.get_names_by_ids(list(company_ids)) if company_ids else {}
+    contexts_by_id = {c['id']: c for c in gtd_context_model.get_all_contexts()}
+    enriched = []
+    for r in rows:
+        context = contexts_by_id.get(r.get('context_id'))
+        project_id = r.get('project_id')
+        crm_contact_id = r.get('crm_contact_id')
+        crm_company_id = r.get('crm_company_id')
+        enriched.append({
+            'id': r['event_id'],
+            'date': r['event_date'].isoformat(),
+            'title': r['title'],
+            'time': r['event_time'],
+            'duration_min': r['duration_min'],
+            'is_done': r['done_at'] is not None,
+            'is_declined': bool(r['is_declined']),
+            'is_today_priority': bool(r['is_today_priority']),
+            'project_id': project_id,
+            'project_title': project_titles.get(project_id) if project_id else None,
+            'crm_contact_id': crm_contact_id,
+            'crm_contact_name': contact_names.get(crm_contact_id) if crm_contact_id else None,
+            'crm_company_id': crm_company_id,
+            'crm_company_name': company_names.get(crm_company_id) if crm_company_id else None,
+            'context_id': context['id'] if context else None,
+            'context_name': context['name'] if context else None,
+            'context_badge_color': context['badge_color'] if context else None,
+            'context_text_color': context['text_color'] if context else None,
+        })
+    return enriched
+
+
 def _project_gcal_day_groups(project: dict) -> list[dict]:
     """Wydarzenia z kalendarza przypisane do projektu, pogrupowane dzień-po-dniu
     w tym samym formacie co widok dnia — żeby dało się je edytować identycznie
@@ -219,7 +228,7 @@ def _project_gcal_day_groups(project: dict) -> list[dict]:
             _, raw = client.get_event_any(calendar_ids, r['event_id'])
         except Exception:
             continue
-        parsed = _parse_gcal_raw_event(raw)
+        parsed = gcal_event_model.parse_and_cache(raw)
         if not parsed:
             continue
         crm_contact_id = r.get('crm_contact_id')
@@ -416,6 +425,7 @@ def next_actions():
     contexts_param = (request.args.get('contexts') or '').strip()
     context_ids = [int(x) for x in contexts_param.split(',') if x.strip().isdigit()] if contexts_param else None
     filter_options = task_model.get_next_action_filter_options()
+    past_events = _enrich_cached_events(gcal_event_model.get_cached_past_events(context_ids))
     return render_template(
         'gtd/next_actions.html', active_tab='next',
         tasks=task_model.get_next_actions(project_id, deal_id, company_id, search, include_done, context_ids),
@@ -429,6 +439,7 @@ def next_actions():
         selected_company=company_id,
         search_query=search or '',
         include_done=include_done,
+        past_events=past_events,
     )
 
 
@@ -513,10 +524,18 @@ def context_board():
             ctx_filters.setdefault(int(m.group(1)), {})[m.group(2)] = value
 
     filter_options = task_model.get_context_board_filter_options()
+    groups = task_model.get_context_board(context_ids, deal_id, company_id, project_id, search,
+                                           ctx_filters, show_done)
+    past_events = _enrich_cached_events(gcal_event_model.get_cached_past_events(context_ids))
+    events_by_context: dict = {}
+    for e in past_events:
+        events_by_context.setdefault(e['context_id'] or 0, []).append(e)
+    for group in groups:
+        ctx = group.get('context')
+        group['events'] = events_by_context.get(ctx['id'] if ctx else 0, [])
     return render_template(
         'gtd/context_board.html', active_tab='kontekst',
-        groups=task_model.get_context_board(context_ids, deal_id, company_id, project_id, search,
-                                             ctx_filters, show_done),
+        groups=groups,
         all_contexts=gtd_context_model.get_all_contexts(),
         selected_context_ids=context_ids,
         deals=filter_options['deals'],
@@ -725,6 +744,30 @@ def api_gcal_event_context(event_id):
     context_id = data.get('context_id') or None
     gcal_event_model.set_context(event_id, event_date, context_id)
     return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/gtd/gcal_backfill_titles', methods=['POST'])
+def api_gcal_backfill_titles():
+    """Jednorazowe uzupełnienie tytułu/godziny/czasu trwania dla wpisów
+    gcal_event_done zapisanych zanim doszło cache'owanie treści wydarzenia —
+    mają już metadane (projekt/kontekst/kontakt/firma), ale puste title.
+    Pobiera każde live z Google Calendar i zapisuje przez parse_and_cache."""
+    client, calendar_ids = _gcal_read_client_and_calendar()
+    if not client:
+        return jsonify({'status': 'error', 'message': 'Integracja z Google Calendar nie jest skonfigurowana.'})
+    event_ids = gcal_event_model.get_backfill_candidates()
+    updated, failed = 0, 0
+    for event_id in event_ids:
+        try:
+            _, raw = client.get_event_any(calendar_ids, event_id)
+            if gcal_event_model.parse_and_cache(raw):
+                updated += 1
+            else:
+                failed += 1
+        except Exception:
+            current_app.logger.exception('GTD: błąd uzupełniania cache wydarzenia %s', event_id)
+            failed += 1
+    return jsonify({'status': 'ok', 'total': len(event_ids), 'updated': updated, 'failed': failed})
 
 
 @bp.route('/api/gtd/crm_contacts')
