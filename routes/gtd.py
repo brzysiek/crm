@@ -526,10 +526,11 @@ def context_board():
     filter_options = task_model.get_context_board_filter_options()
     groups = task_model.get_context_board(context_ids, deal_id, company_id, project_id, search,
                                            ctx_filters, show_done)
-    past_events = _enrich_cached_events(gcal_event_model.get_cached_past_events(context_ids))
     events_by_context: dict = {}
-    for e in past_events:
-        events_by_context.setdefault(e['context_id'] or 0, []).append(e)
+    if show_done:
+        past_events = _enrich_cached_events(gcal_event_model.get_cached_past_events(context_ids))
+        for e in past_events:
+            events_by_context.setdefault(e['context_id'] or 0, []).append(e)
     for group in groups:
         ctx = group.get('context')
         group['events'] = events_by_context.get(ctx['id'] if ctx else 0, [])
