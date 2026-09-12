@@ -16,7 +16,7 @@
   <div class="header-actions">
     <a class="btn btn-outline btn-sm" href="javascript:history.back()">{{ icon('arrow-left', 14) }} Wróć</a>
     <button type="button" class="btn btn-outline btn-sm"
-            onclick="gtdOpenEditTask({{ task.id }}, '{{ task.due_date or '' }}', {{ task.parent_id or 'null' }}, {{ task.title|tojson|forceescape }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, '{{ task.scheduled_date or '' }}', '{{ task.planned_week or '' }}', {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }}, {{ task.context_id or 'null' }})">{{ icon('edit', 14) }} Edytuj termin</button>
+            onclick="gtdOpenEditTask({{ task.id }}, '{{ task.due_date or '' }}', {{ task.parent_id or 'null' }}, {{ task.title|tojson|forceescape }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, '{{ task.scheduled_date or '' }}', '{{ task.planned_week or '' }}', {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }}, {{ task.context_id or 'null' }}, {{ task.notes|tojson|forceescape if task.notes else 'null' }})">{{ icon('edit', 14) }} Edytuj</button>
     <button type="button" class="btn btn-outline btn-sm"
             onclick="gtdOpenFollowUp({{ task.parent_id or 'null' }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }})">{{ icon('reply', 14) }} Nowe follow-up</button>
     {% if task.status != 'waiting' %}
@@ -85,10 +85,13 @@
     <div class="inv-section">
       <div class="inv-section-header">
         <h4>Opis</h4>
-        <button type="button" class="btn btn-outline btn-sm" id="taskNotesSaveBtn" onclick="gtdSaveNotes({{ task.id }}, 'taskNotesInput', 'taskNotesSaveBtn')">Zapisz</button>
       </div>
       <div style="padding:.85rem">
-        <textarea id="taskNotesInput" rows="8" style="width:100%" placeholder="Dłuższy opis zadania…">{{ task.notes or '' }}</textarea>
+        {% if task.notes %}
+        <div style="white-space:pre-wrap">{{ task.notes|linkify }}</div>
+        {% else %}
+        <span class="text-muted">Brak opisu.</span>
+        {% endif %}
       </div>
     </div>
 

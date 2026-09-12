@@ -577,13 +577,14 @@ function _gtdSetCrmPickers(currentContactId, currentCompanyId, contactPickerId, 
   }
 }
 
-function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek, currentDealId, currentDealName, currentContextId) {
+function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek, currentDealId, currentDealName, currentContextId, currentNotes) {
   document.getElementById('gtdEditTaskId').value = taskId;
   document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
   document.getElementById('gtdEditTaskScheduled').value = currentScheduled || '';
   document.getElementById('gtdEditTaskWeek').value = currentWeek || '';
   document.getElementById('gtdEditTaskContext').value = currentContextId || '';
+  document.getElementById('gtdEditTaskNotes').value = currentNotes || '';
   _gtdFillProjectSelect(taskId, currentParentId || null, 'gtdEditTaskProject', 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker', 'gtdEditTaskContext', 'gtdEditTaskDealPicker');
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
   if (currentDealId) {
@@ -611,10 +612,11 @@ function gtdSubmitEditTask() {
   const crm_deal_id = dealValue ? parseInt(dealValue, 10) : null;
   const contextValue = document.getElementById('gtdEditTaskContext').value;
   const context_id = contextValue ? parseInt(contextValue, 10) : null;
+  const notes = document.getElementById('gtdEditTaskNotes').value.trim() || null;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id, crm_deal_id, context_id }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id, crm_deal_id, context_id, notes }),
   })
     .then(r => r.json())
     .then(data => {
