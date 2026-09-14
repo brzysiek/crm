@@ -261,4 +261,11 @@
   {{ priority_stars(t) }}
   <button type="button" class="action-btn" title="Zaplanuj godzinę"
           onclick="gtdOpenTimeBlock({{ t.id }}, '{{ t.scheduled_date or '' }}', '{{ t.scheduled_time|hhmm }}', {{ t.scheduled_duration_min or 30 }})">{{ icon('clock', 16) }}</button>
+  {% if t.scheduled_time and t.scheduled_date %}
+    {% if not t.gcal_event_id %}
+    <button type="button" class="action-btn" title="Wyślij do Google Calendar" onclick="gtdGcalPush({{ t.id }})">{{ icon('calendar', 16) }}</button>
+    {% else %}
+    <span class="badge badge-green" title="Zsynchronizowano z Google Calendar">{{ icon('calendar-check', 12) }}</span>
+    {% endif %}
+  {% endif %}
 {% endmacro %}

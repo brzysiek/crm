@@ -1051,6 +1051,23 @@ def api_gdrive_test():
         return jsonify({'ok': False, 'message': f'Błąd: {str(e)}'})
 
 
+@app.route('/api/gcal/calendar_info')
+def api_gcal_calendar_info():
+    from models.settings import get_setting
+    calendar_id = (request.args.get('id') or '').strip()
+    if not calendar_id:
+        return jsonify({'ok': False, 'message': 'Brak ID kalendarza.'})
+    token = get_setting('google_drive_api_token', '')
+    if not token:
+        return jsonify({'ok': False, 'message': 'Brak tokenu / klucza API (sekcja Google Drive).'})
+    try:
+        from services.google_calendar import GoogleCalendarClient
+        client = GoogleCalendarClient(token)
+        return jsonify({'ok': True, 'calendar': client.get_calendar_info(calendar_id)})
+    except Exception as e:
+        return jsonify({'ok': False, 'message': f'Błąd: {str(e)}'})
+
+
 @app.route('/api/gemini/test')
 def api_gemini_test():
     from models.settings import get_setting

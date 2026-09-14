@@ -105,32 +105,25 @@
     </div>
 
     <div class="form-group">
-      <label for="gtd_gcal_calendar_id">GTD: ID kalendarza „Zadania” (Google Calendar)</label>
-      <input type="text" id="gtd_gcal_calendar_id" name="gtd_gcal_calendar_id"
-             placeholder="np. abc123@group.calendar.google.com"
-             value="{{ cfg.gtd_gcal_calendar_id or '' }}">
-      <small class="text-muted">
-        Osobny kalendarz Google udostępniony kontu usługi (z prawem edycji),
-        na który GTD jednokierunkowo wypycha zablokowane bloki czasu. Wymaga
-        service account w polu „Token / klucz API” powyżej.
+      <label>GTD: kalendarze Google (odczyt / zapis)</label>
+      <div id="gcalPickerLoading" class="text-muted small">Wczytywanie skonfigurowanych kalendarzy…</div>
+      <div id="gcalPickerList" style="display:none"></div>
+      <div class="api-result api-error" id="gcalAddError" style="display:none"></div>
+      <div style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem">
+        <input type="text" id="gcalAddId" placeholder="ID kalendarza Google (np. nazwa@grupa.calendar.google.com)" style="flex:1">
+        <button type="button" class="btn btn-outline btn-sm" id="btnGcalAdd">Dodaj kalendarz</button>
+      </div>
+      <small class="text-muted" style="display:block;margin-top:.4rem">
+        Dodaj tu ID każdego kalendarza udostępnionego kontu usługi (Google nie
+        pozwala ich wylistować automatycznie) — nazwa zostanie rozpoznana
+        automatycznie. Zaznacz „czytaj” przy kalendarzach, których wydarzenia
+        mają się pokazywać w widokach GTD. Wybierz jeden kalendarz jako
+        „domyślny do zapisu” — na niego GTD jednokierunkowo wypycha zablokowane
+        bloki czasu zadań. Wymaga service account w polu „Token / klucz API”
+        powyżej.
       </small>
-    </div>
-
-    <div class="form-group">
-      <label for="gtd_gcal_read_calendar_id">GTD: ID kalendarza/y do odczytu wydarzeń (Google Calendar)</label>
-      <input type="text" id="gtd_gcal_read_calendar_id" name="gtd_gcal_read_calendar_id"
-             placeholder="np. abc123@group.calendar.google.com, inny@gmail.com"
-             value="{{ cfg.gtd_gcal_read_calendar_id or '' }}">
-      <small class="text-muted">
-        Kalendarz Google udostępniony kontu usługi (wystarczy prawo
-        „Zobacz wszystkie szczegóły wydarzeń") — GTD tylko go odczytuje i
-        pokazuje wydarzenia w widoku dnia/tygodnia. Można podać kilka ID
-        (nawet z zupełnie innych kont Google) rozdzielonych przecinkiem —
-        każde z nich musi być udostępnione temu samemu service accountowi
-        (adres z pola „client_email” w kluczu JSON). Powinny być inne niż
-        kalendarz „Zadania” powyżej, żeby nie mieszać źródeł. Wymaga service
-        account w polu „Token / klucz API” powyżej.
-      </small>
+      <input type="hidden" id="gtd_gcal_calendar_id" name="gtd_gcal_calendar_id" value="{{ cfg.gtd_gcal_calendar_id or '' }}">
+      <input type="hidden" id="gtd_gcal_read_calendar_id" name="gtd_gcal_read_calendar_id" value="{{ cfg.gtd_gcal_read_calendar_id or '' }}">
     </div>
 
     <div class="form-actions">
@@ -275,5 +268,95 @@ document.getElementById('btnTestDrive').addEventListener('click', () =>
 
 document.getElementById('btnTestGemini').addEventListener('click', () =>
   apiTest('/api/gemini/test', 'Testowanie połączenia z Gemini…', 'geminiTestResult'));
+
+let gcalKnown = [];
+
+function gcalRowHtml(cal, currentWrite, readSet) {
+  const checked = readSet.has(cal.id) ? 'checked' : '';
+  const wchecked = cal.id === currentWrite ? 'checked' : '';
+  return `<div class="gcal-picker-row" style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0;border-bottom:1px solid var(--border)">
+    <label style="display:flex;align-items:center;gap:.3rem;min-width:70px">
+      <input type="checkbox" class="gcal-read-cb" value="${cal.id}" ${checked}> czytaj
+    </label>
+    <label style="display:flex;align-items:center;gap:.3rem;min-width:140px">
+      <input type="radio" name="gcal_write_radio" class="gcal-write-radio" value="${cal.id}" ${wchecked}> domyślny do zapisu
+    </label>
+    <span>${cal.summary}</span>
+    <span class="text-muted small">${cal.id}</span>
+  </div>`;
+}
+
+function gcalSyncHiddenInputs() {
+  const reads = Array.from(document.querySelectorAll('.gcal-read-cb:checked')).map(cb => cb.value);
+  const writeEl = document.querySelector('.gcal-write-radio:checked');
+  document.getElementById('gtd_gcal_read_calendar_id').value = reads.join(',');
+  document.getElementById('gtd_gcal_calendar_id').value = writeEl ? writeEl.value : '';
+}
+
+function gcalRenderList() {
+  const listEl = document.getElementById('gcalPickerList');
+  const currentWrite = document.getElementById('gtd_gcal_calendar_id').value.trim();
+  const readSet = new Set(
+    document.getElementById('gtd_gcal_read_calendar_id').value.split(',')
+      .map(s => s.trim()).filter(Boolean)
+  );
+  listEl.innerHTML = gcalKnown.map(c => gcalRowHtml(c, currentWrite, readSet)).join('');
+  listEl.style.display = gcalKnown.length ? 'block' : 'none';
+  listEl.querySelectorAll('.gcal-read-cb, .gcal-write-radio').forEach(el =>
+    el.addEventListener('change', gcalSyncHiddenInputs));
+}
+
+async function gcalResolve(calendarId) {
+  const r = await fetch(API_BASE + '/api/gcal/calendar_info?id=' + encodeURIComponent(calendarId), { credentials: 'same-origin' });
+  return r.json();
+}
+
+async function loadGcalPicker() {
+  const loading = document.getElementById('gcalPickerLoading');
+  loading.style.display = 'block';
+  const writeId = document.getElementById('gtd_gcal_calendar_id').value.trim();
+  const readIds = document.getElementById('gtd_gcal_read_calendar_id').value.split(',')
+    .map(s => s.trim()).filter(Boolean);
+  const ids = Array.from(new Set([writeId, ...readIds].filter(Boolean)));
+  gcalKnown = [];
+  for (const id of ids) {
+    try {
+      const d = await gcalResolve(id);
+      gcalKnown.push(d.ok ? d.calendar : { id, summary: id + ' (nie udało się wczytać nazwy)' });
+    } catch (e) {
+      gcalKnown.push({ id, summary: id + ' (błąd sieci)' });
+    }
+  }
+  loading.style.display = 'none';
+  gcalRenderList();
+}
+
+document.getElementById('btnGcalAdd').addEventListener('click', async () => {
+  const input = document.getElementById('gcalAddId');
+  const errorEl = document.getElementById('gcalAddError');
+  const id = input.value.trim();
+  errorEl.style.display = 'none';
+  if (!id) return;
+  if (gcalKnown.some(c => c.id === id)) {
+    input.value = '';
+    return;
+  }
+  try {
+    const d = await gcalResolve(id);
+    if (!d.ok) {
+      errorEl.style.display = 'block';
+      errorEl.textContent = d.message || 'Nie udało się rozpoznać tego kalendarza.';
+      return;
+    }
+    gcalKnown.push(d.calendar);
+    input.value = '';
+    gcalRenderList();
+  } catch (e) {
+    errorEl.style.display = 'block';
+    errorEl.textContent = 'Błąd sieci: ' + e.message;
+  }
+});
+
+loadGcalPicker();
 </script>
 {% endblock %}

@@ -92,6 +92,21 @@ class GoogleCalendarClient:
                 continue
         raise last_exc or requests.HTTPError('Wydarzenie nie znalezione w żadnym skonfigurowanym kalendarzu.')
 
+    def get_calendar_info(self, calendar_id: str) -> dict:
+        """Read-only: nazwa kalendarza po ID. Kalendarze udostępnione kontu usługi
+        NIE pojawiają się w 'calendarList' (Google synchronizuje ją tylko wtedy, gdy
+        ktoś ręcznie "dodaje" kalendarz w UI, co dla service accountów nie ma miejsca)
+        — dlatego zamiast listować "wszystkie widoczne kalendarze" rozwiązujemy nazwę
+        pojedynczo po ID podanym przez użytkownika, do selektora w Ustawieniach."""
+        resp = requests.get(
+            f'{CALENDAR_API}/calendars/{calendar_id}',
+            headers=self._auth_headers(),
+            timeout=TIMEOUT,
+        )
+        _raise_for_status(resp)
+        data = resp.json()
+        return {'id': data.get('id', calendar_id), 'summary': data.get('summary') or calendar_id}
+
     def upsert_task_event(self, calendar_id: str, event_id: str | None, title: str,
                            day: date, time_str: str, duration_min: int, notes: str = '') -> dict:
         """Tworzy albo aktualizuje wydarzenie odpowiadające zablokowanemu czasowi zadania."""
