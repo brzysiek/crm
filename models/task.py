@@ -453,6 +453,17 @@ def set_gcal_event_id(task_id: int, event_id: str | None) -> None:
         raise
 
 
+def get_pushed_gcal_event_ids() -> set[str]:
+    """ID wydarzeń Google Calendar utworzonych przez /gcal_push — do odfiltrowania
+    z odczytu kalendarza, gdy kalendarz do zapisu pokrywa się z jednym z kalendarzy
+    do odczytu (inaczej zadanie wyświetlałoby się podwójnie: jako zadanie i jako
+    zsynchronizowane z nim wydarzenie)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT gcal_event_id FROM tasks WHERE gcal_event_id IS NOT NULL")
+        return {r['gcal_event_id'] for r in cur.fetchall()}
+
+
 def convert_to_project(task_id: int) -> None:
     db = get_db()
     try:

@@ -115,6 +115,9 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
             errors.append(str(e))
     if errors and not raw:
         return {}, '; '.join(errors)
+    pushed_ids = task_model.get_pushed_gcal_event_ids()
+    if pushed_ids:
+        raw = [e for e in raw if e.get('id') not in pushed_ids]
     try:
         event_meta = gcal_event_model.get_event_meta(start, end)
     except Exception:
