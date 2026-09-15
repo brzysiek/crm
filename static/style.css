@@ -3432,6 +3432,11 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .btn-ghost { color: rgba(255,255,255,.75); }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
 
+/* Tytuł zadania (link bez klasy) na kolorowym tle priorytetów — domyślny
+   niebieski kolor linku jest nieczytelny na czerwonym/zielonym tle. */
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td a:not(.badge),
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-done td a:not(.badge) { color: #fff; }
+
 /* Mobile: kolor stanu na całą kartę (tr), nie tylko na komórki — inaczej
    przerwa przed przyciskami akcji (margin-top) prześwituje tłem panelu
    zamiast kolorem wiersza, dając efekt "poszatkowanej" karty */
