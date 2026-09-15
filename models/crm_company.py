@@ -635,3 +635,63 @@ def delete_company(company_id: int, user_id: int | None, archive_contacts: bool 
         if archived_contacts:
             summary += f" Zarchiwizowano też {archived_contacts} powiązanych kontaktów."
         log_history('company', company_id, user_id, 'delete', summary)
+
+
+_MERGE_RELATION_TABLES = (
+    ('crm_contacts', 'company_id'),
+    ('crm_deals', 'company_id'),
+    ('crm_files', 'company_id'),
+    ('tasks', 'crm_company_id'),
+    ('gcal_event_done', 'crm_company_id'),
+)
+
+_MERGE_TAG_KINDS = ('tag', 'industry', 'source')
+
+
+def merge_companies(primary_id: int, secondary_id: int, data: dict, user_id: int | None) -> None:
+    """Scala dwie zduplikowane firmy w jedną. Dane z `data` zapisywane są w firmie
+    o niższym ID (`primary_id`), wszystkie powiązania (kontakty, interesy, pliki,
+    zadania, wydarzenia, notatki, historia, tagi) zostają przepięte na nią,
+    a firma `secondary_id` zostaje zarchiwizowana (nie usunięta)."""
+    primary = get_company_by_id(primary_id)
+    secondary = get_company_by_id(secondary_id)
+    if not primary or not secondary:
+        raise ValueError('Jedna z firm do scalenia nie istnieje.')
+
+    merged_tags = {
+        kind: sorted(set(get_company_tags(primary_id, kind)) | set(get_company_tags(secondary_id, kind)))
+        for kind in _MERGE_TAG_KINDS
+    }
+
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            for table, column in _MERGE_RELATION_TABLES:
+                cur.execute(f"UPDATE {table} SET {column}=%s WHERE {column}=%s", (primary_id, secondary_id))
+            for table in ('crm_notes', 'crm_history'):
+                cur.execute(
+                    f"UPDATE {table} SET entity_id=%s WHERE entity_type='company' AND entity_id=%s",
+                    (primary_id, secondary_id)
+                )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    update_company(primary_id, data, user_id,
+                    tags=merged_tags['tag'], industries=merged_tags['industry'], source=merged_tags['source'])
+
+    try:
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM crm_company_tags WHERE company_id=%s", (secondary_id,))
+            cur.execute("UPDATE crm_companies SET archived_at=NOW() WHERE id=%s", (secondary_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    log_history('company', primary_id, user_id, 'update',
+                f"Scalono z duplikatem „{secondary['name']}” (#{secondary_id}) — dane i powiązania "
+                f"przeniesione, duplikat zarchiwizowany.")
+    log_history('company', secondary_id, user_id, 'delete',
+                f"Zarchiwizowano jako duplikat firmy „{primary['name']}” (#{primary_id}) po scaleniu.")

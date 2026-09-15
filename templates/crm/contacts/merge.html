@@ -41,7 +41,7 @@
           <td>{{ label }}</td>
           <td><div class="merge-source-value">{{ value_a or '—' }}</div>{{ copy_btn(field, value_a) }}</td>
           <td><div class="merge-source-value">{{ value_b or '—' }}</div>{{ copy_btn(field, value_b) }}</td>
-          <td><input type="text" id="merge-{{ field }}" name="{{ field }}" value="{{ value_a or '' }}"></td>
+          <td><input type="text" id="merge-{{ field }}" name="{{ field }}" value="{{ value_a if value_a else (value_b or '') }}"></td>
         </tr>
         {% endmacro %}
 
@@ -56,7 +56,7 @@
           <td>Opis</td>
           <td><div class="merge-source-value">{{ primary.description or '—' }}</div>{{ copy_btn('description', primary.description) }}</td>
           <td><div class="merge-source-value">{{ secondary.description or '—' }}</div>{{ copy_btn('description', secondary.description) }}</td>
-          <td><textarea id="merge-description" name="description" rows="2">{{ primary.description or '' }}</textarea></td>
+          <td><textarea id="merge-description" name="description" rows="2">{{ primary.description if primary.description else (secondary.description or '') }}</textarea></td>
         </tr>
 
         <tr>
@@ -64,13 +64,14 @@
           <td><div class="merge-source-value">{{ primary.company_name or '—' }}</div>{{ copy_btn('company_id', primary.company_id) }}</td>
           <td><div class="merge-source-value">{{ secondary.company_name or '—' }}</div>{{ copy_btn('company_id', secondary.company_id) }}</td>
           <td>
+            {% set default_company_id = primary.company_id or secondary.company_id %}
             <select id="merge-company_id" name="company_id">
-              <option value="" {{ 'selected' if not primary.company_id }}>— brak —</option>
+              <option value="" {{ 'selected' if not default_company_id }}>— brak —</option>
               {% if primary.company_id %}
-              <option value="{{ primary.company_id }}" selected>{{ primary.company_name }} (#{{ primary.id }})</option>
+              <option value="{{ primary.company_id }}" {{ 'selected' if default_company_id == primary.company_id }}>{{ primary.company_name }} (#{{ primary.id }})</option>
               {% endif %}
               {% if secondary.company_id and secondary.company_id != primary.company_id %}
-              <option value="{{ secondary.company_id }}">{{ secondary.company_name }} (#{{ secondary.id }})</option>
+              <option value="{{ secondary.company_id }}" {{ 'selected' if default_company_id == secondary.company_id }}>{{ secondary.company_name }} (#{{ secondary.id }})</option>
               {% endif %}
             </select>
           </td>
@@ -81,10 +82,11 @@
           <td><div class="merge-source-value">{{ '@' ~ primary.context_name if primary.context_id else '—' }}</div>{{ copy_btn('context_id', primary.context_id) }}</td>
           <td><div class="merge-source-value">{{ '@' ~ secondary.context_name if secondary.context_id else '—' }}</div>{{ copy_btn('context_id', secondary.context_id) }}</td>
           <td>
+            {% set default_context_id = primary.context_id or secondary.context_id %}
             <select id="merge-context_id" name="context_id">
               <option value="">— brak —</option>
               {% for ctx in all_contexts %}
-                <option value="{{ ctx.id }}" {{ 'selected' if primary.context_id == ctx.id }}>@{{ ctx.name }}</option>
+                <option value="{{ ctx.id }}" {{ 'selected' if default_context_id == ctx.id }}>@{{ ctx.name }}</option>
               {% endfor %}
             </select>
           </td>

@@ -1,0 +1,158 @@
+{% extends 'crm/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Scal duplikaty{% endblock %}
+
+{% block crm_content %}
+<div class="rd-screen rd-firmy">
+<div class="page-header">
+  <h1>Scal duplikaty</h1>
+  <a href="{{ url_for('crm_companies.duplicates_view') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy duplikatów</a>
+</div>
+
+<p class="text-muted" style="margin-bottom:1rem">
+  Dane zostaną zapisane w firmie <strong>#{{ primary.id }}</strong> ({{ primary.short_name or primary.name }}) —
+  jako starszej z pary. Dla każdego pola wybierz, z której firmy przepisać wartość (można też wpisać własną).
+  Firma <strong>#{{ secondary.id }}</strong> ({{ secondary.short_name or secondary.name }}) zostanie po scaleniu
+  zarchiwizowana — wszystkie jej kontakty, interesy, pliki, zadania, wydarzenia, notatki i historia zostaną
+  przepisane na firmę docelową.
+</p>
+
+<div class="form-card">
+<form method="post" action="{{ url_for('crm_companies.merge_duplicate_submit') }}">
+  <input type="hidden" name="primary_id" value="{{ primary.id }}">
+  <input type="hidden" name="secondary_id" value="{{ secondary.id }}">
+
+  <div class="table-wrapper">
+    <table class="data-table merge-table">
+      <thead>
+        <tr>
+          <th>Pole</th>
+          <th>Firma #{{ primary.id }}</th>
+          <th>Firma #{{ secondary.id }}</th>
+          <th>Wynik (zostanie zapisany)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% macro copy_btn(field, value) -%}
+        <button type="button" class="btn btn-outline btn-sm merge-copy-btn" data-field="{{ field }}" data-value="{{ value or '' }}">Użyj</button>
+        {%- endmacro %}
+
+        {% macro text_row(field, label, value_a, value_b, input_type='text') %}
+        <tr>
+          <td>{{ label }}</td>
+          <td><div class="merge-source-value">{{ value_a or '—' }}</div>{{ copy_btn(field, value_a) }}</td>
+          <td><div class="merge-source-value">{{ value_b or '—' }}</div>{{ copy_btn(field, value_b) }}</td>
+          <td><input type="{{ input_type }}" id="merge-{{ field }}" name="{{ field }}" value="{{ value_a if value_a else (value_b or '') }}"></td>
+        </tr>
+        {% endmacro %}
+
+        {{ text_row('name', 'Nazwa', primary.name, secondary.name) }}
+        {{ text_row('short_name', 'Nazwa skrócona', primary.short_name, secondary.short_name) }}
+
+        <tr>
+          <td>Relacja</td>
+          <td><div class="merge-source-value">{{ relation_labels.get(primary.relation_type, primary.relation_type) }}</div>{{ copy_btn('relation_type', primary.relation_type) }}</td>
+          <td><div class="merge-source-value">{{ relation_labels.get(secondary.relation_type, secondary.relation_type) }}</div>{{ copy_btn('relation_type', secondary.relation_type) }}</td>
+          <td>
+            {% set default_relation = primary.relation_type or secondary.relation_type %}
+            <select id="merge-relation_type" name="relation_type">
+              {% for val, label in relation_labels.items() %}
+                <option value="{{ val }}" {{ 'selected' if default_relation == val }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+
+        {{ text_row('country', 'Kraj', primary.country, secondary.country) }}
+        {{ text_row('city', 'Miasto', primary.city, secondary.city) }}
+        {{ text_row('voivodeship', 'Województwo', primary.voivodeship, secondary.voivodeship) }}
+        {{ text_row('street', 'Ulica', primary.street, secondary.street) }}
+        {{ text_row('house_number', 'Nr domu', primary.house_number, secondary.house_number) }}
+        {{ text_row('flat_number', 'Nr lokalu', primary.flat_number, secondary.flat_number) }}
+        {{ text_row('postal_code', 'Kod pocztowy', primary.postal_code, secondary.postal_code) }}
+        {{ text_row('email', 'Email', primary.email, secondary.email, 'email') }}
+        {{ text_row('phone', 'Telefon', primary.phone, secondary.phone) }}
+        {{ text_row('nip', 'NIP', primary.nip, secondary.nip) }}
+        {{ text_row('krs', 'KRS', primary.krs, secondary.krs) }}
+        {{ text_row('website', 'Strona WWW', primary.website, secondary.website) }}
+        {{ text_row('linkedin_url', 'LinkedIn', primary.linkedin_url, secondary.linkedin_url) }}
+        {{ text_row('short_description', 'Krótki opis', primary.short_description, secondary.short_description) }}
+
+        <tr>
+          <td>Opis</td>
+          <td><div class="merge-source-value">{{ primary.description or '—' }}</div>{{ copy_btn('description', primary.description) }}</td>
+          <td><div class="merge-source-value">{{ secondary.description or '—' }}</div>{{ copy_btn('description', secondary.description) }}</td>
+          <td><textarea id="merge-description" name="description" rows="2">{{ primary.description if primary.description else (secondary.description or '') }}</textarea></td>
+        </tr>
+
+        <tr>
+          <td>Opiekun</td>
+          <td><div class="merge-source-value">{{ primary.owner_user_id or '—' }}</div>{{ copy_btn('owner_user_id', primary.owner_user_id) }}</td>
+          <td><div class="merge-source-value">{{ secondary.owner_user_id or '—' }}</div>{{ copy_btn('owner_user_id', secondary.owner_user_id) }}</td>
+          <td>
+            {% set default_owner_id = primary.owner_user_id or secondary.owner_user_id %}
+            <select id="merge-owner_user_id" name="owner_user_id">
+              <option value="" {{ 'selected' if not default_owner_id }}>— brak —</option>
+              {% for u in owners %}
+                <option value="{{ u.id }}" {{ 'selected' if default_owner_id == u.id }}>{{ u.full_name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Kontekst</td>
+          <td><div class="merge-source-value">{{ '@' ~ primary.context_name if primary.context_id else '—' }}</div>{{ copy_btn('context_id', primary.context_id) }}</td>
+          <td><div class="merge-source-value">{{ '@' ~ secondary.context_name if secondary.context_id else '—' }}</div>{{ copy_btn('context_id', secondary.context_id) }}</td>
+          <td>
+            {% set default_context_id = primary.context_id or secondary.context_id %}
+            <select id="merge-context_id" name="context_id">
+              <option value="">— brak —</option>
+              {% for ctx in all_contexts %}
+                <option value="{{ ctx.id }}" {{ 'selected' if default_context_id == ctx.id }}>@{{ ctx.name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Tagi</td>
+          <td class="small">{{ primary_tags|join(', ') if primary_tags else '—' }}</td>
+          <td class="small">{{ secondary_tags|join(', ') if secondary_tags else '—' }}</td>
+          <td class="small text-muted">Zostaną połączone automatycznie (suma obu list).</td>
+        </tr>
+        <tr>
+          <td>Branże</td>
+          <td class="small">{{ primary_industries|join(', ') if primary_industries else '—' }}</td>
+          <td class="small">{{ secondary_industries|join(', ') if secondary_industries else '—' }}</td>
+          <td class="small text-muted">Zostaną połączone automatycznie (suma obu list).</td>
+        </tr>
+        <tr>
+          <td>Źródło</td>
+          <td class="small">{{ primary_source|join(', ') if primary_source else '—' }}</td>
+          <td class="small">{{ secondary_source|join(', ') if secondary_source else '—' }}</td>
+          <td class="small text-muted">Zostaną połączone automatycznie (suma obu list).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Scal firmy</button>
+    <a href="{{ url_for('crm_companies.duplicates_view') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.merge-copy-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    const el = document.getElementById('merge-' + btn.dataset.field);
+    if (el) el.value = btn.dataset.value;
+  });
+});
+</script>
+{% endblock %}

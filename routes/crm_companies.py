@@ -5,7 +5,7 @@ from models.crm_company import (RELATION_LABELS, count_companies, create_company
                                   get_companies_referred_by_company,
                                   get_company_by_id, get_company_tags,
                                   get_source_company_matches, get_source_contact_matches,
-                                  set_starred, update_company)
+                                  merge_companies, set_starred, update_company)
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
@@ -13,6 +13,7 @@ from models.gtd_context import get_all_contexts
 from models.user import get_active_users
 from models.user_settings import get_user_setting, set_user_setting
 from routes.crm_contacts import build_gtd_items
+from services.company_duplicates import find_duplicate_pairs
 
 bp = Blueprint('crm_companies', __name__, url_prefix='/crm/companies')
 
@@ -92,6 +93,54 @@ def list_companies():
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
         page=page, page_size=page_size, total=total, total_pages=total_pages,
     )
+
+
+@bp.route('/duplicates')
+def duplicates_view():
+    pairs = find_duplicate_pairs()
+    return render_template('crm/companies/duplicates.html',
+        active_tab='companies', pairs=pairs)
+
+
+@bp.route('/duplicates/merge')
+def merge_duplicate_view():
+    a_id = request.args.get('a', type=int)
+    b_id = request.args.get('b', type=int)
+    company_a = get_company_by_id(a_id) if a_id else None
+    company_b = get_company_by_id(b_id) if b_id else None
+    if not company_a or not company_b:
+        flash('Jedna z firm do scalenia nie istnieje.', 'error')
+        return redirect(url_for('crm_companies.duplicates_view'))
+
+    primary, secondary = sorted([company_a, company_b], key=lambda c: c['id'])
+    return render_template('crm/companies/merge.html',
+        active_tab='companies', primary=primary, secondary=secondary,
+        relation_labels=RELATION_LABELS, owners=get_active_users(), all_contexts=get_all_contexts(),
+        primary_tags=get_company_tags(primary['id'], 'tag'), secondary_tags=get_company_tags(secondary['id'], 'tag'),
+        primary_industries=get_company_tags(primary['id'], 'industry'),
+        secondary_industries=get_company_tags(secondary['id'], 'industry'),
+        primary_source=get_company_tags(primary['id'], 'source'),
+        secondary_source=get_company_tags(secondary['id'], 'source'))
+
+
+@bp.route('/duplicates/merge', methods=['POST'])
+def merge_duplicate_submit():
+    primary_id = request.form.get('primary_id', type=int)
+    secondary_id = request.form.get('secondary_id', type=int)
+    if not primary_id or not secondary_id or primary_id == secondary_id:
+        flash('Nieprawidłowa para firm do scalenia.', 'error')
+        return redirect(url_for('crm_companies.duplicates_view'))
+
+    data = _parse_form(request.form)
+    errors = _validate(data)
+    if errors:
+        for e in errors:
+            flash(e, 'error')
+        return redirect(url_for('crm_companies.merge_duplicate_view', a=primary_id, b=secondary_id))
+
+    merge_companies(primary_id, secondary_id, data, session.get('user_id'))
+    flash('Firmy zostały scalone, duplikat zarchiwizowany.', 'success')
+    return redirect(url_for('crm_companies.view_company', company_id=primary_id))
 
 
 @bp.route('/new', methods=['GET', 'POST'])

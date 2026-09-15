@@ -57,6 +57,7 @@
 
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_companies.list_companies') }}" class="btn btn-ghost">Wyczyść</a>
+  <a href="{{ url_for('crm_companies.duplicates_view') }}" class="btn btn-outline">Wyszukaj duplikaty</a>
 </form>
 
 <a href="{{ url_for('crm_companies.new_company') }}" class="rd-fab" title="Dodaj firmę">+</a>
