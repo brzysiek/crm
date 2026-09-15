@@ -10,7 +10,7 @@ from models.crm_company import (RELATION_LABELS, get_companies_referred_by_compa
                                   get_companies_referred_by_contact,
                                   get_company_by_id, get_company_tags)
 from models.crm_contact import (count_contacts, create_contact, delete_contact, get_all_contacts,
-                                  get_contact_by_id, set_starred, update_contact)
+                                  get_contact_by_id, merge_contacts, set_starred, update_contact)
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
@@ -19,6 +19,7 @@ from models.gtd_context import get_all_contexts
 from models.settings import get_setting
 from models.user import get_user_by_id
 from models.user_settings import get_user_setting, set_user_setting
+from services.contact_duplicates import find_duplicate_pairs
 from services.vcard import build_vcard, send_vcard_email
 
 bp = Blueprint('crm_contacts', __name__, url_prefix='/crm/contacts')
@@ -132,6 +133,52 @@ def list_contacts():
         page=page, page_size=page_size, total=total, total_pages=total_pages,
         relation_labels=RELATION_LABELS,
     )
+
+
+@bp.route('/duplicates')
+def duplicates_view():
+    pairs = find_duplicate_pairs()
+    return render_template('crm/contacts/duplicates.html',
+        active_tab='contacts', pairs=pairs)
+
+
+@bp.route('/duplicates/merge')
+def merge_duplicate_view():
+    a_id = request.args.get('a', type=int)
+    b_id = request.args.get('b', type=int)
+    contact_a = get_contact_by_id(a_id) if a_id else None
+    contact_b = get_contact_by_id(b_id) if b_id else None
+    if not contact_a or not contact_b:
+        flash('Jeden z kontaktów do scalenia nie istnieje.', 'error')
+        return redirect(url_for('crm_contacts.duplicates_view'))
+
+    primary, secondary = sorted([contact_a, contact_b], key=lambda c: c['id'])
+    return render_template('crm/contacts/merge.html',
+        active_tab='contacts', primary=primary, secondary=secondary,
+        all_contexts=get_all_contexts(),
+        primary_tags=get_contact_tags(primary['id']), secondary_tags=get_contact_tags(secondary['id']),
+        primary_email_tags=get_contact_email_tags(primary['id']),
+        secondary_email_tags=get_contact_email_tags(secondary['id']))
+
+
+@bp.route('/duplicates/merge', methods=['POST'])
+def merge_duplicate_submit():
+    primary_id = request.form.get('primary_id', type=int)
+    secondary_id = request.form.get('secondary_id', type=int)
+    if not primary_id or not secondary_id or primary_id == secondary_id:
+        flash('Nieprawidłowa para kontaktów do scalenia.', 'error')
+        return redirect(url_for('crm_contacts.duplicates_view'))
+
+    data = _parse_form(request.form)
+    errors = _validate(data)
+    if errors:
+        for e in errors:
+            flash(e, 'error')
+        return redirect(url_for('crm_contacts.merge_duplicate_view', a=primary_id, b=secondary_id))
+
+    merge_contacts(primary_id, secondary_id, data, session.get('user_id'))
+    flash('Kontakty zostały scalone, duplikat zarchiwizowany.', 'success')
+    return redirect(url_for('crm_contacts.view_contact', contact_id=primary_id))
 
 
 @bp.route('/new', methods=['GET', 'POST'])

@@ -1,0 +1,64 @@
+{% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
+{% block title %}Duplikaty kontaktów{% endblock %}
+
+{% block crm_content %}
+<div class="rd-screen">
+<div class="page-header">
+  <h1>Duplikaty kontaktów</h1>
+  <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+</div>
+
+<p class="text-muted" style="margin-bottom:1rem">
+  Kontakty dobrane w pary na podstawie zgodności emaila, telefonu, imienia i nazwiska (lub ich zamiany) oraz firmy.
+  Scalenie zapisuje wybrane pola w kontakcie o niższym ID, przenosi na niego wszystkie powiązania (interesy, pliki,
+  zadania, wydarzenia, notatki, historię, tagi), a kontakt o wyższym ID zostaje zarchiwizowany (nie usunięty).
+</p>
+
+{% if pairs %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Kontakt A</th>
+        <th>Kontakt B</th>
+        <th>Prawdopodobieństwo</th>
+        <th>Powody</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pair in pairs %}
+      {% set a = pair.a %}
+      {% set b = pair.b %}
+      <tr>
+        <td>
+          <a href="{{ url_for('crm_contacts.view_contact', contact_id=a.id) }}">{{ a.last_name }} {{ a.first_name }}</a>
+          <div class="text-muted small">#{{ a.id }} · {{ a.email or '—' }} · {{ a.phone or '—' }}{% if a.company_name %} · {{ a.company_short_name or a.company_name }}{% endif %}</div>
+        </td>
+        <td>
+          <a href="{{ url_for('crm_contacts.view_contact', contact_id=b.id) }}">{{ b.last_name }} {{ b.first_name }}</a>
+          <div class="text-muted small">#{{ b.id }} · {{ b.email or '—' }} · {{ b.phone or '—' }}{% if b.company_name %} · {{ b.company_short_name or b.company_name }}{% endif %}</div>
+        </td>
+        <td>
+          <span class="badge {{ 'badge-red' if pair.level == 'high' else ('badge-yellow' if pair.level == 'medium' else 'badge-gray') }}">
+            {{ pair.level_label }} ({{ pair.score }}%)
+          </span>
+        </td>
+        <td class="small">{{ pair.reasons|join(', ') }}</td>
+        <td>
+          <a href="{{ url_for('crm_contacts.merge_duplicate_view', a=a.id, b=b.id) }}" class="btn btn-primary btn-sm">Scal</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>Nie znaleziono prawdopodobnych duplikatów.</p>
+</div>
+{% endif %}
+</div>
+{% endblock %}

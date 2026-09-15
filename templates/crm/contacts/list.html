@@ -44,6 +44,7 @@
 
   <button type="submit" class="btn btn-outline">Filtruj</button>
   <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-ghost">Wyczyść</a>
+  <a href="{{ url_for('crm_contacts.duplicates_view') }}" class="btn btn-outline">Wyszukaj duplikaty</a>
 </form>
 
 <a href="{{ url_for('crm_contacts.new_contact') }}" class="rd-fab" title="Dodaj kontakt">+</a>

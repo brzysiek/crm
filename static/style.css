@@ -696,6 +696,11 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .desc-cell { display: inline-block; max-width: 240px; overflow: hidden;
              text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
 
+.merge-table td { vertical-align: top; }
+.merge-table th:nth-child(4), .merge-table td:nth-child(4) { min-width: 220px; }
+.merge-source-value { margin-bottom: .35rem; word-break: break-word; }
+.merge-table input[type="text"], .merge-table textarea, .merge-table select { width: 100%; }
+
 .table-count { font-size: 12px; color: var(--text-muted); text-align: right;
                padding: .25rem .5rem; }
 

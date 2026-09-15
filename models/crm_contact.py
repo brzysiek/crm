@@ -1,7 +1,8 @@
 from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
-from models.crm_tags import set_contact_tags
+from models.crm_tags import (get_contact_email_tags, get_contact_tags, set_contact_email_tags,
+                               set_contact_tags)
 from services.text_utils import format_phone
 
 FIELD_LABELS = {
@@ -343,3 +344,72 @@ def delete_contact(contact_id: int, user_id: int | None, archive_company: bool =
             log_history('company', contact['company_id'], user_id, 'delete',
                          f"Zarchiwizowano firmę „{contact.get('company_name')}” (usunięto kontakt "
                          f"„{contact['first_name']} {contact['last_name']}”).")
+
+
+# Tabele, w których pojedyncza kolumna wiąże wiersz z kontaktem 1:1 (można je po
+# prostu przepiąć z duplikatu na kontakt docelowy — w przeciwieństwie do
+# crm_contact_tags, gdzie ten sam tag może już być przypisany do obu kontaktów
+# i wymaga scalenia zamiast przepięcia, patrz merge_contacts()).
+_MERGE_RELATION_TABLES = (
+    ('crm_deals', 'contact_id'),
+    ('crm_files', 'contact_id'),
+    ('tasks', 'crm_contact_id'),
+    ('gcal_event_done', 'crm_contact_id'),
+    ('email_campaign_recipients', 'contact_id'),
+)
+
+
+def merge_contacts(primary_id: int, secondary_id: int, data: dict, user_id: int | None,
+                    tags: list[str] = None) -> None:
+    """Scala dwa duplikaty w jeden kontakt.
+
+    Dane pól (data) trafiają do kontaktu primary_id — zawsze tego o niższym ID,
+    wybór wynika z UI scalania, gdzie użytkownik kopiuje pole po polu z dowolnego
+    z dwóch kontaktów. Wszystkie relacje z innymi obiektami (deale, pliki, zadania,
+    wydarzenia kalendarza, odbiorcy kampanii, notatki, historia) zostają przepięte
+    z secondary_id na primary_id. Tagi (zwykłe i email/zgody) są sumowane. Kontakt
+    secondary_id zostaje na końcu zarchiwizowany, nie usunięty."""
+    primary = get_contact_by_id(primary_id)
+    secondary = get_contact_by_id(secondary_id)
+    if not primary or not secondary:
+        raise ValueError('Jeden z kontaktów do scalenia nie istnieje.')
+
+    merged_tags = tags if tags is not None else sorted(
+        set(get_contact_tags(primary_id)) | set(get_contact_tags(secondary_id)))
+    merged_email_tags = sorted(
+        set(get_contact_email_tags(primary_id)) | set(get_contact_email_tags(secondary_id)))
+
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            for table, column in _MERGE_RELATION_TABLES:
+                cur.execute(f"UPDATE {table} SET {column}=%s WHERE {column}=%s", (primary_id, secondary_id))
+            for table in ('crm_notes', 'crm_history'):
+                cur.execute(
+                    f"UPDATE {table} SET entity_id=%s WHERE entity_type='contact' AND entity_id=%s",
+                    (primary_id, secondary_id)
+                )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    update_contact(primary_id, data, user_id, tags=merged_tags)
+    set_contact_email_tags(primary_id, merged_email_tags, user_id)
+
+    try:
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM crm_contact_tags WHERE contact_id=%s", (secondary_id,))
+            cur.execute("UPDATE crm_contacts SET archived_at=NOW() WHERE id=%s", (secondary_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    secondary_name = f"{secondary['first_name']} {secondary['last_name']}".strip()
+    primary_name = f"{primary['first_name']} {primary['last_name']}".strip()
+    log_history('contact', primary_id, user_id, 'update',
+                f"Scalono z duplikatem „{secondary_name}” (#{secondary_id}) — dane i powiązania "
+                f"przeniesione, duplikat zarchiwizowany.")
+    log_history('contact', secondary_id, user_id, 'delete',
+                f"Zarchiwizowano jako duplikat kontaktu „{primary_name}” (#{primary_id}) po scaleniu.")

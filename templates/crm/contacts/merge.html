@@ -1,0 +1,127 @@
+{% extends 'crm/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Scal duplikaty{% endblock %}
+
+{% block crm_content %}
+<div class="rd-screen rd-kontakt-form">
+<div class="page-header">
+  <h1>Scal duplikaty</h1>
+  <a href="{{ url_for('crm_contacts.duplicates_view') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy duplikatów</a>
+</div>
+
+<p class="text-muted" style="margin-bottom:1rem">
+  Dane zostaną zapisane w kontakcie <strong>#{{ primary.id }}</strong> ({{ primary.last_name }} {{ primary.first_name }}) —
+  jako starszym z pary. Dla każdego pola wybierz, z którego kontaktu przepisać wartość (można też wpisać własną).
+  Kontakt <strong>#{{ secondary.id }}</strong> ({{ secondary.last_name }} {{ secondary.first_name }}) zostanie po scaleniu
+  zarchiwizowany — wszystkie jego interesy, pliki, zadania, wydarzenia, notatki i historia zostaną przepisane na kontakt docelowy.
+</p>
+
+<div class="form-card">
+<form method="post" action="{{ url_for('crm_contacts.merge_duplicate_submit') }}">
+  <input type="hidden" name="primary_id" value="{{ primary.id }}">
+  <input type="hidden" name="secondary_id" value="{{ secondary.id }}">
+
+  <div class="table-wrapper">
+    <table class="data-table merge-table">
+      <thead>
+        <tr>
+          <th>Pole</th>
+          <th>Kontakt #{{ primary.id }}</th>
+          <th>Kontakt #{{ secondary.id }}</th>
+          <th>Wynik (zostanie zapisany)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% macro copy_btn(field, value) -%}
+        <button type="button" class="btn btn-outline btn-sm merge-copy-btn" data-field="{{ field }}" data-value="{{ value or '' }}">Użyj</button>
+        {%- endmacro %}
+
+        {% macro text_row(field, label, value_a, value_b) %}
+        <tr>
+          <td>{{ label }}</td>
+          <td><div class="merge-source-value">{{ value_a or '—' }}</div>{{ copy_btn(field, value_a) }}</td>
+          <td><div class="merge-source-value">{{ value_b or '—' }}</div>{{ copy_btn(field, value_b) }}</td>
+          <td><input type="text" id="merge-{{ field }}" name="{{ field }}" value="{{ value_a or '' }}"></td>
+        </tr>
+        {% endmacro %}
+
+        {{ text_row('first_name', 'Imię', primary.first_name, secondary.first_name) }}
+        {{ text_row('last_name', 'Nazwisko', primary.last_name, secondary.last_name) }}
+        {{ text_row('position', 'Stanowisko', primary.position, secondary.position) }}
+        {{ text_row('email', 'Email', primary.email, secondary.email) }}
+        {{ text_row('phone', 'Telefon', primary.phone, secondary.phone) }}
+        {{ text_row('linkedin_url', 'LinkedIn', primary.linkedin_url, secondary.linkedin_url) }}
+
+        <tr>
+          <td>Opis</td>
+          <td><div class="merge-source-value">{{ primary.description or '—' }}</div>{{ copy_btn('description', primary.description) }}</td>
+          <td><div class="merge-source-value">{{ secondary.description or '—' }}</div>{{ copy_btn('description', secondary.description) }}</td>
+          <td><textarea id="merge-description" name="description" rows="2">{{ primary.description or '' }}</textarea></td>
+        </tr>
+
+        <tr>
+          <td>Firma</td>
+          <td><div class="merge-source-value">{{ primary.company_name or '—' }}</div>{{ copy_btn('company_id', primary.company_id) }}</td>
+          <td><div class="merge-source-value">{{ secondary.company_name or '—' }}</div>{{ copy_btn('company_id', secondary.company_id) }}</td>
+          <td>
+            <select id="merge-company_id" name="company_id">
+              <option value="" {{ 'selected' if not primary.company_id }}>— brak —</option>
+              {% if primary.company_id %}
+              <option value="{{ primary.company_id }}" selected>{{ primary.company_name }} (#{{ primary.id }})</option>
+              {% endif %}
+              {% if secondary.company_id and secondary.company_id != primary.company_id %}
+              <option value="{{ secondary.company_id }}">{{ secondary.company_name }} (#{{ secondary.id }})</option>
+              {% endif %}
+            </select>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Kontekst</td>
+          <td><div class="merge-source-value">{{ '@' ~ primary.context_name if primary.context_id else '—' }}</div>{{ copy_btn('context_id', primary.context_id) }}</td>
+          <td><div class="merge-source-value">{{ '@' ~ secondary.context_name if secondary.context_id else '—' }}</div>{{ copy_btn('context_id', secondary.context_id) }}</td>
+          <td>
+            <select id="merge-context_id" name="context_id">
+              <option value="">— brak —</option>
+              {% for ctx in all_contexts %}
+                <option value="{{ ctx.id }}" {{ 'selected' if primary.context_id == ctx.id }}>@{{ ctx.name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Tagi</td>
+          <td class="small">{{ primary_tags|join(', ') if primary_tags else '—' }}</td>
+          <td class="small">{{ secondary_tags|join(', ') if secondary_tags else '—' }}</td>
+          <td class="small text-muted">Zostaną połączone automatycznie (suma obu list).</td>
+        </tr>
+        <tr>
+          <td>Tagi email</td>
+          <td class="small">{{ primary_email_tags|join(', ') if primary_email_tags else '—' }}</td>
+          <td class="small">{{ secondary_email_tags|join(', ') if secondary_email_tags else '—' }}</td>
+          <td class="small text-muted">Zostaną połączone automatycznie (suma obu list).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Scal kontakty</button>
+    <a href="{{ url_for('crm_contacts.duplicates_view') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.merge-copy-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    const el = document.getElementById('merge-' + btn.dataset.field);
+    if (el) el.value = btn.dataset.value;
+  });
+});
+</script>
+{% endblock %}
