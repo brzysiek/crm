@@ -147,7 +147,9 @@ def get_deals_by_ids(ids: list[int]) -> dict[int, dict]:
                       co.name AS company_name, co.short_name AS company_short_name,
                       ct.first_name AS contact_first_name, ct.last_name AS contact_last_name,
                       gc.name AS context_name, gc.badge_color AS context_badge_color,
-                      gc.text_color AS context_text_color
+                      gc.text_color AS context_text_color,
+                      (SELECT COUNT(*) FROM tasks t WHERE t.crm_deal_id = d.id AND t.deleted_at IS NULL) AS task_total,
+                      (SELECT COUNT(*) FROM tasks t WHERE t.crm_deal_id = d.id AND t.deleted_at IS NULL AND t.status = 'done') AS task_done
                FROM crm_deals d
                LEFT JOIN crm_companies co ON co.id = d.company_id
                LEFT JOIN crm_contacts ct ON ct.id = d.contact_id

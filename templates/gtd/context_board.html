@@ -183,6 +183,7 @@
     <thead>
       <tr>
         <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Deal</th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Postęp</th>
         <th class="col-actions" style="width:160px{{ ';' ~ hdr_style if hdr_style }}"></th>
       </tr>
     </thead>
@@ -190,7 +191,7 @@
       {% for d in group.deals %}
       {{ deal_row(d, ctx_key) }}
       <tr id="gtdBoardDealSubtasks{{ ctx_key }}_{{ d.deal_id }}" hidden>
-        <td colspan="2" class="gtd-board-subtasks-cell">
+        <td colspan="3" class="gtd-board-subtasks-cell">
           <table class="data-table data-table-sm">
             <thead>
               <tr>
