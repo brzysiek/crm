@@ -56,9 +56,9 @@
 {% macro deal_context_picker(d, all_contexts) %}
 <span class="term-cell gtd-context-cell">
   {% if d.context_id %}
-    <span class="badge gtd-context-badge" title="Zmień kontekst" style="background:{{ d.context_badge_color }}40;color:{{ d.context_text_color }};border:1px solid {{ d.context_badge_color }}55">@{{ d.context_name }}</span>
+    <span class="badge gtd-context-badge" title="Zmień kontekst" onclick="gtdToggleContextPicker(event, this)" style="background:{{ d.context_badge_color }}40;color:{{ d.context_text_color }};border:1px solid {{ d.context_badge_color }}55">@{{ d.context_name }}</span>
   {% else %}
-    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst">@</span>
+    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst" onclick="gtdToggleContextPicker(event, this)">@</span>
   {% endif %}
   <div class="term-hover-picker">
     {% for ctx in all_contexts %}

@@ -2637,7 +2637,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 20;
+  z-index: 9999;
   display: none;
   flex-wrap: wrap;
   gap: .2rem;
@@ -2649,16 +2649,11 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md, var(--shadow-sm));
 }
-/* Niewidzialny mostek nad pickerem — ta sama przerwa co przy .navbar-dropdown-menu. */
-.term-hover-picker::before {
-  content: '';
-  position: absolute;
-  top: -.25rem;
-  left: 0;
-  right: 0;
-  height: .25rem;
-}
-.term-cell:hover .term-hover-picker { display: flex; }
+/* Otwierany kliknięciem w ikonkę (gtdToggleContextPicker w gtd.js), a nie hoverem —
+   dzięki temu nie znika, gdy kursor przejdzie nad kolejnym wierszem tabeli. Gdy
+   otwarty, JS ustawia position:fixed + top/left liczone z pozycji ikonki, żeby
+   popup nie chował się pod następnym wierszem tabeli. */
+.term-hover-picker.open { display: flex; }
 .gtd-context-badge, .gtd-context-badge-empty { cursor: pointer; }
 .gtd-context-badge-empty { opacity: .55; }
 .gtd-context-cell:hover .gtd-context-badge-empty { opacity: 1; }

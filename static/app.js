@@ -762,7 +762,41 @@ function crmSetStatus(el, text, color) {
   el.style.color = color || '';
 }
 
-/* ── CRM: przypisanie kontekstu dealowi z hover-pickera na liście deali ─────── */
+/* ── Popup wyboru kontekstu (task/wydarzenie/deal): otwierany kliknięciem
+ * w ikonkę „@”, a nie hoverem — dzięki temu nie chowa się już pod kolejnym
+ * wierszem tabeli. Pozostaje otwarty, dopóki użytkownik nie wybierze
+ * kontekstu (co i tak przeładowuje stronę) albo nie kliknie poza popupem.
+ * Pozycjonowany na position:fixed liczonym z rect ikonki, żeby uciec spod
+ * overflow/stackingu wiersza tabeli. */
+function gtdToggleContextPicker(event, badgeEl) {
+  event.stopPropagation();
+  const cell = badgeEl.closest('.term-cell');
+  const picker = cell && cell.querySelector('.term-hover-picker');
+  if (!picker) return;
+  const wasOpen = picker.classList.contains('open');
+  gtdCloseAllContextPickers();
+  if (wasOpen) return;
+  const rect = badgeEl.getBoundingClientRect();
+  picker.style.position = 'fixed';
+  picker.style.top = (rect.bottom + 4) + 'px';
+  picker.style.left = rect.left + 'px';
+  picker.classList.add('open');
+}
+
+function gtdCloseAllContextPickers() {
+  document.querySelectorAll('.term-hover-picker.open').forEach(function (p) {
+    p.classList.remove('open');
+    p.style.position = '';
+    p.style.top = '';
+    p.style.left = '';
+  });
+}
+
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.term-hover-picker')) gtdCloseAllContextPickers();
+});
+
+/* ── CRM: przypisanie kontekstu dealowi z pickera na liście deali ─────────── */
 function crmSetDealContext(dealId, contextId) {
   fetch(window.API_BASE + '/crm/deals/' + dealId + '/context', {
     method: 'POST',
