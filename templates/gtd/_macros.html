@@ -167,7 +167,7 @@
   {% set e = item.event %}
   <div class="gtd-timeline-row">
     <div class="gtd-timeline-time">{{ e.time or 'cały dzień' }}{% if e.duration_min %}<span class="text-muted" style="font-size:.72rem;display:block">{{ e.duration_min }} min</span>{% endif %}</div>
-    <div class="gtd-timeline-card gtd-gcal-card{{ ' gtd-row-done' if e.is_done else '' }}{{ ' gtd-row-declined' if e.is_declined else '' }}">
+    <div class="gtd-timeline-card gtd-gcal-card{{ ' gtd-row-done' if e.is_done else '' }}{{ ' gtd-row-declined' if e.is_declined else '' }}{{ ' gtd-row-priority' if e.is_today_priority and not e.is_done and not e.is_declined else '' }}">
       {% if e.is_declined %}
       <span class="gtd-status-badge badge badge-red gtd-status-badge-disabled" title="Odrzucone spotkanie — nie można zmienić statusu">TODO</span>
       {% else %}
