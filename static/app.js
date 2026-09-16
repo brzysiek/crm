@@ -763,19 +763,37 @@ function crmSetStatus(el, text, color) {
 }
 
 /* ── Popup wyboru kontekstu (task/wydarzenie/deal): otwierany kliknięciem
- * w ikonkę „@”, a nie hoverem — dzięki temu nie chowa się już pod kolejnym
- * wierszem tabeli. Pozostaje otwarty, dopóki użytkownik nie wybierze
- * kontekstu (co i tak przeładowuje stronę) albo nie kliknie poza popupem.
- * Pozycjonowany na position:fixed liczonym z rect ikonki, żeby uciec spod
- * overflow/stackingu wiersza tabeli. */
+ * w ikonkę „@”, a nie hoverem. Samo position:fixed nie wystarczało — wiersz
+ * tabeli / karta wydarzenia poniżej potrafiły mieć własny stacking context
+ * (np. przez transform na hover), który przykrywał popup mimo wysokiego
+ * z-index. Dlatego przy otwarciu przenosimy element na koniec <body> (poza
+ * wszystkie takie konteksty), a przy zamknięciu wracamy nim do oryginalnego
+ * miejsca w DOM, żeby kolejne otwarcie tego samego pickera dalej działało.
+ * Zamyka się dopiero po wyborze kontekstu (strona się przeładowuje) albo
+ * po kliknięciu poza popupem. */
+const gtdPickerHomes = new WeakMap(); // picker -> komórka, do której wraca po zamknięciu
+const gtdCellPickers = new WeakMap(); // komórka -> jej picker (żeby dało się go znaleźć,
+                                       // nawet gdy jest aktualnie przeniesiony do <body>)
+
+function gtdFindPicker(cell) {
+  let picker = gtdCellPickers.get(cell);
+  if (!picker) {
+    picker = cell.querySelector('.term-hover-picker');
+    if (picker) gtdCellPickers.set(cell, picker);
+  }
+  return picker;
+}
+
 function gtdToggleContextPicker(event, badgeEl) {
   event.stopPropagation();
   const cell = badgeEl.closest('.term-cell');
-  const picker = cell && cell.querySelector('.term-hover-picker');
+  const picker = cell && gtdFindPicker(cell);
   if (!picker) return;
   const wasOpen = picker.classList.contains('open');
   gtdCloseAllContextPickers();
   if (wasOpen) return;
+  if (!gtdPickerHomes.has(picker)) gtdPickerHomes.set(picker, cell);
+  document.body.appendChild(picker);
   const rect = badgeEl.getBoundingClientRect();
   picker.style.position = 'fixed';
   picker.style.top = (rect.bottom + 4) + 'px';
@@ -789,6 +807,8 @@ function gtdCloseAllContextPickers() {
     p.style.position = '';
     p.style.top = '';
     p.style.left = '';
+    const home = gtdPickerHomes.get(p);
+    if (home) home.appendChild(p);
   });
 }
 

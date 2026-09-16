@@ -2644,15 +2644,19 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   width: 210px;
   margin-top: .25rem;
   padding: .4rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--rd-card, var(--surface));
+  border: 1px solid var(--rd-border, var(--border));
   border-radius: var(--radius-sm);
+  font-family: var(--rd-font, inherit);
   box-shadow: var(--shadow-md, var(--shadow-sm));
 }
-/* Otwierany kliknięciem w ikonkę (gtdToggleContextPicker w gtd.js), a nie hoverem —
-   dzięki temu nie znika, gdy kursor przejdzie nad kolejnym wierszem tabeli. Gdy
-   otwarty, JS ustawia position:fixed + top/left liczone z pozycji ikonki, żeby
-   popup nie chował się pod następnym wierszem tabeli. */
+/* Otwierany kliknięciem w ikonkę (gtdToggleContextPicker w app.js), a nie hoverem.
+   Po otwarciu JS przenosi element na koniec <body> i ustawia position:fixed +
+   top/left liczone z pozycji ikonki — dzięki temu popup zawsze jest na wierzchu
+   i nie chowa się pod kolejnym wierszem/kartą (co się działo, gdy zostawał
+   zagnieżdżony w wierszu tabeli / karcie wydarzenia, których stacking context
+   przykrywał go mimo z-index). Po zamknięciu JS wraca elementem do oryginalnego
+   miejsca w DOM. */
 .term-hover-picker.open { display: flex; }
 .gtd-context-badge, .gtd-context-badge-empty { cursor: pointer; }
 .gtd-context-badge-empty { opacity: .55; }
@@ -3475,8 +3479,6 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-priority .action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-priority .btn-ghost { color: rgba(255,255,255,.75); }
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-priority .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
-
-.rd-screen .term-hover-picker { background: var(--rd-card); border-color: var(--rd-border); border-radius: 8px; font-family: var(--rd-font); }
 
 /* ── Redesign: Zadania — tydzień / miesiąc (sekcje dni i tygodni) ── */
 .rd-screen .gtd-day-section {
