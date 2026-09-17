@@ -1,0 +1,276 @@
+{% extends 'imports/_layout.html' %}
+{% block imports_content %}
+
+<div class="recon-screen">
+
+  <div class="recon-header">
+    <h2>Uzgadnianie</h2>
+    <p class="recon-subtitle">
+      Łącz transakcje bankowe z wydatkami i przychodami w obie strony —
+      cel: zero niepowiązanych pozycji po obu stronach.
+    </p>
+    <div class="recon-summary" id="reconSummary">
+      <div class="recon-stat">
+        <span class="recon-stat-num" data-stat="unmatched_expense_transactions">{{ summary.unmatched_expense_transactions }}</span>
+        <span class="recon-stat-label">transakcje wydatkowe bez pary</span>
+      </div>
+      <div class="recon-stat">
+        <span class="recon-stat-num" data-stat="unmatched_income_transactions">{{ summary.unmatched_income_transactions }}</span>
+        <span class="recon-stat-label">transakcje przychodowe bez pary</span>
+      </div>
+      <div class="recon-stat">
+        <span class="recon-stat-num" data-stat="unmatched_expense_records">{{ summary.unmatched_expense_records }}</span>
+        <span class="recon-stat-label">wydatki bez pełnej płatności</span>
+      </div>
+      <div class="recon-stat">
+        <span class="recon-stat-num" data-stat="unmatched_income_records">{{ summary.unmatched_income_records }}</span>
+        <span class="recon-stat-label">przychody bez pełnej płatności</span>
+      </div>
+      <div class="recon-stat recon-stat-muted">
+        <span class="recon-stat-num" data-stat="pending_documents">{{ summary.pending_documents }}</span>
+        <span class="recon-stat-label">dokumenty oczekujące (Fakturownia/Dysk)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="recon-tabs">
+    <button type="button" class="recon-tab active" data-kind="expense" onclick="reconSwitchTab('expense')">
+      Wydatki
+      <span class="recon-tab-badge">{{ expense_txns|length }} / {{ expense_records|length }}</span>
+    </button>
+    <button type="button" class="recon-tab" data-kind="income" onclick="reconSwitchTab('income')">
+      Przychody
+      <span class="recon-tab-badge">{{ income_txns|length }} / {{ income_records|length }}</span>
+    </button>
+  </div>
+
+  {% macro txn_item(txn) %}
+  <div class="recon-item" data-side="txn" data-id="{{ txn.id }}">
+    <div class="recon-item-main" onclick="reconToggle(this, 'txn', {{ txn.id }})">
+      <div class="recon-item-row1">
+        <span class="recon-amount {{ 'recon-amount-neg' if txn.amount|float < 0 else 'recon-amount-pos' }}">
+          {{ '%+.2f'|format(txn.amount|float) | replace('.', ',') }} {{ txn.currency }}
+        </span>
+        <span class="recon-bank-badge bank-badge-{{ txn.bank }}">{{ txn.bank|upper }}</span>
+        <span class="recon-date">{{ txn.date }}</span>
+      </div>
+      <div class="recon-item-row2">
+        {% if txn.counterparty %}<strong>{{ txn.counterparty }}</strong>{% endif %}
+        {% if txn.description %}<span class="recon-desc">{{ txn.description }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="recon-candidates" hidden></div>
+  </div>
+  {% endmacro %}
+
+  {% macro record_item(rec, kind) %}
+  <div class="recon-item" data-side="record" data-kind="{{ kind }}" data-id="{{ rec.id }}">
+    <div class="recon-item-main" onclick="reconToggle(this, 'record', {{ rec.id }}, '{{ kind }}')">
+      <div class="recon-item-row1">
+        {% set remaining = (rec.amount_gross|float) - (rec.matched_amount|float) %}
+        <span class="recon-amount">{{ '%.2f'|format(rec.amount_gross|float) | replace('.', ',') }} zł</span>
+        {% if remaining > 0.01 %}
+          <span class="recon-remaining">brakuje {{ '%.2f'|format(remaining) | replace('.', ',') }} zł</span>
+        {% endif %}
+        <span class="recon-date">{{ rec.date }}</span>
+      </div>
+      <div class="recon-item-row2">
+        <strong>{{ rec.contractor_name if kind == 'expense' else rec.client_name }}</strong>
+        {% if rec.invoice_number %}<span class="recon-desc">{{ rec.invoice_number }}</span>{% endif %}
+        {% if kind == 'expense' %}
+          <span class="recon-pct-badge">{{ rec.payment_percent|int }}%</span>
+        {% else %}
+          <span class="recon-status-badge recon-status-{{ rec.payment_status }}">
+            {{ {'unpaid': 'nieopłacone', 'partial': 'częściowo'}.get(rec.payment_status, rec.payment_status) }}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="recon-candidates" hidden></div>
+  </div>
+  {% endmacro %}
+
+  <div class="recon-panel" data-kind="expense">
+    <div class="recon-columns">
+      <div class="recon-col">
+        <h3>Transakcje bankowe <span class="recon-col-count">{{ expense_txns|length }}</span></h3>
+        <div class="recon-list">
+          {% for txn in expense_txns %}{{ txn_item(txn) }}{% else %}
+          <p class="recon-empty">Brak niedopasowanych transakcji wydatkowych.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="recon-col">
+        <h3>Wydatki bez pełnej płatności <span class="recon-col-count">{{ expense_records|length }}</span></h3>
+        <div class="recon-list">
+          {% for rec in expense_records %}{{ record_item(rec, 'expense') }}{% else %}
+          <p class="recon-empty">Wszystkie wydatki są w pełni opłacone.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recon-panel" data-kind="income" hidden>
+    <div class="recon-columns">
+      <div class="recon-col">
+        <h3>Transakcje bankowe <span class="recon-col-count">{{ income_txns|length }}</span></h3>
+        <div class="recon-list">
+          {% for txn in income_txns %}{{ txn_item(txn) }}{% else %}
+          <p class="recon-empty">Brak niedopasowanych transakcji przychodowych.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="recon-col">
+        <h3>Przychody bez pełnej płatności <span class="recon-col-count">{{ income_records|length }}</span></h3>
+        <div class="recon-list">
+          {% for rec in income_records %}{{ record_item(rec, 'income') }}{% else %}
+          <p class="recon-empty">Wszystkie przychody są opłacone.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recon-toast" id="reconToast" hidden></div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RECON_API = '{{ url_for("reconciliation.index") }}api';
+
+function reconSwitchTab(kind) {
+  document.querySelectorAll('.recon-tab').forEach(t => t.classList.toggle('active', t.dataset.kind === kind));
+  document.querySelectorAll('.recon-panel').forEach(p => p.hidden = p.dataset.kind !== kind);
+}
+
+function reconToast(msg, isError) {
+  const el = document.getElementById('reconToast');
+  el.textContent = msg;
+  el.className = 'recon-toast' + (isError ? ' recon-toast-error' : ' recon-toast-ok');
+  el.hidden = false;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.hidden = true; }, 3500);
+}
+
+function reconScoreLabel(score) {
+  if (score >= 3) return { cls: 'recon-score-high', text: 'Bardzo dobre dopasowanie' };
+  if (score >= 1) return { cls: 'recon-score-mid', text: 'Prawdopodobne dopasowanie' };
+  return { cls: 'recon-score-low', text: 'Brak sugestii — najbliższe kwotowo' };
+}
+
+function reconTxnCandidateHtml(c) {
+  const t = c.transaction;
+  const sc = reconScoreLabel(c.score);
+  const amt = parseFloat(t.amount);
+  return `<div class="recon-cand ${sc.cls}">
+    <div class="recon-cand-info">
+      <span class="recon-cand-badge">${sc.text}</span>
+      <div class="recon-item-row1">
+        <span class="recon-amount ${amt < 0 ? 'recon-amount-neg' : 'recon-amount-pos'}">${amt.toFixed(2).replace('.', ',')} ${t.currency}</span>
+        <span class="recon-date">${t.date}</span>
+      </div>
+      <div class="recon-item-row2">
+        ${t.counterparty ? `<strong>${t.counterparty}</strong>` : ''}
+        ${t.description ? `<span class="recon-desc">${t.description}</span>` : ''}
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-txn-id="${t.id}">Połącz</button>
+  </div>`;
+}
+
+function reconRecordCandidateHtml(c) {
+  const r = c.record;
+  const sc = reconScoreLabel(c.score);
+  const name = c.record_type === 'expense' ? r.contractor_name : r.client_name;
+  return `<div class="recon-cand ${sc.cls}">
+    <div class="recon-cand-info">
+      <span class="recon-cand-badge">${sc.text}</span>
+      <div class="recon-item-row1">
+        <span class="recon-amount">${parseFloat(r.amount_gross).toFixed(2).replace('.', ',')} zł</span>
+        <span class="recon-remaining">brakuje ${c.remaining.toFixed(2).replace('.', ',')} zł</span>
+        <span class="recon-date">${r.date}</span>
+      </div>
+      <div class="recon-item-row2">
+        <strong>${name || ''}</strong>
+        ${r.invoice_number ? `<span class="recon-desc">${r.invoice_number}</span>` : ''}
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-record-type="${c.record_type}" data-record-id="${r.id}">Połącz</button>
+  </div>`;
+}
+
+async function reconToggle(mainEl, side, id, kind) {
+  const item = mainEl.closest('.recon-item');
+  const panel = item.querySelector('.recon-candidates');
+
+  if (!panel.hidden) { panel.hidden = true; return; }
+
+  document.querySelectorAll('.recon-candidates').forEach(p => p.hidden = true);
+  panel.hidden = false;
+  panel.innerHTML = '<p class="recon-loading">Szukam dopasowań…</p>';
+
+  try {
+    let html;
+    if (side === 'txn') {
+      const r = await fetch(`${RECON_API}/candidates-for-transaction/${id}`);
+      const data = await r.json();
+      html = data.length
+        ? data.map(reconRecordCandidateHtml).join('')
+        : '<p class="recon-empty">Brak niepowiązanych rekordów po drugiej stronie.</p>';
+      panel.innerHTML = html;
+      panel.querySelectorAll('button[data-record-type]').forEach(btn => {
+        btn.addEventListener('click', () => reconLink(btn.dataset.recordType, parseInt(btn.dataset.recordId), id));
+      });
+    } else {
+      const r = await fetch(`${RECON_API}/candidates-for-record?record_type=${kind}&record_id=${id}`);
+      const data = await r.json();
+      html = data.length
+        ? data.map(reconTxnCandidateHtml).join('')
+        : '<p class="recon-empty">Brak niepowiązanych transakcji po drugiej stronie.</p>';
+      panel.innerHTML = html;
+      panel.querySelectorAll('button[data-txn-id]').forEach(btn => {
+        btn.addEventListener('click', () => reconLink(kind, id, parseInt(btn.dataset.txnId)));
+      });
+    }
+  } catch (e) {
+    panel.innerHTML = `<p class="recon-empty">Błąd wyszukiwania: ${e.message}</p>`;
+  }
+}
+
+async function reconLink(recordType, recordId, bankTxnId) {
+  try {
+    const r = await fetch(`${RECON_API}/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_type: recordType, record_id: recordId, bank_txn_id: bankTxnId }),
+    });
+    const d = await r.json();
+    if (!r.ok || d.status !== 'ok') {
+      reconToast(d.message || 'Błąd łączenia.', true);
+      return;
+    }
+    reconToast('Połączono.');
+    document.querySelectorAll(`.recon-item[data-side="txn"][data-id="${bankTxnId}"]`).forEach(el => el.remove());
+    document.querySelectorAll(`.recon-item[data-side="record"][data-kind="${recordType}"][data-id="${recordId}"]`).forEach(el => el.remove());
+    reconRefreshSummary();
+  } catch (e) {
+    reconToast('Błąd żądania: ' + e.message, true);
+  }
+}
+
+async function reconRefreshSummary() {
+  try {
+    const r = await fetch(`${RECON_API}/summary`);
+    const d = await r.json();
+    Object.keys(d).forEach(k => {
+      const el = document.querySelector(`[data-stat="${k}"]`);
+      if (el) el.textContent = d[k];
+    });
+  } catch (e) { /* nieistotne dla UX */ }
+}
+</script>
+{% endblock %}

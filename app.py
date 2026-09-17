@@ -277,6 +277,7 @@ def inject_globals():
         'bank_pending_count':   bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
         'imports_badge':        cnt + bank_cnt + gdrive_cnt,
+        'reconciliation_badge': bank_cnt,
         'gtd_inbox_badge':      gtd_inbox_badge,
         'gtd_tomorrow_iso':     (_dt.now().date() + _timedelta(days=1)).isoformat(),
         'app_name':             app_name,
@@ -2509,6 +2510,7 @@ from routes.finance import bp as finance_bp
 from routes.expenses import bp as expenses_bp
 from routes.imports import bp as imports_bp
 from routes.income import bp as income_bp
+from routes.reconciliation import bp as reconciliation_bp
 from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
 from routes.gtd import bp as gtd_bp
@@ -2525,6 +2527,7 @@ app.register_blueprint(finance_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(imports_bp)
 app.register_blueprint(income_bp)
+app.register_blueprint(reconciliation_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(gtd_bp)

@@ -27,6 +27,13 @@
           <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ gdrive_pending_count }}</span>
         {% endif %}
       </a>
+      <a href="{{ url_for('reconciliation.index') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'uzgadnianie' }}">
+        Uzgadnianie
+        {% if reconciliation_badge > 0 %}
+          <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ reconciliation_badge }}</span>
+        {% endif %}
+      </a>
     </nav>
   </aside>
 

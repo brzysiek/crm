@@ -28,6 +28,7 @@ import models.crm_contact as crm_contact
 import models.crm_deal as crm_deal
 import models.crm_mna_offer as crm_mna_offer
 import models.crm_notes as crm_notes
+import models.reconciliation as reconciliation
 import models.task as task_model
 
 # Używamy FastMCP wyłącznie jako rejestru narzędzi (dekorator @mcp.tool(),
@@ -495,6 +496,71 @@ def restore_mna_offer(offer_id: int) -> dict:
             raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
         crm_mna_offer.restore_mna_offer(offer_id, _mcp_user_id())
         return crm_mna_offer.get_mna_offer_by_id(offer_id)
+
+
+# ── Uzgadnianie (finanse ↔ bank) ─────────────────────────────────────────────
+
+@mcp.tool()
+def reconciliation_summary() -> dict:
+    """Zwraca liczby niepowiązanych pozycji po obu stronach uzgodnień:
+    transakcje bankowe bez pary, wydatki/przychody bez pełnej płatności oraz
+    dokumenty (Fakturownia/Dysk) czekające na przypisanie."""
+    with flask_app.app_context():
+        return reconciliation.summary()
+
+
+@mcp.tool()
+def list_unmatched_bank_transactions(kind: Literal["expense", "income"] | None = None) -> list[dict]:
+    """Lista transakcji bankowych bez powiązania z wydatkiem/przychodem
+    (status='pending'). kind='expense' — tylko wypływy (kwota ujemna),
+    kind='income' — tylko wpływy (kwota dodatnia), brak — wszystkie."""
+    with flask_app.app_context():
+        return reconciliation.get_unmatched_bank_transactions(kind)
+
+
+@mcp.tool()
+def list_unmatched_records(record_type: Literal["expense", "income"]) -> list[dict]:
+    """Lista wydatków lub przychodów bez pełnego pokrycia w transakcjach
+    bankowych (wydatek: payment_percent < 100; przychód: payment_status != 'paid').
+    Każdy rekord zawiera matched_amount — sumę już powiązanych kwot."""
+    with flask_app.app_context():
+        if record_type == "expense":
+            return reconciliation.get_unmatched_expense_records()
+        return reconciliation.get_unmatched_income_records()
+
+
+@mcp.tool()
+def suggest_matches_for_transaction(bank_txn_id: int) -> list[dict]:
+    """Sugeruje najlepiej pasujące niepokryte wydatki/przychody dla danej
+    transakcji bankowej (dopasowanie po kwocie, numerze faktury, kontrahencie).
+    Zwraca listę {record_type, record, score, remaining} posortowaną wg trafności."""
+    with flask_app.app_context():
+        return reconciliation.get_candidates_for_transaction(bank_txn_id)
+
+
+@mcp.tool()
+def suggest_matches_for_record(record_type: Literal["expense", "income"], record_id: int) -> list[dict]:
+    """Sugeruje najlepiej pasujące niepowiązane transakcje bankowe dla danego
+    wydatku/przychodu. Zwraca listę {transaction, score} posortowaną wg trafności."""
+    with flask_app.app_context():
+        return reconciliation.get_candidates_for_record(record_type, record_id)
+
+
+@mcp.tool()
+def link_transaction_to_record(record_type: Literal["expense", "income"], record_id: int, bank_txn_id: int) -> dict:
+    """Łączy transakcję bankową z wydatkiem/przychodem. Dla wydatku przelicza
+    automatycznie payment_percent; dla przychodu, jeśli suma powiązanych
+    transakcji pokryje pełną kwotę brutto, oznacza go jako opłacony."""
+    with flask_app.app_context():
+        return reconciliation.link(record_type, record_id, bank_txn_id)
+
+
+@mcp.tool()
+def unlink_transaction_from_record(record_type: Literal["expense", "income"], record_id: int, bank_txn_id: int) -> dict:
+    """Usuwa powiązanie transakcji bankowej z wydatkiem/przychodem (odwraca
+    link_transaction_to_record)."""
+    with flask_app.app_context():
+        return reconciliation.unlink(record_type, record_id, bank_txn_id)
 
 
 # ── Montowanie pod Passengerem (WSGI) ───────────────────────────────────────

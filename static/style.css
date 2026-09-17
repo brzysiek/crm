@@ -3524,4 +3524,153 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   font-size: .8rem;
   line-height: 1;
 }
+
+/* ── Uzgadnianie (finanse ↔ bank) — dopasowywanie transakcji do rekordów ──── */
+.recon-screen { font-family: var(--rd-font); color: var(--rd-text-body); }
+
+.recon-header h2 { font-family: var(--rd-font); color: var(--rd-text-primary); margin-bottom: .2rem; }
+.recon-subtitle { color: var(--rd-text-muted); font-size: 13px; margin: 0 0 1rem; }
+
+.recon-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-bottom: 1.25rem;
+}
+.recon-stat {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 10px;
+  padding: .6rem .9rem;
+  min-width: 150px;
+  flex: 1 1 150px;
+}
+.recon-stat-muted { background: var(--rd-panel); }
+.recon-stat-num { display: block; font-size: 22px; font-weight: 700; color: var(--rd-text-primary); line-height: 1.2; }
+.recon-stat-label { font-size: 11.5px; color: var(--rd-text-muted); }
+
+.recon-tabs { display: flex; gap: .4rem; margin-bottom: 1rem; border-bottom: 1px solid var(--rd-border); }
+.recon-tab {
+  font-family: var(--rd-font);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: .6rem .3rem;
+  margin-right: .8rem;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rd-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.recon-tab:hover { color: var(--rd-text-primary); }
+.recon-tab.active { color: var(--rd-bottle-green); border-bottom-color: var(--rd-lime); }
+.recon-tab-badge {
+  background: var(--rd-panel);
+  color: var(--rd-text-muted);
+  border-radius: 999px;
+  padding: .1rem .5rem;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.recon-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+.recon-col h3 {
+  font-family: var(--rd-font);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--rd-text-muted);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin: 0 0 .6rem;
+}
+.recon-col-count {
+  background: var(--rd-gray-bg);
+  color: var(--rd-gray-text);
+  border-radius: 999px;
+  padding: .05rem .5rem;
+  font-size: 11px;
+}
+.recon-list { display: flex; flex-direction: column; gap: .5rem; max-height: 70vh; overflow-y: auto; padding-right: .2rem; }
+.recon-empty { color: var(--rd-text-muted); font-size: 13px; padding: .5rem 0; }
+
+.recon-item {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.recon-item-main { padding: .65rem .8rem; cursor: pointer; }
+.recon-item-main:hover { background: var(--rd-panel); }
+.recon-item-row1 { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .25rem; }
+.recon-item-row2 { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: 12.5px; color: var(--rd-text-body); }
+.recon-item-row2 .recon-desc { color: var(--rd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+
+.recon-amount { font-weight: 700; font-size: 14px; color: var(--rd-text-primary); }
+.recon-amount-neg { color: var(--rd-red-text); }
+.recon-amount-pos { color: var(--rd-lime-tint-text); }
+.recon-remaining { font-size: 11.5px; color: var(--rd-amber-text); background: var(--rd-amber-bg); border-radius: 999px; padding: .05rem .5rem; }
+.recon-date { margin-left: auto; font-size: 11.5px; color: var(--rd-text-muted); }
+.recon-bank-badge { font-size: 10px; padding: .05rem .4rem; border-radius: 4px; font-weight: 700; }
+
+.recon-pct-badge {
+  background: var(--rd-gray-bg); color: var(--rd-gray-text);
+  border-radius: 999px; padding: .05rem .5rem; font-size: 11px; font-weight: 600;
+}
+.recon-status-badge { border-radius: 999px; padding: .05rem .5rem; font-size: 11px; font-weight: 600; }
+.recon-status-unpaid  { background: var(--rd-red-bg); color: var(--rd-red-text); }
+.recon-status-partial { background: var(--rd-amber-bg); color: var(--rd-amber-text); }
+
+.recon-candidates { border-top: 1px solid var(--rd-border-light); background: var(--rd-panel); padding: .5rem; display: flex; flex-direction: column; gap: .4rem; }
+.recon-loading { color: var(--rd-text-muted); font-size: 12.5px; margin: .25rem 0; }
+
+.recon-cand {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 8px;
+  padding: .55rem .7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+}
+.recon-cand-info { flex: 1; min-width: 0; }
+.recon-cand-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: .05rem .5rem;
+  margin-bottom: .3rem;
+}
+.recon-score-high .recon-cand-badge { background: var(--rd-lime-tint-bg); color: var(--rd-lime-tint-text); }
+.recon-score-mid  .recon-cand-badge { background: var(--rd-blue-bg); color: var(--rd-blue-text); }
+.recon-score-low  .recon-cand-badge { background: var(--rd-gray-bg); color: var(--rd-gray-text); }
+.recon-score-high { border-color: var(--rd-lime); }
+
+.recon-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--rd-deep-green);
+  color: #fff;
+  padding: .6rem 1rem;
+  border-radius: 8px;
+  font-family: var(--rd-font);
+  font-size: 13px;
+  box-shadow: 0 12px 28px rgba(13,40,32,.28);
+  z-index: 200;
+}
+.recon-toast-error { background: var(--rd-red-text); }
+
+@media (max-width: 720px) {
+  .recon-columns { grid-template-columns: 1fr; }
+  .recon-list { max-height: none; }
+  .recon-cand { flex-direction: column; align-items: stretch; }
+}
 .attachment-chip-remove:hover { color: var(--error, #dc2626); }
