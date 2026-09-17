@@ -206,6 +206,11 @@ def handle_exception(e):
     return '<h1>Błąd serwera (500)</h1><pre>' + _tb.format_exc() + '</pre>', 500
 
 
+@app.route('/')
+def index():
+    return redirect(url_for('gtd.day'))
+
+
 @app.before_request
 def require_login():
     open_endpoints = {'auth.login', 'auth.logout', 'static', 'email_campaigns.unsubscribe'}
