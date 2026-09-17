@@ -40,12 +40,6 @@
           {% endfor %}
         </select>
       </div>
-      <div class="agent-confirm-row" id="gtdFollowUpProjectRow">
-        <label>Projekt</label>
-        <select id="gtdFollowUpProject" class="filter-input" style="width:100%">
-          <option value="">— brak —</option>
-        </select>
-      </div>
       <div class="agent-confirm-row">
         <label>Kontakt</label>
         <div class="entity-picker" id="gtdFollowUpContactPicker">
@@ -64,22 +58,13 @@
           <input type="hidden" id="gtdFollowUpCompanyPicker-hidden">
         </div>
       </div>
-      <div class="agent-confirm-row">
-        <label>Deal</label>
-        <div class="entity-picker" id="gtdFollowUpDealPicker">
-          <input type="text" id="gtdFollowUpDealPicker-input" class="filter-input" style="width:100%"
-                 placeholder="Szukaj deala…" autocomplete="off">
-          <div id="gtdFollowUpDealPicker-results" class="entity-picker-results"></div>
-          <input type="hidden" id="gtdFollowUpDealPicker-hidden">
-        </div>
-      </div>
-      <div class="agent-confirm-row">
-        <label>Oferta M&A</label>
-        <div class="entity-picker" id="gtdFollowUpMnaOfferPicker">
-          <input type="text" id="gtdFollowUpMnaOfferPicker-input" class="filter-input" style="width:100%"
-                 placeholder="Szukaj oferty M&A…" autocomplete="off">
-          <div id="gtdFollowUpMnaOfferPicker-results" class="entity-picker-results"></div>
-          <input type="hidden" id="gtdFollowUpMnaOfferPicker-hidden">
+      <div class="agent-confirm-row" id="gtdFollowUpLinkRow">
+        <label>Powiązanie <span class="text-muted" style="font-weight:400">(projekt, deal lub oferta M&A — wpisz min. 3 znaki)</span></label>
+        <div class="entity-picker" id="gtdFollowUpLinkPicker">
+          <input type="text" id="gtdFollowUpLinkPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj projektu, deala lub oferty M&A…" autocomplete="off">
+          <div id="gtdFollowUpLinkPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdFollowUpLinkPicker-hidden">
         </div>
       </div>
     </div>

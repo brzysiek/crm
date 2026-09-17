@@ -143,12 +143,6 @@
         </select>
       </div>
       <div class="agent-confirm-row">
-        <label>Projekt</label>
-        <select id="gtdEditTaskProject" class="filter-input" style="width:100%">
-          <option value="">— brak —</option>
-        </select>
-      </div>
-      <div class="agent-confirm-row">
         <label>Kontakt</label>
         <div class="entity-picker" id="gtdEditTaskContactPicker">
           <input type="text" id="gtdEditTaskContactPicker-input" class="filter-input" style="width:100%"
@@ -167,21 +161,12 @@
         </div>
       </div>
       <div class="agent-confirm-row">
-        <label>Deal</label>
-        <div class="entity-picker" id="gtdEditTaskDealPicker">
-          <input type="text" id="gtdEditTaskDealPicker-input" class="filter-input" style="width:100%"
-                 placeholder="Szukaj deala…" autocomplete="off">
-          <div id="gtdEditTaskDealPicker-results" class="entity-picker-results"></div>
-          <input type="hidden" id="gtdEditTaskDealPicker-hidden">
-        </div>
-      </div>
-      <div class="agent-confirm-row">
-        <label>Oferta M&A</label>
-        <div class="entity-picker" id="gtdEditTaskMnaOfferPicker">
-          <input type="text" id="gtdEditTaskMnaOfferPicker-input" class="filter-input" style="width:100%"
-                 placeholder="Szukaj oferty M&A…" autocomplete="off">
-          <div id="gtdEditTaskMnaOfferPicker-results" class="entity-picker-results"></div>
-          <input type="hidden" id="gtdEditTaskMnaOfferPicker-hidden">
+        <label>Powiązanie <span class="text-muted" style="font-weight:400">(projekt, deal lub oferta M&A — wpisz min. 3 znaki)</span></label>
+        <div class="entity-picker" id="gtdEditTaskLinkPicker">
+          <input type="text" id="gtdEditTaskLinkPicker-input" class="filter-input" style="width:100%"
+                 placeholder="Szukaj projektu, deala lub oferty M&A…" autocomplete="off">
+          <div id="gtdEditTaskLinkPicker-results" class="entity-picker-results"></div>
+          <input type="hidden" id="gtdEditTaskLinkPicker-hidden">
         </div>
       </div>
       <div class="agent-confirm-row">
