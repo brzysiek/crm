@@ -18,7 +18,10 @@ if _mcp_token:
     import mcp_server
 
     _mcp_prefix = f"/mcp-{_mcp_token}"
-    _mcp_wsgi_app = mcp_server.get_wsgi_app()
+    # mcp_server.wsgi_app jest zwykłą, synchroniczną funkcją WSGI (bez ASGI,
+    # bez wątków w tle, bez montowania niczego przy starcie procesu) — patrz
+    # komentarz w mcp_server.py przy definicji wsgi_app.
+    _mcp_wsgi_app = mcp_server.wsgi_app
 
     class _McpDispatcher:
         """Kieruje żądania pod /mcp-<token>(/...) do serwera MCP, resztę do Flaska."""

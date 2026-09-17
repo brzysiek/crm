@@ -12,11 +12,12 @@ ten serwer (patrz passenger_wsgi.py) — patrz Config.MCP_TOKEN i Config.MCP_USE
 from __future__ import annotations
 
 import asyncio
-import threading
+import json
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
+from mcp.server.fastmcp.exceptions import ToolError
+import mcp.types as types
 
 from app import app as flask_app
 from config import Config
@@ -26,18 +27,12 @@ import models.crm_deal as crm_deal
 import models.crm_notes as crm_notes
 import models.task as task_model
 
-mcp = FastMCP(
-    "trustart-crm",
-    stateless_http=True,
-    json_response=True,
-    streamable_http_path="/",
-    # Domyślna ochrona przed DNS rebinding zakłada, że serwer stoi pod
-    # 127.0.0.1/localhost — u nas stoi pod prawdziwą domeną za Passengerem,
-    # a właściwą bramką dostępu i tak jest sekretny token w adresie URL
-    # (patrz passenger_wsgi.py), więc wyłączamy tu tę dodatkową walidację
-    # nagłówka Host, żeby uniknąć fałszywych 421 po wdrożeniu.
-    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
-)
+# Używamy FastMCP wyłącznie jako rejestru narzędzi (dekorator @mcp.tool(),
+# generowanie schematów, walidacja argumentów) — transport HTTP obsługujemy
+# sami, niżej, jako zwykłą funkcję WSGI, więc opcje transportu ASGI
+# (stateless_http, json_response, streamable_http_path, transport_security)
+# tu nie mają zastosowania.
+mcp = FastMCP("trustart-crm")
 
 
 def _mcp_user_id() -> int:
@@ -358,45 +353,104 @@ def update_deal(
 
 
 # ── Montowanie pod Passengerem (WSGI) ───────────────────────────────────────
+#
+# Passenger obsługuje wyłącznie WSGI (synchronicznie, proces/wątek na żądanie),
+# więc zamiast montować pełny serwer ASGI biblioteki `mcp` (który wymaga
+# zdarzenia lifespan.startup i własnej, trwałej pętli asyncio w tle —
+# rozwiązanie kruche pod realnym modelem procesów/wątków Passengera i
+# odpowiedzialne za wcześniejszą awarię produkcyjną), obsługujemy protokół
+# Streamable HTTP MCP ręcznie, w pełni synchronicznie: każde żądanie parsuje
+# JSON-RPC, woła narzędzie przez krótkotrwałą pętlę asyncio.run(...) (tworzoną
+# i niszczoną w ramach jednego wywołania) i od razu zwraca odpowiedź WSGI.
+# Brak wątków w tle, brak wspólnego stanu między żądaniami, brak czegokolwiek,
+# co mogłoby zawiesić proces roboczy Passengera.
 
-def get_wsgi_app():
-    """Zwraca aplikację WSGI serwera MCP, gotową do zamontowania w passenger_wsgi.py.
+def _list_tools_sync() -> list[dict]:
+    tools = asyncio.run(mcp.list_tools())
+    return [t.model_dump(by_alias=True, exclude_none=True, mode="json") for t in tools]
 
-    StreamableHTTPSessionManager (wewnętrzna grupa zadań MCP) inicjalizuje się
-    dopiero w reakcji na zdarzenie ASGI ``lifespan.startup`` — Passenger, jako
-    zwykły serwer WSGI, nigdy sam takiego zdarzenia nie wysyła. Dlatego
-    uruchamiamy ten protokół ręcznie, raz, przy starcie procesu, na tej samej
-    trwałej pętli zdarzeń, na której a2wsgi obsługuje potem każde żądanie.
-    """
-    from a2wsgi import ASGIMiddleware
 
-    asgi_app = mcp.streamable_http_app()
-    wsgi_app = ASGIMiddleware(asgi_app)
+def _call_tool_sync(name: str, arguments: dict) -> dict:
+    try:
+        result = asyncio.run(
+            mcp._tool_manager.call_tool(name, arguments or {}, context=mcp.get_context(), convert_result=False)
+        )
+    except ToolError as e:
+        return {"content": [{"type": "text", "text": str(e)}], "isError": True}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"Błąd: {e}"}], "isError": True}
+    text = json.dumps(result, ensure_ascii=False, default=str)
+    return {"content": [{"type": "text", "text": text}]}
 
-    started = threading.Event()
-    failure: dict[str, str] = {}
 
-    async def _drive_lifespan_startup():
-        receive_queue: asyncio.Queue = asyncio.Queue()
-        await receive_queue.put({"type": "lifespan.startup"})
+def _handle_jsonrpc(payload: dict) -> dict | None:
+    """Obsługuje jedno żądanie/powiadomienie JSON-RPC 2.0. Zwraca None dla
+    powiadomień (brak pola "id") — zgodnie z protokołem nie dostają odpowiedzi."""
+    if not isinstance(payload, dict):
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Nieprawidłowe żądanie"}}
 
-        async def receive():
-            return await receive_queue.get()
+    method = payload.get("method")
+    has_id = "id" in payload
+    msg_id = payload.get("id")
 
-        async def send(message):
-            if message["type"] == "lifespan.startup.complete":
-                started.set()
-            elif message["type"] == "lifespan.startup.failed":
-                failure["message"] = message.get("message", "nieznany błąd")
-                started.set()
+    def ok(result):
+        return {"jsonrpc": "2.0", "id": msg_id, "result": result} if has_id else None
 
-        # Ten call nie wraca aż do lifespan.shutdown — zostaje jako zadanie w tle.
-        await asgi_app({"type": "lifespan"}, receive, send)
+    def err(code, message):
+        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}} if has_id else None
 
-    asyncio.run_coroutine_threadsafe(_drive_lifespan_startup(), wsgi_app.loop)
-    if not started.wait(timeout=10):
-        raise RuntimeError("Serwer MCP nie wystartował w ciągu 10s (brak lifespan.startup.complete).")
-    if failure:
-        raise RuntimeError(f"Serwer MCP nie wystartował: {failure['message']}")
+    try:
+        if method == "initialize":
+            opts = mcp._mcp_server.create_initialization_options()
+            return ok({
+                "protocolVersion": types.LATEST_PROTOCOL_VERSION,
+                "capabilities": opts.capabilities.model_dump(by_alias=True, exclude_none=True, mode="json"),
+                "serverInfo": {"name": opts.server_name, "version": opts.server_version},
+            })
+        if method in ("notifications/initialized", "notifications/cancelled"):
+            return None
+        if method == "ping":
+            return ok({})
+        if method == "tools/list":
+            return ok({"tools": _list_tools_sync()})
+        if method == "tools/call":
+            params = payload.get("params") or {}
+            name = params.get("name")
+            arguments = params.get("arguments") or {}
+            with flask_app.app_context():
+                return ok(_call_tool_sync(name, arguments))
+        return err(-32601, f"Nieznana metoda: {method}")
+    except Exception as e:
+        return err(-32603, f"Błąd wewnętrzny: {e}")
 
-    return wsgi_app
+
+def wsgi_app(environ, start_response):
+    """Prosta, synchroniczna aplikacja WSGI obsługująca Streamable HTTP MCP
+    (tylko tryb odpowiedzi JSON — bez SSE, zgodnie z json_response=True)."""
+    from werkzeug.wrappers import Request, Response
+
+    request = Request(environ)
+
+    if request.method != "POST":
+        response = Response(status=405)
+        return response(environ, start_response)
+
+    try:
+        payload = json.loads(request.get_data() or b"{}")
+    except ValueError:
+        body = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Błąd parsowania JSON"}}
+        response = Response(json.dumps(body), status=400, mimetype="application/json")
+        return response(environ, start_response)
+
+    if isinstance(payload, list):
+        results = [r for r in (_handle_jsonrpc(item) for item in payload) if r is not None]
+        response = Response(status=202) if not results else Response(
+            json.dumps(results, ensure_ascii=False), mimetype="application/json"
+        )
+    else:
+        result = _handle_jsonrpc(payload)
+        response = Response(status=202) if result is None else Response(
+            json.dumps(result, ensure_ascii=False), mimetype="application/json"
+        )
+
+    return response(environ, start_response)
