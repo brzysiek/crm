@@ -857,6 +857,15 @@ def api_unschedule(task_id):
     return jsonify({'status': 'ok'})
 
 
+@bp.route('/api/gtd/tasks/<int:task_id>/clear_date', methods=['POST'])
+def api_clear_date(task_id):
+    task = task_model.get_task(task_id)
+    if task and task.get('gcal_event_id'):
+        _try_gcal_delete(task)
+    task_model.clear_date_assignment(task_id)
+    return jsonify({'status': 'ok'})
+
+
 @bp.route('/api/gtd/tasks/<int:task_id>/move', methods=['POST'])
 def api_move_task(task_id):
     data = request.get_json(silent=True) or {}

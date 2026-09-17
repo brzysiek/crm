@@ -4,9 +4,9 @@
 {% macro context_picker(t) %}
 <span class="term-cell gtd-context-cell" style="margin-left:.4rem">
   {% if t.context_id %}
-    <span class="badge gtd-context-badge" title="Zmień kontekst" onclick="gtdToggleContextPicker(event, this)" style="background:{{ t.context_badge_color }}40;color:{{ t.context_text_color }};border:1px solid {{ t.context_badge_color }}55">@{{ t.context_name }}</span>
+    <span class="badge gtd-context-badge" title="Zmień kontekst" onclick="gtdTogglePicker(event, this)" style="background:{{ t.context_badge_color }}40;color:{{ t.context_text_color }};border:1px solid {{ t.context_badge_color }}55">@{{ t.context_name }}</span>
   {% else %}
-    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst" onclick="gtdToggleContextPicker(event, this)">@</span>
+    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst" onclick="gtdTogglePicker(event, this)">@</span>
   {% endif %}
   <div class="term-hover-picker">
     {% for ctx in gtd_contexts() %}
@@ -24,9 +24,9 @@
 {% macro gcal_context_picker(e) %}
 <span class="term-cell gtd-context-cell" style="margin-left:.4rem">
   {% if e.context_id %}
-    <span class="badge gtd-context-badge" title="Zmień kontekst" onclick="gtdToggleContextPicker(event, this)" style="background:{{ e.context_badge_color }}40;color:{{ e.context_text_color }};border:1px solid {{ e.context_badge_color }}55">@{{ e.context_name }}</span>
+    <span class="badge gtd-context-badge" title="Zmień kontekst" onclick="gtdTogglePicker(event, this)" style="background:{{ e.context_badge_color }}40;color:{{ e.context_text_color }};border:1px solid {{ e.context_badge_color }}55">@{{ e.context_name }}</span>
   {% else %}
-    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst" onclick="gtdToggleContextPicker(event, this)">@</span>
+    <span class="badge badge-gray gtd-context-badge-empty" title="Przypisz kontekst" onclick="gtdTogglePicker(event, this)">@</span>
   {% endif %}
   <div class="term-hover-picker">
     {% for ctx in gtd_contexts() %}
@@ -131,19 +131,18 @@
   </td>
   <td>
     <div class="term-cell">
-      <span>
+      <span title="Kliknij, aby zmienić termin" style="cursor:pointer" onclick="gtdTogglePicker(event, this)">
         {% if t.due_date %}
-          <a class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}"
-             href="{{ url_for('gtd.day', d=t.due_date.isoformat()) }}">{{ t.due_date|ddmmyyyy }}</a>
+          <span class="badge {{ 'badge-red' if today and t.due_date < today else 'badge-gray' }}">{{ t.due_date|ddmmyyyy }}</span>
         {% endif %}
         {% if t.scheduled_date %}
-          <a class="badge badge-green" href="{{ url_for('gtd.day', d=t.scheduled_date.isoformat()) }}">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</a>
+          <span class="badge badge-green">{{ t.scheduled_date|ddmmyyyy }}{% if t.scheduled_time %} {{ t.scheduled_time|hhmm }}{% endif %}</span>
         {% endif %}
         {% if t.planned_week %}
-          <a class="badge badge-blue" title="Blok tygodniowy" href="{{ url_for('gtd.week', start=t.planned_week.isoformat()) }}">{{ icon('calendar', 12) }} tydz. {{ t.planned_week|ddmmyyyy }}</a>
+          <span class="badge badge-blue" title="Blok tygodniowy">{{ icon('calendar', 12) }} tydz. {{ t.planned_week|ddmmyyyy }}</span>
         {% endif %}
         {% if t.planned_month %}
-          <a class="badge badge-blue" title="Blok miesięczny" href="{{ url_for('gtd.month', start=t.planned_month.isoformat()) }}">{{ icon('calendar', 12) }} {{ t.planned_month|ddmmyyyy }}</a>
+          <span class="badge badge-blue" title="Blok miesięczny">{{ icon('calendar', 12) }} {{ t.planned_month|ddmmyyyy }}</span>
         {% endif %}
         {% if not t.due_date and not t.scheduled_date and not t.planned_week and not t.planned_month %}<span class="text-muted" style="font-size:.78rem">—</span>{% endif %}
       </span>
@@ -153,6 +152,10 @@
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
                 onclick="gtdSetWeekday({{ t.id }}, '{{ week_start.isoformat() }}', {{ loop.index0 }})">{{ wd }}</button>
         {% endfor %}
+        {% if t.due_date or t.scheduled_date or t.planned_week or t.planned_month %}
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdClearDateAssignment({{ t.id }})">{{ icon('x', 12) }} Usuń przypisanie</button>
+        {% endif %}
       </div>
       {% elif day_actions %}
       <div class="term-hover-picker">
@@ -164,6 +167,25 @@
                 onclick="gtdAssignWeek({{ t.id }}, 'this')">{{ icon('arrow-right', 12) }} Ten tydzień</button>
         <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
                 onclick="gtdAssignWeek({{ t.id }}, 'next')">{{ icon('arrow-right', 12) }} Przyszły tydzień</button>
+        {% if t.due_date or t.scheduled_date or t.planned_week or t.planned_month %}
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdClearDateAssignment({{ t.id }})">{{ icon('x', 12) }} Usuń przypisanie</button>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="term-hover-picker">
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdScheduleToday({{ t.id }})">{{ icon('arrow-right', 12) }} Dziś</button>
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdScheduleTomorrow({{ t.id }})">{{ icon('arrow-right', 12) }} Jutro</button>
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdAssignWeek({{ t.id }}, 'this')">{{ icon('arrow-right', 12) }} Ten tydzień</button>
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdAssignWeek({{ t.id }}, 'next')">{{ icon('arrow-right', 12) }} Przyszły tydzień</button>
+        {% if t.due_date or t.scheduled_date or t.planned_week or t.planned_month %}
+        <button type="button" class="btn-ghost btn-sm" style="padding:.1rem .3rem;font-size:.68rem"
+                onclick="gtdClearDateAssignment({{ t.id }})">{{ icon('x', 12) }} Usuń przypisanie</button>
+        {% endif %}
       </div>
       {% endif %}
     </div>

@@ -179,6 +179,13 @@ function gtdUnschedule(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdClearDateAssignment(taskId) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/clear_date', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdMoveTask(taskId, day, direction) {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/move', {
     method: 'POST',

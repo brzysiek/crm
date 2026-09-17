@@ -762,14 +762,14 @@ function crmSetStatus(el, text, color) {
   el.style.color = color || '';
 }
 
-/* ── Popup wyboru kontekstu (task/wydarzenie/deal): otwierany kliknięciem
- * w ikonkę „@”, a nie hoverem. Samo position:fixed nie wystarczało — wiersz
+/* ── Popup wyboru kontekstu/daty (task/wydarzenie/deal): otwierany kliknięciem
+ * w odznakę, a nie hoverem. Samo position:fixed nie wystarczało — wiersz
  * tabeli / karta wydarzenia poniżej potrafiły mieć własny stacking context
  * (np. przez transform na hover), który przykrywał popup mimo wysokiego
  * z-index. Dlatego przy otwarciu przenosimy element na koniec <body> (poza
  * wszystkie takie konteksty), a przy zamknięciu wracamy nim do oryginalnego
  * miejsca w DOM, żeby kolejne otwarcie tego samego pickera dalej działało.
- * Zamyka się dopiero po wyborze kontekstu (strona się przeładowuje) albo
+ * Zamyka się dopiero po wyborze wartości (strona się przeładowuje) albo
  * po kliknięciu poza popupem. */
 const gtdPickerHomes = new WeakMap(); // picker -> komórka, do której wraca po zamknięciu
 const gtdCellPickers = new WeakMap(); // komórka -> jej picker (żeby dało się go znaleźć,
@@ -784,13 +784,13 @@ function gtdFindPicker(cell) {
   return picker;
 }
 
-function gtdToggleContextPicker(event, badgeEl) {
+function gtdTogglePicker(event, badgeEl) {
   event.stopPropagation();
   const cell = badgeEl.closest('.term-cell');
   const picker = cell && gtdFindPicker(cell);
   if (!picker) return;
   const wasOpen = picker.classList.contains('open');
-  gtdCloseAllContextPickers();
+  gtdCloseAllPickers();
   if (wasOpen) return;
   if (!gtdPickerHomes.has(picker)) gtdPickerHomes.set(picker, cell);
   document.body.appendChild(picker);
@@ -801,7 +801,7 @@ function gtdToggleContextPicker(event, badgeEl) {
   picker.classList.add('open');
 }
 
-function gtdCloseAllContextPickers() {
+function gtdCloseAllPickers() {
   document.querySelectorAll('.term-hover-picker.open').forEach(function (p) {
     p.classList.remove('open');
     p.style.position = '';
@@ -813,7 +813,7 @@ function gtdCloseAllContextPickers() {
 }
 
 document.addEventListener('click', function (e) {
-  if (!e.target.closest('.term-hover-picker')) gtdCloseAllContextPickers();
+  if (!e.target.closest('.term-hover-picker')) gtdCloseAllPickers();
 });
 
 /* ── CRM: przypisanie kontekstu dealowi z pickera na liście deali ─────────── */

@@ -442,6 +442,24 @@ def unschedule_task(task_id: int) -> None:
         raise
 
 
+def clear_date_assignment(task_id: int) -> None:
+    """Usuwa wszystkie formy przypisania terminu naraz (dzień, godzina, blok
+    tygodniowy/miesięczny) — używane przez popup 'Usuń przypisanie' na liście zadań."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """UPDATE tasks SET due_date=NULL, scheduled_date=NULL, scheduled_time=NULL,
+                   scheduled_duration_min=NULL, planned_week=NULL, planned_month=NULL,
+                   gcal_event_id=NULL WHERE id=%s""",
+                (task_id,)
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 def set_gcal_event_id(task_id: int, event_id: str | None) -> None:
     db = get_db()
     try:
