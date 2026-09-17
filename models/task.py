@@ -521,7 +521,8 @@ def get_inbox_tasks() -> list[dict]:
 
 
 def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
-                      company_id: int | None = None, search: str | None = None,
+                      company_id: int | None = None, contact_id: int | None = None,
+                      search: str | None = None,
                       include_done: bool = False, context_ids: list[int] | None = None) -> list[dict]:
     db = get_db()
     statuses = ('next', 'done') if include_done else ('next',)
@@ -538,6 +539,9 @@ def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
     if company_id:
         sql += " AND t.crm_company_id=%s"
         params.append(company_id)
+    if contact_id:
+        sql += " AND t.crm_contact_id=%s"
+        params.append(contact_id)
     if search:
         sql += " AND t.title LIKE %s"
         params.append(f"%{search}%")

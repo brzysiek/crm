@@ -103,6 +103,27 @@ def set_note_transcript(note_id: int, body: str) -> None:
         raise
 
 
+def update_note(note_id: int, body: str, note_type: str | None = None) -> None:
+    """Edytuje treść notatki (i opcjonalnie jej typ), bez ruszania transcribed_at/audio_data."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            if note_type is not None:
+                cur.execute(
+                    "UPDATE crm_notes SET body=%s, note_type=%s WHERE id=%s",
+                    (body, _valid_note_type(note_type), note_id)
+                )
+            else:
+                cur.execute(
+                    "UPDATE crm_notes SET body=%s WHERE id=%s",
+                    (body, note_id)
+                )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 def get_notes(entity_type: str, entity_id: int) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
