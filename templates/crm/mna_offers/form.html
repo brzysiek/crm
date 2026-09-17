@@ -1,0 +1,167 @@
+{% extends 'crm/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+<div class="rd-screen rd-deal-form">
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-group">
+    <label for="name">Nazwa <span class="req">*</span></label>
+    <input type="text" id="name" name="name" required value="{{ offer.name or '' }}">
+  </div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="3">{{ offer.description or '' }}</textarea>
+  </div>
+
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="offer_type">Typ oferty</label>
+      {% set cur_offer_type = offer.offer_type if offer.offer_type is defined else 'for_sale' %}
+      <select id="offer_type" name="offer_type">
+        {% for val, label in offer_type_labels.items() %}
+          <option value="{{ val }}" {{ 'selected' if cur_offer_type == val }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="industry">Branża</label>
+      <input type="text" id="industry" name="industry" value="{{ offer.industry or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="owner_user_id">Opiekun</label>
+      {% set cur_owner = offer.owner_user_id|int if offer.owner_user_id else None %}
+      <select id="owner_user_id" name="owner_user_id">
+        <option value="">— brak —</option>
+        {% for u in owners %}
+          <option value="{{ u.id }}" {{ 'selected' if cur_owner == u.id }}>{{ u.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="revenue">Obroty (zł)</label>
+      <input type="number" id="revenue" name="revenue" step="0.01" min="0" value="{{ offer.revenue or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="ebitda">EBITDA (zł)</label>
+      <input type="number" id="ebitda" name="ebitda" step="0.01" value="{{ offer.ebitda or '' }}">
+    </div>
+  </div>
+
+  <h3>Target (firma/kontakt, której dotyczy oferta)</h3>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label>Firma (target)</label>
+      <div class="entity-picker" id="target-company-picker">
+        {% if prefill_target_company %}
+        <div class="entity-picker-selected" id="target-company-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_target_company.short_name or prefill_target_company.name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('target-company-picker')">{{ icon('x', 14) }}</button>
+        </div>
+        {% endif %}
+        <input type="text" id="target-company-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_target_company else '' }}"
+               placeholder="Szukaj firmy…" autocomplete="off">
+        <div id="target-company-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="target-company-picker-hidden" name="target_company_id" value="{{ offer.target_company_id or '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Kontakt (target)</label>
+      <div class="entity-picker" id="target-contact-picker">
+        {% if prefill_target_contact %}
+        <div class="entity-picker-selected" id="target-contact-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_target_contact.first_name }} {{ prefill_target_contact.last_name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('target-contact-picker')">{{ icon('x', 14) }}</button>
+        </div>
+        {% endif %}
+        <input type="text" id="target-contact-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_target_contact else '' }}"
+               placeholder="Szukaj kontaktu…" autocomplete="off">
+        <div id="target-contact-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="target-contact-picker-hidden" name="target_contact_id" value="{{ offer.target_contact_id or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <h3>Źródło oferty (firma/kontakt, od którego pochodzi)</h3>
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label>Firma (źródło)</label>
+      <div class="entity-picker" id="source-company-picker">
+        {% if prefill_source_company %}
+        <div class="entity-picker-selected" id="source-company-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_source_company.short_name or prefill_source_company.name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('source-company-picker')">{{ icon('x', 14) }}</button>
+        </div>
+        {% endif %}
+        <input type="text" id="source-company-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_source_company else '' }}"
+               placeholder="Szukaj firmy…" autocomplete="off">
+        <div id="source-company-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="source-company-picker-hidden" name="source_company_id" value="{{ offer.source_company_id or '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Kontakt (źródło)</label>
+      <div class="entity-picker" id="source-contact-picker">
+        {% if prefill_source_contact %}
+        <div class="entity-picker-selected" id="source-contact-picker-selected">
+          <span class="entity-picker-selected-name">{{ prefill_source_contact.first_name }} {{ prefill_source_contact.last_name }}</span>
+          <button type="button" class="entity-picker-clear" onclick="clearEntityPicker('source-contact-picker')">{{ icon('x', 14) }}</button>
+        </div>
+        {% endif %}
+        <input type="text" id="source-contact-picker-input" class="filter-input"
+               style="width:100%{{ ';display:none' if prefill_source_contact else '' }}"
+               placeholder="Szukaj kontaktu…" autocomplete="off">
+        <div id="source-contact-picker-results" class="entity-picker-results"></div>
+        <input type="hidden" id="source-contact-picker-hidden" name="source_contact_id" value="{{ offer.source_contact_id or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz ofertę</button>
+    <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+
+{% if offer.id %}
+<div class="form-delete-row">
+  <form method="post" action="{{ url_for('crm_mna_offers.delete_mna_offer_view', offer_id=offer.id) }}"
+        class="inline-form" onsubmit="return confirm('Usunąć tę ofertę M&A?')">
+    <button type="submit" class="link-danger">Usuń ofertę</button>
+  </form>
+</div>
+{% endif %}
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initEntityPicker('target-company-picker', '/api/crm/companies/search');
+initEntityPicker('target-contact-picker', '/api/crm/contacts/search', function(contact) {
+  if (contact.company_id && !document.getElementById('target-company-picker-hidden').value) {
+    selectEntityPicker('target-company-picker', contact.company_id, contact.company_name);
+  }
+});
+initEntityPicker('source-company-picker', '/api/crm/companies/search');
+initEntityPicker('source-contact-picker', '/api/crm/contacts/search', function(contact) {
+  if (contact.company_id && !document.getElementById('source-company-picker-hidden').value) {
+    selectEntityPicker('source-company-picker', contact.company_id, contact.company_name);
+  }
+});
+</script>
+{% endblock %}

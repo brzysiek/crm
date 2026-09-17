@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from database import get_db
 import models.gtd_context as gtd_context_model
 import models.crm_deal as crm_deal_model
+import models.crm_mna_offer as crm_mna_offer_model
 
 VALID_STATUSES = ('inbox', 'next', 'waiting', 'someday', 'done')
 
@@ -18,6 +19,7 @@ _LIST_FIELDS = """t.*, p.title AS project_title,
                   cc.first_name AS crm_contact_first_name, cc.last_name AS crm_contact_last_name,
                   cco.name AS crm_company_name, cco.short_name AS crm_company_short_name,
                   cd.name AS crm_deal_name,
+                  cmo.name AS crm_mna_offer_name,
                   gc.name AS context_name, gc.badge_color AS context_badge_color,
                   gc.text_color AS context_text_color"""
 
@@ -26,6 +28,7 @@ _LIST_JOINS = """FROM tasks t
                  LEFT JOIN crm_contacts cc ON cc.id = t.crm_contact_id
                  LEFT JOIN crm_companies cco ON cco.id = t.crm_company_id
                  LEFT JOIN crm_deals cd ON cd.id = t.crm_deal_id
+                 LEFT JOIN crm_mna_offers cmo ON cmo.id = t.crm_mna_offer_id
                  LEFT JOIN gtd_contexts gc ON gc.id = t.context_id"""
 
 _STATUS_SORT_SQL = "CASE WHEN {col}='done' THEN 2 WHEN {col}='waiting' THEN 1 ELSE 0 END"
@@ -55,13 +58,15 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
     crm_contact_id = fields.get('crm_contact_id') or None
     crm_company_id = fields.get('crm_company_id') or None
     crm_deal_id = fields.get('crm_deal_id') or None
+    crm_mna_offer_id = fields.get('crm_mna_offer_id') or None
     try:
         with db.cursor() as cur:
-            if parent_id and not (context_id and crm_contact_id and crm_company_id and crm_deal_id):
-                # Podzadanie dziedziczy po projekcie kontekst/kontakt/firmę/deal,
+            if parent_id and not (context_id and crm_contact_id and crm_company_id and crm_deal_id and crm_mna_offer_id):
+                # Podzadanie dziedziczy po projekcie kontekst/kontakt/firmę/deal/ofertę M&A,
                 # o ile nie zostały podane wprost przy tworzeniu.
                 cur.execute(
-                    "SELECT context_id, crm_contact_id, crm_company_id, crm_deal_id FROM tasks WHERE id=%s",
+                    "SELECT context_id, crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id "
+                    "FROM tasks WHERE id=%s",
                     (parent_id,)
                 )
                 parent = cur.fetchone()
@@ -70,6 +75,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     crm_contact_id = crm_contact_id or parent['crm_contact_id']
                     crm_company_id = crm_company_id or parent['crm_company_id']
                     crm_deal_id = crm_deal_id or parent['crm_deal_id']
+                    crm_mna_offer_id = crm_mna_offer_id or parent['crm_mna_offer_id']
             if not context_id and crm_deal_id:
                 cur.execute("SELECT context_id FROM crm_deals WHERE id=%s", (crm_deal_id,))
                 row = cur.fetchone()
@@ -94,8 +100,8 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                    (title, notes, is_project, parent_id, status, waiting_on,
                     due_date, scheduled_date, scheduled_time, scheduled_duration_min,
                     is_today_priority, is_week_priority, context_id,
-                    crm_contact_id, crm_company_id, crm_deal_id, created_by)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id, created_by)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     title,
                     fields.get('notes') or None,
@@ -113,6 +119,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     crm_contact_id,
                     crm_company_id,
                     crm_deal_id,
+                    crm_mna_offer_id,
                     _valid_user_id(user_id),
                 )
             )
@@ -127,7 +134,8 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
 def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
-               'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id', 'context_id')
+               'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id',
+               'crm_mna_offer_id', 'context_id')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
@@ -139,6 +147,8 @@ def update_task(task_id: int, data: dict) -> None:
         fields['crm_company_id'] = fields['crm_company_id'] or None
     if 'crm_deal_id' in fields:
         fields['crm_deal_id'] = fields['crm_deal_id'] or None
+    if 'crm_mna_offer_id' in fields:
+        fields['crm_mna_offer_id'] = fields['crm_mna_offer_id'] or None
     if 'context_id' in fields:
         fields['context_id'] = fields['context_id'] or None
     db = get_db()
@@ -149,7 +159,9 @@ def update_task(task_id: int, data: dict) -> None:
                 f"UPDATE tasks SET {set_clause} WHERE id=%s",
                 (*fields.values(), task_id)
             )
-            client_fields = {k: fields[k] for k in ('crm_contact_id', 'crm_company_id', 'crm_deal_id') if k in fields}
+            client_fields = {k: fields[k] for k in
+                              ('crm_contact_id', 'crm_company_id', 'crm_deal_id', 'crm_mna_offer_id')
+                              if k in fields}
             if client_fields:
                 cur.execute("SELECT is_project FROM tasks WHERE id=%s", (task_id,))
                 row = cur.fetchone()
@@ -763,6 +775,10 @@ def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dic
         {(t['crm_deal_id'], t['crm_deal_name']) for t in task_pool if t.get('crm_deal_id')},
         key=lambda x: (x[1] or '').lower()
     )
+    filter_mna_offers = sorted(
+        {(t['crm_mna_offer_id'], t['crm_mna_offer_name']) for t in task_pool if t.get('crm_mna_offer_id')},
+        key=lambda x: (x[1] or '').lower()
+    )
     company_pool = [t for t in task_pool if t.get('crm_company_id')] + \
         [p for p in projects if p.get('crm_company_id')]
     filter_companies = sorted(
@@ -788,13 +804,30 @@ def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dic
         d.update(deal_info.get(did, {}))
     group_deals = sorted(deal_map.values(), key=lambda d: (d['deal_name'] or '').lower())
 
+    mna_offer_map: dict[int, dict] = {}
+    truly_bare_tasks = []
+    for t in bare_tasks:
+        if t.get('crm_mna_offer_id'):
+            o = mna_offer_map.setdefault(
+                t['crm_mna_offer_id'],
+                {'offer_id': t['crm_mna_offer_id'], 'offer_name': t.get('crm_mna_offer_name'), 'tasks': []})
+            o['tasks'].append(t)
+        else:
+            truly_bare_tasks.append(t)
+    offer_info = crm_mna_offer_model.get_mna_offers_by_ids(list(mna_offer_map.keys()))
+    for oid, o in mna_offer_map.items():
+        o.update(offer_info.get(oid, {}))
+    group_mna_offers = sorted(mna_offer_map.values(), key=lambda o: (o['offer_name'] or '').lower())
+
     return {
         'context': ctx,
         'projects': f_projects,
         'deals': group_deals,
-        'tasks': bare_tasks,
+        'mna_offers': group_mna_offers,
+        'tasks': truly_bare_tasks,
         'filter_projects': filter_projects,
         'filter_deals': filter_deals,
+        'filter_mna_offers': filter_mna_offers,
         'filter_companies': filter_companies,
         'filter': {'q': cfilter.get('q', ''), 'project': c_project_id, 'deal': c_deal_id, 'company': c_company_id},
     }
@@ -1110,14 +1143,20 @@ def count_inbox() -> int:
 
 
 def get_tasks_for_crm(contact_id: int | None = None, company_id: int | None = None,
-                       deal_id: int | None = None) -> list[dict]:
-    """Zadania/projekty przypisane do kontaktu, firmy lub deala CRM — do sekcji
-    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy/deala."""
-    if not contact_id and not company_id and not deal_id:
+                       deal_id: int | None = None, mna_offer_id: int | None = None) -> list[dict]:
+    """Zadania/projekty przypisane do kontaktu, firmy, deala lub oferty M&A CRM — do sekcji
+    „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy/deala/oferty M&A."""
+    if not contact_id and not company_id and not deal_id and not mna_offer_id:
         return []
     db = get_db()
     with db.cursor() as cur:
-        if deal_id:
+        if mna_offer_id:
+            cur.execute(
+                "SELECT id, title, is_project, status, due_date, completed_at, created_at "
+                "FROM tasks WHERE crm_mna_offer_id=%s AND deleted_at IS NULL ORDER BY created_at DESC",
+                (mna_offer_id,)
+            )
+        elif deal_id:
             cur.execute(
                 "SELECT id, title, is_project, status, due_date, completed_at, created_at "
                 "FROM tasks WHERE crm_deal_id=%s AND deleted_at IS NULL ORDER BY created_at DESC",

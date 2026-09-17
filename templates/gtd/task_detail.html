@@ -16,9 +16,9 @@
   <div class="header-actions">
     <a class="btn btn-outline btn-sm" href="javascript:history.back()">{{ icon('arrow-left', 14) }} Wróć</a>
     <button type="button" class="btn btn-outline btn-sm"
-            onclick="gtdOpenEditTask({{ task.id }}, '{{ task.due_date or '' }}', {{ task.parent_id or 'null' }}, {{ task.title|tojson|forceescape }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, '{{ task.scheduled_date or '' }}', '{{ task.planned_week or '' }}', {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }}, {{ task.context_id or 'null' }}, {{ task.notes|tojson|forceescape if task.notes else 'null' }})">{{ icon('edit', 14) }} Edytuj</button>
+            onclick="gtdOpenEditTask({{ task.id }}, '{{ task.due_date or '' }}', {{ task.parent_id or 'null' }}, {{ task.title|tojson|forceescape }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, '{{ task.scheduled_date or '' }}', '{{ task.planned_week or '' }}', {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }}, {{ task.context_id or 'null' }}, {{ task.notes|tojson|forceescape if task.notes else 'null' }}, {{ task.crm_mna_offer_id or 'null' }}, {{ task.crm_mna_offer_name|tojson|forceescape if task.crm_mna_offer_name else 'null' }})">{{ icon('edit', 14) }} Edytuj</button>
     <button type="button" class="btn btn-outline btn-sm"
-            onclick="gtdOpenFollowUp({{ task.parent_id or 'null' }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }})">{{ icon('reply', 14) }} Nowe follow-up</button>
+            onclick="gtdOpenFollowUp({{ task.parent_id or 'null' }}, {{ task.crm_contact_id or 'null' }}, {{ task.crm_company_id or 'null' }}, {{ task.crm_deal_id or 'null' }}, {{ task.crm_deal_name|tojson|forceescape if task.crm_deal_name else 'null' }}, null, null, null, null, null, null, false, {{ task.crm_mna_offer_id or 'null' }}, {{ task.crm_mna_offer_name|tojson|forceescape if task.crm_mna_offer_name else 'null' }})">{{ icon('reply', 14) }} Nowe follow-up</button>
     {% if task.status != 'waiting' %}
     <button type="button" class="btn btn-outline btn-sm" onclick="gtdSetWaiting({{ task.id }})">{{ icon('hourglass', 14) }} Czeka na…</button>
     {% else %}
@@ -51,6 +51,8 @@
         <dd>{% if task.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=task.crm_company_id) }}">{{ task.crm_company_short_name or task.crm_company_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Deal</dt>
         <dd>{% if task.crm_deal_id %}<a href="{{ url_for('crm_deals.view_deal', deal_id=task.crm_deal_id) }}">{{ task.crm_deal_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Oferta M&A</dt>
+        <dd>{% if task.crm_mna_offer_id %}<a href="{{ url_for('crm_mna_offers.view_mna_offer', offer_id=task.crm_mna_offer_id) }}">{{ task.crm_mna_offer_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Czeka na</dt>
         <dd>{{ task.waiting_on or '—' }}</dd>
         <dt>Termin</dt>

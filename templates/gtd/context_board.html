@@ -1,5 +1,5 @@
 {% extends 'gtd/_layout.html' %}
-{% from 'gtd/_macros.html' import project_row, deal_row, task_cells, task_extra_actions, priority_stars, row_class, timeline_item %}
+{% from 'gtd/_macros.html' import project_row, deal_row, mna_offer_row, task_cells, task_extra_actions, priority_stars, row_class, timeline_item %}
 {% from '_icons.html' import icon %}
 {% block title %}Wg kontekstu — GTD{% endblock %}
 
@@ -118,7 +118,7 @@
             onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, null, document.getElementById('gtdBoardAddTask{{ loop.index }}').value, 'next', {{ group.context.id if group.context else 'null' }})">{{ icon('edit', 14) }} Zaawansowane…</button>
   </div>
 
-  {% if not group.projects and not group.deals and not group.tasks and not group.events %}
+  {% if not group.projects and not group.deals and not group.mna_offers and not group.tasks and not group.events %}
   <p class="text-muted small">Brak wyników filtra w tym kontekście.</p>
   {% endif %}
 
@@ -203,6 +203,51 @@
             </thead>
             <tbody>
             {% for t in d.tasks %}
+            <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+              {{ task_cells(t, inline_actions=false) }}
+              <td class="col-actions nowrap">
+                {{ task_extra_actions(t) }}
+                <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
+                <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  {% if group.mna_offers %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Oferta M&A</th>
+        <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Postęp</th>
+        <th class="col-actions" style="width:160px{{ ';' ~ hdr_style if hdr_style }}"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in group.mna_offers %}
+      {{ mna_offer_row(o, ctx_key) }}
+      <tr id="gtdBoardDealSubtasks{{ ctx_key }}_mna_{{ o.offer_id }}" hidden>
+        <td colspan="3" class="gtd-board-subtasks-cell">
+          <table class="data-table data-table-sm">
+            <thead>
+              <tr>
+                <th class="col-checkbox"></th>
+                <th>Zadanie</th>
+                <th>Termin</th>
+                <th class="col-actions" style="width:220px"></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for t in o.tasks %}
             <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
               {{ task_cells(t, inline_actions=false) }}
               <td class="col-actions nowrap">

@@ -74,7 +74,7 @@
     <button type="button" class="action-btn" title="{{ 'Odznacz jako ważny' if p.is_important else 'Oznacz jako ważny' }}"
             onclick="gtdToggleStar({{ p.id }}, 'toggle_important')">{{ icon('star', 16) if p.is_important else icon('star-outline', 16) }}</button>
     <button type="button" class="action-btn" title="Edytuj projekt"
-            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }}, '{{ p.scheduled_date or '' }}', '{{ p.planned_week or '' }}', {{ p.crm_deal_id or 'null' }}, {{ p.crm_deal_name|tojson|forceescape if p.crm_deal_name else 'null' }}, {{ p.context_id or 'null' }}, {{ p.notes|tojson|forceescape if p.notes else 'null' }})">{{ icon('edit', 16) }}</button>
+            onclick="gtdOpenEditTask({{ p.id }}, '{{ p.due_date or '' }}', {{ p.parent_id or 'null' }}, {{ p.title|tojson|forceescape }}, {{ p.crm_contact_id or 'null' }}, {{ p.crm_company_id or 'null' }}, '{{ p.scheduled_date or '' }}', '{{ p.planned_week or '' }}', {{ p.crm_deal_id or 'null' }}, {{ p.crm_deal_name|tojson|forceescape if p.crm_deal_name else 'null' }}, {{ p.context_id or 'null' }}, {{ p.notes|tojson|forceescape if p.notes else 'null' }}, {{ p.crm_mna_offer_id or 'null' }}, {{ p.crm_mna_offer_name|tojson|forceescape if p.crm_mna_offer_name else 'null' }})">{{ icon('edit', 16) }}</button>
     <button type="button" class="action-btn" title="Zakończ projekt" onclick="gtdCloseProject({{ p.id }})">{{ icon('check', 16) }}</button>
     <button type="button" class="action-btn" title="Archiwizuj projekt" onclick="gtdArchiveProject({{ p.id }})">{{ icon('archive', 16) }}</button>
     <button type="button" class="action-btn action-danger" title="Usuń projekt" onclick="gtdPermanentlyDeleteProject({{ p.id }})">{{ icon('trash', 16) }}</button>
@@ -106,6 +106,27 @@
 </tr>
 {% endmacro %}
 
+{% macro mna_offer_row(o, ctx_key) %}
+<tr>
+  <td>
+    <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń zadania"
+            onclick="gtdBoardToggleDeal('{{ ctx_key }}_mna_{{ o.offer_id }}')"><span id="gtdBoardDealChevron{{ ctx_key }}_mna_{{ o.offer_id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
+    <a href="{{ url_for('crm_mna_offers.view_mna_offer', offer_id=o.offer_id) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ o.offer_name }}</a>
+  </td>
+  <td style="min-width:180px">
+    {% if o.task_total %}
+    <div class="progress-wrap">
+      <div class="progress-bar {{ 'prog-green' if o.task_done == o.task_total else 'prog-yellow' }}"
+           style="width:{{ (o.task_done / o.task_total * 100)|round|int }}%"></div>
+    </div>
+    <span class="text-muted" style="font-size:.78rem">{{ o.task_done }}/{{ o.task_total }} zadań</span>
+    {% else %}
+    <span class="text-muted" style="font-size:.8rem">Brak zadań</span>
+    {% endif %}
+  </td>
+</tr>
+{% endmacro %}
+
 {% macro task_cells(t, today=none, week_start=none, day_actions=false, inline_actions=true) %}
   <td class="col-checkbox">
     <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-waiting' if t.status == 'waiting' else 'badge-red') }}"
@@ -119,13 +140,14 @@
       {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
       {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}
       {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_deal_name }}</a>{% endif %}
+      {% if t.crm_mna_offer_name %}<a href="{{ url_for('crm_mna_offers.view_mna_offer', offer_id=t.crm_mna_offer_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_mna_offer_name }}</a>{% endif %}
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
       {% if inline_actions %}
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }})">{{ icon('edit', 14) }}</button>
+              onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }}, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }})">{{ icon('edit', 14) }}</button>
       <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Nowe zadanie follow-up"
-              onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }})">{{ icon('reply', 14) }}</button>
+              onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, null, null, null, null, null, false, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }})">{{ icon('reply', 14) }}</button>
       {% endif %}
     </div>
   </td>
@@ -246,11 +268,12 @@
           {% if t.crm_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=t.crm_company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ t.crm_company_short_name or t.crm_company_name }}</a>{% endif %}
           {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}
           {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_deal_name }}</a>{% endif %}
+          {% if t.crm_mna_offer_name %}<a href="{{ url_for('crm_mna_offers.view_mna_offer', offer_id=t.crm_mna_offer_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_mna_offer_name }}</a>{% endif %}
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
-                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }})">{{ icon('edit', 14) }}</button>
+                  onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }}, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }})">{{ icon('edit', 14) }}</button>
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Nowe zadanie follow-up"
-                  onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">{{ icon('reply', 14) }}</button>
+                  onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, null, null, null, null, null, null, null, null, false, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }})">{{ icon('reply', 14) }}</button>
         </div>
         <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           {{ priority_stars(t) }}
@@ -281,9 +304,9 @@
 
 {% macro edit_followup_actions(t) %}
   <button type="button" class="action-btn" title="Edytuj termin"
-          onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }})">{{ icon('edit', 16) }}</button>
+          onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }}, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }})">{{ icon('edit', 16) }}</button>
   <button type="button" class="action-btn" title="Nowe zadanie follow-up"
-          onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }})">{{ icon('reply', 16) }}</button>
+          onclick="gtdOpenFollowUp({{ t.parent_id or 'null' }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, null, null, null, null, null, null, null, null, false, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }})">{{ icon('reply', 16) }}</button>
 {% endmacro %}
 
 {% macro task_extra_actions(t) %}

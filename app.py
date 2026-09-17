@@ -2322,6 +2322,15 @@ def api_crm_deals_search():
     return jsonify([{'id': d['id'], 'name': d['name']} for d in deals])
 
 
+@app.route('/api/crm/mna_offers/search')
+def api_crm_mna_offers_search():
+    from models.crm_mna_offer import get_all_mna_offers
+    q = request.args.get('q', '').strip()
+    offer_type = request.args.get('offer_type', '').strip()
+    offers = get_all_mna_offers(offer_type=offer_type or None, search=q or None)[:20]
+    return jsonify([{'id': o['id'], 'name': o['name']} for o in offers])
+
+
 @app.route('/api/crm/company-lookup')
 def api_crm_company_lookup():
     from services.company_lookup import lookup_by_krs, lookup_by_nip
@@ -2488,6 +2497,7 @@ from routes.auth import bp as auth_bp
 from routes.crm_companies import bp as crm_companies_bp
 from routes.crm_contacts import bp as crm_contacts_bp
 from routes.crm_deals import bp as crm_deals_bp
+from routes.crm_mna_offers import bp as crm_mna_offers_bp
 from routes.crm_plan import bp as crm_plan_bp
 from routes.crm_invoices import bp as crm_invoices_bp
 from routes.email_campaigns import bp as email_campaigns_bp
@@ -2504,6 +2514,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(crm_companies_bp)
 app.register_blueprint(crm_contacts_bp)
 app.register_blueprint(crm_deals_bp)
+app.register_blueprint(crm_mna_offers_bp)
 app.register_blueprint(crm_plan_bp)
 app.register_blueprint(crm_invoices_bp)
 app.register_blueprint(email_campaigns_bp)

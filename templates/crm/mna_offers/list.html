@@ -1,0 +1,73 @@
+{% extends 'crm/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ list_title }}{% endblock %}
+
+{% block crm_content %}
+<div class="rd-screen rd-mna-offers">
+<div class="page-header">
+  <h1>{{ list_title }}</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn {{ 'btn-primary' if offer_type == 'for_sale' else 'btn-outline' }}">Na sprzedaż</a>
+    <a href="{{ url_for('crm_mna_offers.list_wanted') }}" class="btn {{ 'btn-primary' if offer_type == 'wanted' else 'btn-outline' }}">Poszukiwane</a>
+    <a href="{{ new_url }}" class="btn btn-primary">+ Dodaj ofertę</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('crm_mna_offers.list_for_sale' if offer_type == 'for_sale' else 'crm_mna_offers.list_wanted') }}">
+  <input type="text" name="search" placeholder="Szukaj nazwy, opisu, branży…"
+         value="{{ filters.search }}" class="filter-input">
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('crm_mna_offers.list_for_sale' if offer_type == 'for_sale' else 'crm_mna_offers.list_wanted') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+<a href="{{ new_url }}" class="rd-fab" title="Dodaj ofertę">+</a>
+
+{% if offers %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        {{ m.sort_th('Nazwa', 'name', sort, direction, request.endpoint) }}
+        {{ m.sort_th('Branża', 'industry', sort, direction, request.endpoint) }}
+        {{ m.sort_th('Obroty', 'revenue', sort, direction, request.endpoint) }}
+        {{ m.sort_th('EBITDA', 'ebitda', sort, direction, request.endpoint) }}
+        <th>{{ 'Firma / kontakt (target)' if offer_type == 'for_sale' else 'Kto szuka' }}</th>
+        <th>Źródło</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in offers %}
+      <tr>
+        <td><a href="{{ url_for('crm_mna_offers.view_mna_offer', offer_id=o.id) }}">{{ icon('briefcase', 14) }} {{ o.name }}</a></td>
+        <td>{{ o.industry or '—' }}</td>
+        <td class="text-right nowrap">{{ o.revenue|pln if o.revenue is not none else '—' }}</td>
+        <td class="text-right nowrap">{{ o.ebitda|pln if o.ebitda is not none else '—' }}</td>
+        <td>
+          {% if o.target_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=o.target_company_id) }}">{{ o.target_company_short_name or o.target_company_name }}</a>
+          {% elif o.target_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=o.target_contact_id) }}">{{ o.target_contact_first_name }} {{ o.target_contact_last_name }}</a>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td>
+          {% if o.source_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=o.source_company_id) }}">{{ o.source_company_short_name or o.source_company_name }}</a>
+          {% elif o.source_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=o.source_contact_id) }}">{{ o.source_contact_first_name }} {{ o.source_contact_last_name }}</a>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('crm_mna_offers.edit_mna_offer', offer_id=o.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
+          <form method="post" action="{{ url_for('crm_mna_offers.delete_mna_offer_view', offer_id=o.id) }}"
+                class="inline-form" onsubmit="return confirm('Usunąć tę ofertę M&A?')">
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Brak ofert. {% if filters.search %}Spróbuj innego wyszukiwania.{% else %}Dodaj pierwszą ofertę M&A.{% endif %}</p>
+{% endif %}
+</div>
+{% endblock %}

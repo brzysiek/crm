@@ -1,6 +1,11 @@
 """Zdalny serwer MCP (Model Context Protocol) do sterowania CRM z aplikacji Claude
 (np. z telefonu, głosowo). Udostępnia operacje Create/Read/Update (bez Delete) na
-firmach, kontaktach, notatkach i zadaniach oraz na deal'ach.
+firmach, kontaktach, notatkach, zadaniach, deal'ach oraz ofertach M&A, a także
+archiwizowanie/przywracanie zadań i projektów (mają w bazie odwracalny soft-delete
+przez kolumnę deleted_at). Dealom i ofertom M&A celowo nie dodano tu archiwizacji —
+w bazie nie mają kolumny archived_at, a jedyna istniejąca operacja usuwania jest
+trwałym DELETE, więc nie ma czego wystawić jako bezpiecznej, odwracalnej akcji
+sterowanej głosem.
 
 Serwer działa w tym samym procesie co aplikacja Flask (patrz passenger_wsgi.py) —
 każde wywołanie narzędzia otwiera kontekst aplikacji Flask (app_context), żeby
@@ -24,6 +29,7 @@ from config import Config
 import models.crm_company as crm_company
 import models.crm_contact as crm_contact
 import models.crm_deal as crm_deal
+import models.crm_mna_offer as crm_mna_offer
 import models.crm_notes as crm_notes
 import models.task as task_model
 
@@ -280,6 +286,27 @@ def update_task(
         return task_model.get_task(task_id)
 
 
+@mcp.tool()
+def archive_task(task_id: int) -> dict:
+    """Archiwizuje zadanie lub projekt (soft-delete, odwracalne przez restore_task).
+    Działa zarówno na pojedynczych zadaniach, jak i na projektach — to ten sam obiekt w bazie."""
+    with flask_app.app_context():
+        if not task_model.get_task(task_id):
+            raise ValueError(f"Nie znaleziono zadania/projektu o id={task_id}.")
+        task_model.delete_task(task_id)
+        return task_model.get_task(task_id)
+
+
+@mcp.tool()
+def restore_task(task_id: int) -> dict:
+    """Przywraca wcześniej zarchiwizowane zadanie lub projekt."""
+    with flask_app.app_context():
+        if not task_model.get_task(task_id):
+            raise ValueError(f"Nie znaleziono zadania/projektu o id={task_id}.")
+        task_model.restore_task(task_id)
+        return task_model.get_task(task_id)
+
+
 # ── Deale ──────────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -350,6 +377,87 @@ def update_deal(
         data = {**current, **{k: v for k, v in updates.items() if v is not None}}
         crm_deal.update_deal(deal_id, data, _mcp_user_id())
         return crm_deal.get_deal_by_id(deal_id)
+
+
+# ── Oferty M&A ─────────────────────────────────────────────────────────────
+
+@mcp.tool()
+def find_mna_offers(
+    offer_type: Literal["for_sale", "wanted"] | None = None,
+    search: str | None = None,
+) -> list[dict]:
+    """Szuka ofert M&A (firmy na sprzedaż / firmy poszukiwane), opcjonalnie po
+    typie oferty i/lub tekście (nazwa, opis, branża)."""
+    with flask_app.app_context():
+        return crm_mna_offer.get_all_mna_offers(offer_type=offer_type, search=search)
+
+
+@mcp.tool()
+def get_mna_offer(offer_id: int) -> dict:
+    """Zwraca pełne dane oferty M&A po id."""
+    with flask_app.app_context():
+        row = crm_mna_offer.get_mna_offer_by_id(offer_id)
+        if not row:
+            raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
+        return row
+
+
+@mcp.tool()
+def create_mna_offer(
+    name: str,
+    offer_type: Literal["for_sale", "wanted"] = "for_sale",
+    description: str | None = None,
+    industry: str | None = None,
+    revenue: float | None = None,
+    ebitda: float | None = None,
+    target_company_id: int | None = None,
+    target_contact_id: int | None = None,
+    source_company_id: int | None = None,
+    source_contact_id: int | None = None,
+) -> dict:
+    """Tworzy nową ofertę M&A (firma na sprzedaż lub poszukiwana). Wymagana jest
+    tylko nazwa. target_* to firma/kontakt, której dotyczy oferta; source_* to
+    firma/kontakt będący źródłem oferty."""
+    with flask_app.app_context():
+        data = {
+            "name": name, "offer_type": offer_type, "description": description,
+            "industry": industry, "revenue": revenue, "ebitda": ebitda,
+            "target_company_id": target_company_id, "target_contact_id": target_contact_id,
+            "source_company_id": source_company_id, "source_contact_id": source_contact_id,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+        offer_id = crm_mna_offer.create_mna_offer(data, _mcp_user_id())
+        return crm_mna_offer.get_mna_offer_by_id(offer_id)
+
+
+@mcp.tool()
+def update_mna_offer(
+    offer_id: int,
+    name: str | None = None,
+    offer_type: Literal["for_sale", "wanted"] | None = None,
+    description: str | None = None,
+    industry: str | None = None,
+    revenue: float | None = None,
+    ebitda: float | None = None,
+    target_company_id: int | None = None,
+    target_contact_id: int | None = None,
+    source_company_id: int | None = None,
+    source_contact_id: int | None = None,
+) -> dict:
+    """Aktualizuje wybrane pola oferty M&A. Podaj tylko te pola, które mają się zmienić."""
+    with flask_app.app_context():
+        current = crm_mna_offer.get_mna_offer_by_id(offer_id)
+        if not current:
+            raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
+        updates = {
+            "name": name, "offer_type": offer_type, "description": description,
+            "industry": industry, "revenue": revenue, "ebitda": ebitda,
+            "target_company_id": target_company_id, "target_contact_id": target_contact_id,
+            "source_company_id": source_company_id, "source_contact_id": source_contact_id,
+        }
+        data = {**current, **{k: v for k, v in updates.items() if v is not None}}
+        crm_mna_offer.update_mna_offer(offer_id, data, _mcp_user_id())
+        return crm_mna_offer.get_mna_offer_by_id(offer_id)
 
 
 # ── Montowanie pod Passengerem (WSGI) ───────────────────────────────────────
