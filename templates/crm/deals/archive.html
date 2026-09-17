@@ -1,0 +1,49 @@
+{% extends 'crm/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Archiwum dealów{% endblock %}
+
+{% block crm_content %}
+<div class="rd-screen rd-deale">
+<div class="page-header">
+  <h1>Archiwum dealów</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('crm_deals.list_deals') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
+  </div>
+</div>
+
+{% if deals %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nazwa</th>
+        <th>Etap</th>
+        <th>Zarchiwizowano</th>
+        <th class="col-actions" style="width:100px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in deals %}
+      <tr>
+        <td style="text-decoration:line-through">{{ d.name }}</td>
+        <td><span class="badge {{ stage_badge_classes[d.stage] }}">{{ stage_labels[d.stage] }}</span></td>
+        <td>{{ d.deleted_at|ddmmyyyy }}</td>
+        <td class="col-actions nowrap">
+          <form method="post" action="{{ url_for('crm_deals.restore_deal_view', deal_id=d.id) }}" class="inline-form">
+            <button type="submit" class="action-btn" title="Przywróć">{{ icon('rotate-ccw', 16) }}</button>
+          </form>
+          <form method="post" action="{{ url_for('crm_deals.permanently_delete_deal_view', deal_id=d.id) }}"
+                class="inline-form" onsubmit="return confirm('Trwale usunąć ten deal? Tej operacji nie można cofnąć.')">
+            <button type="submit" class="action-btn action-danger" title="Usuń na zawsze">{{ icon('trash', 16) }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Brak zarchiwizowanych dealów.</p>
+{% endif %}
+</div>
+{% endblock %}

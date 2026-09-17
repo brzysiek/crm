@@ -38,7 +38,7 @@ def get_all_mna_offers(offer_type: str = None, sort: str = 'created_at', directi
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
 
     db = get_db()
-    sql = _SELECT_JOINS + "WHERE 1=1"
+    sql = _SELECT_JOINS + "WHERE o.deleted_at IS NULL"
     params = []
     if offer_type:
         sql += " AND o.offer_type = %s"
@@ -141,7 +141,36 @@ def update_mna_offer(offer_id: int, data: dict, user_id: int | None) -> None:
 
 
 def delete_mna_offer(offer_id: int, user_id: int | None) -> None:
+    """Miękkie usunięcie — oferta trafia do Archiwum, skąd można ją przywrócić lub skasować trwale."""
     offer = get_mna_offer_by_id(offer_id)
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_mna_offers SET deleted_at=NOW() WHERE id=%s", (offer_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if offer:
+        log_history('mna_offer', offer_id, user_id, 'archive', f"Zarchiwizowano ofertę M&A „{offer['name']}”.")
+
+
+def restore_mna_offer(offer_id: int, user_id: int | None) -> None:
+    offer = get_mna_offer_by_id(offer_id)
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_mna_offers SET deleted_at=NULL WHERE id=%s", (offer_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if offer:
+        log_history('mna_offer', offer_id, user_id, 'restore', f"Przywrócono ofertę M&A „{offer['name']}” z archiwum.")
+
+
+def permanently_delete_mna_offer(offer_id: int, user_id: int | None) -> None:
+    """Trwałe skasowanie — działa niezależnie od tego, czy oferta była wcześniej zarchiwizowana."""
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -150,5 +179,13 @@ def delete_mna_offer(offer_id: int, user_id: int | None) -> None:
     except Exception:
         db.rollback()
         raise
-    if offer:
-        log_history('mna_offer', offer_id, user_id, 'delete', f"Usunięto ofertę M&A „{offer['name']}”.")
+
+
+def get_deleted_mna_offers(limit: int = 300) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            _SELECT_JOINS + "WHERE o.deleted_at IS NOT NULL ORDER BY o.deleted_at DESC, o.id DESC LIMIT %s",
+            (limit,)
+        )
+        return cur.fetchall()

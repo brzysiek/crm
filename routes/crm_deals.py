@@ -5,7 +5,8 @@ from models.crm_contact import get_contact_by_id
 from models.crm_deal import (DEAL_TYPE_BADGE_CLASSES, DEAL_TYPE_LABELS, FORCED_PROBABILITY_BY_STAGE,
                               KANBAN_DEFAULT_HIDDEN_STAGES, PROBABILITY_CHOICES, STAGE_BADGE_CLASSES,
                               STAGE_LABELS, create_deal, delete_deal, get_all_deals, get_deal_by_id,
-                              probability_row_class, update_deal, update_deal_context, update_deal_probability,
+                              get_deleted_deals, permanently_delete_deal, probability_row_class,
+                              restore_deal, update_deal, update_deal_context, update_deal_probability,
                               update_deal_stage)
 from models.crm_deal_payment import (add_payment, delete_payment, get_payments_for_deal,
                                       maybe_auto_schedule_payment)
@@ -265,8 +266,30 @@ def api_set_context(deal_id):
 @bp.route('/<int:deal_id>/delete', methods=['POST'])
 def delete_deal_view(deal_id):
     delete_deal(deal_id, session.get('user_id'))
-    flash('Deal został usunięty.', 'success')
+    flash('Deal został zarchiwizowany.', 'success')
     return redirect(url_for('crm_deals.list_deals'))
+
+
+@bp.route('/archiwum')
+def archive():
+    return render_template('crm/deals/archive.html',
+        active_tab='deals', deals=get_deleted_deals(),
+        stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+    )
+
+
+@bp.route('/<int:deal_id>/restore', methods=['POST'])
+def restore_deal_view(deal_id):
+    restore_deal(deal_id, session.get('user_id'))
+    flash('Deal został przywrócony.', 'success')
+    return redirect(url_for('crm_deals.archive'))
+
+
+@bp.route('/<int:deal_id>/permanent-delete', methods=['POST'])
+def permanently_delete_deal_view(deal_id):
+    permanently_delete_deal(deal_id, session.get('user_id'))
+    flash('Deal został trwale usunięty.', 'success')
+    return redirect(url_for('crm_deals.archive'))
 
 
 @bp.route('/<int:deal_id>/notes', methods=['POST'])

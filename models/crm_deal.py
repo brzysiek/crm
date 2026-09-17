@@ -72,7 +72,7 @@ def get_all_deals(sort: str = 'created_at', direction: str = 'desc',
            "FROM crm_deals d "
            "LEFT JOIN crm_companies co ON co.id = d.company_id "
            "LEFT JOIN crm_contacts ct ON ct.id = d.contact_id "
-           "LEFT JOIN gtd_contexts gc ON gc.id = d.context_id WHERE 1=1")
+           "LEFT JOIN gtd_contexts gc ON gc.id = d.context_id WHERE d.deleted_at IS NULL")
     params = []
     if stage:
         stages = [stage] if isinstance(stage, str) else list(stage)
@@ -305,7 +305,36 @@ def update_deal_context(deal_id: int, context_id: int | None, user_id: int | Non
 
 
 def delete_deal(deal_id: int, user_id: int | None) -> None:
+    """Miękkie usunięcie — deal trafia do Archiwum, skąd można go przywrócić lub skasować trwale."""
     deal = get_deal_by_id(deal_id)
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_deals SET deleted_at=NOW() WHERE id=%s", (deal_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if deal:
+        log_history('deal', deal_id, user_id, 'archive', f"Zarchiwizowano deal „{deal['name']}”.")
+
+
+def restore_deal(deal_id: int, user_id: int | None) -> None:
+    deal = get_deal_by_id(deal_id)
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_deals SET deleted_at=NULL WHERE id=%s", (deal_id,))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if deal:
+        log_history('deal', deal_id, user_id, 'restore', f"Przywrócono deal „{deal['name']}” z archiwum.")
+
+
+def permanently_delete_deal(deal_id: int, user_id: int | None) -> None:
+    """Trwałe skasowanie — działa niezależnie od tego, czy deal był wcześniej zarchiwizowany."""
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -314,5 +343,19 @@ def delete_deal(deal_id: int, user_id: int | None) -> None:
     except Exception:
         db.rollback()
         raise
-    if deal:
-        log_history('deal', deal_id, user_id, 'delete', f"Usunięto deal „{deal['name']}”.")
+
+
+def get_deleted_deals(limit: int = 300) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT d.*, co.name AS company_name, co.short_name AS company_short_name,
+                      ct.first_name AS contact_first_name, ct.last_name AS contact_last_name
+               FROM crm_deals d
+               LEFT JOIN crm_companies co ON co.id = d.company_id
+               LEFT JOIN crm_contacts ct ON ct.id = d.contact_id
+               WHERE d.deleted_at IS NOT NULL
+               ORDER BY d.deleted_at DESC, d.id DESC LIMIT %s""",
+            (limit,)
+        )
+        return cur.fetchall()

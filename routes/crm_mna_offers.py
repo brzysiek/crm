@@ -4,7 +4,8 @@ from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
 from models.crm_mna_offer import (FIELD_LABELS, OFFER_TYPE_BADGE_CLASSES, OFFER_TYPE_LABELS,
                                    create_mna_offer, delete_mna_offer, get_all_mna_offers,
-                                   get_mna_offer_by_id, update_mna_offer)
+                                   get_deleted_mna_offers, get_mna_offer_by_id,
+                                   permanently_delete_mna_offer, restore_mna_offer, update_mna_offer)
 from models.crm_notes import HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note, get_history, get_notes
 from models.user import get_active_users
 from routes.crm_contacts import build_gtd_items
@@ -169,10 +170,32 @@ def view_mna_offer(offer_id):
 def delete_mna_offer_view(offer_id):
     offer = get_mna_offer_by_id(offer_id)
     delete_mna_offer(offer_id, session.get('user_id'))
-    flash('Oferta M&A została usunięta.', 'success')
+    flash('Oferta M&A została zarchiwizowana.', 'success')
     if offer and offer.get('offer_type') == 'wanted':
         return redirect(url_for('crm_mna_offers.list_wanted'))
     return redirect(url_for('crm_mna_offers.list_for_sale'))
+
+
+@bp.route('/archiwum')
+def archive():
+    return render_template('crm/mna_offers/archive.html',
+        active_tab='mna_offers', offers=get_deleted_mna_offers(),
+        offer_type_labels=OFFER_TYPE_LABELS, offer_type_badge_classes=OFFER_TYPE_BADGE_CLASSES,
+    )
+
+
+@bp.route('/<int:offer_id>/restore', methods=['POST'])
+def restore_mna_offer_view(offer_id):
+    restore_mna_offer(offer_id, session.get('user_id'))
+    flash('Oferta M&A została przywrócona.', 'success')
+    return redirect(url_for('crm_mna_offers.archive'))
+
+
+@bp.route('/<int:offer_id>/permanent-delete', methods=['POST'])
+def permanently_delete_mna_offer_view(offer_id):
+    permanently_delete_mna_offer(offer_id, session.get('user_id'))
+    flash('Oferta M&A została trwale usunięta.', 'success')
+    return redirect(url_for('crm_mna_offers.archive'))
 
 
 @bp.route('/<int:offer_id>/notes', methods=['POST'])

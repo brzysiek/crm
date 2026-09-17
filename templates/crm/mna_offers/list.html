@@ -10,6 +10,7 @@
   <div class="header-actions">
     <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn {{ 'btn-primary' if offer_type == 'for_sale' else 'btn-outline' }}">Na sprzedaż</a>
     <a href="{{ url_for('crm_mna_offers.list_wanted') }}" class="btn {{ 'btn-primary' if offer_type == 'wanted' else 'btn-outline' }}">Poszukiwane</a>
+    <a href="{{ url_for('crm_mna_offers.archive') }}" class="btn btn-outline">{{ icon('archive', 14) }} Archiwum</a>
     <a href="{{ new_url }}" class="btn btn-primary">+ Dodaj ofertę</a>
   </div>
 </div>
@@ -57,8 +58,8 @@
         <td class="col-actions nowrap">
           <a href="{{ url_for('crm_mna_offers.edit_mna_offer', offer_id=o.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
           <form method="post" action="{{ url_for('crm_mna_offers.delete_mna_offer_view', offer_id=o.id) }}"
-                class="inline-form" onsubmit="return confirm('Usunąć tę ofertę M&A?')">
-            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('x', 16) }}</button>
+                class="inline-form" onsubmit="return confirm('Zarchiwizować tę ofertę M&A?')">
+            <button type="submit" class="action-btn action-danger" title="Archiwizuj">{{ icon('archive', 16) }}</button>
           </form>
         </td>
       </tr>
