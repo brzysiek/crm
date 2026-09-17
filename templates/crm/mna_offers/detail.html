@@ -41,6 +41,8 @@
       <dl class="inv-dl">
         <dt>Typ oferty</dt>
         <dd><span class="badge {{ offer_type_badge_classes[offer.offer_type] }}">{{ offer_type_labels[offer.offer_type] }}</span></dd>
+        <dt>Data dodania</dt>
+        <dd>{{ offer.added_date|ddmmyyyy if offer.added_date else '—' }}</dd>
         <dt>Branża</dt>
         <dd>{{ offer.industry or '—' }}</dd>
         <dt>Obroty</dt>

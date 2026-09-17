@@ -14,6 +14,7 @@ OFFER_TYPE_BADGE_CLASSES = {
 FIELD_LABELS = {
     'name': 'Nazwa', 'description': 'Opis', 'industry': 'Branża',
     'revenue': 'Obroty', 'ebitda': 'EBITDA', 'offer_type': 'Typ oferty',
+    'added_date': 'Data dodania',
 }
 
 _SELECT_JOINS = (
@@ -84,13 +85,13 @@ def create_mna_offer(data: dict, user_id: int | None) -> int:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_mna_offers
-                   (name, description, industry, revenue, ebitda, offer_type,
+                   (name, description, industry, revenue, ebitda, offer_type, added_date,
                     target_contact_id, target_company_id, source_contact_id, source_company_id, owner_user_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     data['name'], data.get('description') or None, data.get('industry') or None,
                     data.get('revenue') or None, data.get('ebitda') or None,
-                    data.get('offer_type', 'for_sale'),
+                    data.get('offer_type', 'for_sale'), data.get('added_date') or None,
                     data.get('target_contact_id') or None, data.get('target_company_id') or None,
                     data.get('source_contact_id') or None, data.get('source_company_id') or None,
                     data.get('owner_user_id') or None,
@@ -112,14 +113,14 @@ def update_mna_offer(offer_id: int, data: dict, user_id: int | None) -> None:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE crm_mna_offers SET
-                   name=%s, description=%s, industry=%s, revenue=%s, ebitda=%s, offer_type=%s,
+                   name=%s, description=%s, industry=%s, revenue=%s, ebitda=%s, offer_type=%s, added_date=%s,
                    target_contact_id=%s, target_company_id=%s, source_contact_id=%s, source_company_id=%s,
                    owner_user_id=%s
                    WHERE id=%s""",
                 (
                     data['name'], data.get('description') or None, data.get('industry') or None,
                     data.get('revenue') or None, data.get('ebitda') or None,
-                    data.get('offer_type', 'for_sale'),
+                    data.get('offer_type', 'for_sale'), data.get('added_date') or None,
                     data.get('target_contact_id') or None, data.get('target_company_id') or None,
                     data.get('source_contact_id') or None, data.get('source_company_id') or None,
                     data.get('owner_user_id') or None,

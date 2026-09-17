@@ -1,3 +1,5 @@
+from datetime import date
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from models.crm_company import get_company_by_id
@@ -29,6 +31,7 @@ def _parse_form(form):
         'revenue': revenue,
         'ebitda': ebitda,
         'offer_type': form.get('offer_type', 'for_sale'),
+        'added_date': form.get('added_date', '').strip() or None,
         'target_contact_id': form.get('target_contact_id', type=int),
         'target_company_id': form.get('target_company_id', type=int),
         'source_contact_id': form.get('source_contact_id', type=int),
@@ -92,12 +95,14 @@ def new_mna_offer():
                 prefill_source_company=None, prefill_source_contact=None,
                 action=url_for('crm_mna_offers.new_mna_offer'), title='Nowa oferta M&A')
 
+        if not data.get('added_date'):
+            data['added_date'] = date.today().isoformat()
         offer_id = create_mna_offer(data, session.get('user_id'))
         flash('Oferta M&A została zapisana.', 'success')
         return redirect(url_for('crm_mna_offers.view_mna_offer', offer_id=offer_id))
 
     return render_template('crm/mna_offers/form.html',
-        active_tab='mna_offers', offer={'offer_type': offer_type}, owners=owners,
+        active_tab='mna_offers', offer={'offer_type': offer_type, 'added_date': date.today().isoformat()}, owners=owners,
         offer_type_labels=OFFER_TYPE_LABELS,
         prefill_target_company=None, prefill_target_contact=None,
         prefill_source_company=None, prefill_source_contact=None,
