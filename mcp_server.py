@@ -1,11 +1,8 @@
 """Zdalny serwer MCP (Model Context Protocol) do sterowania CRM z aplikacji Claude
-(np. z telefonu, głosowo). Udostępnia operacje Create/Read/Update (bez Delete) na
-firmach, kontaktach, notatkach, zadaniach, deal'ach oraz ofertach M&A, a także
-archiwizowanie/przywracanie zadań i projektów (mają w bazie odwracalny soft-delete
-przez kolumnę deleted_at). Dealom i ofertom M&A celowo nie dodano tu archiwizacji —
-w bazie nie mają kolumny archived_at, a jedyna istniejąca operacja usuwania jest
-trwałym DELETE, więc nie ma czego wystawić jako bezpiecznej, odwracalnej akcji
-sterowanej głosem.
+(np. z telefonu, głosowo). Udostępnia operacje Create/Read/Update (bez trwałego
+Delete) na firmach, kontaktach, notatkach, zadaniach, deal'ach oraz ofertach M&A,
+a także archiwizowanie/przywracanie zadań, projektów, deali i ofert M&A — wszystkie
+cztery mają w bazie odwracalny soft-delete przez kolumnę deleted_at.
 
 Serwer działa w tym samym procesie co aplikacja Flask (patrz passenger_wsgi.py) —
 każde wywołanie narzędzia otwiera kontekst aplikacji Flask (app_context), żeby
@@ -379,6 +376,26 @@ def update_deal(
         return crm_deal.get_deal_by_id(deal_id)
 
 
+@mcp.tool()
+def archive_deal(deal_id: int) -> dict:
+    """Archiwizuje deal (soft-delete, odwracalne przez restore_deal)."""
+    with flask_app.app_context():
+        if not crm_deal.get_deal_by_id(deal_id):
+            raise ValueError(f"Nie znaleziono deala o id={deal_id}.")
+        crm_deal.delete_deal(deal_id, _mcp_user_id())
+        return crm_deal.get_deal_by_id(deal_id)
+
+
+@mcp.tool()
+def restore_deal(deal_id: int) -> dict:
+    """Przywraca wcześniej zarchiwizowany deal."""
+    with flask_app.app_context():
+        if not crm_deal.get_deal_by_id(deal_id):
+            raise ValueError(f"Nie znaleziono deala o id={deal_id}.")
+        crm_deal.restore_deal(deal_id, _mcp_user_id())
+        return crm_deal.get_deal_by_id(deal_id)
+
+
 # ── Oferty M&A ─────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -457,6 +474,26 @@ def update_mna_offer(
         }
         data = {**current, **{k: v for k, v in updates.items() if v is not None}}
         crm_mna_offer.update_mna_offer(offer_id, data, _mcp_user_id())
+        return crm_mna_offer.get_mna_offer_by_id(offer_id)
+
+
+@mcp.tool()
+def archive_mna_offer(offer_id: int) -> dict:
+    """Archiwizuje ofertę M&A (soft-delete, odwracalne przez restore_mna_offer)."""
+    with flask_app.app_context():
+        if not crm_mna_offer.get_mna_offer_by_id(offer_id):
+            raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
+        crm_mna_offer.delete_mna_offer(offer_id, _mcp_user_id())
+        return crm_mna_offer.get_mna_offer_by_id(offer_id)
+
+
+@mcp.tool()
+def restore_mna_offer(offer_id: int) -> dict:
+    """Przywraca wcześniej zarchiwizowaną ofertę M&A."""
+    with flask_app.app_context():
+        if not crm_mna_offer.get_mna_offer_by_id(offer_id):
+            raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
+        crm_mna_offer.restore_mna_offer(offer_id, _mcp_user_id())
         return crm_mna_offer.get_mna_offer_by_id(offer_id)
 
 
