@@ -335,7 +335,7 @@ def web_manifest():
         'name':             name,
         'short_name':       name,
         'start_url':        url_for('gtd.day'),
-        'scope':            url_for('agent.index'),
+        'scope':            '/',
         'display':          'standalone',
         'background_color': '#ffffff',
         'theme_color':       '#3b82f6',
@@ -2497,7 +2497,6 @@ def api_set_user_setting(key):
     return jsonify({'ok': True})
 
 
-from routes.agent import bp as agent_bp
 from routes.auth import bp as auth_bp
 from routes.crm_companies import bp as crm_companies_bp
 from routes.crm_contacts import bp as crm_contacts_bp
@@ -2514,7 +2513,6 @@ from routes.settings import bp as settings_bp
 from routes.users import bp as users_bp
 from routes.gtd import bp as gtd_bp
 
-app.register_blueprint(agent_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(crm_companies_bp)
 app.register_blueprint(crm_contacts_bp)
