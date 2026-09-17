@@ -12,7 +12,7 @@ from models.crm_notes import HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, d
 from models.user import get_active_users
 from routes.crm_contacts import build_gtd_items
 
-bp = Blueprint('crm_mna_offers', __name__, url_prefix='/crm/mna-offers')
+bp = Blueprint('mna_offers', __name__, url_prefix='/mna')
 
 
 def _parse_form(form):
@@ -53,12 +53,12 @@ def list_for_sale():
     direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
     offers = get_all_mna_offers(offer_type='for_sale', sort=sort, direction=direction, search=search or None)
-    return render_template('crm/mna_offers/list.html',
+    return render_template('mna_offers/list.html',
         active_tab='mna_offers_for_sale', offers=offers, offer_type='for_sale',
         offer_type_labels=OFFER_TYPE_LABELS, offer_type_badge_classes=OFFER_TYPE_BADGE_CLASSES,
         sort=sort, direction=direction, filters={'search': search},
         list_title='Oferty M&A — firmy na sprzedaż',
-        new_url=url_for('crm_mna_offers.new_mna_offer', offer_type='for_sale'),
+        new_url=url_for('mna_offers.new_mna_offer', offer_type='for_sale'),
     )
 
 
@@ -68,12 +68,12 @@ def list_wanted():
     direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
     offers = get_all_mna_offers(offer_type='wanted', sort=sort, direction=direction, search=search or None)
-    return render_template('crm/mna_offers/list.html',
+    return render_template('mna_offers/list.html',
         active_tab='mna_offers_wanted', offers=offers, offer_type='wanted',
         offer_type_labels=OFFER_TYPE_LABELS, offer_type_badge_classes=OFFER_TYPE_BADGE_CLASSES,
         sort=sort, direction=direction, filters={'search': search},
         list_title='Oferty M&A — firmy poszukiwane',
-        new_url=url_for('crm_mna_offers.new_mna_offer', offer_type='wanted'),
+        new_url=url_for('mna_offers.new_mna_offer', offer_type='wanted'),
     )
 
 
@@ -88,25 +88,25 @@ def new_mna_offer():
         if errors:
             for e in errors:
                 flash(e, 'error')
-            return render_template('crm/mna_offers/form.html',
+            return render_template('mna_offers/form.html',
                 active_tab='mna_offers', offer=request.form, owners=owners,
                 offer_type_labels=OFFER_TYPE_LABELS,
                 prefill_target_company=None, prefill_target_contact=None,
                 prefill_source_company=None, prefill_source_contact=None,
-                action=url_for('crm_mna_offers.new_mna_offer'), title='Nowa oferta M&A')
+                action=url_for('mna_offers.new_mna_offer'), title='Nowa oferta M&A')
 
         if not data.get('added_date'):
             data['added_date'] = date.today().isoformat()
         offer_id = create_mna_offer(data, session.get('user_id'))
         flash('Oferta M&A została zapisana.', 'success')
-        return redirect(url_for('crm_mna_offers.view_mna_offer', offer_id=offer_id))
+        return redirect(url_for('mna_offers.view_mna_offer', offer_id=offer_id))
 
-    return render_template('crm/mna_offers/form.html',
+    return render_template('mna_offers/form.html',
         active_tab='mna_offers', offer={'offer_type': offer_type, 'added_date': date.today().isoformat()}, owners=owners,
         offer_type_labels=OFFER_TYPE_LABELS,
         prefill_target_company=None, prefill_target_contact=None,
         prefill_source_company=None, prefill_source_contact=None,
-        action=url_for('crm_mna_offers.new_mna_offer'), title='Nowa oferta M&A')
+        action=url_for('mna_offers.new_mna_offer'), title='Nowa oferta M&A')
 
 
 @bp.route('/<int:offer_id>/edit', methods=['GET', 'POST'])
@@ -114,7 +114,7 @@ def edit_mna_offer(offer_id):
     offer = get_mna_offer_by_id(offer_id)
     if not offer:
         flash('Oferta M&A nie istnieje.', 'error')
-        return redirect(url_for('crm_mna_offers.list_for_sale'))
+        return redirect(url_for('mna_offers.list_for_sale'))
 
     owners = get_active_users()
 
@@ -124,27 +124,27 @@ def edit_mna_offer(offer_id):
         if errors:
             for e in errors:
                 flash(e, 'error')
-            return render_template('crm/mna_offers/form.html',
+            return render_template('mna_offers/form.html',
                 active_tab='mna_offers', offer=request.form, owners=owners,
                 offer_type_labels=OFFER_TYPE_LABELS,
                 prefill_target_company=None, prefill_target_contact=None,
                 prefill_source_company=None, prefill_source_contact=None,
-                action=url_for('crm_mna_offers.edit_mna_offer', offer_id=offer_id), title='Edytuj ofertę M&A')
+                action=url_for('mna_offers.edit_mna_offer', offer_id=offer_id), title='Edytuj ofertę M&A')
 
         update_mna_offer(offer_id, data, session.get('user_id'))
         flash('Oferta M&A została zaktualizowana.', 'success')
-        return redirect(url_for('crm_mna_offers.view_mna_offer', offer_id=offer_id))
+        return redirect(url_for('mna_offers.view_mna_offer', offer_id=offer_id))
 
     prefill_target_company = get_company_by_id(offer['target_company_id']) if offer.get('target_company_id') else None
     prefill_target_contact = get_contact_by_id(offer['target_contact_id']) if offer.get('target_contact_id') else None
     prefill_source_company = get_company_by_id(offer['source_company_id']) if offer.get('source_company_id') else None
     prefill_source_contact = get_contact_by_id(offer['source_contact_id']) if offer.get('source_contact_id') else None
-    return render_template('crm/mna_offers/form.html',
+    return render_template('mna_offers/form.html',
         active_tab='mna_offers', offer=offer, owners=owners,
         offer_type_labels=OFFER_TYPE_LABELS,
         prefill_target_company=prefill_target_company, prefill_target_contact=prefill_target_contact,
         prefill_source_company=prefill_source_company, prefill_source_contact=prefill_source_contact,
-        action=url_for('crm_mna_offers.edit_mna_offer', offer_id=offer_id), title='Edytuj ofertę M&A')
+        action=url_for('mna_offers.edit_mna_offer', offer_id=offer_id), title='Edytuj ofertę M&A')
 
 
 @bp.route('/<int:offer_id>')
@@ -152,18 +152,18 @@ def view_mna_offer(offer_id):
     offer = get_mna_offer_by_id(offer_id)
     if not offer:
         flash('Oferta M&A nie istnieje.', 'error')
-        return redirect(url_for('crm_mna_offers.list_for_sale'))
+        return redirect(url_for('mna_offers.list_for_sale'))
 
     notes = get_notes('mna_offer', offer_id)
     for n in notes:
-        n['delete_url'] = url_for('crm_mna_offers.delete_note_view', offer_id=offer_id, note_id=n['id'])
+        n['delete_url'] = url_for('mna_offers.delete_note_view', offer_id=offer_id, note_id=n['id'])
 
-    return render_template('crm/mna_offers/detail.html',
+    return render_template('mna_offers/detail.html',
         active_tab='mna_offers', offer=offer,
         offer_type_labels=OFFER_TYPE_LABELS, offer_type_badge_classes=OFFER_TYPE_BADGE_CLASSES,
         notes=notes,
         history=get_history('mna_offer', offer_id),
-        add_note_url=url_for('crm_mna_offers.add_note_view', offer_id=offer_id),
+        add_note_url=url_for('mna_offers.add_note_view', offer_id=offer_id),
         entity_type='mna_offer', entity_id=offer_id,
         note_type_labels=NOTE_TYPE_LABELS,
         history_badge_labels=HISTORY_BADGE_LABELS,
@@ -177,13 +177,13 @@ def delete_mna_offer_view(offer_id):
     delete_mna_offer(offer_id, session.get('user_id'))
     flash('Oferta M&A została zarchiwizowana.', 'success')
     if offer and offer.get('offer_type') == 'wanted':
-        return redirect(url_for('crm_mna_offers.list_wanted'))
-    return redirect(url_for('crm_mna_offers.list_for_sale'))
+        return redirect(url_for('mna_offers.list_wanted'))
+    return redirect(url_for('mna_offers.list_for_sale'))
 
 
 @bp.route('/archiwum')
 def archive():
-    return render_template('crm/mna_offers/archive.html',
+    return render_template('mna_offers/archive.html',
         active_tab='mna_offers', offers=get_deleted_mna_offers(),
         offer_type_labels=OFFER_TYPE_LABELS, offer_type_badge_classes=OFFER_TYPE_BADGE_CLASSES,
     )
@@ -193,14 +193,14 @@ def archive():
 def restore_mna_offer_view(offer_id):
     restore_mna_offer(offer_id, session.get('user_id'))
     flash('Oferta M&A została przywrócona.', 'success')
-    return redirect(url_for('crm_mna_offers.archive'))
+    return redirect(url_for('mna_offers.archive'))
 
 
 @bp.route('/<int:offer_id>/permanent-delete', methods=['POST'])
 def permanently_delete_mna_offer_view(offer_id):
     permanently_delete_mna_offer(offer_id, session.get('user_id'))
     flash('Oferta M&A została trwale usunięta.', 'success')
-    return redirect(url_for('crm_mna_offers.archive'))
+    return redirect(url_for('mna_offers.archive'))
 
 
 @bp.route('/<int:offer_id>/notes', methods=['POST'])
@@ -210,10 +210,10 @@ def add_note_view(offer_id):
     if body:
         add_note('mna_offer', offer_id, session.get('user_id'), body, note_type=note_type)
         flash('Notatka została dodana.', 'success')
-    return redirect(url_for('crm_mna_offers.view_mna_offer', offer_id=offer_id))
+    return redirect(url_for('mna_offers.view_mna_offer', offer_id=offer_id))
 
 
 @bp.route('/<int:offer_id>/notes/<int:note_id>/delete', methods=['POST'])
 def delete_note_view(offer_id, note_id):
     delete_note(note_id)
-    return redirect(url_for('crm_mna_offers.view_mna_offer', offer_id=offer_id))
+    return redirect(url_for('mna_offers.view_mna_offer', offer_id=offer_id))

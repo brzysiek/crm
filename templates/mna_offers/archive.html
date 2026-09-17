@@ -1,13 +1,13 @@
-{% extends 'crm/_layout.html' %}
+{% extends 'mna_offers/_layout.html' %}
 {% from '_icons.html' import icon %}
 {% block title %}Archiwum ofert M&A{% endblock %}
 
-{% block crm_content %}
+{% block mna_content %}
 <div class="rd-screen rd-mna-offers">
 <div class="page-header">
   <h1>Archiwum ofert M&A</h1>
   <div class="header-actions">
-    <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
+    <a href="{{ url_for('mna_offers.list_for_sale') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
   </div>
 </div>
 
@@ -29,10 +29,10 @@
         <td><span class="badge {{ offer_type_badge_classes[o.offer_type] }}">{{ offer_type_labels[o.offer_type] }}</span></td>
         <td>{{ o.deleted_at|ddmmyyyy }}</td>
         <td class="col-actions nowrap">
-          <form method="post" action="{{ url_for('crm_mna_offers.restore_mna_offer_view', offer_id=o.id) }}" class="inline-form">
+          <form method="post" action="{{ url_for('mna_offers.restore_mna_offer_view', offer_id=o.id) }}" class="inline-form">
             <button type="submit" class="action-btn" title="Przywróć">{{ icon('rotate-ccw', 16) }}</button>
           </form>
-          <form method="post" action="{{ url_for('crm_mna_offers.permanently_delete_mna_offer_view', offer_id=o.id) }}"
+          <form method="post" action="{{ url_for('mna_offers.permanently_delete_mna_offer_view', offer_id=o.id) }}"
                 class="inline-form" onsubmit="return confirm('Trwale usunąć tę ofertę M&A? Tej operacji nie można cofnąć.')">
             <button type="submit" class="action-btn action-danger" title="Usuń na zawsze">{{ icon('trash', 16) }}</button>
           </form>

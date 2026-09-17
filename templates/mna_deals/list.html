@@ -1,0 +1,69 @@
+{% extends 'mna_offers/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
+{% block title %}Deale M&A{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-mna-deals">
+<div class="page-header">
+  <h1>Deale M&A</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('mna_deals.new_deal') }}" class="btn btn-primary">+ Nowy deal</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('mna_deals.list_deals') }}">
+  <input type="text" name="search" placeholder="Szukaj nazwy, opisu…"
+         value="{{ filters.search }}" class="filter-input">
+  <select name="stage" class="filter-select">
+    <option value="">Wszystkie etapy</option>
+    {% for s in stage_order %}
+      <option value="{{ s }}" {{ 'selected' if filters.stage == s }}>{{ stage_labels[s] }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('mna_deals.list_deals') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+<a href="{{ url_for('mna_deals.new_deal') }}" class="rd-fab" title="Nowy deal">+</a>
+
+{% if deals %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        {{ m.sort_th('Nazwa', 'name', sort, direction, request.endpoint) }}
+        {{ m.sort_th('Etap', 'stage', sort, direction, request.endpoint) }}
+        {{ m.sort_th('Kwota', 'amount', sort, direction, request.endpoint) }}
+        <th>Long lista</th>
+        <th>Short lista</th>
+        <th>Oferta M&A</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in deals %}
+      <tr>
+        <td><a href="{{ url_for('mna_deals.view_deal', deal_id=d.id) }}">{{ icon('briefcase', 14) }} {{ d.name }}</a></td>
+        <td><span class="badge {{ stage_badge_classes[d.stage] }}">{{ stage_labels[d.stage] }}</span></td>
+        <td class="text-right nowrap">{{ d.amount|pln if d.amount is not none else '—' }}</td>
+        <td>{{ d.long_list_count }}</td>
+        <td>{{ d.short_list_count }}</td>
+        <td>{% if d.offer_id %}<a href="{{ url_for('mna_offers.view_mna_offer', offer_id=d.offer_id) }}">{{ d.offer_name }}</a>{% else %}—{% endif %}</td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('mna_deals.edit_deal', deal_id=d.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
+          <form method="post" action="{{ url_for('mna_deals.delete_deal_view', deal_id=d.id) }}"
+                class="inline-form" onsubmit="return confirm('Zarchiwizować ten deal?')">
+            <button type="submit" class="action-btn action-danger" title="Archiwizuj">{{ icon('archive', 16) }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Brak deali. {% if filters.search or filters.stage %}Spróbuj innego wyszukiwania.{% else %}Dodaj pierwszy deal M&A.{% endif %}</p>
+{% endif %}
+</div>
+{% endblock %}

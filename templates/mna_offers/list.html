@@ -1,25 +1,25 @@
-{% extends 'crm/_layout.html' %}
+{% extends 'mna_offers/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
 {% from '_icons.html' import icon %}
 {% block title %}{{ list_title }}{% endblock %}
 
-{% block crm_content %}
+{% block mna_content %}
 <div class="rd-screen rd-mna-offers">
 <div class="page-header">
   <h1>{{ list_title }}</h1>
   <div class="header-actions">
-    <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn {{ 'btn-primary' if offer_type == 'for_sale' else 'btn-outline' }}">Na sprzedaż</a>
-    <a href="{{ url_for('crm_mna_offers.list_wanted') }}" class="btn {{ 'btn-primary' if offer_type == 'wanted' else 'btn-outline' }}">Poszukiwane</a>
-    <a href="{{ url_for('crm_mna_offers.archive') }}" class="btn btn-outline">{{ icon('archive', 14) }} Archiwum</a>
+    <a href="{{ url_for('mna_offers.list_for_sale') }}" class="btn {{ 'btn-primary' if offer_type == 'for_sale' else 'btn-outline' }}">Na sprzedaż</a>
+    <a href="{{ url_for('mna_offers.list_wanted') }}" class="btn {{ 'btn-primary' if offer_type == 'wanted' else 'btn-outline' }}">Poszukiwane</a>
+    <a href="{{ url_for('mna_offers.archive') }}" class="btn btn-outline">{{ icon('archive', 14) }} Archiwum</a>
     <a href="{{ new_url }}" class="btn btn-primary">+ Dodaj ofertę</a>
   </div>
 </div>
 
-<form class="filter-bar" method="get" action="{{ url_for('crm_mna_offers.list_for_sale' if offer_type == 'for_sale' else 'crm_mna_offers.list_wanted') }}">
+<form class="filter-bar" method="get" action="{{ url_for('mna_offers.list_for_sale' if offer_type == 'for_sale' else 'mna_offers.list_wanted') }}">
   <input type="text" name="search" placeholder="Szukaj nazwy, opisu, branży…"
          value="{{ filters.search }}" class="filter-input">
   <button type="submit" class="btn btn-outline">Filtruj</button>
-  <a href="{{ url_for('crm_mna_offers.list_for_sale' if offer_type == 'for_sale' else 'crm_mna_offers.list_wanted') }}" class="btn btn-ghost">Wyczyść</a>
+  <a href="{{ url_for('mna_offers.list_for_sale' if offer_type == 'for_sale' else 'mna_offers.list_wanted') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
 
 <a href="{{ new_url }}" class="rd-fab" title="Dodaj ofertę">+</a>
@@ -41,7 +41,7 @@
     <tbody>
       {% for o in offers %}
       <tr>
-        <td><a href="{{ url_for('crm_mna_offers.view_mna_offer', offer_id=o.id) }}">{{ icon('briefcase', 14) }} {{ o.name }}</a></td>
+        <td><a href="{{ url_for('mna_offers.view_mna_offer', offer_id=o.id) }}">{{ icon('briefcase', 14) }} {{ o.name }}</a></td>
         <td>{{ o.industry or '—' }}</td>
         <td class="text-right nowrap">{{ o.revenue|pln if o.revenue is not none else '—' }}</td>
         <td class="text-right nowrap">{{ o.ebitda|pln if o.ebitda is not none else '—' }}</td>
@@ -56,8 +56,8 @@
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td class="col-actions nowrap">
-          <a href="{{ url_for('crm_mna_offers.edit_mna_offer', offer_id=o.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
-          <form method="post" action="{{ url_for('crm_mna_offers.delete_mna_offer_view', offer_id=o.id) }}"
+          <a href="{{ url_for('mna_offers.edit_mna_offer', offer_id=o.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
+          <form method="post" action="{{ url_for('mna_offers.delete_mna_offer_view', offer_id=o.id) }}"
                 class="inline-form" onsubmit="return confirm('Zarchiwizować tę ofertę M&A?')">
             <button type="submit" class="action-btn action-danger" title="Archiwizuj">{{ icon('archive', 16) }}</button>
           </form>

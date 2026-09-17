@@ -1,12 +1,12 @@
-{% extends 'crm/_layout.html' %}
+{% extends 'mna_offers/_layout.html' %}
 {% from '_icons.html' import icon %}
 {% block title %}{{ title }}{% endblock %}
 
-{% block crm_content %}
+{% block mna_content %}
 <div class="rd-screen rd-deal-form">
 <div class="page-header">
   <h1>{{ title }}</h1>
-  <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+  <a href="{{ url_for('mna_offers.list_for_sale') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
 </div>
 
 <div class="form-card">
@@ -137,13 +137,13 @@
 
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz ofertę</button>
-    <a href="{{ url_for('crm_mna_offers.list_for_sale') }}" class="btn btn-outline">Anuluj</a>
+    <a href="{{ url_for('mna_offers.list_for_sale') }}" class="btn btn-outline">Anuluj</a>
   </div>
 </form>
 
 {% if offer.id %}
 <div class="form-delete-row">
-  <form method="post" action="{{ url_for('crm_mna_offers.delete_mna_offer_view', offer_id=offer.id) }}"
+  <form method="post" action="{{ url_for('mna_offers.delete_mna_offer_view', offer_id=offer.id) }}"
         class="inline-form" onsubmit="return confirm('Zarchiwizować tę ofertę M&A?')">
     <button type="submit" class="link-danger">Archiwizuj ofertę</button>
   </form>

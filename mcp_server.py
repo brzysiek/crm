@@ -4,6 +4,11 @@ Delete) na firmach, kontaktach, notatkach, zadaniach, deal'ach oraz ofertach M&A
 a także archiwizowanie/przywracanie zadań, projektów, deali i ofert M&A — wszystkie
 cztery mają w bazie odwracalny soft-delete przez kolumnę deleted_at.
 
+Moduł M&A ma też własne, osobne od CRM-owych firmy/kontakty/deale (long lista/
+short lista) — mna_company/mna_contact/mna_deal, z takim samym archiwizowaniem/
+przywracaniem (kolumna archived_at) oraz zarządzaniem pozycjami na long/short
+liście danego deala M&A (mna_deal_targets).
+
 Serwer działa w tym samym procesie co aplikacja Flask (patrz passenger_wsgi.py) —
 każde wywołanie narzędzia otwiera kontekst aplikacji Flask (app_context), żeby
 modele mogły korzystać ze wspólnego database.get_db().
@@ -28,6 +33,9 @@ import models.crm_contact as crm_contact
 import models.crm_deal as crm_deal
 import models.crm_mna_offer as crm_mna_offer
 import models.crm_notes as crm_notes
+import models.mna_company as mna_company
+import models.mna_contact as mna_contact
+import models.mna_deal as mna_deal
 import models.reconciliation as reconciliation
 import models.task as task_model
 
@@ -496,6 +504,333 @@ def restore_mna_offer(offer_id: int) -> dict:
             raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
         crm_mna_offer.restore_mna_offer(offer_id, _mcp_user_id())
         return crm_mna_offer.get_mna_offer_by_id(offer_id)
+
+
+# ── M&A: Firmy (long lista / short lista) ────────────────────────────────────
+
+@mcp.tool()
+def find_mna_company(query: str) -> list[dict]:
+    """Szuka firm w module M&A (long lista/short lista) po nazwie, NIP-ie lub mieście.
+    To osobne firmy od tych w CRM — cele M&A, nie partnerzy/leady/klienci."""
+    with flask_app.app_context():
+        return mna_company.search_mna_companies(query)
+
+
+@mcp.tool()
+def get_mna_company(company_id: int) -> dict:
+    """Zwraca pełne dane firmy z modułu M&A po id."""
+    with flask_app.app_context():
+        row = mna_company.get_mna_company_by_id(company_id)
+        if not row:
+            raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
+        return row
+
+
+@mcp.tool()
+def create_mna_company(
+    name: str,
+    short_name: str | None = None,
+    city: str | None = None,
+    phone: str | None = None,
+    email: str | None = None,
+    website: str | None = None,
+    nip: str | None = None,
+    description: str | None = None,
+) -> dict:
+    """Tworzy nową firmę w module M&A (cel long/short listy). Wymagana jest tylko nazwa."""
+    with flask_app.app_context():
+        data = {
+            "name": name, "short_name": short_name, "city": city, "phone": phone,
+            "email": email, "website": website, "nip": nip, "description": description,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+        company_id = mna_company.create_mna_company(data, _mcp_user_id())
+        return mna_company.get_mna_company_by_id(company_id)
+
+
+@mcp.tool()
+def update_mna_company(
+    company_id: int,
+    name: str | None = None,
+    short_name: str | None = None,
+    city: str | None = None,
+    phone: str | None = None,
+    email: str | None = None,
+    website: str | None = None,
+    nip: str | None = None,
+    description: str | None = None,
+) -> dict:
+    """Aktualizuje wybrane pola firmy z modułu M&A. Podaj tylko te pola, które mają się zmienić."""
+    with flask_app.app_context():
+        current = mna_company.get_mna_company_by_id(company_id)
+        if not current:
+            raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
+        updates = {
+            "name": name, "short_name": short_name, "city": city, "phone": phone,
+            "email": email, "website": website, "nip": nip, "description": description,
+        }
+        data = {**current, **{k: v for k, v in updates.items() if v is not None}}
+        mna_company.update_mna_company(company_id, data, _mcp_user_id())
+        return mna_company.get_mna_company_by_id(company_id)
+
+
+@mcp.tool()
+def archive_mna_company(company_id: int) -> dict:
+    """Archiwizuje firmę z modułu M&A (soft-delete, odwracalne przez restore_mna_company)."""
+    with flask_app.app_context():
+        if not mna_company.get_mna_company_by_id(company_id):
+            raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
+        mna_company.delete_mna_company(company_id, _mcp_user_id())
+        return {"id": company_id, "archived": True}
+
+
+@mcp.tool()
+def restore_mna_company(company_id: int) -> dict:
+    """Przywraca wcześniej zarchiwizowaną firmę z modułu M&A."""
+    with flask_app.app_context():
+        if not mna_company.get_mna_company_by_id_any(company_id):
+            raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
+        mna_company.restore_mna_company(company_id, _mcp_user_id())
+        return mna_company.get_mna_company_by_id(company_id)
+
+
+# ── M&A: Kontakty (long lista / short lista) ─────────────────────────────────
+
+@mcp.tool()
+def find_mna_contact(query: str, company_id: int | None = None) -> list[dict]:
+    """Szuka kontaktów w module M&A po imieniu/nazwisku/emailu, opcjonalnie w obrębie jednej firmy M&A."""
+    with flask_app.app_context():
+        return mna_contact.search_mna_contacts(query)
+
+
+@mcp.tool()
+def get_mna_contact(contact_id: int) -> dict:
+    """Zwraca pełne dane kontaktu z modułu M&A po id."""
+    with flask_app.app_context():
+        row = mna_contact.get_mna_contact_by_id(contact_id)
+        if not row:
+            raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
+        return row
+
+
+@mcp.tool()
+def create_mna_contact(
+    first_name: str,
+    last_name: str,
+    company_id: int | None = None,
+    position: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    description: str | None = None,
+) -> dict:
+    """Tworzy nowy kontakt w module M&A. Wymagane są imię i nazwisko."""
+    with flask_app.app_context():
+        data = {
+            "first_name": first_name, "last_name": last_name, "company_id": company_id,
+            "position": position, "email": email, "phone": phone, "description": description,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+        contact_id = mna_contact.create_mna_contact(data, _mcp_user_id())
+        return mna_contact.get_mna_contact_by_id(contact_id)
+
+
+@mcp.tool()
+def update_mna_contact(
+    contact_id: int,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    company_id: int | None = None,
+    position: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    description: str | None = None,
+) -> dict:
+    """Aktualizuje wybrane pola kontaktu z modułu M&A. Podaj tylko te pola, które mają się zmienić."""
+    with flask_app.app_context():
+        current = mna_contact.get_mna_contact_by_id(contact_id)
+        if not current:
+            raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
+        updates = {
+            "first_name": first_name, "last_name": last_name, "company_id": company_id,
+            "position": position, "email": email, "phone": phone, "description": description,
+        }
+        data = {**current, **{k: v for k, v in updates.items() if v is not None}}
+        mna_contact.update_mna_contact(contact_id, data, _mcp_user_id())
+        return mna_contact.get_mna_contact_by_id(contact_id)
+
+
+@mcp.tool()
+def archive_mna_contact(contact_id: int) -> dict:
+    """Archiwizuje kontakt z modułu M&A (soft-delete, odwracalne przez restore_mna_contact)."""
+    with flask_app.app_context():
+        if not mna_contact.get_mna_contact_by_id(contact_id):
+            raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
+        mna_contact.delete_mna_contact(contact_id, _mcp_user_id())
+        return {"id": contact_id, "archived": True}
+
+
+@mcp.tool()
+def restore_mna_contact(contact_id: int) -> dict:
+    """Przywraca wcześniej zarchiwizowany kontakt z modułu M&A."""
+    with flask_app.app_context():
+        if not mna_contact.get_mna_contact_by_id_any(contact_id):
+            raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
+        mna_contact.restore_mna_contact(contact_id, _mcp_user_id())
+        return mna_contact.get_mna_contact_by_id(contact_id)
+
+
+# ── M&A: Deale (long lista / short lista) ────────────────────────────────────
+
+@mcp.tool()
+def find_mna_deals(search: str | None = None, stage: str | None = None) -> list[dict]:
+    """Szuka deali M&A, opcjonalnie po nazwie i/lub etapie.
+    Etapy: long_list, short_list, kontakt_nawiazany, nda, ioi, due_diligence, loi, zamkniety, przegrany."""
+    with flask_app.app_context():
+        return mna_deal.get_all_mna_deals(search=search, stage=stage)
+
+
+@mcp.tool()
+def get_mna_deal(deal_id: int) -> dict:
+    """Zwraca pełne dane deala M&A po id."""
+    with flask_app.app_context():
+        row = mna_deal.get_mna_deal_by_id(deal_id)
+        if not row:
+            raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+        return row
+
+
+@mcp.tool()
+def create_mna_deal(
+    name: str,
+    offer_id: int | None = None,
+    stage: str | None = None,
+    amount: float | None = None,
+    description: str | None = None,
+) -> dict:
+    """Tworzy nowy deal M&A. Wymagana jest tylko nazwa. offer_id to opcjonalne
+    powiązanie z istniejącą ofertą M&A (firma na sprzedaż/poszukiwana)."""
+    with flask_app.app_context():
+        data = {
+            "name": name, "offer_id": offer_id, "stage": stage,
+            "amount": amount, "description": description,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+        deal_id = mna_deal.create_mna_deal(data, _mcp_user_id())
+        return mna_deal.get_mna_deal_by_id(deal_id)
+
+
+@mcp.tool()
+def update_mna_deal(
+    deal_id: int,
+    name: str | None = None,
+    offer_id: int | None = None,
+    stage: str | None = None,
+    amount: float | None = None,
+    description: str | None = None,
+) -> dict:
+    """Aktualizuje wybrane pola deala M&A. Podaj tylko te pola, które mają się zmienić."""
+    with flask_app.app_context():
+        current = mna_deal.get_mna_deal_by_id(deal_id)
+        if not current:
+            raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+        updates = {
+            "name": name, "offer_id": offer_id, "stage": stage,
+            "amount": amount, "description": description,
+        }
+        data = {**current, **{k: v for k, v in updates.items() if v is not None}}
+        mna_deal.update_mna_deal(deal_id, data, _mcp_user_id())
+        return mna_deal.get_mna_deal_by_id(deal_id)
+
+
+@mcp.tool()
+def archive_mna_deal(deal_id: int) -> dict:
+    """Archiwizuje deal M&A (soft-delete, odwracalne przez restore_mna_deal)."""
+    with flask_app.app_context():
+        if not mna_deal.get_mna_deal_by_id(deal_id):
+            raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+        mna_deal.delete_mna_deal(deal_id, _mcp_user_id())
+        return mna_deal.get_mna_deal_by_id(deal_id)
+
+
+@mcp.tool()
+def restore_mna_deal(deal_id: int) -> dict:
+    """Przywraca wcześniej zarchiwizowany deal M&A."""
+    with flask_app.app_context():
+        if not mna_deal.get_mna_deal_by_id(deal_id):
+            raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+        mna_deal.restore_mna_deal(deal_id, _mcp_user_id())
+        return mna_deal.get_mna_deal_by_id(deal_id)
+
+
+# ── M&A: pozycje long/short listy na dealu (mna_deal_targets) ────────────────
+
+@mcp.tool()
+def list_mna_deal_targets(deal_id: int, list_type: Literal["long_list", "short_list"] | None = None) -> list[dict]:
+    """Zwraca pozycje long/short listy dla danego deala M&A (firmy i/lub kontakty),
+    wraz ze statusem zainteresowania i oznaczeniem „wartościowy”."""
+    with flask_app.app_context():
+        return mna_deal.get_targets_for_deal(deal_id, list_type)
+
+
+@mcp.tool()
+def add_mna_deal_target(
+    deal_id: int,
+    list_type: Literal["long_list", "short_list"] = "long_list",
+    company_id: int | None = None,
+    contact_id: int | None = None,
+) -> dict:
+    """Dodaje firmę i/lub kontakt (z modułu M&A) na long/short listę deala.
+    Podaj company_id i/lub contact_id — przynajmniej jedno z nich."""
+    with flask_app.app_context():
+        if not company_id and not contact_id:
+            raise ValueError("Podaj company_id i/lub contact_id.")
+        if not mna_deal.get_mna_deal_by_id(deal_id):
+            raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+        target_id = mna_deal.add_target(deal_id, company_id, contact_id, list_type, _mcp_user_id())
+        return mna_deal.get_target_by_id(target_id)
+
+
+@mcp.tool()
+def remove_mna_deal_target(target_id: int) -> dict:
+    """Usuwa pozycję z long/short listy deala M&A (nie kasuje samej firmy/kontaktu)."""
+    with flask_app.app_context():
+        if not mna_deal.get_target_by_id(target_id):
+            raise ValueError(f"Nie znaleziono pozycji listy o id={target_id}.")
+        mna_deal.remove_target(target_id, _mcp_user_id())
+        return {"id": target_id, "removed": True}
+
+
+@mcp.tool()
+def move_mna_deal_target(target_id: int, list_type: Literal["long_list", "short_list"]) -> dict:
+    """Przenosi pozycję między long listą a short listą."""
+    with flask_app.app_context():
+        if not mna_deal.get_target_by_id(target_id):
+            raise ValueError(f"Nie znaleziono pozycji listy o id={target_id}.")
+        mna_deal.move_target_list(target_id, list_type, _mcp_user_id())
+        return mna_deal.get_target_by_id(target_id)
+
+
+@mcp.tool()
+def set_mna_deal_target_interest(
+    target_id: int,
+    interest_status: Literal["unknown", "interested", "not_interested"],
+) -> dict:
+    """Ustawia status zainteresowania pozycji na long/short liście deala M&A."""
+    with flask_app.app_context():
+        if not mna_deal.get_target_by_id(target_id):
+            raise ValueError(f"Nie znaleziono pozycji listy o id={target_id}.")
+        mna_deal.set_target_interest(target_id, interest_status, _mcp_user_id())
+        return mna_deal.get_target_by_id(target_id)
+
+
+@mcp.tool()
+def set_mna_deal_target_valuable(target_id: int, is_valuable: bool) -> dict:
+    """Oznacza (lub odznacza) pozycję na long/short liście deala M&A jako wartościową."""
+    with flask_app.app_context():
+        if not mna_deal.get_target_by_id(target_id):
+            raise ValueError(f"Nie znaleziono pozycji listy o id={target_id}.")
+        mna_deal.set_target_valuable(target_id, is_valuable, _mcp_user_id())
+        return mna_deal.get_target_by_id(target_id)
 
 
 # ── Uzgadnianie (finanse ↔ bank) ─────────────────────────────────────────────

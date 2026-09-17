@@ -1,0 +1,92 @@
+{% extends 'mna_offers/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ contact.first_name }} {{ contact.last_name }}{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-deal-detail">
+<div class="detail-header">
+  <div class="rd-card-avatar" style="background:{{ m.rd_avatar_color(contact.id) }}">{{ m.rd_initials(contact.first_name ~ ' ' ~ contact.last_name) }}</div>
+  <div>
+    <h1>
+      {{ contact.first_name }} {{ contact.last_name }}
+      <form method="post" action="{{ url_for('mna_contacts.toggle_star_view', contact_id=contact.id) }}" class="inline-form" style="display:inline">
+        <button type="submit" class="star-btn {{ 'star-active' if contact.is_starred }}" title="Oznacz jako ważny">{{ icon('star', 18) }}</button>
+      </form>
+    </h1>
+    {% if contact.position %}<div class="detail-subtitle">{{ contact.position }}{% if contact.company_name %} · {{ contact.company_short_name or contact.company_name }}{% endif %}</div>{% endif %}
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('mna_contacts.edit_contact', contact_id=contact.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
+    <a href="{{ url_for('mna_contacts.list_contacts') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
+  </div>
+</div>
+
+<div class="detail-grid detail-grid-narrow-left">
+  <div>
+
+    <div class="inv-section">
+      <h4>Dane kontaktu</h4>
+      <dl class="inv-dl">
+        <dt>Firma</dt>
+        <dd>{% if contact.company_id %}<a href="{{ url_for('mna_companies.view_company', company_id=contact.company_id) }}">{{ contact.company_short_name or contact.company_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Stanowisko</dt>
+        <dd>{{ contact.position or '—' }}</dd>
+        <dt>Email</dt>
+        <dd>{{ contact.email or '—' }}</dd>
+        <dt>Telefon</dt>
+        <dd>{{ contact.phone or '—' }}</dd>
+        <dt>LinkedIn</dt>
+        <dd>{% if contact.linkedin_url %}<a href="{{ contact.linkedin_url }}" target="_blank" rel="noopener">{{ contact.linkedin_url }}</a>{% else %}—{% endif %}</dd>
+      </dl>
+    </div>
+
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>Deale</h4>
+      <div style="padding:.85rem">
+        {% if deal_targets %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Deal</th><th>Etap</th><th>Lista</th></tr></thead>
+            <tbody>
+              {% for dt in deal_targets %}
+              <tr>
+                <td><a href="{{ url_for('mna_deals.view_deal', deal_id=dt.deal_id) }}">{{ dt.deal_name }}</a></td>
+                <td>{{ dt.deal_stage }}</td>
+                <td>{{ 'Long lista' if dt.list_type == 'long_list' else 'Short lista' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Ten kontakt nie jest jeszcze na liście żadnego deala M&A.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <div>
+
+    <div class="inv-section">
+      <h4>Opis</h4>
+      <div style="padding:.85rem">
+        <p class="{{ 'text-muted small' if not contact.description }}" style="white-space:pre-wrap; margin:0">{{ contact.description or 'Brak opisu.' }}</p>
+      </div>
+    </div>
+
+    {% include 'crm/_notes.html' %}
+    {% include 'crm/_history.html' %}
+
+  </div>
+</div>
+
+<div class="form-delete-row" style="margin-top:1rem">
+  <form method="post" action="{{ url_for('mna_contacts.delete_contact_view', contact_id=contact.id) }}"
+        class="inline-form" onsubmit="return confirm('Zarchiwizować ten kontakt?')">
+    <button type="submit" class="link-danger">Archiwizuj kontakt</button>
+  </form>
+</div>
+</div>
+{% endblock %}

@@ -2502,7 +2502,10 @@ from routes.auth import bp as auth_bp
 from routes.crm_companies import bp as crm_companies_bp
 from routes.crm_contacts import bp as crm_contacts_bp
 from routes.crm_deals import bp as crm_deals_bp
-from routes.crm_mna_offers import bp as crm_mna_offers_bp
+from routes.mna_offers import bp as mna_offers_bp
+from routes.mna_companies import bp as mna_companies_bp
+from routes.mna_contacts import bp as mna_contacts_bp
+from routes.mna_deals import bp as mna_deals_bp
 from routes.crm_plan import bp as crm_plan_bp
 from routes.crm_invoices import bp as crm_invoices_bp
 from routes.email_campaigns import bp as email_campaigns_bp
@@ -2519,7 +2522,10 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(crm_companies_bp)
 app.register_blueprint(crm_contacts_bp)
 app.register_blueprint(crm_deals_bp)
-app.register_blueprint(crm_mna_offers_bp)
+app.register_blueprint(mna_offers_bp)
+app.register_blueprint(mna_companies_bp)
+app.register_blueprint(mna_contacts_bp)
+app.register_blueprint(mna_deals_bp)
 app.register_blueprint(crm_plan_bp)
 app.register_blueprint(crm_invoices_bp)
 app.register_blueprint(email_campaigns_bp)

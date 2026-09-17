@@ -1,0 +1,79 @@
+{% extends 'mna_offers/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-deal-form">
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('mna_contacts.list_contacts') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="first_name">Imię <span class="req">*</span></label>
+      <input type="text" id="first_name" name="first_name" required value="{{ contact.first_name or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="last_name">Nazwisko <span class="req">*</span></label>
+      <input type="text" id="last_name" name="last_name" required value="{{ contact.last_name or '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="company_id">Firma</label>
+      {% set cur_company_id = contact.company_id|int if contact.company_id else None %}
+      <select id="company_id" name="company_id">
+        <option value="">— brak —</option>
+        {% for co in companies %}
+          <option value="{{ co.id }}" {{ 'selected' if cur_company_id == co.id }}>{{ co.short_name or co.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="position">Stanowisko</label>
+      <input type="text" id="position" name="position" value="{{ contact.position or '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ contact.email or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="phone">Telefon</label>
+      <input type="text" id="phone" name="phone" value="{{ contact.phone or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="linkedin_url">LinkedIn</label>
+      <input type="text" id="linkedin_url" name="linkedin_url" value="{{ contact.linkedin_url or '' }}">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="4">{{ contact.description or '' }}</textarea>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz kontakt</button>
+    <a href="{{ url_for('mna_contacts.list_contacts') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+
+{% if contact.id %}
+<div class="form-delete-row">
+  <form method="post" action="{{ url_for('mna_contacts.delete_contact_view', contact_id=contact.id) }}"
+        class="inline-form" onsubmit="return confirm('Zarchiwizować ten kontakt?')">
+    <button type="submit" class="link-danger">Archiwizuj kontakt</button>
+  </form>
+</div>
+{% endif %}
+</div>
+</div>
+{% endblock %}

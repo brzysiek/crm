@@ -1,0 +1,78 @@
+{% extends 'mna_offers/_layout.html' %}
+{% import 'crm/_macros.html' as m %}
+{% from '_icons.html' import icon %}
+{% block title %}Firmy M&A{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-mna-companies">
+<div class="page-header">
+  <h1>Firmy M&A</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('mna_companies.new_company') }}" class="btn btn-primary">+ Dodaj firmę</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('mna_companies.list_companies') }}">
+  <input type="text" name="search" placeholder="Szukaj nazwy, NIP, miasta…"
+         value="{{ filters.search }}" class="filter-input">
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('mna_companies.list_companies') }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+<a href="{{ url_for('mna_companies.new_company') }}" class="rd-fab" title="Dodaj firmę">+</a>
+
+{% if companies %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th></th>
+        {{ m.sort_th('Nazwa', 'name', sort, direction, request.endpoint) }}
+        {{ m.sort_th('Miasto', 'city', sort, direction, request.endpoint) }}
+        <th>NIP</th>
+        <th>Kontakty</th>
+        <th>Deale</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in companies %}
+      <tr>
+        <td>
+          <form method="post" action="{{ url_for('mna_companies.toggle_star_view', company_id=c.id) }}" class="inline-form">
+            <button type="submit" class="star-btn {{ 'star-active' if c.is_starred }}" title="Oznacz jako ważną">{{ icon('star', 16) }}</button>
+          </form>
+        </td>
+        <td><a href="{{ url_for('mna_companies.view_company', company_id=c.id) }}">{{ icon('building', 14) }} {{ c.short_name or c.name }}</a></td>
+        <td>{{ c.city or '—' }}</td>
+        <td>{{ c.nip or '—' }}</td>
+        <td>{{ c.contacts_count }}</td>
+        <td>{{ c.deals_count }}</td>
+        <td class="col-actions nowrap">
+          <a href="{{ url_for('mna_companies.edit_company', company_id=c.id) }}" class="action-btn" title="Edytuj">{{ icon('edit', 16) }}</a>
+          <form method="post" action="{{ url_for('mna_companies.delete_company_view', company_id=c.id) }}"
+                class="inline-form" onsubmit="return confirm('Zarchiwizować tę firmę?')">
+            <button type="submit" class="action-btn action-danger" title="Archiwizuj">{{ icon('archive', 16) }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="rd-card-list">
+  {% for c in companies %}
+  <a href="{{ url_for('mna_companies.view_company', company_id=c.id) }}" class="rd-card">
+    <div class="rd-card-avatar" style="background:{{ m.rd_avatar_color(c.id) }}">{{ m.rd_initials(c.short_name or c.name) }}</div>
+    <div class="rd-card-body">
+      <div class="rd-card-title">{{ c.short_name or c.name }}{% if c.is_starred %} {{ icon('star', 14) }}{% endif %}</div>
+      <div class="rd-card-sub">{{ c.city or '—' }} · {{ c.contacts_count }} kontaktów · {{ c.deals_count }} deali</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">Brak firm. {% if filters.search %}Spróbuj innego wyszukiwania.{% else %}Dodaj pierwszą firmę.{% endif %}</p>
+{% endif %}
+</div>
+{% endblock %}

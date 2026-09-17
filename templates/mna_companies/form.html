@@ -1,0 +1,118 @@
+{% extends 'mna_offers/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-deal-form">
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('mna_companies.list_companies') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="name">Nazwa <span class="req">*</span></label>
+      <input type="text" id="name" name="name" required value="{{ company.name or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="short_name">Nazwa skrócona</label>
+      <input type="text" id="short_name" name="short_name" value="{{ company.short_name or '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="website">Strona WWW</label>
+      <input type="text" id="website" name="website" value="{{ company.website or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="linkedin_url">LinkedIn</label>
+      <input type="text" id="linkedin_url" name="linkedin_url" value="{{ company.linkedin_url or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="nip">NIP</label>
+      <input type="text" id="nip" name="nip" value="{{ company.nip or '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="krs">KRS</label>
+      <input type="text" id="krs" name="krs" value="{{ company.krs or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ company.email or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="phone">Telefon</label>
+      <input type="text" id="phone" name="phone" value="{{ company.phone or '' }}">
+    </div>
+  </div>
+
+  <h3>Adres</h3>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="country">Kraj</label>
+      <input type="text" id="country" name="country" value="{{ company.country or 'Polska' }}">
+    </div>
+    <div class="form-group">
+      <label for="voivodeship">Województwo</label>
+      <input type="text" id="voivodeship" name="voivodeship" value="{{ company.voivodeship or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="city">Miasto</label>
+      <input type="text" id="city" name="city" value="{{ company.city or '' }}">
+    </div>
+  </div>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="street">Ulica</label>
+      <input type="text" id="street" name="street" value="{{ company.street or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="house_number">Nr domu</label>
+      <input type="text" id="house_number" name="house_number" value="{{ company.house_number or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="flat_number">Nr lokalu</label>
+      <input type="text" id="flat_number" name="flat_number" value="{{ company.flat_number or '' }}">
+    </div>
+  </div>
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="postal_code">Kod pocztowy</label>
+      <input type="text" id="postal_code" name="postal_code" value="{{ company.postal_code or '' }}">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="short_description">Krótki opis</label>
+    <input type="text" id="short_description" name="short_description" value="{{ company.short_description or '' }}">
+  </div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="4">{{ company.description or '' }}</textarea>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz firmę</button>
+    <a href="{{ url_for('mna_companies.list_companies') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+
+{% if company.id %}
+<div class="form-delete-row">
+  <form method="post" action="{{ url_for('mna_companies.delete_company_view', company_id=company.id) }}"
+        class="inline-form" onsubmit="return confirm('Zarchiwizować tę firmę?')">
+    <button type="submit" class="link-danger">Archiwizuj firmę</button>
+  </form>
+</div>
+{% endif %}
+</div>
+</div>
+{% endblock %}

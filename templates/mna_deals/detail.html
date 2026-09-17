@@ -1,0 +1,177 @@
+{% extends 'mna_offers/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ deal.name }}{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-deal-detail">
+<div class="detail-header">
+  <div>
+    <h1>{{ deal.name }}
+      <span class="badge {{ stage_badge_classes[deal.stage] }}">{{ stage_labels[deal.stage] }}</span>
+    </h1>
+    {% if deal.offer_id %}<div class="detail-subtitle"><a href="{{ url_for('mna_offers.view_mna_offer', offer_id=deal.offer_id) }}">{{ deal.offer_name }}</a></div>{% endif %}
+  </div>
+  <div class="header-actions">
+    {% if deal.archived_at %}
+    <form method="post" action="{{ url_for('mna_deals.restore_deal_view', deal_id=deal.id) }}" class="inline-form">
+      <button type="submit" class="btn btn-outline">{{ icon('rotate-ccw', 14) }} Przywróć</button>
+    </form>
+    {% else %}
+    <a href="{{ url_for('mna_deals.edit_deal', deal_id=deal.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
+    <form method="post" action="{{ url_for('mna_deals.delete_deal_view', deal_id=deal.id) }}"
+          class="inline-form" onsubmit="return confirm('Zarchiwizować ten deal?')">
+      <button type="submit" class="btn btn-outline">{{ icon('archive', 14) }} Archiwizuj</button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('mna_deals.list_deals') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Lista</a>
+  </div>
+</div>
+
+<div class="detail-grid detail-grid-narrow-left">
+  <div>
+
+    <div class="inv-section">
+      <h4>Dane deala</h4>
+      <dl class="inv-dl">
+        <dt>Etap</dt>
+        <dd><span class="badge {{ stage_badge_classes[deal.stage] }}">{{ stage_labels[deal.stage] }}</span></dd>
+        <dt>Kwota</dt>
+        <dd>{{ deal.amount|pln if deal.amount is not none else '—' }}</dd>
+        <dt>Data rozpoczęcia</dt>
+        <dd>{{ deal.start_date|ddmmyyyy if deal.start_date else '—' }}</dd>
+        <dt>Data zakończenia</dt>
+        <dd>{{ deal.end_date|ddmmyyyy if deal.end_date else '—' }}</dd>
+      </dl>
+    </div>
+
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>Opis</h4>
+      <div style="padding:.85rem">
+        <p class="{{ 'text-muted small' if not deal.description }}" style="white-space:pre-wrap; margin:0">{{ deal.description or 'Brak opisu.' }}</p>
+      </div>
+    </div>
+
+    {% include 'crm/_notes.html' %}
+    {% include 'crm/_history.html' %}
+
+  </div>
+
+  <div>
+
+    <div class="inv-section">
+      <div class="inv-section-header">
+        <h4>Dodaj do listy</h4>
+      </div>
+      <div style="padding:.85rem">
+        <form method="post" action="{{ url_for('mna_deals.add_target_view', deal_id=deal.id) }}" id="add-target-form">
+          <div class="form-grid form-grid-2" style="margin-bottom:.5rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Firma</label>
+              <div class="entity-picker" id="target-company-picker">
+                <input type="text" id="target-company-picker-input" class="filter-input" style="width:100%"
+                       placeholder="Szukaj firmy…" autocomplete="off">
+                <div id="target-company-picker-results" class="entity-picker-results"></div>
+                <input type="hidden" id="target-company-picker-hidden" name="company_id" value="">
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Kontakt</label>
+              <div class="entity-picker" id="target-contact-picker">
+                <input type="text" id="target-contact-picker-input" class="filter-input" style="width:100%"
+                       placeholder="Szukaj kontaktu…" autocomplete="off">
+                <div id="target-contact-picker-results" class="entity-picker-results"></div>
+                <input type="hidden" id="target-contact-picker-hidden" name="contact_id" value="">
+              </div>
+            </div>
+          </div>
+          <div class="form-grid form-grid-2" style="align-items:end">
+            <div class="form-group" style="margin-bottom:0">
+              <label for="add-target-list-type">Lista</label>
+              <select id="add-target-list-type" name="list_type">
+                {% for key, label in list_type_labels.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-outline">+ Dodaj do listy</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% for list_key, list_items in [('long_list', long_list), ('short_list', short_list)] %}
+    <div class="inv-section" style="margin-top:1rem">
+      <h4>{{ list_type_labels[list_key] }} ({{ list_items|length }})</h4>
+      <div style="padding:.85rem">
+        {% if list_items %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Nazwa</th>
+                <th>Zainteresowanie</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in list_items %}
+              <tr>
+                <td>
+                  <form method="post" action="{{ url_for('mna_deals.set_target_valuable_view', deal_id=deal.id, target_id=t.id) }}" class="inline-form">
+                    <input type="hidden" name="is_valuable" value="{{ '0' if t.is_valuable else '1' }}">
+                    <button type="submit" class="star-btn {{ 'star-active' if t.is_valuable }}" title="Oznacz jako wartościowy">{{ icon('star', 16) }}</button>
+                  </form>
+                </td>
+                <td>
+                  {% if t.contact_id %}
+                    <a href="{{ url_for('mna_contacts.view_contact', contact_id=t.contact_id) }}">{{ t.contact_first_name }} {{ t.contact_last_name }}</a>
+                    {% if t.company_id %}<div class="small text-muted">{{ t.company_short_name or t.company_name }}</div>{% endif %}
+                  {% elif t.company_id %}
+                    <a href="{{ url_for('mna_companies.view_company', company_id=t.company_id) }}">{{ t.company_short_name or t.company_name }}</a>
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  <form method="post" action="{{ url_for('mna_deals.set_target_interest_view', deal_id=deal.id, target_id=t.id) }}" class="inline-form">
+                    <select name="interest_status" class="filter-select filter-select-sm" onchange="this.form.submit()">
+                      {% for key, label in interest_status_labels.items() %}
+                      <option value="{{ key }}" {{ 'selected' if t.interest_status == key }}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </form>
+                </td>
+                <td class="col-actions nowrap">
+                  <form method="post" action="{{ url_for('mna_deals.move_target_view', deal_id=deal.id, target_id=t.id) }}" class="inline-form">
+                    <input type="hidden" name="list_type" value="{{ 'short_list' if list_key == 'long_list' else 'long_list' }}">
+                    <button type="submit" class="action-btn" title="{{ 'Przenieś na short listę' if list_key == 'long_list' else 'Przenieś na long listę' }}">
+                      {{ icon('arrow-right' if list_key == 'long_list' else 'arrow-left', 16) }}
+                    </button>
+                  </form>
+                  <form method="post" action="{{ url_for('mna_deals.remove_target_view', deal_id=deal.id, target_id=t.id) }}" class="inline-form"
+                        onsubmit="return confirm('Usunąć z listy?')">
+                    <button type="submit" class="action-btn action-danger" title="Usuń z listy">{{ icon('x', 16) }}</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Brak pozycji na tej liście.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initEntityPicker('target-company-picker', '{{ url_for("mna_deals.api_search_target_companies") }}');
+initEntityPicker('target-contact-picker', '{{ url_for("mna_deals.api_search_target_contacts") }}');
+</script>
+{% endblock %}

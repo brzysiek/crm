@@ -1,0 +1,78 @@
+{% extends 'mna_offers/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block mna_content %}
+<div class="rd-screen rd-deal-form">
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('mna_deals.list_deals') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do listy</a>
+</div>
+
+<div class="form-card">
+<form method="post" action="{{ action }}">
+
+  <div class="form-group">
+    <label for="name">Nazwa <span class="req">*</span></label>
+    <input type="text" id="name" name="name" required value="{{ deal.name or '' }}">
+  </div>
+
+  <div class="form-group">
+    <label for="description">Opis</label>
+    <textarea id="description" name="description" rows="3">{{ deal.description or '' }}</textarea>
+  </div>
+
+  <div class="form-grid form-grid-3">
+    <div class="form-group">
+      <label for="stage">Etap</label>
+      {% set cur_stage = deal.stage if deal.stage is defined and deal.stage else 'long_list' %}
+      <select id="stage" name="stage">
+        {% for s in stage_order %}
+          <option value="{{ s }}" {{ 'selected' if cur_stage == s }}>{{ stage_labels[s] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="amount">Kwota (zł)</label>
+      <input type="number" id="amount" name="amount" step="0.01" min="0" value="{{ deal.amount or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="offer_id">Powiązana oferta M&A</label>
+      {% set cur_offer_id = deal.offer_id|int if deal.offer_id else None %}
+      <select id="offer_id" name="offer_id">
+        <option value="">— brak —</option>
+        {% for o in offers %}
+          <option value="{{ o.id }}" {{ 'selected' if cur_offer_id == o.id }}>{{ o.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="start_date">Data rozpoczęcia</label>
+      <input type="date" id="start_date" name="start_date" value="{{ deal.start_date or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="end_date">Data zakończenia</label>
+      <input type="date" id="end_date" name="end_date" value="{{ deal.end_date or '' }}">
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Zapisz deal</button>
+    <a href="{{ url_for('mna_deals.list_deals') }}" class="btn btn-outline">Anuluj</a>
+  </div>
+</form>
+
+{% if deal.id %}
+<div class="form-delete-row">
+  <form method="post" action="{{ url_for('mna_deals.delete_deal_view', deal_id=deal.id) }}"
+        class="inline-form" onsubmit="return confirm('Zarchiwizować ten deal?')">
+    <button type="submit" class="link-danger">Archiwizuj deal</button>
+  </form>
+</div>
+{% endif %}
+</div>
+</div>
+{% endblock %}
