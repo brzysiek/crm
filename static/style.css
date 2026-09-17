@@ -3576,7 +3576,9 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   font-weight: 600;
 }
 
-.recon-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+.recon-columns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; align-items: start; }
+.recon-col-hint { font-size: 11.5px; color: var(--rd-text-muted); margin: -.3rem 0 .6rem; }
+.recon-col-hint a { color: var(--rd-blue-link); }
 .recon-col h3 {
   font-family: var(--rd-font);
   font-size: 12.5px;
@@ -3617,6 +3619,8 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .recon-remaining { font-size: 11.5px; color: var(--rd-amber-text); background: var(--rd-amber-bg); border-radius: 999px; padding: .05rem .5rem; }
 .recon-date { margin-left: auto; font-size: 11.5px; color: var(--rd-text-muted); }
 .recon-bank-badge { font-size: 10px; padding: .05rem .4rem; border-radius: 4px; font-weight: 700; }
+.recon-doc-source { font-size: 10px; padding: .05rem .4rem; border-radius: 4px; font-weight: 700; background: var(--rd-purple-bg); color: var(--rd-purple-text); }
+.recon-doc-source-gdrive { background: var(--rd-blue-bg); color: var(--rd-blue-text); }
 
 .recon-pct-badge {
   background: var(--rd-gray-bg); color: var(--rd-gray-text);
@@ -3667,6 +3671,10 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   z-index: 200;
 }
 .recon-toast-error { background: var(--rd-red-text); }
+
+@media (max-width: 1100px) {
+  .recon-columns { grid-template-columns: 1fr 1fr; }
+}
 
 @media (max-width: 720px) {
   .recon-columns { grid-template-columns: 1fr; }

@@ -63,6 +63,23 @@
   </div>
   {% endmacro %}
 
+  {% macro doc_item(doc) %}
+  <div class="recon-item" data-side="doc" data-source="{{ doc.source }}" data-id="{{ doc.id }}">
+    <div class="recon-item-main" onclick="reconToggle(this, 'doc', {{ doc.id }}, '{{ doc.source }}')">
+      <div class="recon-item-row1">
+        <span class="recon-amount">{{ '%.2f'|format(doc.amount_gross|float) | replace('.', ',') }} {{ doc.currency }}</span>
+        <span class="recon-doc-source recon-doc-source-{{ doc.source }}">{{ 'Fakturownia' if doc.source == 'fakturownia' else 'Dysk Google' }}</span>
+        <span class="recon-date">{{ doc.issue_date or '—' }}</span>
+      </div>
+      <div class="recon-item-row2">
+        {% if doc.vendor_name %}<strong>{{ doc.vendor_name }}</strong>{% endif %}
+        {% if doc.invoice_number %}<span class="recon-desc">{{ doc.invoice_number }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="recon-candidates" hidden></div>
+  </div>
+  {% endmacro %}
+
   {% macro record_item(rec, kind) %}
   <div class="recon-item" data-side="record" data-kind="{{ kind }}" data-id="{{ rec.id }}">
     <div class="recon-item-main" onclick="reconToggle(this, 'record', {{ rec.id }}, '{{ kind }}')">
@@ -108,6 +125,21 @@
           {% endfor %}
         </div>
       </div>
+      <div class="recon-col">
+        <h3>
+          Oczekujące dokumenty <span class="recon-col-count">{{ expense_docs|length }}</span>
+        </h3>
+        <p class="recon-col-hint">
+          Faktury jeszcze nieprzypisane do wydatku — dokończ w
+          <a href="{{ url_for('imports.fakturownia') }}">Fakturownii</a> lub
+          <a href="{{ url_for('imports.gdrive') }}">na Dysku Google</a>.
+        </p>
+        <div class="recon-list">
+          {% for doc in expense_docs %}{{ doc_item(doc) }}{% else %}
+          <p class="recon-empty">Brak oczekujących dokumentów kosztowych.</p>
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </div>
 
@@ -126,6 +158,21 @@
         <div class="recon-list">
           {% for rec in income_records %}{{ record_item(rec, 'income') }}{% else %}
           <p class="recon-empty">Wszystkie przychody są opłacone.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="recon-col">
+        <h3>
+          Oczekujące dokumenty <span class="recon-col-count">{{ income_docs|length }}</span>
+        </h3>
+        <p class="recon-col-hint">
+          Faktury jeszcze nieprzypisane do przychodu — dokończ w
+          <a href="{{ url_for('imports.fakturownia') }}">Fakturownii</a> lub
+          <a href="{{ url_for('imports.gdrive') }}">na Dysku Google</a>.
+        </p>
+        <div class="recon-list">
+          {% for doc in income_docs %}{{ doc_item(doc) }}{% else %}
+          <p class="recon-empty">Brak oczekujących dokumentów przychodowych.</p>
           {% endfor %}
         </div>
       </div>
@@ -182,6 +229,25 @@ function reconTxnCandidateHtml(c) {
   </div>`;
 }
 
+function reconTxnCandidateReadOnlyHtml(c) {
+  const t = c.transaction;
+  const sc = reconScoreLabel(c.score);
+  const amt = parseFloat(t.amount);
+  return `<div class="recon-cand ${sc.cls}">
+    <div class="recon-cand-info">
+      <span class="recon-cand-badge">${sc.text}</span>
+      <div class="recon-item-row1">
+        <span class="recon-amount ${amt < 0 ? 'recon-amount-neg' : 'recon-amount-pos'}">${amt.toFixed(2).replace('.', ',')} ${t.currency}</span>
+        <span class="recon-date">${t.date}</span>
+      </div>
+      <div class="recon-item-row2">
+        ${t.counterparty ? `<strong>${t.counterparty}</strong>` : ''}
+        ${t.description ? `<span class="recon-desc">${t.description}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
 function reconRecordCandidateHtml(c) {
   const r = c.record;
   const sc = reconScoreLabel(c.score);
@@ -225,6 +291,13 @@ async function reconToggle(mainEl, side, id, kind) {
       panel.querySelectorAll('button[data-record-type]').forEach(btn => {
         btn.addEventListener('click', () => reconLink(btn.dataset.recordType, parseInt(btn.dataset.recordId), id));
       });
+    } else if (side === 'doc') {
+      const r = await fetch(`${RECON_API}/candidates-for-document?source=${kind}&doc_id=${id}`);
+      const data = await r.json();
+      html = data.length
+        ? data.map(reconTxnCandidateReadOnlyHtml).join('')
+        : '<p class="recon-empty">Brak niepowiązanych transakcji pasujących do tego dokumentu.</p>';
+      panel.innerHTML = html;
     } else {
       const r = await fetch(`${RECON_API}/candidates-for-record?record_type=${kind}&record_id=${id}`);
       const data = await r.json();

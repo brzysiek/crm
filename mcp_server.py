@@ -530,6 +530,24 @@ def list_unmatched_records(record_type: Literal["expense", "income"]) -> list[di
 
 
 @mcp.tool()
+def list_pending_documents(kind: Literal["expense", "income"] | None = None) -> list[dict]:
+    """Lista dokumentów (faktur z Fakturowni/Dysku Google) oczekujących na
+    przypisanie do wydatku/przychodu (status='pending'). Wyłącznie do wglądu —
+    do faktycznego przypisania służą istniejące narzędzia importu w aplikacji web."""
+    with flask_app.app_context():
+        return reconciliation.get_pending_documents(kind)
+
+
+@mcp.tool()
+def suggest_matches_for_document(source: Literal["fakturownia", "gdrive"], doc_id: int) -> list[dict]:
+    """Sugeruje najlepiej pasujące niepowiązane transakcje bankowe dla danego
+    oczekującego dokumentu (faktury). Zwraca listę {transaction, score}
+    posortowaną wg trafności. Wyłącznie do wglądu."""
+    with flask_app.app_context():
+        return reconciliation.get_candidates_for_document(source, doc_id)
+
+
+@mcp.tool()
 def suggest_matches_for_transaction(bank_txn_id: int) -> list[dict]:
     """Sugeruje najlepiej pasujące niepokryte wydatki/przychody dla danej
     transakcji bankowej (dopasowanie po kwocie, numerze faktury, kontrahencie).

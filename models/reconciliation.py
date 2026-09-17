@@ -1,13 +1,21 @@
 """Uzgadnianie (reconciliation): dwukierunkowe dopasowywanie transakcji
-bankowych do już zaksięgowanych wydatków/przychodów.
+bankowych do już zaksięgowanych wydatków/przychodów, plus widok dokumentów
+(faktur) wciąż czekających na przypisanie.
 
 W przeciwieństwie do importu (routes/imports.py), który wpuszcza surowe dane
-(transakcje/faktury) do systemu, ten moduł operuje na etapie PO imporcie:
-łączy transakcję bankową (bank_transactions, status='pending') z istniejącym
-rekordem księgowym (expenses/incomes), którego kwota nie jest jeszcze w pełni
-pokryta wpłatami/wypłatami. Cel: łatwo zweryfikować w obie strony, że (1)
-każda opłacona faktura ma odpowiadający jej rekord w księgowości oraz (2)
-każdy rekord księgowy ma odpowiadającą mu transakcję bankową.
+(transakcje/faktury) do systemu, ten moduł operuje głównie na etapie PO
+imporcie: łączy transakcję bankową (bank_transactions, status='pending') z
+istniejącym rekordem księgowym (expenses/incomes), którego kwota nie jest
+jeszcze w pełni pokryta wpłatami/wypłatami. Cel: łatwo zweryfikować w obie
+strony, że (1) każda opłacona faktura ma odpowiadający jej rekord w
+księgowości oraz (2) każdy rekord księgowy ma odpowiadającą mu transakcję
+bankową.
+
+Dokumenty oczekujące (fakturownia_invoices/gdrive_invoices, status='pending')
+są tu wyłącznie do WGLĄDU (get_pending_documents/get_candidates_for_document)
+— ich faktyczne przypisanie do wydatku/przychodu odbywa się, tak jak wcześniej,
+w routes/imports.py (zakładki Fakturownia/Dysk Google); to tu się ich nie
+duplikuje, żeby nie mieć dwóch miejsc tworzących wydatki/przychody.
 """
 from database import get_db
 
@@ -78,6 +86,68 @@ def get_unmatched_income_records(limit: int = 300) -> list[dict]:
             (limit,)
         )
         return cur.fetchall()
+
+
+def get_pending_documents(kind: str = None, limit: int = 300) -> list[dict]:
+    """Dokumenty (faktury) oczekujące na przypisanie do wydatku/przychodu —
+    połączone fakturownia_invoices + gdrive_invoices, znormalizowane do
+    wspólnego kształtu. Wyłącznie do wglądu w tym module (patrz docstring pliku)."""
+    from models.invoice import get_pending_invoices
+    from models.gdrive_invoice import get_pending_gdrive_invoices
+
+    docs = []
+    for inv in get_pending_invoices(invoice_type=kind):
+        docs.append({
+            'source': 'fakturownia',
+            'id': inv['id'],
+            'invoice_type': inv.get('invoice_type') or 'expense',
+            'invoice_number': inv.get('invoice_number'),
+            'vendor_name': inv.get('vendor_name'),
+            'issue_date': inv.get('issue_date'),
+            'amount_gross': inv.get('amount_gross'),
+            'currency': inv.get('currency') or 'PLN',
+        })
+    for inv in get_pending_gdrive_invoices(invoice_type=kind):
+        docs.append({
+            'source': 'gdrive',
+            'id': inv['id'],
+            'invoice_type': inv.get('invoice_type') or 'expense',
+            'invoice_number': inv.get('invoice_number') or inv.get('file_name'),
+            'vendor_name': inv.get('vendor_name'),
+            'issue_date': inv.get('issue_date'),
+            'amount_gross': inv.get('amount_gross'),
+            'currency': inv.get('currency') or 'PLN',
+        })
+    docs.sort(key=lambda d: d['issue_date'] or '', reverse=True)
+    return docs[:limit]
+
+
+def get_candidates_for_document(source: str, doc_id: int, limit: int = 8) -> list[dict]:
+    """Dla danego oczekującego dokumentu: ranking pasujących wolnych transakcji
+    bankowych (ta sama heurystyka co dla rekordów). Wyłącznie do wglądu —
+    przypisanie dokumentu odbywa się w routes/imports.py."""
+    docs = get_pending_documents()
+    doc = next((d for d in docs if d['source'] == source and d['id'] == doc_id), None)
+    if not doc:
+        return []
+    kind = doc['invoice_type']
+    amount = float(doc['amount_gross'] or 0)
+
+    txns = get_unmatched_bank_transactions(kind=kind, limit=1000)
+    results = []
+    for txn in txns:
+        txn_abs = abs(float(txn['amount']))
+        desc = (txn.get('description') or '') + ' ' + (txn.get('counterparty') or '')
+        score = _score(txn_abs, desc, amount, doc.get('invoice_number'), doc.get('vendor_name'))
+        results.append({'transaction': txn, 'score': score})
+
+    if results and not any(r['score'] > 0 for r in results):
+        results.sort(key=lambda r: abs(abs(float(r['transaction']['amount'])) - amount))
+        return results[:limit]
+
+    results = [r for r in results if r['score'] > 0]
+    results.sort(key=lambda r: (-r['score'], abs(abs(float(r['transaction']['amount'])) - amount)))
+    return results[:limit]
 
 
 def get_candidates_for_transaction(txn_id: int, limit: int = 8) -> list[dict]:
@@ -206,17 +276,27 @@ def summary() -> dict:
         unmatched_expense_records = cur.fetchone()['cnt']
         cur.execute("SELECT COUNT(*) AS cnt FROM incomes WHERE payment_status != 'paid'")
         unmatched_income_records = cur.fetchone()['cnt']
-        cur.execute("SELECT COUNT(*) AS cnt FROM fakturownia_invoices WHERE status='pending'")
-        pending_fakturownia = cur.fetchone()['cnt']
-        cur.execute("SELECT COUNT(*) AS cnt FROM gdrive_invoices WHERE status='pending'")
-        pending_gdrive = cur.fetchone()['cnt']
+        cur.execute("SELECT COUNT(*) AS cnt FROM fakturownia_invoices WHERE status='pending' AND invoice_type='expense'")
+        pending_fakturownia_expense = cur.fetchone()['cnt']
+        cur.execute("SELECT COUNT(*) AS cnt FROM fakturownia_invoices WHERE status='pending' AND invoice_type='income'")
+        pending_fakturownia_income = cur.fetchone()['cnt']
+        cur.execute("SELECT COUNT(*) AS cnt FROM gdrive_invoices WHERE status='pending' AND invoice_type='expense'")
+        pending_gdrive_expense = cur.fetchone()['cnt']
+        cur.execute("SELECT COUNT(*) AS cnt FROM gdrive_invoices WHERE status='pending' AND invoice_type='income'")
+        pending_gdrive_income = cur.fetchone()['cnt']
+
+    pending_expense_documents = pending_fakturownia_expense + pending_gdrive_expense
+    pending_income_documents = pending_fakturownia_income + pending_gdrive_income
 
     return {
         'unmatched_expense_transactions': unmatched_expense_txns,
         'unmatched_income_transactions': unmatched_income_txns,
         'unmatched_expense_records': unmatched_expense_records,
         'unmatched_income_records': unmatched_income_records,
-        'pending_documents': pending_fakturownia + pending_gdrive,
+        'pending_expense_documents': pending_expense_documents,
+        'pending_income_documents': pending_income_documents,
+        'pending_documents': pending_expense_documents + pending_income_documents,
         'total_open_items': (unmatched_expense_txns + unmatched_income_txns
-                              + unmatched_expense_records + unmatched_income_records),
+                              + unmatched_expense_records + unmatched_income_records
+                              + pending_expense_documents + pending_income_documents),
     }
