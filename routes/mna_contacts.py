@@ -7,6 +7,7 @@ from models.mna_contact import (create_mna_contact, delete_mna_contact, get_all_
                                   get_mna_contact_by_id, search_mna_contacts, set_starred,
                                   update_mna_contact)
 from models.mna_deal import get_deals_for_contact
+from models.mna_tags import get_contact_tags
 
 bp = Blueprint('mna_contacts', __name__, url_prefix='/mna/kontakty')
 
@@ -50,20 +51,21 @@ def new_contact():
     if request.method == 'POST':
         data = _parse_form(request.form)
         errors = _validate(data)
+        tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('mna_contacts/form.html',
-                active_tab='mna_contacts', contact=request.form, companies=companies,
+                active_tab='mna_contacts', contact=request.form, companies=companies, tags=tags,
                 action=url_for('mna_contacts.new_contact'), title='Nowy kontakt M&A')
 
-        contact_id = create_mna_contact(data, session.get('user_id'))
+        contact_id = create_mna_contact(data, session.get('user_id'), tags=tags)
         flash('Kontakt został zapisany.', 'success')
         return redirect(url_for('mna_contacts.view_contact', contact_id=contact_id))
 
     contact = {'company_id': preset_company_id} if preset_company_id else {}
     return render_template('mna_contacts/form.html',
-        active_tab='mna_contacts', contact=contact, companies=companies,
+        active_tab='mna_contacts', contact=contact, companies=companies, tags=[],
         action=url_for('mna_contacts.new_contact'), title='Nowy kontakt M&A')
 
 
@@ -79,19 +81,20 @@ def edit_contact(contact_id):
     if request.method == 'POST':
         data = _parse_form(request.form)
         errors = _validate(data)
+        tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('mna_contacts/form.html',
-                active_tab='mna_contacts', contact=request.form, companies=companies,
+                active_tab='mna_contacts', contact=request.form, companies=companies, tags=tags,
                 action=url_for('mna_contacts.edit_contact', contact_id=contact_id), title='Edytuj kontakt M&A')
 
-        update_mna_contact(contact_id, data, session.get('user_id'))
+        update_mna_contact(contact_id, data, session.get('user_id'), tags=tags)
         flash('Kontakt został zaktualizowany.', 'success')
         return redirect(url_for('mna_contacts.view_contact', contact_id=contact_id))
 
     return render_template('mna_contacts/form.html',
-        active_tab='mna_contacts', contact=contact, companies=companies,
+        active_tab='mna_contacts', contact=contact, companies=companies, tags=get_contact_tags(contact_id),
         action=url_for('mna_contacts.edit_contact', contact_id=contact_id), title='Edytuj kontakt M&A')
 
 
@@ -115,6 +118,7 @@ def view_contact(contact_id):
         add_note_url=url_for('mna_contacts.add_note_view', contact_id=contact_id),
         entity_type='mna_contact', entity_id=contact_id,
         note_type_labels=NOTE_TYPE_LABELS, history_badge_labels=HISTORY_BADGE_LABELS,
+        tags=get_contact_tags(contact_id),
     )
 
 

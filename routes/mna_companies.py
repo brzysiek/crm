@@ -7,6 +7,7 @@ from models.mna_company import (create_mna_company, delete_mna_company, get_all_
                                   update_mna_company)
 from models.mna_contact import get_all_mna_contacts
 from models.mna_deal import get_deals_for_company
+from models.mna_tags import get_company_tags, suggest_tags
 
 bp = Blueprint('mna_companies', __name__, url_prefix='/mna/firmy')
 
@@ -56,19 +57,20 @@ def new_company():
     if request.method == 'POST':
         data = _parse_form(request.form)
         errors = _validate(data)
+        tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('mna_companies/form.html',
-                active_tab='mna_companies', company=request.form,
+                active_tab='mna_companies', company=request.form, tags=tags,
                 action=url_for('mna_companies.new_company'), title='Nowa firma M&A')
 
-        company_id = create_mna_company(data, session.get('user_id'))
+        company_id = create_mna_company(data, session.get('user_id'), tags=tags)
         flash('Firma została zapisana.', 'success')
         return redirect(url_for('mna_companies.view_company', company_id=company_id))
 
     return render_template('mna_companies/form.html',
-        active_tab='mna_companies', company={},
+        active_tab='mna_companies', company={}, tags=[],
         action=url_for('mna_companies.new_company'), title='Nowa firma M&A')
 
 
@@ -82,19 +84,20 @@ def edit_company(company_id):
     if request.method == 'POST':
         data = _parse_form(request.form)
         errors = _validate(data)
+        tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('mna_companies/form.html',
-                active_tab='mna_companies', company=request.form,
+                active_tab='mna_companies', company=request.form, tags=tags,
                 action=url_for('mna_companies.edit_company', company_id=company_id), title='Edytuj firmę M&A')
 
-        update_mna_company(company_id, data, session.get('user_id'))
+        update_mna_company(company_id, data, session.get('user_id'), tags=tags)
         flash('Firma została zaktualizowana.', 'success')
         return redirect(url_for('mna_companies.view_company', company_id=company_id))
 
     return render_template('mna_companies/form.html',
-        active_tab='mna_companies', company=company,
+        active_tab='mna_companies', company=company, tags=get_company_tags(company_id),
         action=url_for('mna_companies.edit_company', company_id=company_id), title='Edytuj firmę M&A')
 
 
@@ -127,6 +130,7 @@ def view_company(company_id):
         add_note_url=url_for('mna_companies.add_note_view', company_id=company_id),
         entity_type='mna_company', entity_id=company_id,
         note_type_labels=NOTE_TYPE_LABELS, history_badge_labels=HISTORY_BADGE_LABELS,
+        tags=get_company_tags(company_id),
     )
 
 
@@ -165,3 +169,9 @@ def delete_note_view(company_id, note_id):
 def api_search():
     q = request.args.get('q', '')
     return jsonify(search_mna_companies(q))
+
+
+@bp.route('/api/tags/suggest')
+def api_suggest_tags():
+    q = request.args.get('q', '').strip()
+    return jsonify(suggest_tags(q))

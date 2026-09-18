@@ -2337,6 +2337,14 @@ def api_crm_mna_offers_search():
     return jsonify([{'id': o['id'], 'name': o['name']} for o in offers])
 
 
+@app.route('/api/crm/mna_deals/search')
+def api_crm_mna_deals_search():
+    from models.mna_deal import get_all_mna_deals
+    q = request.args.get('q', '').strip()
+    deals = get_all_mna_deals(search=q or None)[:20]
+    return jsonify([{'id': d['id'], 'name': d['name']} for d in deals])
+
+
 @app.route('/api/crm/company-lookup')
 def api_crm_company_lookup():
     from services.company_lookup import lookup_by_krs, lookup_by_nip

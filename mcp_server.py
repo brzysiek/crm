@@ -7,7 +7,8 @@ cztery mają w bazie odwracalny soft-delete przez kolumnę deleted_at.
 Moduł M&A ma też własne, osobne od CRM-owych firmy/kontakty/deale (long lista/
 short lista) — mna_company/mna_contact/mna_deal, z takim samym archiwizowaniem/
 przywracaniem (kolumna archived_at) oraz zarządzaniem pozycjami na long/short
-liście danego deala M&A (mna_deal_targets).
+liście danego deala M&A (mna_deal_targets). Firmy i kontakty M&A mają też własne
+tagi (mna_tags) — osobna pula od tagów CRM, nie są ze sobą współdzielone.
 
 Serwer działa w tym samym procesie co aplikacja Flask (patrz passenger_wsgi.py) —
 każde wywołanie narzędzia otwiera kontekst aplikacji Flask (app_context), żeby
@@ -36,6 +37,7 @@ import models.crm_notes as crm_notes
 import models.mna_company as mna_company
 import models.mna_contact as mna_contact
 import models.mna_deal as mna_deal
+import models.mna_tags as mna_tags
 import models.reconciliation as reconciliation
 import models.task as task_model
 
@@ -118,6 +120,24 @@ def update_company(
         data = {**current, **{k: v for k, v in updates.items() if v is not None}}
         crm_company.update_company(company_id, data, _mcp_user_id())
         return crm_company.get_company_by_id(company_id)
+
+
+# ── Wzbogacanie danych firmy ze strony WWW ───────────────────────────────────
+
+@mcp.tool()
+def scrape_company_website(url: str) -> dict:
+    """Wchodzi na podaną stronę WWW firmy (stronę główną i, jeśli ją znajdzie, stronę kontaktową),
+    a następnie przez Gemini wyciąga z treści: opis działalności, do 3 branż, email, telefon, NIP
+    i adres siedziby. Działa dla dowolnej firmy (CRM lub M&A) — zwraca tylko dane, nic nie zapisuje;
+    do zapisania wyniku użyj update_company / update_mna_company z odpowiednimi polami.
+    Wymaga skonfigurowanego klucza API Gemini w Ustawieniach ogólnych — jeśli go brak, zwraca błąd."""
+    with flask_app.app_context():
+        from models.settings import get_setting
+        from services.company_profile import build_company_profile
+
+        api_key = get_setting('gemini_api_key', '')
+        model = get_setting('gemini_model', 'gemini-2.5-flash')
+        return build_company_profile(url, api_key, model)
 
 
 # ── Kontakty ───────────────────────────────────────────────────────────────
@@ -253,14 +273,17 @@ def create_task(
     company_id: int | None = None,
     contact_id: int | None = None,
     deal_id: int | None = None,
+    mna_offer_id: int | None = None,
+    mna_deal_id: int | None = None,
     status: Literal["inbox", "next", "waiting", "someday"] = "inbox",
 ) -> dict:
-    """Tworzy nowe zadanie, opcjonalnie powiązane z firmą/kontaktem/deal'em i z terminem.
-    due_date w formacie RRRR-MM-DD."""
+    """Tworzy nowe zadanie, opcjonalnie powiązane z firmą/kontaktem/deal'em CRM, ofertą M&A lub
+    dealem M&A (mna_deal_id — to inny obiekt niż deal CRM), i z terminem. due_date w formacie RRRR-MM-DD."""
     with flask_app.app_context():
         task_id = task_model.create_task(
             title, _mcp_user_id(), status=status, due_date=due_date, notes=notes,
             crm_company_id=company_id, crm_contact_id=contact_id, crm_deal_id=deal_id,
+            crm_mna_offer_id=mna_offer_id, crm_mna_deal_id=mna_deal_id,
         )
         return task_model.get_task(task_id)
 
@@ -277,8 +300,11 @@ def update_task(
     company_id: int | None = None,
     contact_id: int | None = None,
     deal_id: int | None = None,
+    mna_offer_id: int | None = None,
+    mna_deal_id: int | None = None,
 ) -> dict:
-    """Aktualizuje wybrane pola zadania. Podaj tylko te pola, które mają się zmienić."""
+    """Aktualizuje wybrane pola zadania. Podaj tylko te pola, które mają się zmienić.
+    mna_deal_id wiąże zadanie z dealem M&A (inny obiekt niż deal_id, który jest dealem CRM)."""
     with flask_app.app_context():
         if not task_model.get_task(task_id):
             raise ValueError(f"Nie znaleziono zadania o id={task_id}.")
@@ -286,6 +312,7 @@ def update_task(
             "title": title, "notes": notes, "status": status, "due_date": due_date,
             "scheduled_date": scheduled_date, "scheduled_time": scheduled_time,
             "crm_company_id": company_id, "crm_contact_id": contact_id, "crm_deal_id": deal_id,
+            "crm_mna_offer_id": mna_offer_id, "crm_mna_deal_id": mna_deal_id,
         }
         data = {k: v for k, v in data.items() if v is not None}
         task_model.update_task(task_id, data)
@@ -536,15 +563,17 @@ def create_mna_company(
     website: str | None = None,
     nip: str | None = None,
     description: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict:
-    """Tworzy nową firmę w module M&A (cel long/short listy). Wymagana jest tylko nazwa."""
+    """Tworzy nową firmę w module M&A (cel long/short listy). Wymagana jest tylko nazwa.
+    Tagi M&A to osobna pula od tagów CRM (nie są współdzielone)."""
     with flask_app.app_context():
         data = {
             "name": name, "short_name": short_name, "city": city, "phone": phone,
             "email": email, "website": website, "nip": nip, "description": description,
         }
         data = {k: v for k, v in data.items() if v is not None}
-        company_id = mna_company.create_mna_company(data, _mcp_user_id())
+        company_id = mna_company.create_mna_company(data, _mcp_user_id(), tags=tags)
         return mna_company.get_mna_company_by_id(company_id)
 
 
@@ -559,8 +588,10 @@ def update_mna_company(
     website: str | None = None,
     nip: str | None = None,
     description: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict:
-    """Aktualizuje wybrane pola firmy z modułu M&A. Podaj tylko te pola, które mają się zmienić."""
+    """Aktualizuje wybrane pola firmy z modułu M&A. Podaj tylko te pola, które mają się zmienić.
+    Podanie tags nadpisuje cały zestaw tagów firmy (nie dodaje pojedynczo)."""
     with flask_app.app_context():
         current = mna_company.get_mna_company_by_id(company_id)
         if not current:
@@ -570,7 +601,7 @@ def update_mna_company(
             "email": email, "website": website, "nip": nip, "description": description,
         }
         data = {**current, **{k: v for k, v in updates.items() if v is not None}}
-        mna_company.update_mna_company(company_id, data, _mcp_user_id())
+        mna_company.update_mna_company(company_id, data, _mcp_user_id(), tags=tags)
         return mna_company.get_mna_company_by_id(company_id)
 
 
@@ -592,6 +623,25 @@ def restore_mna_company(company_id: int) -> dict:
             raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
         mna_company.restore_mna_company(company_id, _mcp_user_id())
         return mna_company.get_mna_company_by_id(company_id)
+
+
+@mcp.tool()
+def get_mna_company_tags(company_id: int) -> list[str]:
+    """Zwraca listę tagów przypisanych do firmy M&A. Tagi M&A to osobna pula od tagów CRM."""
+    with flask_app.app_context():
+        if not mna_company.get_mna_company_by_id(company_id):
+            raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
+        return mna_tags.get_company_tags(company_id)
+
+
+@mcp.tool()
+def set_mna_company_tags(company_id: int, tags: list[str]) -> list[str]:
+    """Nadpisuje cały zestaw tagów firmy M&A podaną listą (tworzy nowe tagi, jeśli nie istnieją)."""
+    with flask_app.app_context():
+        if not mna_company.get_mna_company_by_id(company_id):
+            raise ValueError(f"Nie znaleziono firmy M&A o id={company_id}.")
+        mna_tags.set_company_tags(company_id, tags)
+        return mna_tags.get_company_tags(company_id)
 
 
 # ── M&A: Kontakty (long lista / short lista) ─────────────────────────────────
@@ -622,15 +672,17 @@ def create_mna_contact(
     email: str | None = None,
     phone: str | None = None,
     description: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict:
-    """Tworzy nowy kontakt w module M&A. Wymagane są imię i nazwisko."""
+    """Tworzy nowy kontakt w module M&A. Wymagane są imię i nazwisko.
+    Tagi M&A to osobna pula od tagów CRM (nie są współdzielone)."""
     with flask_app.app_context():
         data = {
             "first_name": first_name, "last_name": last_name, "company_id": company_id,
             "position": position, "email": email, "phone": phone, "description": description,
         }
         data = {k: v for k, v in data.items() if v is not None}
-        contact_id = mna_contact.create_mna_contact(data, _mcp_user_id())
+        contact_id = mna_contact.create_mna_contact(data, _mcp_user_id(), tags=tags)
         return mna_contact.get_mna_contact_by_id(contact_id)
 
 
@@ -644,8 +696,10 @@ def update_mna_contact(
     email: str | None = None,
     phone: str | None = None,
     description: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict:
-    """Aktualizuje wybrane pola kontaktu z modułu M&A. Podaj tylko te pola, które mają się zmienić."""
+    """Aktualizuje wybrane pola kontaktu z modułu M&A. Podaj tylko te pola, które mają się zmienić.
+    Podanie tags nadpisuje cały zestaw tagów kontaktu (nie dodaje pojedynczo)."""
     with flask_app.app_context():
         current = mna_contact.get_mna_contact_by_id(contact_id)
         if not current:
@@ -655,7 +709,7 @@ def update_mna_contact(
             "position": position, "email": email, "phone": phone, "description": description,
         }
         data = {**current, **{k: v for k, v in updates.items() if v is not None}}
-        mna_contact.update_mna_contact(contact_id, data, _mcp_user_id())
+        mna_contact.update_mna_contact(contact_id, data, _mcp_user_id(), tags=tags)
         return mna_contact.get_mna_contact_by_id(contact_id)
 
 
@@ -677,6 +731,32 @@ def restore_mna_contact(contact_id: int) -> dict:
             raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
         mna_contact.restore_mna_contact(contact_id, _mcp_user_id())
         return mna_contact.get_mna_contact_by_id(contact_id)
+
+
+@mcp.tool()
+def get_mna_contact_tags(contact_id: int) -> list[str]:
+    """Zwraca listę tagów przypisanych do kontaktu M&A. Tagi M&A to osobna pula od tagów CRM."""
+    with flask_app.app_context():
+        if not mna_contact.get_mna_contact_by_id(contact_id):
+            raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
+        return mna_tags.get_contact_tags(contact_id)
+
+
+@mcp.tool()
+def set_mna_contact_tags(contact_id: int, tags: list[str]) -> list[str]:
+    """Nadpisuje cały zestaw tagów kontaktu M&A podaną listą (tworzy nowe tagi, jeśli nie istnieją)."""
+    with flask_app.app_context():
+        if not mna_contact.get_mna_contact_by_id(contact_id):
+            raise ValueError(f"Nie znaleziono kontaktu M&A o id={contact_id}.")
+        mna_tags.set_contact_tags(contact_id, tags)
+        return mna_tags.get_contact_tags(contact_id)
+
+
+@mcp.tool()
+def suggest_mna_tags(query: str = "") -> list[str]:
+    """Podpowiada istniejące tagi M&A pasujące do wpisanego fragmentu (do autouzupełniania)."""
+    with flask_app.app_context():
+        return mna_tags.suggest_tags(query)
 
 
 # ── M&A: Deale (long lista / short lista) ────────────────────────────────────
@@ -830,6 +910,19 @@ def set_mna_deal_target_valuable(target_id: int, is_valuable: bool) -> dict:
         if not mna_deal.get_target_by_id(target_id):
             raise ValueError(f"Nie znaleziono pozycji listy o id={target_id}.")
         mna_deal.set_target_valuable(target_id, is_valuable, _mcp_user_id())
+        return mna_deal.get_target_by_id(target_id)
+
+
+@mcp.tool()
+def set_mna_deal_target_score(target_id: int, score: int | None) -> dict:
+    """Ustawia scoring (1-100, do oceny celów na long liście) pozycji na long/short liście deala
+    M&A. Podaj None (brak wartości), żeby wyczyścić scoring."""
+    with flask_app.app_context():
+        if not mna_deal.get_target_by_id(target_id):
+            raise ValueError(f"Nie znaleziono pozycji listy o id={target_id}.")
+        if score is not None and not (1 <= score <= 100):
+            raise ValueError("Scoring musi być liczbą z zakresu 1-100 albo None.")
+        mna_deal.set_target_score(target_id, score, _mcp_user_id())
         return mna_deal.get_target_by_id(target_id)
 
 

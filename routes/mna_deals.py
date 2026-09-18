@@ -9,7 +9,8 @@ from models.mna_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, STAGE_ORDER, LIS
                                INTEREST_STATUS_LABELS, add_target, create_mna_deal, delete_mna_deal,
                                get_all_mna_deals, get_mna_deal_by_id, get_targets_for_deal,
                                move_target_list, remove_target, reorder_targets, restore_mna_deal,
-                               set_target_interest, set_target_valuable, update_mna_deal)
+                               set_target_interest, set_target_score, set_target_valuable, update_mna_deal)
+from routes.crm_contacts import build_gtd_items
 
 bp = Blueprint('mna_deals', __name__, url_prefix='/mna/deals')
 
@@ -121,6 +122,7 @@ def view_deal(deal_id):
         add_note_url=url_for('mna_deals.add_note_view', deal_id=deal_id),
         entity_type='mna_deal', entity_id=deal_id,
         note_type_labels=NOTE_TYPE_LABELS, history_badge_labels=HISTORY_BADGE_LABELS,
+        gtd_items=build_gtd_items(mna_deal_id=deal_id),
     )
 
 
@@ -193,6 +195,16 @@ def set_target_interest_view(deal_id, target_id):
 def set_target_valuable_view(deal_id, target_id):
     is_valuable = request.form.get('is_valuable') == '1'
     set_target_valuable(target_id, is_valuable, session.get('user_id'))
+    return redirect(url_for('mna_deals.view_deal', deal_id=deal_id))
+
+
+@bp.route('/<int:deal_id>/targets/<int:target_id>/score', methods=['POST'])
+def set_target_score_view(deal_id, target_id):
+    raw = request.form.get('score', '').strip()
+    score = int(raw) if raw else None
+    if score is not None:
+        score = max(1, min(100, score))
+    set_target_score(target_id, score, session.get('user_id'))
     return redirect(url_for('mna_deals.view_deal', deal_id=deal_id))
 
 

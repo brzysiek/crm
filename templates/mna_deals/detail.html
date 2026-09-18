@@ -52,6 +52,35 @@
     </div>
 
     {% include 'crm/_notes.html' %}
+
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Zadania</h4>
+        <button type="button" class="btn btn-outline btn-sm"
+                onclick="gtdOpenFollowUp(null, null, null, null, null, null, null, null, null, 'next', null, false, null, null, {{ deal.id }}, {{ deal.name|tojson|forceescape }})">+ Dodaj zadanie</button>
+      </div>
+      <div style="padding:.85rem">
+        {% if gtd_items %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Typ</th><th>Nazwa</th><th>Data</th></tr></thead>
+            <tbody>
+              {% for i in gtd_items %}
+              <tr class="{{ 'gtd-row-done' if i.done else '' }}">
+                <td>{{ {'project': icon('folder', 14) ~ ' Projekt', 'task': icon('check', 14) ~ ' Zadanie', 'event': icon('calendar', 14) ~ ' Spotkanie'}[i.kind] }}</td>
+                <td>{% if i.url %}<a href="{{ i.url }}">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %}</td>
+                <td>{{ i.date|ddmmyyyy if i.date else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Brak zadań przypisanych do tego deala.</p>
+        {% endif %}
+      </div>
+    </div>
+
     {% include 'crm/_history.html' %}
 
   </div>
@@ -111,6 +140,7 @@
                 <th></th>
                 <th>Nazwa</th>
                 <th>Zainteresowanie</th>
+                <th>Scoring</th>
                 <th class="col-actions"></th>
               </tr>
             </thead>
@@ -140,6 +170,13 @@
                     </select>
                   </form>
                 </td>
+                <td>
+                  <form method="post" action="{{ url_for('mna_deals.set_target_score_view', deal_id=deal.id, target_id=t.id) }}" class="inline-form">
+                    <input type="number" name="score" min="1" max="100" step="1" value="{{ t.score if t.score is not none else '' }}"
+                           class="filter-input filter-input-sm" style="width:4.5rem" placeholder="—"
+                           onchange="this.form.submit()">
+                  </form>
+                </td>
                 <td class="col-actions nowrap">
                   <form method="post" action="{{ url_for('mna_deals.move_target_view', deal_id=deal.id, target_id=t.id) }}" class="inline-form">
                     <input type="hidden" name="list_type" value="{{ 'short_list' if list_key == 'long_list' else 'long_list' }}">
@@ -167,9 +204,12 @@
   </div>
 </div>
 </div>
+
+{% include 'gtd/_followup_modal.html' %}
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='gtd.js') }}"></script>
 <script>
 initEntityPicker('target-company-picker', '{{ url_for("mna_deals.api_search_target_companies") }}');
 initEntityPicker('target-contact-picker', '{{ url_for("mna_deals.api_search_target_contacts") }}');

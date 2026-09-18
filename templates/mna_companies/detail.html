@@ -42,6 +42,14 @@
         <dd>{% if company.website %}<a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a>{% else %}—{% endif %}</dd>
         <dt>LinkedIn</dt>
         <dd>{% if company.linkedin_url %}<a href="{{ company.linkedin_url }}" target="_blank" rel="noopener">{{ company.linkedin_url }}</a>{% else %}—{% endif %}</dd>
+        <dt>Tagi</dt>
+        <dd>
+          {% if tags %}
+          <div class="detail-tags">
+            {% for t in tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
       </dl>
     </div>
 

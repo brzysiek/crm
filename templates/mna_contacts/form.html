@@ -60,6 +60,14 @@
     <textarea id="description" name="description" rows="4">{{ contact.description or '' }}</textarea>
   </div>
 
+  <div class="form-group">
+    <label>Tagi</label>
+    <div class="tag-input-wrap" id="tags-wrap">
+      <input type="text" id="tags-input" class="tag-input-field" placeholder="Dodaj tag…" autocomplete="off">
+      <div id="tags-suggestions" class="tag-suggestions"></div>
+    </div>
+  </div>
+
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz kontakt</button>
     <a href="{{ url_for('mna_contacts.list_contacts') }}" class="btn btn-outline">Anuluj</a>
@@ -76,4 +84,11 @@
 {% endif %}
 </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }},
+  '{{ url_for("mna_companies.api_suggest_tags") }}');
+</script>
 {% endblock %}

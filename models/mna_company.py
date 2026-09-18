@@ -1,5 +1,6 @@
 from database import get_db
 from models.crm_notes import log_history, build_diff_summary
+from models.mna_tags import set_company_tags
 from services.text_utils import format_phone
 
 FIELD_LABELS = {
@@ -94,7 +95,7 @@ def _insert(data: dict) -> int:
         return cur.lastrowid
 
 
-def create_mna_company(data: dict, user_id: int | None) -> int:
+def create_mna_company(data: dict, user_id: int | None, tags: list[str] = None) -> int:
     data['phone'] = format_phone(data.get('phone'))
     db = get_db()
     try:
@@ -103,11 +104,13 @@ def create_mna_company(data: dict, user_id: int | None) -> int:
     except Exception:
         db.rollback()
         raise
+    if tags is not None:
+        set_company_tags(company_id, tags)
     log_history('mna_company', company_id, user_id, 'create', f"Utworzono firmę „{data['name']}”.")
     return company_id
 
 
-def update_mna_company(company_id: int, data: dict, user_id: int | None) -> None:
+def update_mna_company(company_id: int, data: dict, user_id: int | None, tags: list[str] = None) -> None:
     data['phone'] = format_phone(data.get('phone'))
     old = get_mna_company_by_id(company_id)
     db = get_db()
@@ -135,6 +138,8 @@ def update_mna_company(company_id: int, data: dict, user_id: int | None) -> None
     except Exception:
         db.rollback()
         raise
+    if tags is not None:
+        set_company_tags(company_id, tags)
     if old:
         summary = build_diff_summary(old, data, FIELD_LABELS)
         if summary:

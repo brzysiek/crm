@@ -44,15 +44,15 @@ def _as_date(value):
     return value
 
 
-def build_gtd_items(contact_id=None, company_id=None, deal_id=None, mna_offer_id=None):
-    """Zadania/projekty/spotkania przypisane do kontaktu, firmy, deala lub oferty M&A CRM —
-    sekcja „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy/deala/oferty M&A (współdzielone
-    z crm_companies.view_company, crm_deals.view_deal i crm_mna_offers.view_mna_offer). Wydarzenia
-    kalendarza nie mają powiązania z dealem ani ofertą M&A, więc w tych przypadkach zwracane są
-    tylko zadania/projekty."""
+def build_gtd_items(contact_id=None, company_id=None, deal_id=None, mna_offer_id=None, mna_deal_id=None):
+    """Zadania/projekty/spotkania przypisane do kontaktu, firmy, deala, oferty M&A lub deala M&A —
+    sekcja „Zadania/Projekty/Spotkania” na karcie kontaktu/firmy/deala/oferty M&A/deala M&A (współdzielone
+    z crm_companies.view_company, crm_deals.view_deal, mna_offers.view_mna_offer i mna_deals.view_deal).
+    Wydarzenia kalendarza nie mają powiązania z dealem, ofertą M&A ani dealem M&A, więc w tych
+    przypadkach zwracane są tylko zadania/projekty."""
     tasks = task_model.get_tasks_for_crm(contact_id=contact_id, company_id=company_id, deal_id=deal_id,
-                                          mna_offer_id=mna_offer_id)
-    events = [] if (deal_id or mna_offer_id) else gcal_event_model.enrich_with_titles(
+                                          mna_offer_id=mna_offer_id, mna_deal_id=mna_deal_id)
+    events = [] if (deal_id or mna_offer_id or mna_deal_id) else gcal_event_model.enrich_with_titles(
         gcal_event_model.get_events_for_crm(contact_id=contact_id, company_id=company_id)
     )
 

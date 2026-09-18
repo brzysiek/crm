@@ -598,7 +598,7 @@ function _gtdLinkPickerLoadProjects() {
     .catch(() => []);
 }
 
-const _GTD_LINK_KIND_LABELS = { project: 'Projekt', deal: 'Deal', mna_offer: 'Oferta M&A' };
+const _GTD_LINK_KIND_LABELS = { project: 'Projekt', deal: 'Deal', mna_offer: 'Oferta M&A', mna_deal: 'Deal M&A' };
 
 function _gtdInitLinkPicker(pickerId, excludeTaskIdResolver, contextSelectId, onSelectProject) {
   const root = document.getElementById(pickerId);
@@ -620,10 +620,12 @@ function _gtdInitLinkPicker(pickerId, excludeTaskIdResolver, contextSelectId, on
       const dealUrl = '/api/crm/deals/search?q=' + encodeURIComponent(q)
         + (ctx && ctx.value ? '&context_id=' + encodeURIComponent(ctx.value) : '');
       const offerUrl = '/api/crm/mna_offers/search?q=' + encodeURIComponent(q);
-      const [projects, deals, offers] = await Promise.all([
+      const mnaDealUrl = '/api/crm/mna_deals/search?q=' + encodeURIComponent(q);
+      const [projects, deals, offers, mnaDeals] = await Promise.all([
         _gtdLinkPickerLoadProjects(),
         fetch(window.API_BASE + dealUrl).then(r => r.json()).catch(() => []),
         fetch(window.API_BASE + offerUrl).then(r => r.json()).catch(() => []),
+        fetch(window.API_BASE + mnaDealUrl).then(r => r.json()).catch(() => []),
       ]);
       const qLower = q.toLowerCase();
       const matchedProjects = projects
@@ -633,6 +635,7 @@ function _gtdInitLinkPicker(pickerId, excludeTaskIdResolver, contextSelectId, on
         ...matchedProjects.map(p => ({ kind: 'project', id: p.id, name: p.title, raw: p })),
         ...deals.map(d => ({ kind: 'deal', id: d.id, name: d.name })),
         ...offers.map(o => ({ kind: 'mna_offer', id: o.id, name: o.name })),
+        ...mnaDeals.map(d => ({ kind: 'mna_deal', id: d.id, name: d.name })),
       ];
       if (lastItems.length === 0) {
         results.innerHTML = '<div class="entity-picker-result-item text-muted">Brak wyników</div>';
@@ -662,7 +665,7 @@ function _gtdInitLinkPicker(pickerId, excludeTaskIdResolver, contextSelectId, on
 }
 
 function _gtdReadLinkPicker(pickerId) {
-  const out = { parent_id: null, crm_deal_id: null, crm_mna_offer_id: null };
+  const out = { parent_id: null, crm_deal_id: null, crm_mna_offer_id: null, crm_mna_deal_id: null };
   const raw = (document.getElementById(pickerId + '-hidden') || {}).value || '';
   if (!raw) return out;
   const sep = raw.indexOf(':');
@@ -671,14 +674,18 @@ function _gtdReadLinkPicker(pickerId) {
   if (kind === 'project') out.parent_id = id;
   else if (kind === 'deal') out.crm_deal_id = id;
   else if (kind === 'mna_offer') out.crm_mna_offer_id = id;
+  else if (kind === 'mna_deal') out.crm_mna_deal_id = id;
   return out;
 }
 
-function _gtdPrefillLinkPicker(pickerId, currentParentId, currentDealId, currentDealName, currentMnaOfferId, currentMnaOfferName) {
+function _gtdPrefillLinkPicker(pickerId, currentParentId, currentDealId, currentDealName, currentMnaOfferId, currentMnaOfferName,
+                                currentMnaDealId, currentMnaDealName) {
   if (currentDealId) {
     selectEntityPicker(pickerId, 'deal:' + currentDealId, 'Deal: ' + (currentDealName || ('#' + currentDealId)));
   } else if (currentMnaOfferId) {
     selectEntityPicker(pickerId, 'mna_offer:' + currentMnaOfferId, 'Oferta M&A: ' + (currentMnaOfferName || ('#' + currentMnaOfferId)));
+  } else if (currentMnaDealId) {
+    selectEntityPicker(pickerId, 'mna_deal:' + currentMnaDealId, 'Deal M&A: ' + (currentMnaDealName || ('#' + currentMnaDealId)));
   } else if (currentParentId) {
     _gtdLinkPickerLoadProjects().then(projects => {
       const p = projects.find(pr => pr.id === currentParentId);
@@ -689,7 +696,7 @@ function _gtdPrefillLinkPicker(pickerId, currentParentId, currentDealId, current
   }
 }
 
-function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek, currentDealId, currentDealName, currentContextId, currentNotes, currentMnaOfferId, currentMnaOfferName) {
+function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, currentContactId, currentCompanyId, currentScheduled, currentWeek, currentDealId, currentDealName, currentContextId, currentNotes, currentMnaOfferId, currentMnaOfferName, currentMnaDealId, currentMnaDealName) {
   document.getElementById('gtdEditTaskId').value = taskId;
   document.getElementById('gtdEditTaskTitle').value = currentTitle || '';
   document.getElementById('gtdEditTaskDue').value = currentDue || '';
@@ -698,7 +705,8 @@ function gtdOpenEditTask(taskId, currentDue, currentParentId, currentTitle, curr
   document.getElementById('gtdEditTaskContext').value = currentContextId || '';
   document.getElementById('gtdEditTaskNotes').value = currentNotes || '';
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdEditTaskContactPicker', 'gtdEditTaskCompanyPicker');
-  _gtdPrefillLinkPicker('gtdEditTaskLinkPicker', currentParentId || null, currentDealId || null, currentDealName, currentMnaOfferId || null, currentMnaOfferName);
+  _gtdPrefillLinkPicker('gtdEditTaskLinkPicker', currentParentId || null, currentDealId || null, currentDealName, currentMnaOfferId || null, currentMnaOfferName,
+                         currentMnaDealId || null, currentMnaDealName);
   document.getElementById('gtdEditTaskModal').classList.add('open');
 }
 
@@ -709,7 +717,7 @@ function gtdSubmitEditTask() {
   const due_date = document.getElementById('gtdEditTaskDue').value || null;
   const scheduled_date = document.getElementById('gtdEditTaskScheduled').value || null;
   const week = document.getElementById('gtdEditTaskWeek').value || null;
-  const { parent_id, crm_deal_id, crm_mna_offer_id } = _gtdReadLinkPicker('gtdEditTaskLinkPicker');
+  const { parent_id, crm_deal_id, crm_mna_offer_id, crm_mna_deal_id } = _gtdReadLinkPicker('gtdEditTaskLinkPicker');
   const contactValue = document.getElementById('gtdEditTaskContactPicker-hidden').value;
   const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
   const companyValue = document.getElementById('gtdEditTaskCompanyPicker-hidden').value;
@@ -720,7 +728,7 @@ function gtdSubmitEditTask() {
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id, context_id, notes }),
+    body: JSON.stringify({ title, due_date, scheduled_date, parent_id, crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id, crm_mna_deal_id, context_id, notes }),
   })
     .then(r => r.json())
     .then(data => {
@@ -807,7 +815,7 @@ function gtdSubmitBulkAssign() {
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
                           presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus, presetContextId, isProject,
-                          currentMnaOfferId, currentMnaOfferName) {
+                          currentMnaOfferId, currentMnaOfferName, currentMnaDealId, currentMnaDealName) {
   document.getElementById('gtdFollowUpTitle').value = presetTitle || '';
   document.getElementById('gtdFollowUpDue').value = '';
   document.getElementById('gtdFollowUpScheduled').value = presetScheduled || '';
@@ -820,7 +828,8 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpTitle').placeholder = isProject ? 'Nazwa nowego projektu…' : 'Nazwa nowego zadania…';
   document.getElementById('gtdFollowUpLinkRow').style.display = isProject ? 'none' : '';
   _gtdSetCrmPickers(currentContactId || null, currentCompanyId || null, 'gtdFollowUpContactPicker', 'gtdFollowUpCompanyPicker');
-  _gtdPrefillLinkPicker('gtdFollowUpLinkPicker', currentParentId || null, currentDealId || null, currentDealName, currentMnaOfferId || null, currentMnaOfferName);
+  _gtdPrefillLinkPicker('gtdFollowUpLinkPicker', currentParentId || null, currentDealId || null, currentDealName, currentMnaOfferId || null, currentMnaOfferName,
+                         currentMnaDealId || null, currentMnaDealName);
   document.getElementById('gtdFollowUpModal').classList.add('open');
   document.getElementById('gtdFollowUpTitle').focus();
 }
@@ -832,7 +841,7 @@ function gtdSubmitFollowUp() {
   const scheduled_date = document.getElementById('gtdFollowUpScheduled').value || null;
   const week = document.getElementById('gtdFollowUpWeek').value || null;
   const month = document.getElementById('gtdFollowUpMonth').value || null;
-  const { parent_id, crm_deal_id, crm_mna_offer_id } = _gtdReadLinkPicker('gtdFollowUpLinkPicker');
+  const { parent_id, crm_deal_id, crm_mna_offer_id, crm_mna_deal_id } = _gtdReadLinkPicker('gtdFollowUpLinkPicker');
   const contactValue = document.getElementById('gtdFollowUpContactPicker-hidden').value;
   const crm_contact_id = contactValue ? parseInt(contactValue, 10) : null;
   const companyValue = document.getElementById('gtdFollowUpCompanyPicker-hidden').value;
@@ -851,11 +860,11 @@ function gtdSubmitFollowUp() {
       if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
       const taskId = data.task.id;
       const steps = [];
-      if (crm_contact_id || crm_company_id || crm_deal_id || crm_mna_offer_id) {
+      if (crm_contact_id || crm_company_id || crm_deal_id || crm_mna_offer_id || crm_mna_deal_id) {
         steps.push(() => fetch(window.API_BASE + '/api/gtd/tasks/' + taskId, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id }),
+          body: JSON.stringify({ crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id, crm_mna_deal_id }),
         }));
       }
       if (week) {

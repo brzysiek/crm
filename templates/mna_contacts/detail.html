@@ -38,6 +38,14 @@
         <dd>{{ contact.phone or '—' }}</dd>
         <dt>LinkedIn</dt>
         <dd>{% if contact.linkedin_url %}<a href="{{ contact.linkedin_url }}" target="_blank" rel="noopener">{{ contact.linkedin_url }}</a>{% else %}—{% endif %}</dd>
+        <dt>Tagi</dt>
+        <dd>
+          {% if tags %}
+          <div class="detail-tags">
+            {% for t in tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+          </div>
+          {% else %}—{% endif %}
+        </dd>
       </dl>
     </div>
 

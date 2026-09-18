@@ -311,6 +311,23 @@ def set_target_valuable(target_id: int, is_valuable: bool, user_id: int | None) 
                     f"{'wartościowy' if is_valuable else 'niewartościowy'}.")
 
 
+def set_target_score(target_id: int, score: int | None, user_id: int | None) -> None:
+    target = get_target_by_id(target_id)
+    if not target:
+        return
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE mna_deal_targets SET score=%s WHERE id=%s", (score, target_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if target.get('score') != score:
+        log_history('mna_deal', target['deal_id'], user_id, 'update',
+                    f"„{_target_label(target)}”: scoring → {score if score is not None else '—'}.")
+
+
 def reorder_targets(deal_id: int, ordered_target_ids: list[int]) -> None:
     db = get_db()
     try:

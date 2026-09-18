@@ -941,7 +941,7 @@ async function crmScrapeWebsite() {
  * <div id="{suggestId}" class="tag-suggestions">. Tworzy chipy + hidden inputy
  * name="tags[]" / "industries[]" zależnie od `kind`.
  */
-function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
+function initTagInput(wrapId, inputId, suggestId, kind, initialValues, suggestUrl) {
   const wrap = document.getElementById(wrapId);
   const input = document.getElementById(inputId);
   const suggestBox = document.getElementById(suggestId);
@@ -1003,7 +1003,7 @@ function initTagInput(wrapId, inputId, suggestId, kind, initialValues) {
     const q = input.value.trim();
     timer = setTimeout(async () => {
       try {
-        const resp = await fetch(window.API_BASE + '/api/crm/suggest?type=' + kind + '&q=' + encodeURIComponent(q));
+        const resp = await fetch((suggestUrl || (window.API_BASE + '/api/crm/suggest')) + '?type=' + kind + '&q=' + encodeURIComponent(q));
         const raw = await resp.json();
         const items = raw.filter(it => !values.includes(typeof it === 'string' ? it : it.value));
         if (items.length === 0) { closeSuggestions(); return; }
