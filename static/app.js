@@ -10,6 +10,37 @@ function initSidebarCollapse() {
 }
 document.addEventListener('DOMContentLoaded', initSidebarCollapse);
 
+/* ── Sidebar: "Więcej" — rozwijanie pozostałych pozycji w sekcji (stan w localStorage) ── */
+function initSidebarMoreToggle() {
+  document.querySelectorAll('.sidebar-nav-toggle[data-target]').forEach(btn => {
+    const targetId = btn.getAttribute('data-target');
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    const label = btn.querySelector('.sidebar-nav-label');
+    const storageKey = 'sidebarMore_' + targetId;
+
+    const setState = open => {
+      target.classList.toggle('open', open);
+      btn.classList.toggle('open', open);
+      if (label) label.textContent = open ? 'Mniej' : 'Więcej';
+    };
+
+    if (!target.classList.contains('open') && localStorage.getItem(storageKey) === '1') {
+      setState(true);
+    } else {
+      setState(target.classList.contains('open'));
+    }
+
+    btn.addEventListener('click', () => {
+      const open = !target.classList.contains('open');
+      setState(open);
+      localStorage.setItem(storageKey, open ? '1' : '0');
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', initSidebarMoreToggle);
+
 /* ── Rozwijane menu użytkownika (Ustawienia / Wyloguj) — sidebar + mobile topbar ── */
 function initNavUserMenu() {
   document.querySelectorAll('.nav-user').forEach(navUser => {
