@@ -104,9 +104,9 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                 """INSERT INTO tasks
                    (title, notes, is_project, parent_id, status, waiting_on,
                     due_date, scheduled_date, scheduled_time, scheduled_duration_min,
-                    is_today_priority, is_week_priority, context_id,
+                    is_today_priority, is_week_priority, is_important, context_id,
                     crm_contact_id, crm_company_id, crm_deal_id, crm_mna_offer_id, crm_mna_deal_id, created_by)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     title,
                     fields.get('notes') or None,
@@ -120,6 +120,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     fields.get('scheduled_duration_min') or None,
                     1 if fields.get('is_today_priority') else 0,
                     1 if fields.get('is_week_priority') else 0,
+                    1 if fields.get('is_important') else 0,
                     context_id,
                     crm_contact_id,
                     crm_company_id,
@@ -141,7 +142,7 @@ def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
                'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id',
-               'crm_mna_offer_id', 'crm_mna_deal_id', 'context_id')
+               'crm_mna_offer_id', 'crm_mna_deal_id', 'context_id', 'is_important')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
@@ -159,6 +160,8 @@ def update_task(task_id: int, data: dict) -> None:
         fields['crm_mna_deal_id'] = fields['crm_mna_deal_id'] or None
     if 'context_id' in fields:
         fields['context_id'] = fields['context_id'] or None
+    if 'is_important' in fields:
+        fields['is_important'] = 1 if fields['is_important'] else 0
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -573,6 +576,55 @@ def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
         sql += f" AND {clause}"
         params.extend(context_ids)
     sql += " ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        return cur.fetchall()
+
+
+def find_tasks(search: str | None = None, company_id: int | None = None,
+               contact_id: int | None = None, deal_id: int | None = None,
+               parent_id: int | None = None, context_id: int | None = None,
+               status: str | None = None, only_projects: bool = False,
+               include_done: bool = False, limit: int = 100, offset: int = 0) -> list[dict]:
+    """Wyszukiwanie zadań/projektów z filtrami i stronicowaniem (używane przez MCP).
+
+    Bez status: przy parent_id/only_projects zwraca wszystkie statusy poza done,
+    w pozostałych przypadkach tylko next actions; include_done dokłada done."""
+    sql = f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.deleted_at IS NULL"
+    params: list = []
+    if only_projects:
+        sql += " AND t.is_project=1"
+    elif not parent_id:
+        sql += " AND t.is_project=0"
+    if parent_id:
+        sql += " AND t.parent_id=%s"
+        params.append(parent_id)
+    if status:
+        sql += " AND t.status=%s"
+        params.append(status)
+    elif parent_id or only_projects:
+        if not include_done:
+            sql += " AND t.status != 'done'"
+    else:
+        sql += " AND t.status IN ('next', 'done')" if include_done else " AND t.status='next'"
+    for col, val in (('crm_company_id', company_id), ('crm_contact_id', contact_id),
+                     ('crm_deal_id', deal_id), ('context_id', context_id)):
+        if val:
+            sql += f" AND t.{col}=%s"
+            params.append(val)
+    if search:
+        sql += " AND t.title LIKE %s"
+        params.append(f"%{search}%")
+    if only_projects:
+        sql += " ORDER BY (t.status='done'), t.is_important DESC, t.created_at DESC, t.id DESC"
+    elif parent_id:
+        sql += (f" ORDER BY ({_STATUS_SORT_SQL.format(col='t.status')}), "
+                f"t.due_date IS NULL, t.due_date ASC, t.id ASC")
+    else:
+        sql += " ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
+    sql += " LIMIT %s OFFSET %s"
+    params.extend([limit, offset])
+    db = get_db()
     with db.cursor() as cur:
         cur.execute(sql, params)
         return cur.fetchall()

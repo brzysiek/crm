@@ -239,20 +239,82 @@ def update_note(note_id: int, body: str, note_type: Literal["phone", "meeting", 
 
 
 # ── Zadania ────────────────────────────────────────────────────────────────
+#
+# Model danych GTD: projekt to zwykły wiersz tabeli tasks z is_project=1. Zadania projektu
+# to wiersze z parent_id wskazującym na projekt (jeden poziom zagnieżdżenia — projekt nie ma
+# rodzica). deal_id to osobne powiązanie z dealem CRM i nie służy do grupowania w projekty.
 
-def _require_project(parent_id: int, task_id: int | None = None) -> None:
-    if task_id is not None and parent_id == task_id:
-        raise ValueError("Zadanie nie może być własnym projektem.")
+_STATUSES = ("inbox", "next", "waiting", "someday", "done")
+
+
+def _compact_task(row: dict) -> dict:
+    return {
+        "id": row["id"], "title": row["title"], "status": row["status"],
+        "parent_id": row["parent_id"], "is_project": bool(row["is_project"]),
+        "context_name": row.get("context_name"),
+    }
+
+
+def _task_response(task_id: int, verbose: bool) -> dict:
+    row = task_model.get_task(task_id)
+    return row if verbose else _compact_task(row)
+
+
+def _require_project(parent_id: int) -> None:
     parent = task_model.get_task(parent_id)
     if not parent or parent.get("deleted_at"):
         raise ValueError(f"Nie znaleziono projektu o id={parent_id}.")
     if not parent["is_project"]:
-        raise ValueError(f"Zadanie id={parent_id} nie jest projektem.")
+        raise ValueError(
+            f"Zadanie id={parent_id} nie jest projektem (is_project=0) — nie można pod nie podpinać zadań."
+        )
+
+
+def _require_no_cycle(task_id: int, parent_id: int) -> None:
+    """Sprawdza, że task_id nie jest przodkiem (ani samym) nowego rodzica."""
+    seen: set[int] = set()
+    current: int | None = parent_id
+    while current and current not in seen:
+        if current == task_id:
+            raise ValueError(f"Zadanie id={task_id} nie może być własnym przodkiem (cykl w parent_id).")
+        seen.add(current)
+        row = task_model.get_task(current)
+        current = row["parent_id"] if row else None
 
 
 def _require_context(context_id: int) -> None:
     if not gtd_context.get_context(context_id):
         raise ValueError(f"Nie znaleziono kontekstu o id={context_id} (patrz list_contexts).")
+
+
+def _validate_hierarchy(task: dict | None, parent_id: int | None, is_project: bool | None) -> None:
+    """Walidacja parent_id/is_project dla create (task=None) i update (task=bieżący rekord).
+    parent_id: None = bez zmian, 0 = odepnij, >0 = podepnij pod projekt."""
+    currently_project = bool(task and task["is_project"])
+    will_be_project = currently_project if is_project is None else is_project
+    if parent_id is None:
+        will_have_parent = bool(task and task["parent_id"])
+    else:
+        will_have_parent = parent_id > 0
+
+    if will_be_project and will_have_parent:
+        if parent_id:
+            raise ValueError("Projekt (is_project=true) nie może mieć parent_id — projekty nie są zagnieżdżane.")
+        raise ValueError(
+            f"Zadanie id={task['id']} jest podpięte pod projekt id={task['parent_id']} — "
+            "żeby zrobić z niego projekt, odepnij je w tym samym wywołaniu (parent_id=0)."
+        )
+    if parent_id:
+        if task:
+            _require_no_cycle(task["id"], parent_id)
+        _require_project(parent_id)
+    if task and currently_project and is_project is False:
+        subtasks = task_model.get_project_subtasks(task["id"])
+        if subtasks:
+            raise ValueError(
+                f"Projekt id={task['id']} ma {len(subtasks)} zadań — przepnij je lub odepnij "
+                "(update_task z parent_id), zanim zmienisz go w zwykłe zadanie."
+            )
 
 
 @mcp.tool()
@@ -264,33 +326,57 @@ def find_tasks(
     include_done: bool = False,
     only_projects: bool = False,
     parent_id: int | None = None,
+    context_id: int | None = None,
+    status: Literal["inbox", "next", "waiting", "someday", "done"] | None = None,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[dict]:
-    """Szuka zadań, opcjonalnie po tytule i/lub powiązanej firmie/kontakcie/deal'u.
-    Domyślnie zwraca next actions. only_projects=True zwraca projekty (np. żeby znaleźć projekt
-    po nazwie). parent_id zwraca zadania danego projektu we wszystkich statusach (poza done,
-    chyba że include_done=True), w kolejności: aktywne, czekające, wg terminu."""
+    """Szuka zadań i projektów. Model danych: projekt = zadanie z is_project=1; zadania projektu =
+    zadania z parent_id wskazującym na projekt. deal_id to powiązanie z dealem CRM — nie służy
+    do grupowania w projekty.
+
+    - parent_id: zadania danego projektu (podstawowy sposób czytania kolejki projektu), w kolejności:
+      aktywne, czekające, zrobione; w grupie wg terminu. Pełny stan projektu naraz: get_project.
+    - only_projects=True: tylko projekty (np. znalezienie projektu po nazwie przez search).
+    - status: filtr po statusie. Bez niego: przy parent_id/only_projects wszystkie statusy poza done,
+      w pozostałych przypadkach tylko next actions; include_done=True dokłada done.
+    - context_id: filtr po kontekście GTD (lista: list_contexts).
+    - limit/offset: stronicowanie (max 500 na stronę)."""
     with flask_app.app_context():
-        if not only_projects and not parent_id:
-            return task_model.get_next_actions(
-                company_id=company_id, contact_id=contact_id, deal_id=deal_id,
-                search=search, include_done=include_done,
-            )
-        if only_projects:
-            rows = task_model.get_projects(include_done=include_done)
-            if parent_id:
-                rows = [r for r in rows if r["id"] == parent_id]
-        else:
-            rows = task_model.get_project_subtasks(parent_id)
-            if not include_done:
-                rows = [r for r in rows if r["status"] != "done"]
-        needle = search.casefold() if search else None
-        return [
-            r for r in rows
-            if (not needle or needle in (r["title"] or "").casefold())
-            and (not company_id or r["crm_company_id"] == company_id)
-            and (not contact_id or r["crm_contact_id"] == contact_id)
-            and (not deal_id or r["crm_deal_id"] == deal_id)
-        ]
+        return task_model.find_tasks(
+            search=search, company_id=company_id, contact_id=contact_id, deal_id=deal_id,
+            parent_id=parent_id, context_id=context_id, status=status,
+            only_projects=only_projects, include_done=include_done,
+            limit=max(1, min(limit, 500)), offset=max(0, offset),
+        )
+
+
+@mcp.tool()
+def get_project(project_id: int, include_done_tasks: bool = False, verbose: bool = False) -> dict:
+    """Zwraca w jednym wywołaniu stan projektu GTD: dane projektu (zadanie z is_project=1), jego zadania
+    (zadania z parent_id=project_id) pogrupowane po statusie oraz liczniki per status.
+    Liczniki obejmują zawsze wszystkie zadania; lista „done” jest wypełniana tylko przy
+    include_done_tasks=True. verbose=True zwraca pełne rekordy zadań zamiast skróconych."""
+    with flask_app.app_context():
+        project = task_model.get_task(project_id)
+        if not project:
+            raise ValueError(f"Nie znaleziono projektu o id={project_id}.")
+        if not project["is_project"]:
+            raise ValueError(f"Zadanie id={project_id} nie jest projektem (is_project=0).")
+        subtasks = task_model.get_project_subtasks(project_id)
+        counts = {s: 0 for s in _STATUSES}
+        tasks: dict[str, list[dict]] = {s: [] for s in _STATUSES}
+        for row in subtasks:
+            counts[row["status"]] = counts.get(row["status"], 0) + 1
+            if row["status"] == "done" and not include_done_tasks:
+                continue
+            tasks.setdefault(row["status"], []).append(row if verbose else {
+                "id": row["id"], "title": row["title"], "due_date": row["due_date"],
+                "scheduled_date": row["scheduled_date"], "waiting_on": row["waiting_on"],
+                "is_important": bool(row["is_important"]), "context_name": row.get("context_name"),
+            })
+        counts["total"] = len(subtasks)
+        return {"project": project, "counts": counts, "tasks": tasks}
 
 
 @mcp.tool()
@@ -327,29 +413,34 @@ def create_task(
     parent_id: int | None = None,
     is_project: bool = False,
     context_id: int | None = None,
+    is_important: bool = False,
+    verbose: bool = False,
 ) -> dict:
-    """Tworzy nowe zadanie lub projekt (is_project=True), opcjonalnie powiązane z firmą/kontaktem/deal'em
-    CRM, ofertą M&A lub dealem M&A (mna_deal_id — to inny obiekt niż deal CRM), i z terminem.
-    due_date w formacie RRRR-MM-DD. parent_id podpina zadanie pod projekt — zadanie dziedziczy wtedy
-    po projekcie kontekst i powiązania, o ile nie podano ich wprost. context_id ustawia kontekst GTD
-    (lista: list_contexts); bez niego kontekst dziedziczy się z projektu/deala/firmy/kontaktu,
-    a w ostateczności jest brany kontekst domyślny."""
+    """Tworzy nowe zadanie lub projekt. Model danych: projekt = zadanie z is_project=1; zadania projektu =
+    zadania z parent_id wskazującym na projekt. deal_id wiąże z dealem CRM i nie służy do grupowania
+    w projekty; mna_deal_id to deal M&A (jeszcze inny obiekt).
+
+    - parent_id: podpina zadanie pod projekt (musi istnieć i mieć is_project=1). Zadanie dziedziczy
+      po projekcie kontekst i powiązania, o ile nie podano ich wprost.
+    - is_project=True: tworzy projekt (nie może mieć parent_id; status inbox zamienia się na next).
+    - context_id: kontekst GTD (lista: list_contexts); bez niego dziedziczy się z projektu/deala/
+      firmy/kontaktu, a w ostateczności jest brany kontekst domyślny.
+    - due_date w formacie RRRR-MM-DD.
+    - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name};
+      verbose=True zwraca pełny rekord."""
     with flask_app.app_context():
-        if parent_id:
-            if is_project:
-                raise ValueError("Projekt nie może być podpięty pod inny projekt.")
-            _require_project(parent_id)
+        _validate_hierarchy(None, parent_id, is_project)
         if context_id:
             _require_context(context_id)
         if is_project and status == "inbox":
             status = "next"
         task_id = task_model.create_task(
             title, _mcp_user_id(), is_project=is_project, status=status, due_date=due_date, notes=notes,
-            parent_id=parent_id, context_id=context_id,
+            parent_id=parent_id, context_id=context_id, is_important=is_important,
             crm_company_id=company_id, crm_contact_id=contact_id, crm_deal_id=deal_id,
             crm_mna_offer_id=mna_offer_id, crm_mna_deal_id=mna_deal_id,
         )
-        return task_model.get_task(task_id)
+        return _task_response(task_id, verbose)
 
 
 @mcp.tool()
@@ -367,32 +458,43 @@ def update_task(
     mna_offer_id: int | None = None,
     mna_deal_id: int | None = None,
     parent_id: int | None = None,
+    is_project: bool | None = None,
     context_id: int | None = None,
+    is_important: bool | None = None,
+    verbose: bool = False,
 ) -> dict:
     """Aktualizuje wybrane pola zadania. Podaj tylko te pola, które mają się zmienić.
-    mna_deal_id wiąże zadanie z dealem M&A (inny obiekt niż deal_id, który jest dealem CRM).
-    parent_id przepina zadanie pod inny projekt (0 = odepnij od projektu); kontekst i powiązania
-    zadania nie zmieniają się przy przepięciu. context_id zmienia kontekst GTD (lista: list_contexts)."""
+    Model danych: projekt = zadanie z is_project=1; zadania projektu = zadania z parent_id wskazującym
+    na projekt. deal_id wiąże z dealem CRM i nie służy do grupowania w projekty; mna_deal_id to deal M&A.
+
+    - parent_id: przepina zadanie pod inny projekt; parent_id=0 odpina je od projektu. Kontekst
+      i powiązania zadania nie zmieniają się przy przepięciu.
+    - is_project=True: robi z zadania projekt (zadanie nie może mieć rodzica — odepnij je w tym samym
+      wywołaniu przez parent_id=0). is_project=False: cofa projekt do zadania (tylko gdy nie ma zadań).
+    - context_id: kontekst GTD (lista: list_contexts).
+    - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name};
+      verbose=True zwraca pełny rekord."""
     with flask_app.app_context():
         task = task_model.get_task(task_id)
         if not task:
             raise ValueError(f"Nie znaleziono zadania o id={task_id}.")
-        if parent_id:
-            if task["is_project"]:
-                raise ValueError("Projekt nie może być podpięty pod inny projekt.")
-            _require_project(parent_id, task_id)
+        _validate_hierarchy(task, parent_id, is_project)
         if context_id:
             _require_context(context_id)
+        if is_project is False and task["is_project"]:
+            task_model.flatten_project(task_id)
         data = {
             "title": title, "notes": notes, "status": status, "due_date": due_date,
             "scheduled_date": scheduled_date, "scheduled_time": scheduled_time,
             "crm_company_id": company_id, "crm_contact_id": contact_id, "crm_deal_id": deal_id,
             "crm_mna_offer_id": mna_offer_id, "crm_mna_deal_id": mna_deal_id,
-            "parent_id": parent_id, "context_id": context_id,
+            "parent_id": parent_id, "context_id": context_id, "is_important": is_important,
         }
         data = {k: v for k, v in data.items() if v is not None}
         task_model.update_task(task_id, data)
-        return task_model.get_task(task_id)
+        if is_project and not task["is_project"]:
+            task_model.convert_to_project(task_id)
+        return _task_response(task_id, verbose)
 
 
 @mcp.tool()
