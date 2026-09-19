@@ -34,6 +34,7 @@ import models.crm_contact as crm_contact
 import models.crm_deal as crm_deal
 import models.crm_mna_offer as crm_mna_offer
 import models.crm_notes as crm_notes
+import models.gtd_context as gtd_context
 import models.mna_company as mna_company
 import models.mna_contact as mna_contact
 import models.mna_deal as mna_deal
@@ -239,6 +240,21 @@ def update_note(note_id: int, body: str, note_type: Literal["phone", "meeting", 
 
 # ── Zadania ────────────────────────────────────────────────────────────────
 
+def _require_project(parent_id: int, task_id: int | None = None) -> None:
+    if task_id is not None and parent_id == task_id:
+        raise ValueError("Zadanie nie może być własnym projektem.")
+    parent = task_model.get_task(parent_id)
+    if not parent or parent.get("deleted_at"):
+        raise ValueError(f"Nie znaleziono projektu o id={parent_id}.")
+    if not parent["is_project"]:
+        raise ValueError(f"Zadanie id={parent_id} nie jest projektem.")
+
+
+def _require_context(context_id: int) -> None:
+    if not gtd_context.get_context(context_id):
+        raise ValueError(f"Nie znaleziono kontekstu o id={context_id} (patrz list_contexts).")
+
+
 @mcp.tool()
 def find_tasks(
     search: str | None = None,
@@ -246,13 +262,45 @@ def find_tasks(
     contact_id: int | None = None,
     deal_id: int | None = None,
     include_done: bool = False,
+    only_projects: bool = False,
+    parent_id: int | None = None,
 ) -> list[dict]:
-    """Szuka zadań (next actions), opcjonalnie po tytule i/lub powiązanej firmie/kontakcie/deal'u."""
+    """Szuka zadań, opcjonalnie po tytule i/lub powiązanej firmie/kontakcie/deal'u.
+    Domyślnie zwraca next actions. only_projects=True zwraca projekty (np. żeby znaleźć projekt
+    po nazwie). parent_id zwraca zadania danego projektu we wszystkich statusach (poza done,
+    chyba że include_done=True), w kolejności: aktywne, czekające, wg terminu."""
     with flask_app.app_context():
-        return task_model.get_next_actions(
-            company_id=company_id, contact_id=contact_id, deal_id=deal_id,
-            search=search, include_done=include_done,
-        )
+        if not only_projects and not parent_id:
+            return task_model.get_next_actions(
+                company_id=company_id, contact_id=contact_id, deal_id=deal_id,
+                search=search, include_done=include_done,
+            )
+        if only_projects:
+            rows = task_model.get_projects(include_done=include_done)
+            if parent_id:
+                rows = [r for r in rows if r["id"] == parent_id]
+        else:
+            rows = task_model.get_project_subtasks(parent_id)
+            if not include_done:
+                rows = [r for r in rows if r["status"] != "done"]
+        needle = search.casefold() if search else None
+        return [
+            r for r in rows
+            if (not needle or needle in (r["title"] or "").casefold())
+            and (not company_id or r["crm_company_id"] == company_id)
+            and (not contact_id or r["crm_contact_id"] == contact_id)
+            and (not deal_id or r["crm_deal_id"] == deal_id)
+        ]
+
+
+@mcp.tool()
+def list_contexts() -> list[dict]:
+    """Zwraca listę kontekstów GTD (id, nazwa, czy domyślny) — do użycia jako context_id w zadaniach."""
+    with flask_app.app_context():
+        return [
+            {"id": c["id"], "name": c["name"], "is_default": bool(c.get("is_default"))}
+            for c in gtd_context.get_all_contexts()
+        ]
 
 
 @mcp.tool()
@@ -276,12 +324,28 @@ def create_task(
     mna_offer_id: int | None = None,
     mna_deal_id: int | None = None,
     status: Literal["inbox", "next", "waiting", "someday"] = "inbox",
+    parent_id: int | None = None,
+    is_project: bool = False,
+    context_id: int | None = None,
 ) -> dict:
-    """Tworzy nowe zadanie, opcjonalnie powiązane z firmą/kontaktem/deal'em CRM, ofertą M&A lub
-    dealem M&A (mna_deal_id — to inny obiekt niż deal CRM), i z terminem. due_date w formacie RRRR-MM-DD."""
+    """Tworzy nowe zadanie lub projekt (is_project=True), opcjonalnie powiązane z firmą/kontaktem/deal'em
+    CRM, ofertą M&A lub dealem M&A (mna_deal_id — to inny obiekt niż deal CRM), i z terminem.
+    due_date w formacie RRRR-MM-DD. parent_id podpina zadanie pod projekt — zadanie dziedziczy wtedy
+    po projekcie kontekst i powiązania, o ile nie podano ich wprost. context_id ustawia kontekst GTD
+    (lista: list_contexts); bez niego kontekst dziedziczy się z projektu/deala/firmy/kontaktu,
+    a w ostateczności jest brany kontekst domyślny."""
     with flask_app.app_context():
+        if parent_id:
+            if is_project:
+                raise ValueError("Projekt nie może być podpięty pod inny projekt.")
+            _require_project(parent_id)
+        if context_id:
+            _require_context(context_id)
+        if is_project and status == "inbox":
+            status = "next"
         task_id = task_model.create_task(
-            title, _mcp_user_id(), status=status, due_date=due_date, notes=notes,
+            title, _mcp_user_id(), is_project=is_project, status=status, due_date=due_date, notes=notes,
+            parent_id=parent_id, context_id=context_id,
             crm_company_id=company_id, crm_contact_id=contact_id, crm_deal_id=deal_id,
             crm_mna_offer_id=mna_offer_id, crm_mna_deal_id=mna_deal_id,
         )
@@ -302,17 +366,29 @@ def update_task(
     deal_id: int | None = None,
     mna_offer_id: int | None = None,
     mna_deal_id: int | None = None,
+    parent_id: int | None = None,
+    context_id: int | None = None,
 ) -> dict:
     """Aktualizuje wybrane pola zadania. Podaj tylko te pola, które mają się zmienić.
-    mna_deal_id wiąże zadanie z dealem M&A (inny obiekt niż deal_id, który jest dealem CRM)."""
+    mna_deal_id wiąże zadanie z dealem M&A (inny obiekt niż deal_id, który jest dealem CRM).
+    parent_id przepina zadanie pod inny projekt (0 = odepnij od projektu); kontekst i powiązania
+    zadania nie zmieniają się przy przepięciu. context_id zmienia kontekst GTD (lista: list_contexts)."""
     with flask_app.app_context():
-        if not task_model.get_task(task_id):
+        task = task_model.get_task(task_id)
+        if not task:
             raise ValueError(f"Nie znaleziono zadania o id={task_id}.")
+        if parent_id:
+            if task["is_project"]:
+                raise ValueError("Projekt nie może być podpięty pod inny projekt.")
+            _require_project(parent_id, task_id)
+        if context_id:
+            _require_context(context_id)
         data = {
             "title": title, "notes": notes, "status": status, "due_date": due_date,
             "scheduled_date": scheduled_date, "scheduled_time": scheduled_time,
             "crm_company_id": company_id, "crm_contact_id": contact_id, "crm_deal_id": deal_id,
             "crm_mna_offer_id": mna_offer_id, "crm_mna_deal_id": mna_deal_id,
+            "parent_id": parent_id, "context_id": context_id,
         }
         data = {k: v for k, v in data.items() if v is not None}
         task_model.update_task(task_id, data)
