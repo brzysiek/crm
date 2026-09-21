@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
+from models.crm_file import get_files_for_mna_deal
 from models.crm_mna_offer import get_all_mna_offers
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history, get_notes)
@@ -119,6 +120,11 @@ def view_deal(deal_id):
         stage_labels=STAGE_LABELS, stage_order=STAGE_ORDER, stage_badge_classes=STAGE_BADGE_CLASSES,
         list_type_labels=LIST_TYPE_LABELS, interest_status_labels=INTEREST_STATUS_LABELS,
         notes=notes, history=history,
+        files=get_files_for_mna_deal(deal_id),
+        can_upload_files=True,
+        upload_company_id=None,
+        upload_contact_id=None,
+        upload_mna_deal_id=deal_id,
         add_note_url=url_for('mna_deals.add_note_view', deal_id=deal_id),
         entity_type='mna_deal', entity_id=deal_id,
         note_type_labels=NOTE_TYPE_LABELS, history_badge_labels=HISTORY_BADGE_LABELS,

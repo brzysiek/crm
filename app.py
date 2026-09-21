@@ -2071,22 +2071,51 @@ def api_crm_files_upload():
     from models.crm_company import get_company_by_id
     from models.crm_file import ALLOWED_EXTENSIONS, add_file, files_word
     from models.crm_notes import log_history
+    from models.mna_deal import get_mna_deal_by_id
     from models.settings import get_setting
+    from services.crm_files import DriveNotConfigured, upload_mna_deal_file
     from services.gdrive import GoogleDriveClient
     from services.images import resize_jpeg_if_needed
 
     company_id = request.form.get('company_id', type=int)
     contact_id = request.form.get('contact_id', type=int)
+    mna_deal_id = request.form.get('mna_deal_id', type=int)
     uploaded = request.files.getlist('files')
 
-    if not company_id:
+    if not company_id and not mna_deal_id:
         return jsonify({'status': 'error',
-                         'message': 'Brak firmy — pliki można dodać tylko dla firmy lub kontaktu przypisanego do firmy.'})
-    company = get_company_by_id(company_id)
-    if not company:
+                         'message': 'Brak firmy — pliki można dodać tylko dla firmy, kontaktu przypisanego '
+                                    'do firmy albo deala M&A.'})
+    company = get_company_by_id(company_id) if company_id else None
+    if company_id and not company:
         return jsonify({'status': 'error', 'message': 'Firma nie istnieje.'})
     if not uploaded:
         return jsonify({'status': 'error', 'message': 'Nie wybrano żadnego pliku.'})
+
+    if mna_deal_id:
+        deal = get_mna_deal_by_id(mna_deal_id)
+        if not deal:
+            return jsonify({'status': 'error', 'message': 'Deal M&A nie istnieje.'})
+        saved, rejected = 0, []
+        for f in uploaded:
+            ext = f.filename.rsplit('.', 1)[-1].lower() if f.filename and '.' in f.filename else ''
+            if ext not in ALLOWED_EXTENSIONS:
+                rejected.append(f.filename)
+                continue
+            try:
+                upload_mna_deal_file(deal, f.filename, f.read(), session.get('user_id'))
+            except DriveNotConfigured as e:
+                return jsonify({'status': 'error', 'message': str(e)})
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': f'Błąd przesyłania pliku {f.filename}: {e}'})
+            saved += 1
+        if not saved:
+            return jsonify({'status': 'error',
+                             'message': 'Niedozwolony format pliku. Obsługiwane: PDF, DOCX, JPG, PNG, HEIC, XML.'})
+        message = f'Dodano {saved} {files_word(saved)}.'
+        if rejected:
+            message += f' Pominięto nieobsługiwane pliki: {", ".join(rejected)}.'
+        return jsonify({'status': 'ok', 'saved': saved, 'rejected': rejected, 'message': message})
 
     api_token = get_setting('google_drive_api_token', '')
     crm_root_id = get_setting('google_drive_crm_folder_id', '')
@@ -2167,7 +2196,10 @@ def api_crm_files_delete(file_id):
     db_delete_file(file_id)
 
     summary = f"Usunięto plik: {rec['file_name']}"
-    log_history('company', rec['company_id'], session.get('user_id'), 'file', summary)
+    if rec.get('mna_deal_id'):
+        log_history('mna_deal', rec['mna_deal_id'], session.get('user_id'), 'file', summary)
+    if rec.get('company_id'):
+        log_history('company', rec['company_id'], session.get('user_id'), 'file', summary)
     if rec.get('contact_id'):
         log_history('contact', rec['contact_id'], session.get('user_id'), 'file', summary)
 

@@ -23,17 +23,20 @@ def _valid_user_id(user_id: int | None) -> int | None:
         return user_id if cur.fetchone() else None
 
 
-def add_file(company_id: int, contact_id: int | None, file_name: str, drive_file_id: str,
-             mime_type: str, file_size: int, user_id: int | None, category: str = 'file') -> int:
+def add_file(company_id: int | None, contact_id: int | None, file_name: str, drive_file_id: str,
+             mime_type: str, file_size: int, user_id: int | None, category: str = 'file',
+             mna_deal_id: int | None = None) -> int:
+    """Plik należy do firmy CRM (company_id) albo do deala M&A (mna_deal_id)."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_files
-                   (company_id, contact_id, category, file_name, drive_file_id, mime_type, file_size, user_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                (company_id, contact_id, category, file_name, drive_file_id, mime_type, file_size,
-                 _valid_user_id(user_id))
+                   (company_id, contact_id, mna_deal_id, category, file_name, drive_file_id,
+                    mime_type, file_size, user_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (company_id or None, contact_id, mna_deal_id or None, category, file_name,
+                 drive_file_id, mime_type, file_size, _valid_user_id(user_id))
             )
         db.commit()
         return cur.lastrowid
@@ -54,6 +57,31 @@ def get_files_for_company(company_id: int) -> list[dict]:
             (company_id,)
         )
         return cur.fetchall()
+
+
+def get_files_for_mna_deal(mna_deal_id: int) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT f.*, u.full_name AS user_name
+               FROM crm_files f
+               LEFT JOIN users u ON u.id = f.user_id
+               WHERE f.mna_deal_id=%s AND f.category='file'
+               ORDER BY f.created_at DESC, f.id DESC""",
+            (mna_deal_id,)
+        )
+        return cur.fetchall()
+
+
+def rename_file(file_id: int, file_name: str) -> None:
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE crm_files SET file_name=%s WHERE id=%s", (file_name, file_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def get_business_card(contact_id: int) -> dict | None:

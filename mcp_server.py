@@ -34,6 +34,7 @@ import models.crm_company as crm_company
 import models.crm_contact as crm_contact
 import models.crm_deal as crm_deal
 import models.crm_mna_offer as crm_mna_offer
+import models.crm_file as crm_file
 import models.crm_notes as crm_notes
 import models.gtd_context as gtd_context
 import models.mna_company as mna_company
@@ -41,6 +42,7 @@ import models.mna_contact as mna_contact
 import models.mna_deal as mna_deal
 import models.mna_tags as mna_tags
 import models.reconciliation as reconciliation
+import services.crm_files as crm_files_service
 import models.task as task_model
 from routes.gtd import _add_months, _month_range, _try_gcal_delete, _week_range
 
@@ -1185,6 +1187,112 @@ def set_mna_deal_target_score(target_id: int, score: int | None) -> dict:
             raise ValueError("Scoring musi być liczbą z zakresu 1-100 albo None.")
         mna_deal.set_target_score(target_id, score, _mcp_user_id())
         return mna_deal.get_target_by_id(target_id)
+
+
+# ── M&A: pliki deala (Google Drive) ──────────────────────────────────────────
+#
+# Pliki deala M&A leżą na Drive w "Deale M&A/<firma z oferty>/pliki" i są widoczne w sekcji
+# Pliki na stronie deala. Te narzędzia działają wyłącznie na plikach deali M&A — plików firm
+# CRM celowo nie ruszają.
+
+def _mna_deal_file(file_id: int) -> dict:
+    rec = crm_file.get_file_by_id(file_id)
+    if not rec:
+        raise ValueError(f"Nie znaleziono pliku o id={file_id}.")
+    if not rec.get("mna_deal_id"):
+        raise ValueError(
+            f"Plik id={file_id} nie należy do deala M&A (to plik firmy/kontaktu CRM) — "
+            "tymi narzędziami zarządzasz tylko plikami deali M&A."
+        )
+    return rec
+
+
+def _require_mna_deal(deal_id: int) -> dict:
+    deal = mna_deal.get_mna_deal_by_id(deal_id)
+    if not deal:
+        raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+    return deal
+
+
+@mcp.tool()
+def list_mna_deal_files(deal_id: int) -> list[dict]:
+    """Zwraca pliki przypięte do deala M&A (najnowsze pierwsze) wraz z nazwą folderu na Drive,
+    w którym leżą ("Deale M&A/<firma z oferty>/pliki")."""
+    with flask_app.app_context():
+        deal = _require_mna_deal(deal_id)
+        return [
+            {
+                "id": f["id"], "file_name": f["file_name"], "mime_type": f["mime_type"],
+                "file_size": f["file_size"], "created_at": f["created_at"],
+                "added_by": f.get("user_name"),
+                "drive_folder": f"{crm_files_service.MNA_DEALS_FOLDER}/"
+                                 f"{crm_files_service.mna_deal_folder_name(deal)}/"
+                                 f"{crm_files_service.FILES_SUBFOLDER}",
+            }
+            for f in crm_file.get_files_for_mna_deal(deal_id)
+        ]
+
+
+@mcp.tool()
+def upload_mna_deal_file(deal_id: int, file_name: str, content_base64: str) -> dict:
+    """Dodaje plik do deala M&A: wrzuca go na Drive do "Deale M&A/<firma z oferty>/pliki",
+    zapisuje w CRM i dopisuje wpis do historii deala.
+
+    file_name musi mieć rozszerzenie z listy: PDF, DOCX, JPG, JPEG, PNG, HEIC, XML.
+    content_base64 to zawartość pliku zakodowana base64 (nadaje się do małych plików —
+    większe wygodniej wrzucić przez stronę deala)."""
+    import base64
+    import binascii
+
+    crm_files_service.mime_for(file_name)
+    try:
+        content = base64.b64decode(content_base64, validate=True)
+    except (binascii.Error, ValueError) as e:
+        raise ValueError(f"content_base64 nie jest poprawnym base64: {e}")
+    if not content:
+        raise ValueError("Pusty plik — content_base64 nie zawiera danych.")
+    with flask_app.app_context():
+        deal = _require_mna_deal(deal_id)
+        file_id = crm_files_service.upload_mna_deal_file(deal, file_name, content, _mcp_user_id())
+        rec = crm_file.get_file_by_id(file_id)
+        return {"id": rec["id"], "file_name": rec["file_name"], "mime_type": rec["mime_type"],
+                "file_size": rec["file_size"], "mna_deal_id": rec["mna_deal_id"]}
+
+
+@mcp.tool()
+def rename_mna_deal_file(file_id: int, file_name: str) -> dict:
+    """Zmienia nazwę pliku deala M&A — w CRM i na Google Drive. Rozszerzenie musi zostać
+    to samo, żeby nie rozjechało się z typem pliku."""
+    with flask_app.app_context():
+        rec = _mna_deal_file(file_id)
+        old_ext = crm_files_service.file_extension(rec["file_name"])
+        new_ext = crm_files_service.file_extension(file_name)
+        if new_ext != old_ext:
+            raise ValueError(
+                f"Nie zmieniaj rozszerzenia pliku (było .{old_ext}, podano .{new_ext or '—'})."
+            )
+        crm_files_service.rename_drive_file(rec["drive_file_id"], file_name)
+        crm_file.rename_file(file_id, file_name)
+        crm_notes.log_history("mna_deal", rec["mna_deal_id"], _mcp_user_id(), "file",
+                               f"Zmieniono nazwę pliku: {rec['file_name']} → {file_name}",
+                               file_id=file_id)
+        return {"id": file_id, "file_name": file_name, "mna_deal_id": rec["mna_deal_id"]}
+
+
+@mcp.tool()
+def delete_mna_deal_file(file_id: int) -> dict:
+    """Usuwa plik deala M&A z CRM i z Google Drive. Nieodwracalne — nie ma tu soft-delete."""
+    with flask_app.app_context():
+        rec = _mna_deal_file(file_id)
+        drive_error = crm_files_service.delete_drive_file(rec["drive_file_id"])
+        crm_file.delete_file(file_id)
+        crm_notes.log_history("mna_deal", rec["mna_deal_id"], _mcp_user_id(), "file",
+                               f"Usunięto plik: {rec['file_name']}")
+        result = {"deleted": True, "id": file_id, "file_name": rec["file_name"],
+                   "mna_deal_id": rec["mna_deal_id"]}
+        if drive_error:
+            result["drive_warning"] = f"Rekord usunięty z CRM, ale nie udało się usunąć pliku z Drive: {drive_error}"
+        return result
 
 
 # ── Uzgadnianie (finanse ↔ bank) ─────────────────────────────────────────────

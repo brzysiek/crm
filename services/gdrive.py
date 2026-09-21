@@ -187,6 +187,18 @@ class GoogleDriveClient:
         _raise_for_status(resp)
         return resp.json()
 
+    def rename_file(self, file_id: str, name: str) -> dict:
+        self._require_write_capable()
+        resp = requests.patch(
+            f'{self.DRIVE_API}/files/{file_id}',
+            headers={**self._auth_headers(), 'Content-Type': 'application/json'},
+            params={**self._auth_params(), 'supportsAllDrives': 'true'},
+            json={'name': name},
+            timeout=TIMEOUT,
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
     def delete_file(self, file_id: str) -> None:
         self._require_write_capable()
         resp = requests.delete(

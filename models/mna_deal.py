@@ -67,8 +67,11 @@ def get_mna_deal_by_id(deal_id: int) -> dict | None:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            """SELECT d.*, o.name AS offer_name
-               FROM mna_deals d LEFT JOIN crm_mna_offers o ON o.id = d.offer_id
+            """SELECT d.*, o.name AS offer_name,
+                      COALESCE(oc.short_name, oc.name) AS offer_company_name
+               FROM mna_deals d
+               LEFT JOIN crm_mna_offers o ON o.id = d.offer_id
+               LEFT JOIN crm_companies oc ON oc.id = o.target_company_id
                WHERE d.id=%s""",
             (deal_id,)
         )

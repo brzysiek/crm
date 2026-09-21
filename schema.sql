@@ -447,8 +447,9 @@ CREATE TABLE IF NOT EXISTS crm_notes (
 -- ── CRM: Pliki — przetrzymywane na Google Drive (CRM/<firma>/pliki) ────────
 CREATE TABLE IF NOT EXISTS crm_files (
     id            INT AUTO_INCREMENT PRIMARY KEY,
-    company_id    INT NOT NULL,
+    company_id    INT NULL,
     contact_id    INT NULL,
+    mna_deal_id   INT NULL,
     category      VARCHAR(20) NOT NULL DEFAULT 'file',
     file_name     VARCHAR(255) NOT NULL,
     drive_file_id VARCHAR(128) NOT NULL,
@@ -458,9 +459,11 @@ CREATE TABLE IF NOT EXISTS crm_files (
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (company_id) REFERENCES crm_companies(id) ON DELETE CASCADE,
     FOREIGN KEY (contact_id) REFERENCES crm_contacts(id) ON DELETE SET NULL,
+    FOREIGN KEY (mna_deal_id) REFERENCES mna_deals(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     KEY idx_company (company_id),
-    KEY idx_contact_category (contact_id, category)
+    KEY idx_contact_category (contact_id, category),
+    KEY idx_mna_deal (mna_deal_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS crm_history (

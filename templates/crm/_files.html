@@ -1,4 +1,6 @@
-{# Wspólny partial: sekcja Pliki. Wymaga: files, can_upload_files, upload_company_id, upload_contact_id #}
+{# Wspólny partial: sekcja Pliki. Wymaga: files, can_upload_files oraz celu uploadu —
+   upload_company_id (+ opcjonalnie upload_contact_id) dla firmy/kontaktu CRM
+   albo upload_mna_deal_id dla deala M&A. #}
 {% import 'crm/_macros.html' as m %}
 {% from '_icons.html' import icon %}
 
@@ -7,8 +9,9 @@
   <div style="padding:.85rem">
     {% if can_upload_files %}
     <form id="filesUploadForm" style="margin-bottom:1rem">
-      <input type="hidden" name="company_id" value="{{ upload_company_id }}">
+      {% if upload_company_id %}<input type="hidden" name="company_id" value="{{ upload_company_id }}">{% endif %}
       {% if upload_contact_id %}<input type="hidden" name="contact_id" value="{{ upload_contact_id }}">{% endif %}
+      {% if upload_mna_deal_id %}<input type="hidden" name="mna_deal_id" value="{{ upload_mna_deal_id }}">{% endif %}
       <div class="form-group" style="margin-bottom:.5rem">
         <input type="file" name="files" multiple accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml">
         <div class="files-queue" style="margin-top:.5rem"></div>
