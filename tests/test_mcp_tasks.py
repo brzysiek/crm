@@ -4,6 +4,7 @@ Model zadań jest zamockowany (słownik w pamięci), więc testy nie dotykają b
 Uruchomienie: venv/bin/python -m unittest discover tests
 """
 import unittest
+from datetime import date, timedelta
 from unittest import mock
 
 import mcp_server
@@ -14,7 +15,9 @@ def _task(id, is_project=0, parent_id=None, deleted_at=None):
             "parent_id": parent_id, "deleted_at": deleted_at, "context_name": "bp"}
 
 
-class TaskHierarchyValidationTest(unittest.TestCase):
+class _TaskToolsTestCase(unittest.TestCase):
+    """Wspólne mocki modelu zadań, kontekstów i Google Calendar."""
+
     def setUp(self):
         self.tasks = {
             1: _task(1, is_project=1),               # projekt
@@ -31,6 +34,11 @@ class TaskHierarchyValidationTest(unittest.TestCase):
             mock.patch.object(mcp_server.task_model, "update_task"),
             mock.patch.object(mcp_server.task_model, "convert_to_project"),
             mock.patch.object(mcp_server.task_model, "flatten_project"),
+            mock.patch.object(mcp_server.task_model, "assign_week"),
+            mock.patch.object(mcp_server.task_model, "assign_month"),
+            mock.patch.object(mcp_server.task_model, "clear_week"),
+            mock.patch.object(mcp_server.task_model, "clear_month"),
+            mock.patch.object(mcp_server, "_try_gcal_delete"),
             mock.patch.object(mcp_server.gtd_context, "get_context",
                               side_effect=lambda cid: {"id": cid} if cid == 2 else None),
         ]
@@ -47,7 +55,11 @@ class TaskHierarchyValidationTest(unittest.TestCase):
         self.model.update_task.assert_not_called()
         self.model.convert_to_project.assert_not_called()
         self.model.flatten_project.assert_not_called()
+        self.model.assign_week.assert_not_called()
+        self.model.assign_month.assert_not_called()
 
+
+class TaskHierarchyValidationTest(_TaskToolsTestCase):
     # create_task
 
     def test_create_with_nonexistent_parent(self):
@@ -113,6 +125,68 @@ class TaskHierarchyValidationTest(unittest.TestCase):
     def test_detach_from_project(self):
         mcp_server.update_task(task_id=2, parent_id=0)
         self.model.update_task.assert_called_once_with(2, {"parent_id": 0})
+
+
+class PlanningTest(_TaskToolsTestCase):
+    """planned_week / planned_month."""
+
+    # _resolve_period
+
+    def test_week_date_normalized_to_monday(self):
+        self.assertEqual(mcp_server._resolve_period("2026-09-24", "week"), date(2026, 9, 21))
+
+    def test_month_accepts_year_month(self):
+        self.assertEqual(mcp_server._resolve_period("2026-10", "month"), date(2026, 10, 1))
+        self.assertEqual(mcp_server._resolve_period("2026-10-17", "month"), date(2026, 10, 1))
+
+    def test_relative_periods(self):
+        this_monday = date.today() - timedelta(days=date.today().weekday())
+        self.assertEqual(mcp_server._resolve_period("this", "week"), this_monday)
+        self.assertEqual(mcp_server._resolve_period("next", "week"), this_monday + timedelta(weeks=1))
+        self.assertEqual(mcp_server._resolve_period("next", "month"),
+                         mcp_server._add_months(date.today().replace(day=1), 1))
+
+    def test_clear_and_invalid(self):
+        self.assertIsNone(mcp_server._resolve_period("clear", "week"))
+        with self.assertRaises(ValueError):
+            mcp_server._resolve_period("clear", "week", allow_clear=False)
+        with self.assertRaises(ValueError):
+            mcp_server._resolve_period("jutro", "month")
+
+    # create_task / update_task
+
+    def test_create_with_week_and_month_rejected(self):
+        self.assertRejected(mcp_server.create_task, "planned_week albo planned_month",
+                            title="x", planned_week="this", planned_month="next")
+
+    def test_update_with_conflicting_planning_rejected(self):
+        self.assertRejected(mcp_server.update_task, "wykluczają się",
+                            task_id=3, scheduled_date="2026-09-22", planned_week="this")
+
+    def test_update_with_invalid_period_rejected(self):
+        self.assertRejected(mcp_server.update_task, "Nieprawidłowa wartość planned_week",
+                            task_id=3, planned_week="kiedyś")
+
+    def test_create_with_week_assigns_monday(self):
+        mcp_server.create_task(title="x", planned_week="2026-09-24")
+        self.model.assign_week.assert_called_once_with(3, date(2026, 9, 21))
+
+    def test_update_week_deletes_gcal_event(self):
+        self.tasks[3]["gcal_event_id"] = "evt1"
+        mcp_server.update_task(task_id=3, planned_week="2026-09-24")
+        mcp_server._try_gcal_delete.assert_called_once_with(self.tasks[3])
+        self.model.assign_week.assert_called_once_with(3, date(2026, 9, 21))
+        self.model.update_task.assert_not_called()
+
+    def test_update_clear_month(self):
+        mcp_server.update_task(task_id=3, planned_month="clear")
+        self.model.clear_month.assert_called_once_with(3)
+        self.model.assign_month.assert_not_called()
+
+    def test_scheduled_date_clears_blocks(self):
+        mcp_server.update_task(task_id=3, scheduled_date="2026-09-22")
+        self.model.update_task.assert_called_once_with(
+            3, {"scheduled_date": "2026-09-22", "planned_week": None, "planned_month": None})
 
 
 if __name__ == "__main__":

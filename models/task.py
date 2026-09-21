@@ -142,7 +142,8 @@ def update_task(task_id: int, data: dict) -> None:
     allowed = ('title', 'notes', 'status', 'waiting_on', 'due_date',
                'scheduled_date', 'scheduled_time', 'scheduled_duration_min',
                'parent_id', 'crm_contact_id', 'crm_company_id', 'crm_deal_id',
-               'crm_mna_offer_id', 'crm_mna_deal_id', 'context_id', 'is_important')
+               'crm_mna_offer_id', 'crm_mna_deal_id', 'context_id', 'is_important',
+               'planned_week', 'planned_month')
     fields = {k: v for k, v in data.items() if k in allowed}
     if not fields:
         return
@@ -162,6 +163,9 @@ def update_task(task_id: int, data: dict) -> None:
         fields['context_id'] = fields['context_id'] or None
     if 'is_important' in fields:
         fields['is_important'] = 1 if fields['is_important'] else 0
+    for key in ('planned_week', 'planned_month'):
+        if key in fields:
+            fields[key] = fields[key] or None
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -585,7 +589,8 @@ def find_tasks(search: str | None = None, company_id: int | None = None,
                contact_id: int | None = None, deal_id: int | None = None,
                parent_id: int | None = None, context_id: int | None = None,
                status: str | None = None, only_projects: bool = False,
-               include_done: bool = False, limit: int = 100, offset: int = 0) -> list[dict]:
+               include_done: bool = False, planned_week: date | None = None,
+               planned_month: date | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
     """Wyszukiwanie zadań/projektów z filtrami i stronicowaniem (używane przez MCP).
 
     Bez status: przy parent_id/only_projects zwraca wszystkie statusy poza done,
@@ -608,7 +613,8 @@ def find_tasks(search: str | None = None, company_id: int | None = None,
     else:
         sql += " AND t.status IN ('next', 'done')" if include_done else " AND t.status='next'"
     for col, val in (('crm_company_id', company_id), ('crm_contact_id', contact_id),
-                     ('crm_deal_id', deal_id), ('context_id', context_id)):
+                     ('crm_deal_id', deal_id), ('context_id', context_id),
+                     ('planned_week', planned_week), ('planned_month', planned_month)):
         if val:
             sql += f" AND t.{col}=%s"
             params.append(val)

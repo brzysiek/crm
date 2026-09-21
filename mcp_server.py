@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import date, timedelta
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -41,6 +42,7 @@ import models.mna_deal as mna_deal
 import models.mna_tags as mna_tags
 import models.reconciliation as reconciliation
 import models.task as task_model
+from routes.gtd import _add_months, _month_range, _try_gcal_delete, _week_range
 
 # Używamy FastMCP wyłącznie jako rejestru narzędzi (dekorator @mcp.tool(),
 # generowanie schematów, walidacja argumentów) — transport HTTP obsługujemy
@@ -248,11 +250,53 @@ _STATUSES = ("inbox", "next", "waiting", "someday", "done")
 
 
 def _compact_task(row: dict) -> dict:
-    return {
+    compact = {
         "id": row["id"], "title": row["title"], "status": row["status"],
         "parent_id": row["parent_id"], "is_project": bool(row["is_project"]),
         "context_name": row.get("context_name"),
     }
+    for key in ("planned_week", "planned_month"):
+        if row.get(key):
+            compact[key] = row[key]
+    return compact
+
+
+def _resolve_period(value: str, kind: Literal["week", "month"], allow_clear: bool = True) -> date | None:
+    """Zamienia planned_week/planned_month z wejścia MCP na datę początku okresu
+    (poniedziałek tygodnia / 1. dzień miesiąca). "clear" zwraca None (= wyczyść)."""
+    v = value.strip().lower()
+    if v == "clear" and allow_clear:
+        return None
+    today = date.today()
+    current = _week_range(today)[0] if kind == "week" else _month_range(today)[0]
+    if v == "this":
+        return current
+    if v == "next":
+        return current + timedelta(weeks=1) if kind == "week" else _add_months(current, 1)
+    if kind == "month" and len(v) == 7:
+        v += "-01"
+    try:
+        d = date.fromisoformat(v)
+    except ValueError:
+        allowed = "RRRR-MM-DD" + (" lub RRRR-MM" if kind == "month" else "") + ", 'this', 'next'"
+        if allow_clear:
+            allowed += " lub 'clear'"
+        raise ValueError(f"Nieprawidłowa wartość planned_{kind}={value!r} — oczekiwano {allowed}.")
+    return _week_range(d)[0] if kind == "week" else _month_range(d)[0]
+
+
+def _apply_planning(task: dict, week: date | None | str, month: date | None | str) -> None:
+    """Przypisuje/czyści blok tygodniowy/miesięczny tak jak UI: przypisanie usuwa konkretną
+    datę (i wydarzenie w Google Calendar) oraz drugi blok; "" = bez zmian, None = wyczyść."""
+    for kind, value in (("week", week), ("month", month)):
+        if value == "":
+            continue
+        if value is None:
+            (task_model.clear_week if kind == "week" else task_model.clear_month)(task["id"])
+            continue
+        if task.get("gcal_event_id"):
+            _try_gcal_delete(task)
+        (task_model.assign_week if kind == "week" else task_model.assign_month)(task["id"], value)
 
 
 def _task_response(task_id: int, verbose: bool) -> dict:
@@ -328,6 +372,8 @@ def find_tasks(
     parent_id: int | None = None,
     context_id: int | None = None,
     status: Literal["inbox", "next", "waiting", "someday", "done"] | None = None,
+    planned_week: str | None = None,
+    planned_month: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict]:
@@ -341,12 +387,18 @@ def find_tasks(
     - status: filtr po statusie. Bez niego: przy parent_id/only_projects wszystkie statusy poza done,
       w pozostałych przypadkach tylko next actions; include_done=True dokłada done.
     - context_id: filtr po kontekście GTD (lista: list_contexts).
+    - planned_week / planned_month: zadania przypisane do luźnego bloku tygodnia/miesiąca
+      (data RRRR-MM-DD z danego tygodnia/miesiąca, RRRR-MM dla miesiąca, albo 'this'/'next').
+      Uwaga: bez status/include_done dalej obowiązuje domyślny filtr statusu opisany wyżej.
     - limit/offset: stronicowanie (max 500 na stronę)."""
+    week = _resolve_period(planned_week, "week", allow_clear=False) if planned_week else None
+    month = _resolve_period(planned_month, "month", allow_clear=False) if planned_month else None
     with flask_app.app_context():
         return task_model.find_tasks(
             search=search, company_id=company_id, contact_id=contact_id, deal_id=deal_id,
             parent_id=parent_id, context_id=context_id, status=status,
             only_projects=only_projects, include_done=include_done,
+            planned_week=week, planned_month=month,
             limit=max(1, min(limit, 500)), offset=max(0, offset),
         )
 
@@ -372,7 +424,8 @@ def get_project(project_id: int, include_done_tasks: bool = False, verbose: bool
                 continue
             tasks.setdefault(row["status"], []).append(row if verbose else {
                 "id": row["id"], "title": row["title"], "due_date": row["due_date"],
-                "scheduled_date": row["scheduled_date"], "waiting_on": row["waiting_on"],
+                "scheduled_date": row["scheduled_date"], "planned_week": row["planned_week"],
+                "planned_month": row["planned_month"], "waiting_on": row["waiting_on"],
                 "is_important": bool(row["is_important"]), "context_name": row.get("context_name"),
             })
         counts["total"] = len(subtasks)
@@ -414,6 +467,8 @@ def create_task(
     is_project: bool = False,
     context_id: int | None = None,
     is_important: bool = False,
+    planned_week: str | None = None,
+    planned_month: str | None = None,
     verbose: bool = False,
 ) -> dict:
     """Tworzy nowe zadanie lub projekt. Model danych: projekt = zadanie z is_project=1; zadania projektu =
@@ -425,9 +480,16 @@ def create_task(
     - is_project=True: tworzy projekt (nie może mieć parent_id; status inbox zamienia się na next).
     - context_id: kontekst GTD (lista: list_contexts); bez niego dziedziczy się z projektu/deala/
       firmy/kontaktu, a w ostateczności jest brany kontekst domyślny.
-    - due_date w formacie RRRR-MM-DD.
-    - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name};
-      verbose=True zwraca pełny rekord."""
+    - due_date (termin) w formacie RRRR-MM-DD.
+    - planned_week / planned_month: przypisanie do luźnego bloku tygodnia/miesiąca bez konkretnego
+      dnia (data RRRR-MM-DD z danego tygodnia/miesiąca, RRRR-MM dla miesiąca, albo 'this'/'next').
+      Tydzień i miesiąc wykluczają się nawzajem. Zadanie z inbox przechodzi wtedy do next.
+    - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name} (plus
+      planned_week/planned_month, jeśli ustawione); verbose=True zwraca pełny rekord."""
+    if planned_week and planned_month:
+        raise ValueError("Podaj planned_week albo planned_month — zadanie może być w jednym bloku naraz.")
+    week = _resolve_period(planned_week, "week", allow_clear=False) if planned_week else ""
+    month = _resolve_period(planned_month, "month", allow_clear=False) if planned_month else ""
     with flask_app.app_context():
         _validate_hierarchy(None, parent_id, is_project)
         if context_id:
@@ -440,6 +502,7 @@ def create_task(
             crm_company_id=company_id, crm_contact_id=contact_id, crm_deal_id=deal_id,
             crm_mna_offer_id=mna_offer_id, crm_mna_deal_id=mna_deal_id,
         )
+        _apply_planning({"id": task_id}, week, month)
         return _task_response(task_id, verbose)
 
 
@@ -461,6 +524,8 @@ def update_task(
     is_project: bool | None = None,
     context_id: int | None = None,
     is_important: bool | None = None,
+    planned_week: str | None = None,
+    planned_month: str | None = None,
     verbose: bool = False,
 ) -> dict:
     """Aktualizuje wybrane pola zadania. Podaj tylko te pola, które mają się zmienić.
@@ -472,8 +537,22 @@ def update_task(
     - is_project=True: robi z zadania projekt (zadanie nie może mieć rodzica — odepnij je w tym samym
       wywołaniu przez parent_id=0). is_project=False: cofa projekt do zadania (tylko gdy nie ma zadań).
     - context_id: kontekst GTD (lista: list_contexts).
-    - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name};
-      verbose=True zwraca pełny rekord."""
+    - Planowanie — trzy wzajemnie wykluczające się formy, jak w UI:
+      scheduled_date (konkretny dzień), planned_week (luźny blok tygodnia), planned_month (luźny
+      blok miesiąca). planned_week/planned_month: data RRRR-MM-DD z danego okresu (RRRR-MM dla
+      miesiąca), 'this', 'next' albo 'clear' (wyczyść). Przypisanie do tygodnia/miesiąca usuwa
+      konkretny dzień/godzinę (i wydarzenie w Google Calendar) oraz drugi blok; ustawienie
+      scheduled_date czyści bloki. W jednym wywołaniu można ustawić tylko jedną z tych form.
+    - due_date to termin (deadline) — niezależny od planowania.
+    - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name} (plus
+      planned_week/planned_month, jeśli ustawione); verbose=True zwraca pełny rekord."""
+    week = _resolve_period(planned_week, "week") if planned_week else ""
+    month = _resolve_period(planned_month, "month") if planned_month else ""
+    if sum(1 for v in (scheduled_date, week, month) if v) > 1:
+        raise ValueError(
+            "scheduled_date, planned_week i planned_month wykluczają się — ustaw tylko jedno z nich "
+            "(pozostałe wyczyszczą się automatycznie)."
+        )
     with flask_app.app_context():
         task = task_model.get_task(task_id)
         if not task:
@@ -491,7 +570,11 @@ def update_task(
             "parent_id": parent_id, "context_id": context_id, "is_important": is_important,
         }
         data = {k: v for k, v in data.items() if v is not None}
-        task_model.update_task(task_id, data)
+        if scheduled_date:
+            data.update(planned_week=None, planned_month=None)
+        if data:
+            task_model.update_task(task_id, data)
+        _apply_planning(task, week, month)
         if is_project and not task["is_project"]:
             task_model.convert_to_project(task_id)
         return _task_response(task_id, verbose)
