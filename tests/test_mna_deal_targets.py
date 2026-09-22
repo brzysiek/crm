@@ -31,6 +31,73 @@ class OrderByTest(unittest.TestCase):
         self.assertNotIn("IS NULL)", mna_deal._targets_order_by("name", "asc"))
 
 
+class TargetsQueryTest(unittest.TestCase):
+    """Zapytanie o pozycje listy — filtr osób i doklejanie osób kontaktowych."""
+
+    def setUp(self):
+        self.sql = []
+        # Kolejne fetchall(): pozycje, tagi firm (gdy są firmy), tagi osób (gdy są osoby), osoby.
+        self.results = [[]]
+        cursor = mock.MagicMock()
+        cursor.__enter__.return_value = cursor
+        cursor.execute.side_effect = lambda sql, params=None: self.sql.append((sql, params))
+        cursor.fetchall.side_effect = lambda: self.results.pop(0) if self.results else []
+        db = mock.Mock()
+        db.cursor.return_value = cursor
+        patch = mock.patch.object(mna_deal, "get_db", return_value=db)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def targets_sql(self):
+        return self.sql[0][0]
+
+    def test_unknown_contacts_filter_is_ignored(self):
+        mna_deal.get_deal_targets(3, contacts="cokolwiek")
+        self.assertNotIn("EXISTS", self.targets_sql())
+
+    def test_without_contacts_filter(self):
+        mna_deal.get_deal_targets(3, contacts="without")
+        self.assertIn("NOT EXISTS", self.targets_sql())
+
+    def test_with_email_filter(self):
+        mna_deal.get_deal_targets(3, contacts="with_email")
+        self.assertIn("c.email <> ''", self.targets_sql())
+
+    def test_search_covers_company_people(self):
+        mna_deal.get_deal_targets(3, search="Kowalski")
+        sql, params = self.sql[0]
+        self.assertIn("c.last_name LIKE", sql)
+        self.assertEqual(sql.count("%s"), len(params))
+
+    def test_people_are_attached_to_rows(self):
+        self.results = [
+            [{"id": 1, "company_id": 10, "contact_id": None}],
+            [],                                       # tagi firmy
+            [{"id": 7, "company_id": 10, "first_name": "Jan", "last_name": "Kowalski",
+              "position": None, "email": None, "phone": None, "linkedin_url": None}],
+        ]
+        rows = mna_deal.get_deal_targets(3)
+        self.assertEqual([p["last_name"] for p in rows[0]["people"]], ["Kowalski"])
+
+    def test_target_person_is_not_duplicated_in_people(self):
+        # Gdy pozycją listy jest konkretna osoba, nie powtarzamy jej w kolumnie osób firmy.
+        self.results = [
+            [{"id": 1, "company_id": 10, "contact_id": 7}],
+            [], [],
+            [{"id": 7, "company_id": 10, "first_name": "Jan", "last_name": "Kowalski",
+              "position": None, "email": None, "phone": None, "linkedin_url": None},
+             {"id": 8, "company_id": 10, "first_name": "Ewa", "last_name": "Nowak",
+              "position": None, "email": None, "phone": None, "linkedin_url": None}],
+        ]
+        rows = mna_deal.get_deal_targets(3)
+        self.assertEqual([p["id"] for p in rows[0]["people"]], [8])
+
+    def test_archived_people_are_skipped(self):
+        self.results = [[{"id": 1, "company_id": 10, "contact_id": None}], [], []]
+        mna_deal.get_deal_targets(3)
+        self.assertIn("archived_at IS NULL", self.sql[-1][0])
+
+
 class _RouteTestCase(unittest.TestCase):
     MOCKED = ("set_target_score", "set_target_interest", "set_target_valuable", "set_target_note",
               "set_target_contacted", "move_target_list", "remove_target")

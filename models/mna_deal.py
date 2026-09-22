@@ -394,12 +394,31 @@ def _targets_order_by(sort: str, direction: str) -> str:
     return f" ORDER BY dt.is_valuable DESC, {nulls_last}{column} {direction}, dt.id ASC"
 
 
+#: Filtr „Osoby kontaktowe" — warunek na osobach przypisanych do firmy z listy.
+TARGET_CONTACT_FILTERS = {
+    'with': "EXISTS (SELECT 1 FROM mna_contacts c WHERE c.company_id = dt.company_id AND c.archived_at IS NULL)",
+    'without': "NOT EXISTS (SELECT 1 FROM mna_contacts c WHERE c.company_id = dt.company_id AND c.archived_at IS NULL)",
+    'with_email': ("EXISTS (SELECT 1 FROM mna_contacts c WHERE c.company_id = dt.company_id"
+                   " AND c.archived_at IS NULL AND c.email <> '')"),
+    'with_phone': ("EXISTS (SELECT 1 FROM mna_contacts c WHERE c.company_id = dt.company_id"
+                   " AND c.archived_at IS NULL AND c.phone <> '')"),
+}
+
+TARGET_CONTACT_FILTER_LABELS = {
+    'with': 'Mają osobę kontaktową',
+    'without': 'Bez osoby kontaktowej',
+    'with_email': 'Z e-mailem do osoby',
+    'with_phone': 'Z telefonem do osoby',
+}
+
+
 def get_deal_targets(deal_id: int, list_type: str = 'long_list', search: str = None,
                      tag: str = None, interest: str = None, only_valuable: bool = False,
-                     min_score: int = None, sort: str = 'score', direction: str = 'desc') -> list[dict]:
-    """Pozycje jednej listy deala wraz z danymi firmy/kontaktu i tagami.
+                     min_score: int = None, contacts: str = None,
+                     sort: str = 'score', direction: str = 'desc') -> list[dict]:
+    """Pozycje jednej listy deala wraz z danymi firmy/kontaktu, osobami kontaktowymi i tagami.
 
-    Tagi dociągamy osobnym zapytaniem, a nie przez GROUP_CONCAT — inaczej złączenie
+    Tagi i osoby dociągamy osobnymi zapytaniami, a nie przez GROUP_CONCAT — inaczej złączenie
     tagów firmy i kontaktu wymusza GROUP BY na wszystkich kolumnach.
     """
     sql = (
@@ -421,8 +440,12 @@ def get_deal_targets(deal_id: int, list_type: str = 'long_list', search: str = N
     if search:
         like = f"%{search}%"
         sql += (" AND (co.name LIKE %s OR co.short_name LIKE %s OR co.city LIKE %s OR co.nip LIKE %s"
-                " OR ct.first_name LIKE %s OR ct.last_name LIKE %s OR dt.note LIKE %s)")
-        params.extend([like] * 7)
+                " OR ct.first_name LIKE %s OR ct.last_name LIKE %s OR dt.note LIKE %s"
+                # Szukamy też po osobach z firmy — „gdzie pracuje Kowalski” ma trafiać w firmę.
+                " OR EXISTS (SELECT 1 FROM mna_contacts c WHERE c.company_id = dt.company_id"
+                " AND c.archived_at IS NULL AND (c.first_name LIKE %s OR c.last_name LIKE %s"
+                " OR c.email LIKE %s OR c.position LIKE %s)))")
+        params.extend([like] * 11)
     if tag:
         sql += (" AND (dt.company_id IN (SELECT mct.company_id FROM mna_company_tags mct"
                 " JOIN mna_tags t ON t.id = mct.tag_id WHERE t.name = %s)"
@@ -437,6 +460,8 @@ def get_deal_targets(deal_id: int, list_type: str = 'long_list', search: str = N
     if min_score is not None:
         sql += " AND dt.score >= %s"
         params.append(min_score)
+    if contacts in TARGET_CONTACT_FILTERS:
+        sql += f" AND {TARGET_CONTACT_FILTERS[contacts]}"
 
     sql += _targets_order_by(sort, direction)
 
@@ -447,9 +472,32 @@ def get_deal_targets(deal_id: int, list_type: str = 'long_list', search: str = N
 
     rows = [dict(r) for r in rows]
     tags = _tags_for_targets(rows)
+    people = _contacts_for_targets(rows)
     for row in rows:
         row['tags'] = tags.get(('company', row['company_id']), []) + tags.get(('contact', row['contact_id']), [])
+        # Osoba będąca samą pozycją listy jest już w kolumnie z nazwą — nie dublujemy jej.
+        row['people'] = [p for p in people.get(row['company_id'], []) if p['id'] != row['contact_id']]
     return rows
+
+
+def _contacts_for_targets(rows: list[dict]) -> dict[int, list[dict]]:
+    """Osoby kontaktowe firm z listy, pogrupowane po firmie (gwiazdka i dane kontaktowe na górze)."""
+    company_ids = sorted({r['company_id'] for r in rows if r.get('company_id')})
+    if not company_ids:
+        return {}
+    marks = ','.join(['%s'] * len(company_ids))
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"""SELECT id, company_id, first_name, last_name, position, email, phone, linkedin_url
+                FROM mna_contacts
+                WHERE company_id IN ({marks}) AND archived_at IS NULL
+                ORDER BY is_starred DESC, (email IS NULL OR email = '') ASC, last_name, first_name""",
+            tuple(company_ids))
+        result: dict[int, list[dict]] = {}
+        for row in cur.fetchall():
+            result.setdefault(row['company_id'], []).append(dict(row))
+    return result
 
 
 def _tags_for_targets(rows: list[dict]) -> dict[tuple, list[str]]:
@@ -499,19 +547,21 @@ def get_deal_targets_stats(deal_id: int) -> dict:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            """SELECT list_type,
+            """SELECT dt.list_type,
                       COUNT(*) AS total,
-                      SUM(is_valuable) AS valuable,
-                      SUM(interest_status = 'interested') AS interested,
-                      SUM(interest_status = 'not_interested') AS not_interested,
-                      SUM(interest_status = 'unknown') AS unknown,
-                      SUM(contacted_at IS NOT NULL) AS contacted,
-                      ROUND(AVG(score)) AS avg_score
-               FROM mna_deal_targets WHERE deal_id = %s GROUP BY list_type""",
+                      SUM(dt.is_valuable) AS valuable,
+                      SUM(dt.interest_status = 'interested') AS interested,
+                      SUM(dt.interest_status = 'not_interested') AS not_interested,
+                      SUM(dt.interest_status = 'unknown') AS unknown,
+                      SUM(dt.contacted_at IS NOT NULL) AS contacted,
+                      SUM(EXISTS (SELECT 1 FROM mna_contacts c
+                                  WHERE c.company_id = dt.company_id AND c.archived_at IS NULL)) AS with_people,
+                      ROUND(AVG(dt.score)) AS avg_score
+               FROM mna_deal_targets dt WHERE dt.deal_id = %s GROUP BY dt.list_type""",
             (deal_id,))
         by_list = {r['list_type']: dict(r) for r in cur.fetchall()}
     empty = {'total': 0, 'valuable': 0, 'interested': 0, 'not_interested': 0,
-             'unknown': 0, 'contacted': 0, 'avg_score': None}
+             'unknown': 0, 'contacted': 0, 'with_people': 0, 'avg_score': None}
     return {key: by_list.get(key, dict(empty)) for key in LIST_TYPE_LABELS}
 
 

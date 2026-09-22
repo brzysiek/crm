@@ -9,7 +9,8 @@
   {% set next_dir = 'asc' if is_active and direction == 'desc' else ('desc' if is_active else 'desc') %}
   <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=list_type, sort=key, dir=next_dir,
                       search=filters.search, tag=filters.tag, interest=filters.interest,
-                      valuable='1' if filters.valuable else '', min_score=filters.min_score or '') }}"
+                      valuable='1' if filters.valuable else '', min_score=filters.min_score or '',
+                      contacts=filters.contacts) }}"
      class="{{ 'sort-active' if is_active }}">{{ label }}{% if is_active %} {{ '▲' if direction == 'asc' else '▼' }}{% endif %}</a>
 {% endmacro %}
 
@@ -39,6 +40,7 @@
   <span class="stat-chip">Zainteresowani: <strong>{{ s.interested or 0 }}</strong></span>
   <span class="stat-chip">Odmowy: <strong>{{ s.not_interested or 0 }}</strong></span>
   <span class="stat-chip">Bez kontaktu: <strong>{{ s.total - (s.contacted or 0) }}</strong></span>
+  <span class="stat-chip">Z osobami: <strong>{{ s.with_people or 0 }}</strong> / {{ s.total }}</span>
   <span class="stat-chip">Śr. scoring: <strong>{{ s.avg_score if s.avg_score is not none else '—' }}</strong></span>
 </div>
 
@@ -47,7 +49,7 @@
   <input type="hidden" name="sort" value="{{ sort }}">
   <input type="hidden" name="dir" value="{{ direction }}">
   <input type="text" name="search" class="filter-input" style="min-width:16rem"
-         placeholder="Szukaj: nazwa, miasto, NIP, notatka…" value="{{ filters.search }}">
+         placeholder="Szukaj: nazwa, miasto, NIP, osoba, notatka…" value="{{ filters.search }}">
   <select name="tag" class="filter-select">
     <option value="">— tag —</option>
     {% for t in available_tags %}
@@ -62,6 +64,12 @@
   </select>
   <input type="number" name="min_score" class="filter-input" style="width:8rem" min="1" max="100"
          placeholder="scoring ≥" value="{{ filters.min_score or '' }}">
+  <select name="contacts" class="filter-select">
+    <option value="">— osoby kontaktowe —</option>
+    {% for key, label in contact_filter_labels.items() %}
+    <option value="{{ key }}" {{ 'selected' if filters.contacts == key }}>{{ label }}</option>
+    {% endfor %}
+  </select>
   <label class="filter-check">
     <input type="checkbox" name="valuable" value="1" {{ 'checked' if filters.valuable }}> tylko ⭐
   </label>
@@ -96,7 +104,8 @@
         <th>{{ sort_link('Firma / kontakt', 'name') }}</th>
         <th>{{ sort_link('Lokalizacja', 'city') }}</th>
         <th>Tagi</th>
-        <th>Kontakt</th>
+        <th class="col-people">Osoby kontaktowe</th>
+        <th>Firma</th>
         <th class="col-score">{{ sort_link('Scoring', 'score') }}</th>
         <th>{{ sort_link('Zainteresowanie', 'interest') }}</th>
         <th>{{ sort_link('Ost. kontakt', 'contacted') }}</th>
@@ -130,6 +139,27 @@
         <td class="col-tags">
           {% for tag in t.tags[:4] %}<span class="badge badge-gray">{{ tag }}</span>{% endfor %}
           {% if t.tags|length > 4 %}<span class="text-muted small" title="{{ t.tags[4:]|join(', ') }}">+{{ t.tags|length - 4 }}</span>{% endif %}
+        </td>
+        <td class="col-people">
+          {% for p in t.people[:3] %}
+          <div class="person">
+            <a href="{{ url_for('mna_contacts.view_contact', contact_id=p.id) }}">{{ p.first_name }} {{ p.last_name }}</a>
+            {% if p.position %}<span class="small text-muted">· {{ p.position }}</span>{% endif %}
+            <div class="small person-links">
+              {% if p.email %}<a href="mailto:{{ p.email }}">{{ p.email }}</a>{% endif %}
+              {% if p.phone %}<a href="tel:{{ p.phone }}">{{ p.phone }}</a>{% endif %}
+              {% if p.linkedin_url %}<a href="{{ p.linkedin_url }}" target="_blank" rel="noopener">in</a>{% endif %}
+              {% if not (p.email or p.phone or p.linkedin_url) %}<span class="text-muted">brak danych kontaktowych</span>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+          {% if t.people|length > 3 %}
+          <div class="small text-muted" title="{{ t.people[3:]|map(attribute='last_name')|join(', ') }}">
+            +{{ t.people|length - 3 }} {{ 'osoba' if t.people|length - 3 == 1 else 'os.' }}
+            (<a href="{{ url_for('mna_companies.view_company', company_id=t.company_id) }}">wszystkie</a>)
+          </div>
+          {% endif %}
+          {% if not t.people %}<span class="text-muted">—</span>{% endif %}
         </td>
         <td class="nowrap">
           {% set email = t.contact_email or t.company_email %}

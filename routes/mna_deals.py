@@ -9,7 +9,8 @@ from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, 
 from models.mna_company import search_mna_companies
 from models.mna_contact import search_mna_contacts
 from models.mna_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, STAGE_ORDER, LIST_TYPE_LABELS,
-                               INTEREST_STATUS_LABELS, TARGET_SORTS, add_target, create_mna_deal,
+                               INTEREST_STATUS_LABELS, TARGET_CONTACT_FILTER_LABELS, TARGET_CONTACT_FILTERS,
+                               TARGET_SORTS, add_target, create_mna_deal,
                                delete_mna_deal, get_all_mna_deals, get_deal_target_tags,
                                get_deal_targets, get_deal_targets_stats, get_mna_deal_by_id,
                                get_targets_for_deal, move_target_list, remove_target, reorder_targets,
@@ -123,6 +124,7 @@ def view_deal(deal_id):
         active_tab='mna_deals', deal=deal, long_list=long_list, short_list=short_list,
         stage_labels=STAGE_LABELS, stage_order=STAGE_ORDER, stage_badge_classes=STAGE_BADGE_CLASSES,
         list_type_labels=LIST_TYPE_LABELS, interest_status_labels=INTEREST_STATUS_LABELS,
+        contact_filter_labels=TARGET_CONTACT_FILTER_LABELS,
         notes=notes, history=history,
         files=get_files_for_mna_deal(deal_id),
         can_upload_files=True,
@@ -268,7 +270,10 @@ def deal_targets(deal_id):
         'interest': request.args.get('interest', '').strip(),
         'valuable': request.args.get('valuable') == '1',
         'min_score': _clean_score(request.args.get('min_score', '')),
+        'contacts': request.args.get('contacts', '').strip(),
     }
+    if filters['contacts'] not in TARGET_CONTACT_FILTERS:
+        filters['contacts'] = ''
     sort = request.args.get('sort', 'score')
     if sort not in TARGET_SORTS:
         sort = 'score'
@@ -277,13 +282,15 @@ def deal_targets(deal_id):
     targets = get_deal_targets(
         deal_id, list_type, search=filters['search'] or None, tag=filters['tag'] or None,
         interest=filters['interest'] or None, only_valuable=filters['valuable'],
-        min_score=filters['min_score'], sort=sort, direction=direction)
+        min_score=filters['min_score'], contacts=filters['contacts'] or None,
+        sort=sort, direction=direction)
 
     return render_template('mna_deals/targets.html',
         active_tab='mna_deals', deal=deal, targets=targets, list_type=list_type,
         stats=get_deal_targets_stats(deal_id), available_tags=get_deal_target_tags(deal_id, list_type),
         filters=filters, sort=sort, direction=direction,
         list_type_labels=LIST_TYPE_LABELS, interest_status_labels=INTEREST_STATUS_LABELS,
+        contact_filter_labels=TARGET_CONTACT_FILTER_LABELS,
         stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         other_list='short_list' if list_type == 'long_list' else 'long_list',
     )
