@@ -735,7 +735,7 @@ def create_mna_offer(
     """Tworzy nową ofertę M&A (firma na sprzedaż lub poszukiwana). Wymagana jest
     tylko nazwa. target_* to firma/kontakt, której dotyczy oferta; source_* to
     firma/kontakt będący źródłem oferty. ref_number (numer oferty) nadaje się sam
-    w formacie „Ref: <nr w miesiącu>/<miesiąc>/<rok>” — podaj go tylko po to, by nadpisać."""
+    w formacie „Ref: <nr w roku>/<rok>” — podaj go tylko po to, by nadpisać."""
     with flask_app.app_context():
         data = {
             "name": name, "offer_type": offer_type, "ref_number": ref_number,

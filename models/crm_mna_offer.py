@@ -84,13 +84,13 @@ def get_mna_offers_by_ids(ids: list[int]) -> dict[int, dict]:
 
 
 def next_mna_offer_ref(on_date: date | None = None) -> str:
-    """Kolejny numer oferty w formacie „Ref: <nr w miesiącu>/<miesiąc>/<rok>”.
+    """Kolejny numer oferty w formacie „Ref: <nr w roku>/<rok>”.
 
-    Numeracja zaczyna się od 1 w każdym miesiącu. Pod uwagę bierzemy również oferty
+    Numeracja zaczyna się od 1 w każdym roku. Pod uwagę bierzemy również oferty
     zarchiwizowane, żeby ten sam numer nie został wydany dwa razy.
     """
     today = on_date or date.today()
-    suffix = f"/{today.month:02d}/{today.year}"
+    suffix = f"/{today.year}"
 
     db = get_db()
     with db.cursor() as cur:
