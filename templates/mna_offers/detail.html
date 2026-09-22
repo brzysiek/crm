@@ -6,7 +6,7 @@
 <div class="rd-screen rd-deal-detail">
 <div class="detail-header">
   <div>
-    <h1>{{ offer.name }}
+    <h1>{{ offer.name }}{% if offer.ref_number %} <span class="text-muted">({{ offer.ref_number }})</span>{% endif %}
       <span class="badge {{ offer_type_badge_classes[offer.offer_type] }}">
         {{ offer_type_labels[offer.offer_type] }}
       </span>

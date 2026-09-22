@@ -12,9 +12,15 @@
 <div class="form-card">
 <form method="post" action="{{ action }}">
 
-  <div class="form-group">
-    <label for="name">Nazwa <span class="req">*</span></label>
-    <input type="text" id="name" name="name" required value="{{ offer.name or '' }}">
+  <div class="form-grid form-grid-2">
+    <div class="form-group">
+      <label for="name">Nazwa <span class="req">*</span></label>
+      <input type="text" id="name" name="name" required value="{{ offer.name or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="ref_number">Numer oferty</label>
+      <input type="text" id="ref_number" name="ref_number" maxlength="20" value="{{ offer.ref_number or '' }}">
+    </div>
   </div>
 
   <div class="form-group">

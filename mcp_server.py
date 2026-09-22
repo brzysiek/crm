@@ -722,6 +722,7 @@ def get_mna_offer(offer_id: int) -> dict:
 def create_mna_offer(
     name: str,
     offer_type: Literal["for_sale", "wanted"] = "for_sale",
+    ref_number: str | None = None,
     description: str | None = None,
     industry: str | None = None,
     revenue: float | None = None,
@@ -733,10 +734,12 @@ def create_mna_offer(
 ) -> dict:
     """Tworzy nową ofertę M&A (firma na sprzedaż lub poszukiwana). Wymagana jest
     tylko nazwa. target_* to firma/kontakt, której dotyczy oferta; source_* to
-    firma/kontakt będący źródłem oferty."""
+    firma/kontakt będący źródłem oferty. ref_number (numer oferty) nadaje się sam
+    w formacie „Ref: <nr w miesiącu>/<miesiąc>/<rok>” — podaj go tylko po to, by nadpisać."""
     with flask_app.app_context():
         data = {
-            "name": name, "offer_type": offer_type, "description": description,
+            "name": name, "offer_type": offer_type, "ref_number": ref_number,
+            "description": description,
             "industry": industry, "revenue": revenue, "ebitda": ebitda,
             "target_company_id": target_company_id, "target_contact_id": target_contact_id,
             "source_company_id": source_company_id, "source_contact_id": source_contact_id,
@@ -751,6 +754,7 @@ def update_mna_offer(
     offer_id: int,
     name: str | None = None,
     offer_type: Literal["for_sale", "wanted"] | None = None,
+    ref_number: str | None = None,
     description: str | None = None,
     industry: str | None = None,
     revenue: float | None = None,
@@ -766,7 +770,8 @@ def update_mna_offer(
         if not current:
             raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
         updates = {
-            "name": name, "offer_type": offer_type, "description": description,
+            "name": name, "offer_type": offer_type, "ref_number": ref_number,
+            "description": description,
             "industry": industry, "revenue": revenue, "ebitda": ebitda,
             "target_company_id": target_company_id, "target_contact_id": target_contact_id,
             "source_company_id": source_company_id, "source_contact_id": source_contact_id,

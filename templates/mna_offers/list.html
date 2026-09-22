@@ -41,7 +41,10 @@
     <tbody>
       {% for o in offers %}
       <tr>
-        <td><a href="{{ url_for('mna_offers.view_mna_offer', offer_id=o.id) }}">{{ icon('briefcase', 14) }} {{ o.name }}</a></td>
+        <td>
+          <a href="{{ url_for('mna_offers.view_mna_offer', offer_id=o.id) }}">{{ icon('briefcase', 14) }} {{ o.name }}</a>
+          {% if o.ref_number %}<span class="text-muted nowrap">({{ o.ref_number }})</span>{% endif %}
+        </td>
         <td>{{ o.industry or '—' }}</td>
         <td class="text-right nowrap">{{ o.revenue|pln if o.revenue is not none else '—' }}</td>
         <td class="text-right nowrap">{{ o.ebitda|pln if o.ebitda is not none else '—' }}</td>

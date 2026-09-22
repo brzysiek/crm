@@ -1,5 +1,9 @@
+from datetime import date
+
 from database import get_db
 from models.crm_notes import log_history, build_diff_summary
+
+REF_PREFIX = 'Ref: '
 
 OFFER_TYPE_LABELS = {
     'for_sale': 'Na sprzedaż',
@@ -12,7 +16,7 @@ OFFER_TYPE_BADGE_CLASSES = {
 }
 
 FIELD_LABELS = {
-    'name': 'Nazwa', 'description': 'Opis', 'industry': 'Branża',
+    'name': 'Nazwa', 'ref_number': 'Numer oferty', 'description': 'Opis', 'industry': 'Branża',
     'revenue': 'Obroty', 'ebitda': 'EBITDA', 'offer_type': 'Typ oferty',
     'added_date': 'Data dodania',
 }
@@ -45,9 +49,9 @@ def get_all_mna_offers(offer_type: str = None, sort: str = 'created_at', directi
         sql += " AND o.offer_type = %s"
         params.append(offer_type)
     if search:
-        sql += " AND (o.name LIKE %s OR o.description LIKE %s OR o.industry LIKE %s)"
+        sql += " AND (o.name LIKE %s OR o.ref_number LIKE %s OR o.description LIKE %s OR o.industry LIKE %s)"
         like = f"%{search}%"
-        params.extend([like, like, like])
+        params.extend([like, like, like, like])
     sql += f" ORDER BY o.{sort} {direction}, o.id DESC"
 
     with db.cursor() as cur:
@@ -79,17 +83,40 @@ def get_mna_offers_by_ids(ids: list[int]) -> dict[int, dict]:
         return {row['id']: row for row in cur.fetchall()}
 
 
+def next_mna_offer_ref(on_date: date | None = None) -> str:
+    """Kolejny numer oferty w formacie „Ref: <nr w miesiącu>/<miesiąc>/<rok>”.
+
+    Numeracja zaczyna się od 1 w każdym miesiącu. Pod uwagę bierzemy również oferty
+    zarchiwizowane, żeby ten sam numer nie został wydany dwa razy.
+    """
+    today = on_date or date.today()
+    suffix = f"/{today.month:02d}/{today.year}"
+
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT ref_number FROM crm_mna_offers WHERE ref_number LIKE %s", (f"%{suffix}",))
+        rows = cur.fetchall()
+
+    used = []
+    for row in rows:
+        head = row['ref_number'][:-len(suffix)].removeprefix(REF_PREFIX).strip()
+        if head.isdigit():
+            used.append(int(head))
+    return f"{REF_PREFIX}{max(used) + 1 if used else 1}{suffix}"
+
+
 def create_mna_offer(data: dict, user_id: int | None) -> int:
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_mna_offers
-                   (name, description, industry, revenue, ebitda, offer_type, added_date,
+                   (name, ref_number, description, industry, revenue, ebitda, offer_type, added_date,
                     target_contact_id, target_company_id, source_contact_id, source_company_id, owner_user_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
-                    data['name'], data.get('description') or None, data.get('industry') or None,
+                    data['name'], (data.get('ref_number') or '').strip() or next_mna_offer_ref(),
+                    data.get('description') or None, data.get('industry') or None,
                     data.get('revenue') or None, data.get('ebitda') or None,
                     data.get('offer_type', 'for_sale'), data.get('added_date') or None,
                     data.get('target_contact_id') or None, data.get('target_company_id') or None,
@@ -113,12 +140,14 @@ def update_mna_offer(offer_id: int, data: dict, user_id: int | None) -> None:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE crm_mna_offers SET
-                   name=%s, description=%s, industry=%s, revenue=%s, ebitda=%s, offer_type=%s, added_date=%s,
+                   name=%s, ref_number=%s, description=%s, industry=%s, revenue=%s, ebitda=%s,
+                   offer_type=%s, added_date=%s,
                    target_contact_id=%s, target_company_id=%s, source_contact_id=%s, source_company_id=%s,
                    owner_user_id=%s
                    WHERE id=%s""",
                 (
-                    data['name'], data.get('description') or None, data.get('industry') or None,
+                    data['name'], (data.get('ref_number') or '').strip() or None,
+                    data.get('description') or None, data.get('industry') or None,
                     data.get('revenue') or None, data.get('ebitda') or None,
                     data.get('offer_type', 'for_sale'), data.get('added_date') or None,
                     data.get('target_contact_id') or None, data.get('target_company_id') or None,

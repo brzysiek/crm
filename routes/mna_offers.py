@@ -7,7 +7,8 @@ from models.crm_contact import get_contact_by_id
 from models.crm_mna_offer import (FIELD_LABELS, OFFER_TYPE_BADGE_CLASSES, OFFER_TYPE_LABELS,
                                    create_mna_offer, delete_mna_offer, get_all_mna_offers,
                                    get_deleted_mna_offers, get_mna_offer_by_id,
-                                   permanently_delete_mna_offer, restore_mna_offer, update_mna_offer)
+                                   next_mna_offer_ref, permanently_delete_mna_offer, restore_mna_offer,
+                                   update_mna_offer)
 from models.crm_notes import HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note, get_history, get_notes
 from models.user import get_active_users
 from routes.crm_contacts import build_gtd_items
@@ -26,6 +27,7 @@ def _parse_form(form):
         ebitda = None
     return {
         'name': form.get('name', '').strip(),
+        'ref_number': form.get('ref_number', '').strip()[:20],
         'description': form.get('description', '').strip(),
         'industry': form.get('industry', '').strip(),
         'revenue': revenue,
@@ -102,7 +104,10 @@ def new_mna_offer():
         return redirect(url_for('mna_offers.view_mna_offer', offer_id=offer_id))
 
     return render_template('mna_offers/form.html',
-        active_tab='mna_offers', offer={'offer_type': offer_type, 'added_date': date.today().isoformat()}, owners=owners,
+        active_tab='mna_offers',
+        offer={'offer_type': offer_type, 'added_date': date.today().isoformat(),
+               'ref_number': next_mna_offer_ref()},
+        owners=owners,
         offer_type_labels=OFFER_TYPE_LABELS,
         prefill_target_company=None, prefill_target_contact=None,
         prefill_source_company=None, prefill_source_contact=None,
@@ -135,6 +140,9 @@ def edit_mna_offer(offer_id):
         flash('Oferta M&A została zaktualizowana.', 'success')
         return redirect(url_for('mna_offers.view_mna_offer', offer_id=offer_id))
 
+    if not offer.get('ref_number'):
+        # Oferty sprzed wprowadzenia numeracji dostają propozycję numeru na bieżący miesiąc.
+        offer = {**offer, 'ref_number': next_mna_offer_ref()}
     prefill_target_company = get_company_by_id(offer['target_company_id']) if offer.get('target_company_id') else None
     prefill_target_contact = get_contact_by_id(offer['target_contact_id']) if offer.get('target_contact_id') else None
     prefill_source_company = get_company_by_id(offer['source_company_id']) if offer.get('source_company_id') else None
