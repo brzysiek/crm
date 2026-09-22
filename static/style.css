@@ -3694,3 +3694,49 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .recon-cand { flex-direction: column; align-items: stretch; }
 }
 .attachment-chip-remove:hover { color: var(--error, #dc2626); }
+
+/* ---- Roboczy widok long/short listy deala M&A ---------------------------- */
+
+.rd-deal-targets .stat-chips {
+  display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .75rem;
+}
+.rd-deal-targets .stat-chip {
+  background: var(--surface-secondary); color: var(--text-secondary);
+  border-radius: 999px; padding: .25rem .7rem; font-size: .8rem;
+}
+.rd-deal-targets .filter-check {
+  display: inline-flex; align-items: center; gap: .35rem; font-size: .85rem;
+  color: var(--text-secondary); white-space: nowrap;
+}
+/* Pasek akcji masowych zostaje w zasięgu wzroku przy przewijaniu długiej listy. */
+.rd-deal-targets .bulk-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+  padding: .5rem .65rem; margin-bottom: .6rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(2 6 23 / 8%);
+}
+.rd-deal-targets .star-btn {
+  background: none; border: none; cursor: pointer; padding: .1rem;
+  color: var(--text-muted); line-height: 1;
+}
+.rd-deal-targets .star-btn.star-active { color: #f59e0b; }
+.rd-deal-targets .link-chip {
+  display: inline-block; padding: .1rem .35rem; margin-right: .15rem;
+  background: var(--surface-secondary); border-radius: 4px; font-size: .75rem;
+}
+.rd-deal-targets .col-check { width: 32px; text-align: center; }
+.rd-deal-targets .col-score { width: 6rem; }
+.rd-deal-targets .col-tags  { max-width: 15rem; }
+.rd-deal-targets .col-note  { min-width: 12rem; }
+.rd-deal-targets .col-tags .badge { margin: 0 .15rem .15rem 0; font-size: .7rem; }
+.rd-deal-targets .filter-input-sm, .rd-deal-targets .filter-select-sm {
+  min-width: 0; padding: .25rem .4rem; font-size: .8rem;
+}
+.rd-deal-targets th a { color: inherit; }
+.rd-deal-targets th a.sort-active { font-weight: 700; color: var(--primary); }
+/* Potwierdzenie zapisu pola bez przeładowania strony. */
+.rd-deal-targets .save-ok  { border-color: var(--success); background: var(--success-bg); }
+.rd-deal-targets .save-err { border-color: var(--error); background: var(--error-bg); }
+.rd-deal-targets .star-btn.save-ok  { background: none; color: var(--success); }
+.rd-deal-targets .star-btn.save-err { background: none; color: var(--error-text); }

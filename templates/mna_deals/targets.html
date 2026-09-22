@@ -1,0 +1,255 @@
+{# Roboczy widok long/short listy deala M&A: filtry, sortowanie, edycja w miejscu
+   (scoring, zainteresowanie, notatka, data kontaktu) i akcje na zaznaczonych pozycjach. #}
+{% extends 'mna_offers/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ list_type_labels[list_type] }} — {{ deal.name }}{% endblock %}
+
+{% macro sort_link(label, key) %}
+  {% set is_active = sort == key %}
+  {% set next_dir = 'asc' if is_active and direction == 'desc' else ('desc' if is_active else 'desc') %}
+  <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=list_type, sort=key, dir=next_dir,
+                      search=filters.search, tag=filters.tag, interest=filters.interest,
+                      valuable='1' if filters.valuable else '', min_score=filters.min_score or '') }}"
+     class="{{ 'sort-active' if is_active }}">{{ label }}{% if is_active %} {{ '▲' if direction == 'asc' else '▼' }}{% endif %}</a>
+{% endmacro %}
+
+{% block mna_content %}
+<div class="rd-screen rd-deal-targets">
+
+<div class="page-header">
+  <div>
+    <h1>{{ list_type_labels[list_type] }} <span class="text-muted">({{ targets|length }}{% if targets|length != stats[list_type].total %} z {{ stats[list_type].total }}{% endif %})</span></h1>
+    <div class="detail-subtitle">
+      <a href="{{ url_for('mna_deals.view_deal', deal_id=deal.id) }}">{{ deal.name }}</a>
+      <span class="badge {{ stage_badge_classes[deal.stage] }}">{{ stage_labels[deal.stage] }}</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=other_list) }}" class="btn btn-outline">
+      {{ list_type_labels[other_list] }} ({{ stats[other_list].total }})
+    </a>
+    <a href="{{ url_for('mna_deals.view_deal', deal_id=deal.id) }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Deal</a>
+  </div>
+</div>
+
+{% set s = stats[list_type] %}
+<div class="stat-chips">
+  <span class="stat-chip">Pozycji: <strong>{{ s.total }}</strong></span>
+  <span class="stat-chip">Wartościowe: <strong>{{ s.valuable or 0 }}</strong></span>
+  <span class="stat-chip">Zainteresowani: <strong>{{ s.interested or 0 }}</strong></span>
+  <span class="stat-chip">Odmowy: <strong>{{ s.not_interested or 0 }}</strong></span>
+  <span class="stat-chip">Bez kontaktu: <strong>{{ s.total - (s.contacted or 0) }}</strong></span>
+  <span class="stat-chip">Śr. scoring: <strong>{{ s.avg_score if s.avg_score is not none else '—' }}</strong></span>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('mna_deals.deal_targets', deal_id=deal.id) }}">
+  <input type="hidden" name="list" value="{{ list_type }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="dir" value="{{ direction }}">
+  <input type="text" name="search" class="filter-input" style="min-width:16rem"
+         placeholder="Szukaj: nazwa, miasto, NIP, notatka…" value="{{ filters.search }}">
+  <select name="tag" class="filter-select">
+    <option value="">— tag —</option>
+    {% for t in available_tags %}
+    <option value="{{ t }}" {{ 'selected' if filters.tag == t }}>{{ t }}</option>
+    {% endfor %}
+  </select>
+  <select name="interest" class="filter-select">
+    <option value="">— zainteresowanie —</option>
+    {% for key, label in interest_status_labels.items() %}
+    <option value="{{ key }}" {{ 'selected' if filters.interest == key }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <input type="number" name="min_score" class="filter-input" style="width:8rem" min="1" max="100"
+         placeholder="scoring ≥" value="{{ filters.min_score or '' }}">
+  <label class="filter-check">
+    <input type="checkbox" name="valuable" value="1" {{ 'checked' if filters.valuable }}> tylko ⭐
+  </label>
+  <button type="submit" class="btn btn-outline">Filtruj</button>
+  <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=list_type) }}" class="btn btn-ghost">Wyczyść</a>
+</form>
+
+{% if targets %}
+<form method="post" action="{{ url_for('mna_deals.bulk_targets_view', deal_id=deal.id) }}" id="bulk-form">
+<input type="hidden" name="back" value="{{ request.full_path }}">
+
+<div class="bulk-bar" id="bulk-bar" hidden>
+  <span><strong id="bulk-count">0</strong> zazn.</span>
+  <button type="submit" name="action" value="move_{{ other_list }}" class="btn btn-outline btn-sm">
+    {{ icon('arrow-right', 14) }} Na {{ list_type_labels[other_list].lower() }}
+  </button>
+  <button type="submit" name="action" value="interest_interested" class="btn btn-outline btn-sm">Zainteresowany</button>
+  <button type="submit" name="action" value="interest_not_interested" class="btn btn-outline btn-sm">Niezainteresowany</button>
+  <button type="submit" name="action" value="valuable_1" class="btn btn-outline btn-sm">{{ icon('star', 14) }} Oznacz</button>
+  <button type="submit" name="action" value="valuable_0" class="btn btn-outline btn-sm">Odznacz</button>
+  <button type="submit" name="action" value="contacted_today" class="btn btn-outline btn-sm">Kontakt dzisiaj</button>
+  <button type="submit" name="action" value="remove" class="btn btn-outline btn-sm action-danger"
+          onclick="return confirm('Usunąć zaznaczone pozycje z listy?')">{{ icon('trash', 14) }} Usuń</button>
+</div>
+
+<div class="table-wrapper">
+  <table class="data-table data-table-sm targets-table">
+    <thead>
+      <tr>
+        <th class="col-check"><input type="checkbox" id="check-all" title="Zaznacz wszystkie"></th>
+        <th></th>
+        <th>{{ sort_link('Firma / kontakt', 'name') }}</th>
+        <th>{{ sort_link('Lokalizacja', 'city') }}</th>
+        <th>Tagi</th>
+        <th>Kontakt</th>
+        <th class="col-score">{{ sort_link('Scoring', 'score') }}</th>
+        <th>{{ sort_link('Zainteresowanie', 'interest') }}</th>
+        <th>{{ sort_link('Ost. kontakt', 'contacted') }}</th>
+        <th>Notatka</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in targets %}
+      <tr data-target-id="{{ t.id }}">
+        <td class="col-check"><input type="checkbox" name="target_ids" value="{{ t.id }}" class="row-check"></td>
+        <td>
+          <button type="button" class="star-btn {{ 'star-active' if t.is_valuable }}"
+                  title="Oznacz jako wartościowy"
+                  onclick="targetToggleValuable(this, {{ t.id }})">{{ icon('star', 16) }}</button>
+        </td>
+        <td>
+          {% if t.contact_id %}
+            <a href="{{ url_for('mna_contacts.view_contact', contact_id=t.contact_id) }}">{{ t.contact_first_name }} {{ t.contact_last_name }}</a>
+            {% if t.contact_position %}<div class="small text-muted">{{ t.contact_position }}</div>{% endif %}
+            {% if t.company_id %}<div class="small"><a href="{{ url_for('mna_companies.view_company', company_id=t.company_id) }}">{{ t.company_short_name or t.company_name }}</a></div>{% endif %}
+          {% elif t.company_id %}
+            <a href="{{ url_for('mna_companies.view_company', company_id=t.company_id) }}">{{ t.company_short_name or t.company_name }}</a>
+            {% if t.company_short_description %}<div class="small text-muted">{{ t.company_short_description }}</div>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="nowrap">
+          {{ t.company_city or '—' }}
+          {% if t.company_voivodeship %}<div class="small text-muted">{{ t.company_voivodeship }}</div>{% endif %}
+        </td>
+        <td class="col-tags">
+          {% for tag in t.tags[:4] %}<span class="badge badge-gray">{{ tag }}</span>{% endfor %}
+          {% if t.tags|length > 4 %}<span class="text-muted small" title="{{ t.tags[4:]|join(', ') }}">+{{ t.tags|length - 4 }}</span>{% endif %}
+        </td>
+        <td class="nowrap">
+          {% set email = t.contact_email or t.company_email %}
+          {% set phone = t.contact_phone or t.company_phone %}
+          {% set linkedin = t.contact_linkedin or t.company_linkedin %}
+          {% if email %}<a href="mailto:{{ email }}" title="{{ email }}" class="link-chip">@</a>{% endif %}
+          {% if phone %}<a href="tel:{{ phone }}" title="{{ phone }}" class="link-chip">tel</a>{% endif %}
+          {% if t.company_website %}<a href="{{ t.company_website }}" target="_blank" rel="noopener" title="{{ t.company_website }}" class="link-chip">www</a>{% endif %}
+          {% if linkedin %}<a href="{{ linkedin }}" target="_blank" rel="noopener" title="{{ linkedin }}" class="link-chip">in</a>{% endif %}
+          {% if not (email or phone or t.company_website or linkedin) %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td class="col-score">
+          <input type="number" min="1" max="100" step="1" class="filter-input filter-input-sm" style="width:4.5rem"
+                 value="{{ t.score if t.score is not none else '' }}" placeholder="—"
+                 onchange="targetSave(this, {{ t.id }}, 'score')">
+        </td>
+        <td>
+          <select class="filter-select filter-select-sm" onchange="targetSave(this, {{ t.id }}, 'interest')">
+            {% for key, label in interest_status_labels.items() %}
+            <option value="{{ key }}" {{ 'selected' if t.interest_status == key }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <input type="date" class="filter-input filter-input-sm" style="width:9rem"
+                 value="{{ t.contacted_at|date_iso }}"
+                 onchange="targetSave(this, {{ t.id }}, 'contacted_at')">
+        </td>
+        <td class="col-note">
+          <input type="text" class="filter-input filter-input-sm" style="width:100%" maxlength="500"
+                 value="{{ t.note or '' }}" placeholder="notatka robocza…"
+                 onchange="targetSave(this, {{ t.id }}, 'note')">
+        </td>
+        <td class="col-actions nowrap">
+          <button type="submit" name="action" value="move_{{ other_list }}" class="action-btn"
+                  title="Przenieś na {{ list_type_labels[other_list].lower() }}"
+                  onclick="targetSelectOnly(this)">{{ icon('arrow-right' if list_type == 'long_list' else 'arrow-left', 16) }}</button>
+          <button type="submit" name="action" value="remove" class="action-btn action-danger" title="Usuń z listy"
+                  onclick="return targetSelectOnly(this) &amp;&amp; confirm('Usunąć z listy?')">{{ icon('x', 16) }}</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</form>
+{% else %}
+<p class="text-muted">Brak pozycji spełniających kryteria.
+  <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=list_type) }}">Wyczyść filtry</a>
+  lub <a href="{{ url_for('mna_deals.view_deal', deal_id=deal.id) }}">dodaj pozycję na widoku deala</a>.</p>
+{% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TARGET_QUICK_URL = "{{ url_for('mna_deals.quick_update_target_view', deal_id=deal.id, target_id=0) }}";
+
+function targetQuickUrl(targetId) {
+  return TARGET_QUICK_URL.replace('/targets/0/', '/targets/' + targetId + '/');
+}
+
+// Zapis pojedynczego pola; pole miga na zielono po zapisie, na czerwono przy błędzie.
+async function targetPost(el, targetId, field, value) {
+  el.classList.remove('save-ok', 'save-err');
+  try {
+    const res = await fetch(targetQuickUrl(targetId), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({field: field, value: value}),
+    });
+    const data = await res.json();
+    el.classList.add(data.ok ? 'save-ok' : 'save-err');
+  } catch (e) {
+    el.classList.add('save-err');
+  }
+  setTimeout(() => el.classList.remove('save-ok', 'save-err'), 1500);
+}
+
+function targetSave(input, targetId, field) {
+  targetPost(input, targetId, field, input.value);
+}
+
+function targetToggleValuable(button, targetId) {
+  const next = !button.classList.contains('star-active');
+  button.classList.toggle('star-active', next);
+  targetPost(button, targetId, 'valuable', next ? '1' : '0');
+}
+
+// Akcje w wierszu korzystają z tego samego formularza co akcje masowe — zaznaczamy
+// tylko ten jeden wiersz, żeby nie wysłać wcześniejszego zaznaczenia.
+function targetSelectOnly(button) {
+  document.querySelectorAll('.row-check').forEach(c => { c.checked = false; });
+  const check = button.closest('tr').querySelector('.row-check');
+  if (check) check.checked = true;
+  return true;
+}
+
+(function () {
+  const checkAll = document.getElementById('check-all');
+  const bar = document.getElementById('bulk-bar');
+  const counter = document.getElementById('bulk-count');
+  const boxes = () => Array.from(document.querySelectorAll('.row-check'));
+
+  function refresh() {
+    const n = boxes().filter(c => c.checked).length;
+    counter.textContent = n;
+    bar.hidden = n === 0;
+    if (checkAll) checkAll.checked = n > 0 && n === boxes().length;
+  }
+
+  if (checkAll) {
+    checkAll.addEventListener('change', () => {
+      boxes().forEach(c => { c.checked = checkAll.checked; });
+      refresh();
+    });
+  }
+  boxes().forEach(c => c.addEventListener('change', refresh));
+  refresh();
+})();
+</script>
+{% endblock %}

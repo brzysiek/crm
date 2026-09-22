@@ -1,3 +1,5 @@
+from datetime import date
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from models.crm_file import get_files_for_mna_deal
@@ -7,10 +9,12 @@ from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, 
 from models.mna_company import search_mna_companies
 from models.mna_contact import search_mna_contacts
 from models.mna_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, STAGE_ORDER, LIST_TYPE_LABELS,
-                               INTEREST_STATUS_LABELS, add_target, create_mna_deal, delete_mna_deal,
-                               get_all_mna_deals, get_mna_deal_by_id, get_targets_for_deal,
-                               move_target_list, remove_target, reorder_targets, restore_mna_deal,
-                               set_target_interest, set_target_score, set_target_valuable, update_mna_deal)
+                               INTEREST_STATUS_LABELS, TARGET_SORTS, add_target, create_mna_deal,
+                               delete_mna_deal, get_all_mna_deals, get_deal_target_tags,
+                               get_deal_targets, get_deal_targets_stats, get_mna_deal_by_id,
+                               get_targets_for_deal, move_target_list, remove_target, reorder_targets,
+                               restore_mna_deal, set_target_contacted, set_target_interest,
+                               set_target_note, set_target_score, set_target_valuable, update_mna_deal)
 from routes.crm_contacts import build_gtd_items
 
 bp = Blueprint('mna_deals', __name__, url_prefix='/mna/deals')
@@ -231,3 +235,125 @@ def api_search_target_companies():
 def api_search_target_contacts():
     q = request.args.get('q', '')
     return jsonify(search_mna_contacts(q))
+
+
+# ---------------------------------------------------------------------------
+# Widok roboczy long/short listy
+# ---------------------------------------------------------------------------
+
+def _clean_score(raw: str) -> int | None:
+    raw = (raw or '').strip()
+    if not raw:
+        return None
+    try:
+        return max(1, min(100, int(raw)))
+    except ValueError:
+        return None
+
+
+@bp.route('/<int:deal_id>/lista')
+def deal_targets(deal_id):
+    """Pełny widok jednej listy deala — filtry, sortowanie i praca na wielu pozycjach naraz."""
+    deal = get_mna_deal_by_id(deal_id)
+    if not deal:
+        flash('Deal nie istnieje.', 'error')
+        return redirect(url_for('mna_deals.list_deals'))
+
+    list_type = request.args.get('list', 'long_list')
+    if list_type not in LIST_TYPE_LABELS:
+        list_type = 'long_list'
+    filters = {
+        'search': request.args.get('search', '').strip(),
+        'tag': request.args.get('tag', '').strip(),
+        'interest': request.args.get('interest', '').strip(),
+        'valuable': request.args.get('valuable') == '1',
+        'min_score': _clean_score(request.args.get('min_score', '')),
+    }
+    sort = request.args.get('sort', 'score')
+    if sort not in TARGET_SORTS:
+        sort = 'score'
+    direction = 'asc' if request.args.get('dir') == 'asc' else 'desc'
+
+    targets = get_deal_targets(
+        deal_id, list_type, search=filters['search'] or None, tag=filters['tag'] or None,
+        interest=filters['interest'] or None, only_valuable=filters['valuable'],
+        min_score=filters['min_score'], sort=sort, direction=direction)
+
+    return render_template('mna_deals/targets.html',
+        active_tab='mna_deals', deal=deal, targets=targets, list_type=list_type,
+        stats=get_deal_targets_stats(deal_id), available_tags=get_deal_target_tags(deal_id, list_type),
+        filters=filters, sort=sort, direction=direction,
+        list_type_labels=LIST_TYPE_LABELS, interest_status_labels=INTEREST_STATUS_LABELS,
+        stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
+        other_list='short_list' if list_type == 'long_list' else 'long_list',
+    )
+
+
+@bp.route('/<int:deal_id>/targets/<int:target_id>/quick', methods=['POST'])
+def quick_update_target_view(deal_id, target_id):
+    """Zapis pojedynczego pola z widoku listy (fetch) — bez przeładowania strony."""
+    user_id = session.get('user_id')
+    data = request.get_json(silent=True) or request.form
+    field = data.get('field')
+
+    if field == 'score':
+        set_target_score(target_id, _clean_score(data.get('value')), user_id)
+    elif field == 'interest':
+        value = data.get('value')
+        if value not in INTEREST_STATUS_LABELS:
+            return jsonify({'ok': False, 'error': 'Nieznany status zainteresowania.'}), 400
+        set_target_interest(target_id, value, user_id)
+    elif field == 'valuable':
+        set_target_valuable(target_id, str(data.get('value')) in ('1', 'true', 'True'), user_id)
+    elif field == 'note':
+        set_target_note(target_id, data.get('value'), user_id)
+    elif field == 'contacted_at':
+        set_target_contacted(target_id, (data.get('value') or '').strip() or None, user_id)
+    else:
+        return jsonify({'ok': False, 'error': f'Nieznane pole: {field}.'}), 400
+
+    return jsonify({'ok': True})
+
+
+@bp.route('/<int:deal_id>/targets/bulk', methods=['POST'])
+def bulk_targets_view(deal_id):
+    """Akcja na zaznaczonych pozycjach listy. Wraca na ten sam widok z zachowanymi filtrami."""
+    action = request.form.get('action', '')
+    target_ids = request.form.getlist('target_ids', type=int)
+    user_id = session.get('user_id')
+    back = request.form.get('back') or url_for('mna_deals.deal_targets', deal_id=deal_id)
+
+    if not target_ids:
+        flash('Nie zaznaczono żadnej pozycji.', 'error')
+        return redirect(back)
+
+    if action in ('move_long_list', 'move_short_list'):
+        list_type = action.removeprefix('move_')
+        for tid in target_ids:
+            move_target_list(tid, list_type, user_id)
+        flash(f'Przeniesiono {len(target_ids)} poz. na {LIST_TYPE_LABELS[list_type].lower()}.', 'success')
+    elif action.startswith('interest_'):
+        status = action.removeprefix('interest_')
+        if status not in INTEREST_STATUS_LABELS:
+            flash('Nieznany status zainteresowania.', 'error')
+            return redirect(back)
+        for tid in target_ids:
+            set_target_interest(tid, status, user_id)
+        flash(f'Ustawiono „{INTEREST_STATUS_LABELS[status]}” dla {len(target_ids)} poz.', 'success')
+    elif action in ('valuable_1', 'valuable_0'):
+        is_valuable = action.endswith('1')
+        for tid in target_ids:
+            set_target_valuable(tid, is_valuable, user_id)
+        flash(f'Zaktualizowano oznaczenie dla {len(target_ids)} poz.', 'success')
+    elif action == 'contacted_today':
+        for tid in target_ids:
+            set_target_contacted(tid, date.today().isoformat(), user_id)
+        flash(f'Oznaczono kontakt dzisiaj dla {len(target_ids)} poz.', 'success')
+    elif action == 'remove':
+        for tid in target_ids:
+            remove_target(tid, user_id)
+        flash(f'Usunięto {len(target_ids)} poz. z listy.', 'success')
+    else:
+        flash('Nieznana akcja.', 'error')
+
+    return redirect(back)

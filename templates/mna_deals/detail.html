@@ -130,7 +130,12 @@
 
     {% for list_key, list_items in [('long_list', long_list), ('short_list', short_list)] %}
     <div class="inv-section" style="margin-top:1rem">
-      <h4>{{ list_type_labels[list_key] }} ({{ list_items|length }})</h4>
+      <div class="inv-section-header">
+        <h4>{{ list_type_labels[list_key] }} ({{ list_items|length }})</h4>
+        <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=list_key) }}" class="btn btn-outline btn-sm">
+          Otwórz pełny widok {{ icon('arrow-right', 14) }}
+        </a>
+      </div>
       <div style="padding:.85rem">
         {% if list_items %}
         <div class="table-wrapper">

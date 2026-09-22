@@ -368,3 +368,184 @@ def get_deals_for_contact(contact_id: int) -> list[dict]:
             (contact_id,)
         )
         return cur.fetchall()
+
+
+# ---------------------------------------------------------------------------
+# Widok roboczy long/short listy — filtrowanie, sortowanie i pola robocze
+# ---------------------------------------------------------------------------
+
+TARGET_SORTS = {
+    'score': 'dt.score',
+    'name': 'COALESCE(co.short_name, co.name, ct.last_name)',
+    'city': 'co.city',
+    'interest': 'dt.interest_status',
+    'contacted': 'dt.contacted_at',
+    'added': 'dt.created_at',
+}
+
+#: Sortowania, przy których puste wartości mają lądować na końcu niezależnie od kierunku.
+_NULLS_LAST = ('score', 'city', 'contacted')
+
+
+def _targets_order_by(sort: str, direction: str) -> str:
+    column = TARGET_SORTS.get(sort, TARGET_SORTS['score'])
+    direction = 'ASC' if str(direction).lower() == 'asc' else 'DESC'
+    nulls_last = f"({column} IS NULL), " if sort in _NULLS_LAST else ''
+    return f" ORDER BY dt.is_valuable DESC, {nulls_last}{column} {direction}, dt.id ASC"
+
+
+def get_deal_targets(deal_id: int, list_type: str = 'long_list', search: str = None,
+                     tag: str = None, interest: str = None, only_valuable: bool = False,
+                     min_score: int = None, sort: str = 'score', direction: str = 'desc') -> list[dict]:
+    """Pozycje jednej listy deala wraz z danymi firmy/kontaktu i tagami.
+
+    Tagi dociągamy osobnym zapytaniem, a nie przez GROUP_CONCAT — inaczej złączenie
+    tagów firmy i kontaktu wymusza GROUP BY na wszystkich kolumnach.
+    """
+    sql = (
+        "SELECT dt.*, "
+        "co.name AS company_name, co.short_name AS company_short_name, co.city AS company_city, "
+        "co.voivodeship AS company_voivodeship, co.website AS company_website, "
+        "co.linkedin_url AS company_linkedin, co.email AS company_email, co.phone AS company_phone, "
+        "co.short_description AS company_short_description, co.nip AS company_nip, "
+        "ct.first_name AS contact_first_name, ct.last_name AS contact_last_name, "
+        "ct.email AS contact_email, ct.phone AS contact_phone, ct.position AS contact_position, "
+        "ct.linkedin_url AS contact_linkedin "
+        "FROM mna_deal_targets dt "
+        "LEFT JOIN mna_companies co ON co.id = dt.company_id "
+        "LEFT JOIN mna_contacts ct ON ct.id = dt.contact_id "
+        "WHERE dt.deal_id = %s AND dt.list_type = %s"
+    )
+    params = [deal_id, list_type]
+
+    if search:
+        like = f"%{search}%"
+        sql += (" AND (co.name LIKE %s OR co.short_name LIKE %s OR co.city LIKE %s OR co.nip LIKE %s"
+                " OR ct.first_name LIKE %s OR ct.last_name LIKE %s OR dt.note LIKE %s)")
+        params.extend([like] * 7)
+    if tag:
+        sql += (" AND (dt.company_id IN (SELECT mct.company_id FROM mna_company_tags mct"
+                " JOIN mna_tags t ON t.id = mct.tag_id WHERE t.name = %s)"
+                " OR dt.contact_id IN (SELECT mtt.contact_id FROM mna_contact_tags mtt"
+                " JOIN mna_tags t ON t.id = mtt.tag_id WHERE t.name = %s))")
+        params.extend([tag, tag])
+    if interest:
+        sql += " AND dt.interest_status = %s"
+        params.append(interest)
+    if only_valuable:
+        sql += " AND dt.is_valuable = 1"
+    if min_score is not None:
+        sql += " AND dt.score >= %s"
+        params.append(min_score)
+
+    sql += _targets_order_by(sort, direction)
+
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+
+    rows = [dict(r) for r in rows]
+    tags = _tags_for_targets(rows)
+    for row in rows:
+        row['tags'] = tags.get(('company', row['company_id']), []) + tags.get(('contact', row['contact_id']), [])
+    return rows
+
+
+def _tags_for_targets(rows: list[dict]) -> dict[tuple, list[str]]:
+    company_ids = [r['company_id'] for r in rows if r.get('company_id')]
+    contact_ids = [r['contact_id'] for r in rows if r.get('contact_id')]
+    result: dict[tuple, list[str]] = {}
+    db = get_db()
+    with db.cursor() as cur:
+        if company_ids:
+            marks = ','.join(['%s'] * len(company_ids))
+            cur.execute(
+                f"""SELECT mct.company_id AS owner_id, t.name FROM mna_company_tags mct
+                    JOIN mna_tags t ON t.id = mct.tag_id
+                    WHERE mct.company_id IN ({marks}) ORDER BY t.name""",
+                tuple(company_ids))
+            for row in cur.fetchall():
+                result.setdefault(('company', row['owner_id']), []).append(row['name'])
+        if contact_ids:
+            marks = ','.join(['%s'] * len(contact_ids))
+            cur.execute(
+                f"""SELECT mtt.contact_id AS owner_id, t.name FROM mna_contact_tags mtt
+                    JOIN mna_tags t ON t.id = mtt.tag_id
+                    WHERE mtt.contact_id IN ({marks}) ORDER BY t.name""",
+                tuple(contact_ids))
+            for row in cur.fetchall():
+                result.setdefault(('contact', row['owner_id']), []).append(row['name'])
+    return result
+
+
+def get_deal_target_tags(deal_id: int, list_type: str = 'long_list') -> list[str]:
+    """Tagi występujące na danej liście — do filtra, żeby nie pokazywać wszystkich tagów w bazie."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT DISTINCT t.name FROM mna_deal_targets dt
+               LEFT JOIN mna_company_tags mct ON mct.company_id = dt.company_id
+               LEFT JOIN mna_contact_tags mtt ON mtt.contact_id = dt.contact_id
+               JOIN mna_tags t ON t.id = mct.tag_id OR t.id = mtt.tag_id
+               WHERE dt.deal_id = %s AND dt.list_type = %s
+               ORDER BY t.name""",
+            (deal_id, list_type))
+        return [r['name'] for r in cur.fetchall()]
+
+
+def get_deal_targets_stats(deal_id: int) -> dict:
+    """Liczniki obu list deala — nagłówek widoku i przełącznik long/short."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT list_type,
+                      COUNT(*) AS total,
+                      SUM(is_valuable) AS valuable,
+                      SUM(interest_status = 'interested') AS interested,
+                      SUM(interest_status = 'not_interested') AS not_interested,
+                      SUM(interest_status = 'unknown') AS unknown,
+                      SUM(contacted_at IS NOT NULL) AS contacted,
+                      ROUND(AVG(score)) AS avg_score
+               FROM mna_deal_targets WHERE deal_id = %s GROUP BY list_type""",
+            (deal_id,))
+        by_list = {r['list_type']: dict(r) for r in cur.fetchall()}
+    empty = {'total': 0, 'valuable': 0, 'interested': 0, 'not_interested': 0,
+             'unknown': 0, 'contacted': 0, 'avg_score': None}
+    return {key: by_list.get(key, dict(empty)) for key in LIST_TYPE_LABELS}
+
+
+def set_target_note(target_id: int, note: str | None, user_id: int | None) -> None:
+    target = get_target_by_id(target_id)
+    if not target:
+        return
+    note = (note or '').strip()[:500] or None
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE mna_deal_targets SET note=%s WHERE id=%s", (note, target_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if target.get('note') != note:
+        log_history('mna_deal', target['deal_id'], user_id, 'update',
+                    f"„{_target_label(target)}”: notatka → {note or '—'}.")
+
+
+def set_target_contacted(target_id: int, contacted_at, user_id: int | None) -> None:
+    """contacted_at: data (str 'RRRR-MM-DD' lub date) albo None, żeby wyczyścić."""
+    target = get_target_by_id(target_id)
+    if not target:
+        return
+    contacted_at = contacted_at or None
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE mna_deal_targets SET contacted_at=%s WHERE id=%s", (contacted_at, target_id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    log_history('mna_deal', target['deal_id'], user_id, 'update',
+                f"„{_target_label(target)}”: ostatni kontakt → {contacted_at or '—'}.")
