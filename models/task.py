@@ -5,10 +5,10 @@ import models.gtd_context as gtd_context_model
 import models.crm_deal as crm_deal_model
 import models.crm_mna_offer as crm_mna_offer_model
 
-VALID_STATUSES = ('inbox', 'next', 'waiting', 'someday', 'done')
+VALID_STATUSES = ('ideas', 'next', 'waiting', 'someday', 'done')
 
 STATUS_LABELS = {
-    'inbox': 'Inbox',
+    'ideas': 'Pomysły',
     'next': 'Next actions',
     'waiting': 'Czeka na',
     'someday': 'Kiedyś/może',
@@ -53,7 +53,7 @@ def get_task(task_id: int) -> dict | None:
 
 
 def create_task(title: str, user_id: int | None, is_project: bool = False,
-                 status: str = 'inbox', **fields) -> int:
+                 status: str = 'ideas', **fields) -> int:
     db = get_db()
     parent_id = fields.get('parent_id') or None
     context_id = fields.get('context_id') or None
@@ -112,7 +112,7 @@ def create_task(title: str, user_id: int | None, is_project: bool = False,
                     fields.get('notes') or None,
                     1 if is_project else 0,
                     parent_id,
-                    status if status in VALID_STATUSES else 'inbox',
+                    status if status in VALID_STATUSES else 'ideas',
                     fields.get('waiting_on') or None,
                     fields.get('due_date') or None,
                     fields.get('scheduled_date') or None,
@@ -376,14 +376,14 @@ def toggle_project_important(task_id: int) -> bool:
 
 def schedule_task(task_id: int, scheduled_date: str | None, scheduled_time: str | None = None,
                    scheduled_duration_min: int | None = None) -> None:
-    """Ustawia konkretny dzień/godzinę. Zadanie 'wychodzi' z Inbox (status next) i traci
+    """Ustawia konkretny dzień/godzinę. Zadanie 'wychodzi' z Pomysłów (status next) i traci
     ewentualne przypisanie do luźnego bloku tygodniowego/miesięcznego — dzień jest bardziej konkretny."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """UPDATE tasks SET scheduled_date=%s, scheduled_time=%s, scheduled_duration_min=%s,
-                   planned_week=NULL, planned_month=NULL, status=IF(status='inbox','next',status) WHERE id=%s""",
+                   planned_week=NULL, planned_month=NULL, status=IF(status='ideas','next',status) WHERE id=%s""",
                 (scheduled_date or None, scheduled_time or None, scheduled_duration_min or None, task_id)
             )
         db.commit()
@@ -394,7 +394,7 @@ def schedule_task(task_id: int, scheduled_date: str | None, scheduled_time: str 
 
 def assign_week(task_id: int, monday: date) -> date:
     """Przypisuje zadanie do luźnego bloku tygodniowego (poniedziałek danego tygodnia)
-    — bez konkretnego dnia. Zadanie wychodzi z Inbox i traci ewentualne zaplanowanie
+    — bez konkretnego dnia. Zadanie wychodzi z Pomysłów i traci ewentualne zaplanowanie
     na konkretny dzień lub blok miesięczny (wzajemnie się wykluczają)."""
     db = get_db()
     try:
@@ -402,7 +402,7 @@ def assign_week(task_id: int, monday: date) -> date:
             cur.execute(
                 """UPDATE tasks SET planned_week=%s, planned_month=NULL, scheduled_date=NULL,
                    scheduled_time=NULL, scheduled_duration_min=NULL, gcal_event_id=NULL,
-                   status=IF(status='inbox','next',status) WHERE id=%s""",
+                   status=IF(status='ideas','next',status) WHERE id=%s""",
                 (monday, task_id)
             )
         db.commit()
@@ -425,7 +425,7 @@ def clear_week(task_id: int) -> None:
 
 def assign_month(task_id: int, month_start: date) -> date:
     """Przypisuje zadanie do luźnego bloku miesięcznego (pierwszy dzień danego miesiąca)
-    — bez konkretnego dnia/tygodnia. Zadanie wychodzi z Inbox i traci ewentualne
+    — bez konkretnego dnia/tygodnia. Zadanie wychodzi z Pomysłów i traci ewentualne
     zaplanowanie na konkretny dzień lub blok tygodniowy (wzajemnie się wykluczają)."""
     db = get_db()
     try:
@@ -433,7 +433,7 @@ def assign_month(task_id: int, month_start: date) -> date:
             cur.execute(
                 """UPDATE tasks SET planned_month=%s, planned_week=NULL, scheduled_date=NULL,
                    scheduled_time=NULL, scheduled_duration_min=NULL, gcal_event_id=NULL,
-                   status=IF(status='inbox','next',status) WHERE id=%s""",
+                   status=IF(status='ideas','next',status) WHERE id=%s""",
                 (month_start, task_id)
             )
         db.commit()
@@ -515,7 +515,7 @@ def convert_to_project(task_id: int) -> None:
         with db.cursor() as cur:
             cur.execute(
                 "UPDATE tasks SET is_project=1, "
-                "status=IF(status='inbox', 'next', status) WHERE id=%s",
+                "status=IF(status='ideas', 'next', status) WHERE id=%s",
                 (task_id,)
             )
         db.commit()
@@ -537,11 +537,11 @@ def flatten_project(task_id: int) -> None:
         raise
 
 
-def get_inbox_tasks() -> list[dict]:
+def get_ideas_tasks() -> list[dict]:
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
-            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='inbox' AND t.deleted_at IS NULL "
+            f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.status='ideas' AND t.deleted_at IS NULL "
             f"ORDER BY t.created_at DESC, t.id DESC"
         )
         return cur.fetchall()
@@ -1206,10 +1206,10 @@ def count_month_priority(month_start: date, month_end: date, include_unassigned:
         return cur.fetchone()['cnt']
 
 
-def count_inbox() -> int:
+def count_ideas() -> int:
     db = get_db()
     with db.cursor() as cur:
-        cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE status='inbox' AND deleted_at IS NULL")
+        cur.execute("SELECT COUNT(*) AS cnt FROM tasks WHERE status='ideas' AND deleted_at IS NULL")
         return cur.fetchone()['cnt']
 
 

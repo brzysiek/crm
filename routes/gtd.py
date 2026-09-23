@@ -406,13 +406,13 @@ def month():
     )
 
 
-# ── Inbox ────────────────────────────────────────────────────────────────────
+# ── Pomysły do decyzji (ideas) ───────────────────────────────────────────────
 
-@bp.route('/gtd/inbox')
-def inbox():
+@bp.route('/gtd/pomysly')
+def ideas():
     return render_template(
-        'gtd/inbox.html', active_tab='inbox',
-        tasks=task_model.get_inbox_tasks(),
+        'gtd/ideas.html', active_tab='ideas',
+        tasks=task_model.get_ideas_tasks(),
     )
 
 
@@ -498,7 +498,7 @@ def project_detail(project_id):
 def task_detail(task_id):
     task = task_model.get_task(task_id)
     if not task:
-        return redirect(url_for('gtd.inbox'))
+        return redirect(url_for('gtd.ideas'))
     if task['is_project']:
         return redirect(url_for('gtd.project_detail', project_id=task_id))
     return render_template('gtd/task_detail.html', active_tab=None, task=task,
@@ -561,7 +561,7 @@ def api_quick_add():
     title = (data.get('text') or '').strip()
     if not title:
         return jsonify({'status': 'error', 'message': 'Brak treści zadania.'})
-    task_id = task_model.create_task(title, session.get('user_id'), status='inbox')
+    task_id = task_model.create_task(title, session.get('user_id'), status='ideas')
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
 
@@ -586,7 +586,7 @@ def api_voice_add():
 
     task_id = task_model.create_task(
         parsed['title'], session.get('user_id'), is_project=parsed['is_project'],
-        status='inbox', due_date=parsed['due_date'] or None,
+        status='ideas', due_date=parsed['due_date'] or None,
     )
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
@@ -602,7 +602,7 @@ def api_create_task():
     task_id = task_model.create_task(
         title, session.get('user_id'),
         is_project=bool(data.get('is_project')),
-        status=data.get('status', 'inbox'),
+        status=data.get('status', 'ideas'),
         notes=data.get('notes'),
         waiting_on=data.get('waiting_on'),
         parent_id=data.get('parent_id'),

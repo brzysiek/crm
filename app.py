@@ -267,18 +267,18 @@ def inject_globals():
         app.logger.error('inject_globals: get appearance settings failed: %s', _e)
         app_name, logo_main, logo_thumb = Config.APP_NAME, None, None
     try:
-        from models.task import count_inbox
-        gtd_inbox_badge = count_inbox()
+        from models.task import count_ideas
+        gtd_ideas_badge = count_ideas()
     except Exception as _e:
-        app.logger.error('inject_globals: count_inbox failed: %s', _e)
-        gtd_inbox_badge = 0
+        app.logger.error('inject_globals: count_ideas failed: %s', _e)
+        gtd_ideas_badge = 0
     return {
         'pending_count':        cnt,
         'bank_pending_count':   bank_cnt,
         'gdrive_pending_count': gdrive_cnt,
         'imports_badge':        cnt + bank_cnt + gdrive_cnt,
         'reconciliation_badge': bank_cnt,
-        'gtd_inbox_badge':      gtd_inbox_badge,
+        'gtd_ideas_badge':      gtd_ideas_badge,
         'gtd_tomorrow_iso':     (_dt.now().date() + _timedelta(days=1)).isoformat(),
         'app_name':             app_name,
         'logo_main':            logo_main,

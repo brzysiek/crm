@@ -198,7 +198,7 @@ function gtdMoveTask(taskId, day, direction) {
 }
 
 function gtdConvertToProject(taskId) {
-  if (!confirm('Zamienić to zadanie w projekt?')) return;
+  if (!confirm('Zamienić w projekt?')) return;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/convert_project', { method: 'POST' })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
@@ -393,14 +393,14 @@ function gtdAddToMonth(monthStart, inputId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
-function gtdAddToInbox(inputId) {
+function gtdAddToIdeas(inputId) {
   const input = document.getElementById(inputId);
   const title = input.value.trim();
   if (!title) return;
   fetch(window.API_BASE + '/api/gtd/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, status: 'inbox' }),
+    body: JSON.stringify({ title, status: 'ideas' }),
   })
     .then(r => r.json())
     .then(data => { if (data.status === 'ok') gtdRefreshContent(inputId); else alert(data.message || 'Błąd.'); })

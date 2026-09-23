@@ -248,7 +248,7 @@ def update_note(note_id: int, body: str, note_type: Literal["phone", "meeting", 
 # to wiersze z parent_id wskazującym na projekt (jeden poziom zagnieżdżenia — projekt nie ma
 # rodzica). deal_id to osobne powiązanie z dealem CRM i nie służy do grupowania w projekty.
 
-_STATUSES = ("inbox", "next", "waiting", "someday", "done")
+_STATUSES = ("ideas", "next", "waiting", "someday", "done")
 
 
 def _compact_task(row: dict) -> dict:
@@ -373,7 +373,7 @@ def find_tasks(
     only_projects: bool = False,
     parent_id: int | None = None,
     context_id: int | None = None,
-    status: Literal["inbox", "next", "waiting", "someday", "done"] | None = None,
+    status: Literal["ideas", "next", "waiting", "someday", "done"] | None = None,
     planned_week: str | None = None,
     planned_month: str | None = None,
     limit: int = 100,
@@ -464,7 +464,7 @@ def create_task(
     deal_id: int | None = None,
     mna_offer_id: int | None = None,
     mna_deal_id: int | None = None,
-    status: Literal["inbox", "next", "waiting", "someday"] = "inbox",
+    status: Literal["ideas", "next", "waiting", "someday"] = "ideas",
     parent_id: int | None = None,
     is_project: bool = False,
     context_id: int | None = None,
@@ -479,13 +479,13 @@ def create_task(
 
     - parent_id: podpina zadanie pod projekt (musi istnieć i mieć is_project=1). Zadanie dziedziczy
       po projekcie kontekst i powiązania, o ile nie podano ich wprost.
-    - is_project=True: tworzy projekt (nie może mieć parent_id; status inbox zamienia się na next).
+    - is_project=True: tworzy projekt (nie może mieć parent_id; status ideas zamienia się na next).
     - context_id: kontekst GTD (lista: list_contexts); bez niego dziedziczy się z projektu/deala/
       firmy/kontaktu, a w ostateczności jest brany kontekst domyślny.
     - due_date (termin) w formacie RRRR-MM-DD.
     - planned_week / planned_month: przypisanie do luźnego bloku tygodnia/miesiąca bez konkretnego
       dnia (data RRRR-MM-DD z danego tygodnia/miesiąca, RRRR-MM dla miesiąca, albo 'this'/'next').
-      Tydzień i miesiąc wykluczają się nawzajem. Zadanie z inbox przechodzi wtedy do next.
+      Tydzień i miesiąc wykluczają się nawzajem. Zadanie z ideas przechodzi wtedy do next.
     - Domyślnie zwraca skrót {id, title, status, parent_id, is_project, context_name} (plus
       planned_week/planned_month, jeśli ustawione); verbose=True zwraca pełny rekord."""
     if planned_week and planned_month:
@@ -496,7 +496,7 @@ def create_task(
         _validate_hierarchy(None, parent_id, is_project)
         if context_id:
             _require_context(context_id)
-        if is_project and status == "inbox":
+        if is_project and status == "ideas":
             status = "next"
         task_id = task_model.create_task(
             title, _mcp_user_id(), is_project=is_project, status=status, due_date=due_date, notes=notes,
@@ -513,7 +513,7 @@ def update_task(
     task_id: int,
     title: str | None = None,
     notes: str | None = None,
-    status: Literal["inbox", "next", "waiting", "someday", "done"] | None = None,
+    status: Literal["ideas", "next", "waiting", "someday", "done"] | None = None,
     due_date: str | None = None,
     scheduled_date: str | None = None,
     scheduled_time: str | None = None,
