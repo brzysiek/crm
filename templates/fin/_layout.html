@@ -11,12 +11,24 @@
          class="settings-nav-item {{ 'active' if active_tab == 'dashboard' }}">
         Do zapłaty
       </a>
+      <a href="{{ url_for('fin.categories_view') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'categories' }}">
+        Kategorie
+      </a>
+      <a href="{{ url_for('fin.result_view') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'result' }}">
+        Wynik
+      </a>
       <a href="{{ url_for('fin.documents') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'documents' }}">
         Dokumenty
         {% if uncategorized > 0 %}
           <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ uncategorized }}</span>
         {% endif %}
+      </a>
+      <a href="{{ url_for('fin.settings_view') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'settings' }}">
+        Ustawienia
       </a>
     </nav>
 

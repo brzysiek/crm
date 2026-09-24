@@ -6,6 +6,7 @@
   {% set next_dir = 'asc' if sort == key and direction == 'desc' else 'desc' %}
   <a href="{{ url_for('fin.documents', kind=filters.kind, payment=filters.payment, ksef=filters.ksef,
                       month=filters.month, search=filters.search, department_id=filters.department_id,
+                      category_id=filters.category_id,
                       uncategorized='1' if filters.uncategorized else none,
                       all_kinds='1' if not filters.financial_only else none,
                       sort=key, dir=next_dir) }}">
@@ -45,6 +46,13 @@
     {% endfor %}
   </select>
 
+  <select name="category_id" class="filter-select">
+    <option value="">Każda kategoria</option>
+    {% for c in categories %}
+      <option value="{{ c.id }}" {{ 'selected' if filters.category_id == c.id }}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+
   <select name="ksef" class="filter-select">
     <option value="">KSeF: wszystko</option>
     <option value="with" {{ 'selected' if filters.ksef == 'with' }}>Z numerem KSeF</option>
@@ -73,10 +81,29 @@
   <a href="{{ url_for('fin.documents') }}" class="btn btn-outline btn-sm">Wyczyść</a>
 </form>
 
+<form method="post" action="{{ url_for('fin.assign_category') }}" id="bulk-form">
+<input type="hidden" name="back" value="{{ request.full_path }}">
+
+<div class="fin-bulk-bar">
+  <label class="filter-check">
+    <input type="checkbox" id="check-all"> zaznacz wszystkie
+  </label>
+  <span class="text-muted small" id="check-count"></span>
+  <select name="category_id" class="filter-select">
+    <option value="">Kategoria…</option>
+    {% for c in categories %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+    {% endfor %}
+    <option value="none">— usuń kategorię —</option>
+  </select>
+  <button type="submit" class="btn btn-primary btn-sm">Przypisz zaznaczonym</button>
+</div>
+
 <div class="table-wrapper">
   <table class="data-table">
     <thead>
       <tr>
+        <th class="col-checkbox"></th>
         <th>{{ sort_link('issue_date', 'Wystawiona') }}</th>
         <th>{{ sort_link('number', 'Numer') }}</th>
         <th>{{ sort_link('counterparty', 'Kontrahent') }}</th>
@@ -92,6 +119,9 @@
     <tbody>
       {% for r in rows %}
       <tr class="{% if r.status == 'paid' %}row-paid{% elif r.payment_to and r.payment_to < today_date %}row-unpaid{% endif %}">
+        <td class="col-checkbox">
+          <input type="checkbox" name="doc_id" value="{{ r.fakturownia_id }}" class="doc-check">
+        </td>
         <td class="nowrap">{{ r.issue_date|ddmmyyyy }}</td>
         <td class="nowrap">
           <a href="{{ url_for('fin.document', fakturownia_id=r.fakturownia_id) }}">{{ r.number or '—' }}</a>
@@ -108,6 +138,9 @@
         <td>
           {% if r.category_name %}
             {{ r.category_name }}
+            {% if r.category_source and r.category_source != 'manual' %}
+              <span class="text-muted small">({{ r.category_source }})</span>
+            {% endif %}
           {% else %}
             <span class="text-muted">—</span>
           {% endif %}
@@ -138,11 +171,12 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="10" class="text-muted">Brak dokumentów dla tych filtrów.</td></tr>
+      <tr><td colspan="11" class="text-muted">Brak dokumentów dla tych filtrów.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+</form>
 
 {% if pages > 1 %}
 <div class="pagination">
@@ -152,6 +186,7 @@
     {% elif p <= 3 or p > pages - 3 or (p - page)|abs <= 2 %}
       <a href="{{ url_for('fin.documents', kind=filters.kind, payment=filters.payment, ksef=filters.ksef,
                           month=filters.month, search=filters.search, department_id=filters.department_id,
+                          category_id=filters.category_id,
                           uncategorized='1' if filters.uncategorized else none,
                           all_kinds='1' if not filters.financial_only else none,
                           sort=sort, dir=direction, page=p) }}">{{ p }}</a>
@@ -159,4 +194,25 @@
   {% endfor %}
 </div>
 {% endif %}
+<script>
+// Zaznaczanie hurtem — kategoryzacja 139 dokumentów po jednym nie ma sensu.
+(function () {
+  var all = document.getElementById('check-all');
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.doc-check'));
+  var counter = document.getElementById('check-count');
+  function refresh() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    counter.textContent = n ? n + ' zaznaczonych' : '';
+    if (all) { all.checked = n === boxes.length && n > 0; }
+  }
+  if (all) {
+    all.addEventListener('change', function () {
+      boxes.forEach(function (b) { b.checked = all.checked; });
+      refresh();
+    });
+  }
+  boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+  refresh();
+})();
+</script>
 {% endblock %}

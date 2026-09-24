@@ -122,6 +122,11 @@ class SyncCursorTest(unittest.TestCase):
         db = mock.patch.object(fin_sync, 'get_db', return_value=mock.MagicMock())
         db.start()
         self.addCleanup(db.stop)
+        # Reguły mają własne testy; tu sprawdzamy tylko, co sync im podaje.
+        self.rules = mock.patch.object(fin_sync, 'apply_rules',
+                                       return_value={'checked': 0, 'assigned': 0, 'rules': 0})
+        self.apply_rules = self.rules.start()
+        self.addCleanup(self.rules.stop)
 
     def state(self, cursor):
         return mock.patch.object(fin_sync, 'get_sync_state',
@@ -166,6 +171,22 @@ class SyncCursorTest(unittest.TestCase):
         with self.state(cursor):
             result = fin_sync.sync_documents(api=api)
         self.assertEqual(result['cursor'], cursor)
+
+    def test_only_new_documents_go_through_rules(self):
+        """Reguły dostają wyłącznie nowe dokumenty — stare mają już swoje kategorie."""
+        api = FakeApi({False: [[invoice(1, '2026-09-01 10:00:00')]], True: []})
+        with self.state(None), \
+             mock.patch.object(fin_sync, 'upsert_document', side_effect=['new']):
+            fin_sync.sync_documents(full=True, api=api)
+        self.apply_rules.assert_called_once_with(only_ids=[1])
+
+    def test_rules_are_skipped_when_nothing_is_new(self):
+        api = FakeApi({False: [[invoice(1, '2026-09-01 10:00:00')]], True: []})
+        with self.state(None), \
+             mock.patch.object(fin_sync, 'upsert_document', side_effect=['unchanged']):
+            result = fin_sync.sync_documents(full=True, api=api)
+        self.apply_rules.assert_not_called()
+        self.assertEqual(result['categorized'], 0)
 
     def test_missing_exchange_rate_is_reported(self):
         api = FakeApi({False: [[dict(invoice(1, '2026-09-01 10:00:00'), currency='EUR')]], True: []})

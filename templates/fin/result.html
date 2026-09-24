@@ -1,0 +1,103 @@
+{% extends 'fin/_layout.html' %}
+{% block title %}Wynik{% endblock %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Wynik {{ year }}</h1>
+  <div class="header-actions">
+    {% for y in years %}
+      <a href="{{ url_for('fin.result_view', year=y) }}"
+         class="btn btn-sm {{ 'btn-primary' if y == year else 'btn-outline' }}">{{ y }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-card kpi-green">
+    <div class="kpi-label">Przychód netto</div>
+    <div class="kpi-value">{{ total_income|pln }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Koszty netto</div>
+    <div class="kpi-value">{{ total_cost|pln }}</div>
+  </div>
+  <div class="kpi-card {{ 'kpi-green' if total_result > 0 else 'kpi-alert' }}">
+    <div class="kpi-label">Wynik</div>
+    <div class="kpi-value">{{ total_result|pln }}</div>
+    <div class="kpi-sub">
+      marża {{ '%.1f'|format(total_margin) ~ '%' if total_margin is not none else '—' }}
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Prognoza roku</div>
+    <div class="kpi-value">{{ forecast|pln if forecast is not none else '—' }}</div>
+    <div class="kpi-sub">wynik z pełnych miesięcy ×12</div>
+  </div>
+</div>
+
+<section class="fin-section">
+  <h2>Miesiąc po miesiącu</h2>
+  <div class="fin-chart">
+    {% for s in series %}
+      <div class="fin-chart-col {{ 'is-future' if s.is_future }}" title="{{ s.month|month_pl }}">
+        <div class="fin-chart-bars">
+          <div class="fin-chart-bar bar-income"
+               style="height: {{ (s.income / max_value * 100)|round(1) }}%"></div>
+          <div class="fin-chart-bar bar-cost"
+               style="height: {{ (s.cost / max_value * 100)|round(1) }}%"></div>
+        </div>
+        <div class="fin-chart-label">{{ s.month[5:] }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="fin-legend">
+    <span><i class="swatch bar-income"></i> przychód</span>
+    <span><i class="swatch bar-cost"></i> koszty</span>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Miesiąc</th>
+          <th class="text-right">Przychód</th>
+          <th class="text-right">Koszty</th>
+          <th class="text-right">Wynik</th>
+          <th class="text-right">Marża</th>
+          <th class="text-right">Narastająco</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in series %}
+        <tr class="{{ 'row-internal' if s.is_future }}">
+          <td class="nowrap">{{ s.month|month_pl }}</td>
+          <td class="text-right nowrap">{{ s.income|pln }}</td>
+          <td class="text-right nowrap">{{ s.cost|pln }}</td>
+          <td class="text-right nowrap">{{ s.result|pln }}</td>
+          <td class="text-right nowrap">
+            {{ '%.1f'|format(s.margin) ~ '%' if s.margin is not none else '—' }}
+          </td>
+          <td class="text-right nowrap">{{ s.cumulative|pln }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Razem</th>
+          <th class="text-right nowrap">{{ total_income|pln }}</th>
+          <th class="text-right nowrap">{{ total_cost|pln }}</th>
+          <th class="text-right nowrap">{{ total_result|pln }}</th>
+          <th class="text-right nowrap">
+            {{ '%.1f'|format(total_margin) ~ '%' if total_margin is not none else '—' }}
+          </th>
+          <th></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <p class="text-muted small">
+    Wynik liczony na kwotach netto z dat wystawienia, bez podziału na KUP i NKUP —
+    to obraz biznesu, nie podstawa opodatkowania. Ta druga pojawi się w zakładce Podatki.
+  </p>
+</section>
+{% endblock %}

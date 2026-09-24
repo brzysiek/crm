@@ -51,7 +51,7 @@ UPSERT_FIELDS = (
     'fakturownia_id', 'department_id', 'kind', 'is_income', 'number', 'issue_date', 'sell_date',
     'delivery_date', 'payment_to', 'paid_date', 'status', 'currency', 'exchange_rate',
     'price_net', 'price_tax', 'price_gross', 'paid_amount', 'net_pln', 'tax_pln', 'gross_pln',
-    'counterparty_name', 'counterparty_tax_no', 'accounting_kind', 'fakturownia_category_id',
+    'counterparty_name', 'counterparty_tax_no', 'counterparty_tax_no_norm', 'accounting_kind', 'fakturownia_category_id',
     'gov_id', 'gov_status', 'gov_send_date', 'description', 'oid', 'raw_json',
     'fakturownia_updated_at',
 )
@@ -259,3 +259,11 @@ def departments() -> list[int]:
     with db.cursor() as cur:
         cur.execute("SELECT DISTINCT department_id FROM fin_documents WHERE department_id IS NOT NULL")
         return [r['department_id'] for r in cur.fetchall()]
+
+
+def available_years() -> list[int]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("""SELECT DISTINCT YEAR(issue_date) AS y FROM fin_documents
+                       WHERE issue_date IS NOT NULL ORDER BY y DESC""")
+        return [r['y'] for r in cur.fetchall()]

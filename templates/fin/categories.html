@@ -1,0 +1,119 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Kategorie{% endblock %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>{{ 'Przychody' if is_income else 'Koszty' }} wg kategorii</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('fin.categories_view', kind='cost', months=span) }}"
+       class="btn btn-sm {{ 'btn-primary' if not is_income else 'btn-outline' }}">Koszty</a>
+    <a href="{{ url_for('fin.categories_view', kind='income', months=span) }}"
+       class="btn btn-sm {{ 'btn-primary' if is_income else 'btn-outline' }}">Przychody</a>
+  </div>
+</div>
+
+{% if uncategorized > 0 %}
+<div class="fin-banner">
+  {{ icon('alert-triangle', 16) }}
+  <span>{{ uncategorized }} dokumentów bez kategorii — siedzą w wierszu „Bez kategorii” i zaniżają resztę.</span>
+  <a href="{{ url_for('fin.documents', uncategorized='1', kind='all') }}" class="btn btn-outline btn-sm">Skategoryzuj</a>
+</div>
+{% endif %}
+
+<form class="filter-bar" method="get">
+  <input type="hidden" name="kind" value="{{ 'income' if is_income else 'cost' }}">
+  <select name="months" class="filter-select" onchange="this.form.submit()">
+    {% for option in [6, 12, 24, 36] %}
+      <option value="{{ option }}" {{ 'selected' if span == option }}>Ostatnie {{ option }} mies.</option>
+    {% endfor %}
+  </select>
+  <span class="text-muted">Kwoty netto w PLN.</span>
+</form>
+
+<div class="table-wrapper">
+  <table class="data-table fin-pivot">
+    <thead>
+      <tr>
+        <th>Kategoria</th>
+        {% for m in months %}<th class="text-right nowrap">{{ m[5:] }}/{{ m[2:4] }}</th>{% endfor %}
+        <th class="text-right">Razem</th>
+        <th class="text-right">Udział</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in pivot %}
+      <tr class="{{ 'row-internal' if not row.category_id }}">
+        <td>
+          {% if row.category_id %}
+            <a href="{{ url_for('fin.documents', category_id=row.category_id,
+                                kind='income' if is_income else 'cost') }}">{{ row.category_name }}</a>
+          {% else %}
+            <a href="{{ url_for('fin.documents', uncategorized='1',
+                                kind='income' if is_income else 'cost') }}">{{ row.category_name }}</a>
+          {% endif %}
+          <span class="text-muted small">{{ row.documents }} dok.</span>
+        </td>
+        {% for value in row.series %}
+          <td class="text-right nowrap {{ 'text-muted' if not value }}">
+            {{ value|pln if value else '·' }}
+          </td>
+        {% endfor %}
+        <td class="text-right nowrap"><strong>{{ row.total|pln }}</strong></td>
+        <td class="text-right nowrap">
+          {{ '%.1f'|format(row.total / grand_total * 100) if grand_total else '—' }}%
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ months|length + 3 }}" class="text-muted">Brak danych w tym oknie.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if pivot %}
+    <tfoot>
+      <tr>
+        <th>Razem</th>
+        {% for value in column_totals %}<th class="text-right nowrap">{{ value|pln }}</th>{% endfor %}
+        <th class="text-right nowrap">{{ grand_total|pln }}</th>
+        <th></th>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</div>
+
+<section class="fin-section">
+  <h2>{{ year }} — odliczenia</h2>
+  <p class="text-muted small">
+    Kolumny „KUP” i „VAT do odliczenia” biorą procenty zapisane na dokumencie w chwili
+    kategoryzacji. To materiał wejściowy do symulacji podatkowych.
+  </p>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Kategoria</th>
+          <th class="text-right">Dokumenty</th>
+          <th class="text-right">Netto</th>
+          <th class="text-right">W tym KUP</th>
+          <th class="text-right">VAT</th>
+          <th class="text-right">VAT do odliczenia</th>
+          <th>Stały</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in year_rows %}
+        <tr class="{{ 'row-internal' if not row.category_id }}">
+          <td>{{ row.category_name or 'Bez kategorii' }}</td>
+          <td class="text-right">{{ row.documents }}</td>
+          <td class="text-right nowrap">{{ row.net|pln }}</td>
+          <td class="text-right nowrap">{{ row.net_kup|pln }}</td>
+          <td class="text-right nowrap">{{ row.tax|pln }}</td>
+          <td class="text-right nowrap">{{ row.tax_deductible|pln }}</td>
+          <td>{{ 'tak' if row.is_fixed_cost else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

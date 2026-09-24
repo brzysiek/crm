@@ -14,6 +14,10 @@
   <h1>{{ doc.number or 'Dokument bez numeru' }}</h1>
   <div class="header-actions">
     <a href="{{ url_for('fin.documents', kind='income' if doc.is_income else 'cost') }}" class="btn btn-outline btn-sm">Wróć do listy</a>
+    {% if doc.counterparty_tax_no_norm %}
+      <a href="{{ url_for('fin.documents', kind='all', search=doc.counterparty_tax_no_norm) }}"
+         class="btn btn-outline btn-sm">Wszystko od tego kontrahenta</a>
+    {% endif %}
     {% if fakturownia_url %}
       <a href="{{ fakturownia_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">
         {{ icon('link', 14) }} Otwórz w Fakturowni
@@ -59,10 +63,44 @@
 </div>
 
 <section class="fin-section">
+  <h2>Kategoria</h2>
+  <form method="post" action="{{ url_for('fin.assign_category') }}" class="filter-bar">
+    <input type="hidden" name="back" value="{{ request.full_path }}">
+    <input type="hidden" name="doc_id" value="{{ doc.fakturownia_id }}">
+    <select name="category_id" class="filter-select">
+      <option value="">Kategoria…</option>
+      {% for c in categories %}
+        <option value="{{ c.id }}" {{ 'selected' if doc.category_id == c.id }}>{{ c.name }}</option>
+      {% endfor %}
+      <option value="none">— usuń kategorię —</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Zapisz na tym dokumencie</button>
+  </form>
+
+  {% if doc.counterparty_tax_no_norm %}
+  <form method="post" action="{{ url_for('fin.rule_from_counterparty') }}" class="filter-bar">
+    <input type="hidden" name="back" value="{{ request.full_path }}">
+    <input type="hidden" name="tax_no" value="{{ doc.counterparty_tax_no_norm }}">
+    <select name="category_id" class="filter-select">
+      <option value="">Kategoria…</option>
+      {% for c in categories %}
+        <option value="{{ c.id }}" {{ 'selected' if doc.category_id == c.id }}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline btn-sm">
+      Tak księguj wszystko od „{{ doc.counterparty_name[:30] }}”
+    </button>
+    <span class="text-muted small">Zakłada regułę po NIP-ie {{ doc.counterparty_tax_no_norm }}.</span>
+  </form>
+  {% endif %}
+</section>
+
+<section class="fin-section">
   <h2>Kontrahent</h2>
   <div class="fin-fields">
     {{ field('Nazwa', doc.counterparty_name or '—') }}
     {{ field('NIP', doc.counterparty_tax_no or '—') }}
+
     {{ field('Rodzaj dokumentu', kind_labels.get(doc.kind, doc.kind)) }}
     {{ field('Dział', doc.department_id or '—') }}
   </div>

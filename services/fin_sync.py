@@ -9,12 +9,14 @@ Webhooki Fakturowni nie odpalają się dla faktur kosztowych (także tych
 pobranych z KSeF), więc polling jest tu jedyną drogą, nie optymalizacją.
 """
 import json
+import re
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from database import get_db
 from models.fin_document import upsert_document
 from services.fakturownia_api import FakturowniaApi, is_income_doc
+from services.fin_rules import apply_rules
 
 OVERLAP = timedelta(days=1)   # zakładka na wypadek rozjazdu zegarów i stron
 
@@ -59,6 +61,22 @@ def _rate(raw: dict) -> Decimal:
     return Decimal('1')
 
 
+EU_PREFIXES = ('PL', 'DE', 'IE', 'FR', 'CZ', 'SK', 'LT', 'LV', 'EE', 'NL', 'BE',
+               'ES', 'IT', 'AT', 'SE', 'DK', 'FI', 'HU', 'RO', 'BG', 'GB', 'LU')
+
+
+def normalize_tax_no(value) -> str:
+    """NIP do porównań: ten sam kontrahent bywa i "5262544258", i "PL5262544258".
+
+    Zostaje samo [A-Z0-9], a prefiks kraju spada tylko wtedy, gdy reszta wygląda
+    na polski NIP (10 cyfr) — przy IE8256796U obcięcie "IE" zepsułoby numer.
+    """
+    text = re.sub(r'[^A-Za-z0-9]', '', str(value or '')).upper()
+    if len(text) == 12 and text[:2] in EU_PREFIXES and text[2:].isdigit():
+        return text[2:]
+    return text
+
+
 def map_invoice(raw: dict) -> dict:
     """Faktura z API → wiersz `fin_documents`.
 
@@ -92,6 +110,7 @@ def map_invoice(raw: dict) -> dict:
         'gross_pln': (gross * rate).quantize(Decimal('0.01')),
         'counterparty_name': (raw.get('buyer_name') or '')[:256],
         'counterparty_tax_no': (raw.get('buyer_tax_no') or '')[:32],
+        'counterparty_tax_no_norm': normalize_tax_no(raw.get('buyer_tax_no'))[:32],
         'accounting_kind': (raw.get('accounting_kind') or '')[:32],
         'fakturownia_category_id': raw.get('category_id') or None,
         'gov_id': (raw.get('gov_id') or '')[:128],
@@ -139,6 +158,7 @@ def sync_documents(full: bool = False, api: FakturowniaApi = None) -> dict:
     seen = new = updated = 0
     newest = cursor
     warnings: list[str] = []
+    fresh_ids: list[int] = []      # nowe dokumenty idą potem przez reguły kategorii
 
     try:
         for income in (False, True):
@@ -150,6 +170,7 @@ def sync_documents(full: bool = False, api: FakturowniaApi = None) -> dict:
                     seen += 1
                     if result == 'new':
                         new += 1
+                        fresh_ids.append(data['fakturownia_id'])
                     elif result == 'updated':
                         updated += 1
                     stamp = data['fakturownia_updated_at']
@@ -166,7 +187,11 @@ def sync_documents(full: bool = False, api: FakturowniaApi = None) -> dict:
         _save_state('documents', cursor, 'error', seen, new + updated, str(e)[:500])
         raise
 
+    # Reguły dopiero po commicie lustra: gdyby sync padł, nie zostawimy
+    # kategorii przypiętych do dokumentów, których w bazie nie ma.
+    categorized = apply_rules(only_ids=fresh_ids)['assigned'] if fresh_ids else 0
+
     message = '; '.join(warnings[:5])
     _save_state('documents', newest, 'ok', seen, new + updated, message)
     return {'seen': seen, 'new': new, 'updated': updated, 'full': full,
-            'cursor': newest, 'warnings': warnings}
+            'categorized': categorized, 'cursor': newest, 'warnings': warnings}

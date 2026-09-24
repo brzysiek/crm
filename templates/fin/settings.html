@@ -1,0 +1,162 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Ustawienia finansów{% endblock %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Ustawienia modułu</h1>
+</div>
+
+<section class="fin-section">
+  <h2>Reguły kategorii</h2>
+  <p class="text-muted small">
+    Reguły działają na dokumentach bez kategorii i na tych, które kategorię dostały
+    od reguły. Ręcznego przypisania nie ruszają. Wygrywa reguła o najniższym priorytecie.
+  </p>
+
+  <div class="fin-actions">
+    <form method="post" action="{{ url_for('fin.run_rules') }}">
+      <button type="submit" class="btn btn-primary btn-sm">{{ icon('rotate-ccw', 14) }} Zastosuj do nieskategoryzowanych</button>
+    </form>
+    <form method="post" action="{{ url_for('fin.run_rules') }}">
+      <input type="hidden" name="recategorize" value="1">
+      <button type="submit" class="btn btn-outline btn-sm">Przelicz też przypisania z reguł</button>
+    </form>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th class="text-right">Prio</th>
+          <th>Pole</th>
+          <th>Warunek</th>
+          <th>Wartość</th>
+          <th>Kategoria</th>
+          <th class="text-right">Trafień</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rules %}
+        <tr class="{{ 'row-internal' if not r.is_active }}">
+          <td class="text-right">{{ r.priority }}</td>
+          <td class="nowrap">{{ field_labels.get(r.match_field, r.match_field) }}</td>
+          <td class="nowrap">{{ type_labels.get(r.match_type, r.match_type) }}</td>
+          <td><code>{{ r.match_value }}</code></td>
+          <td>{{ r.category_name or '—' }}</td>
+          <td class="text-right">
+            {{ r.hits }}
+            {% if r.last_hit_at %}<div class="text-muted small">{{ r.last_hit_at|ddmmyyyy }}</div>{% endif %}
+          </td>
+          <td class="nowrap text-right">
+            <form method="post" action="{{ url_for('fin.switch_rule', rule_id=r.id) }}" class="inline-form">
+              <input type="hidden" name="active" value="{{ '0' if r.is_active else '1' }}">
+              <button type="submit" class="btn btn-outline btn-sm">{{ 'Wyłącz' if r.is_active else 'Włącz' }}</button>
+            </form>
+            <form method="post" action="{{ url_for('fin.remove_rule', rule_id=r.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-outline btn-sm">Usuń</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-muted">Brak reguł.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="post" action="{{ url_for('fin.add_rule') }}" class="filter-bar">
+    <input type="number" name="priority" class="filter-input" value="100" style="max-width:5rem" title="Priorytet">
+    <select name="match_field" class="filter-select">
+      {% for f in match_fields %}<option value="{{ f }}">{{ field_labels.get(f, f) }}</option>{% endfor %}
+    </select>
+    <select name="match_type" class="filter-select">
+      {% for t in match_types %}<option value="{{ t }}">{{ type_labels.get(t, t) }}</option>{% endfor %}
+    </select>
+    <input type="text" name="match_value" class="filter-input" placeholder="wartość" required>
+    <select name="category_id" class="filter-select" required>
+      <option value="">Kategoria…</option>
+      {% for c in categories if not c.archived_at %}
+        <option value="{{ c.id }}">{{ '↑' if c.kind == 'income' else '↓' }} {{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Dodaj regułę</button>
+  </form>
+</section>
+
+<section class="fin-section">
+  <h2>Kategorie</h2>
+  <p class="text-muted small">
+    Procenty są domyślne dla nowych przypisań. Zmiana tutaj nie przelicza dokumentów,
+    które kategorię już mają — ich procenty zostały zapisane w chwili kategoryzacji.
+  </p>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nazwa</th>
+          <th>Identyfikator</th>
+          <th class="text-right">VAT %</th>
+          <th class="text-right">KUP %</th>
+          <th>Stały</th>
+          <th class="text-right">Kolejność</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in categories %}
+        {# Formularz siedzi w ostatniej komórce, a pola wiążą się z nim przez
+           atrybut form= — <form> opakowujący <td> jest niepoprawnym HTML-em
+           i przeglądarka wyrzuca go poza tabelę. #}
+        <tr class="{{ 'row-internal' if c.archived_at }}">
+            <td>
+              <input type="text" name="name" value="{{ c.name }}" class="filter-input"
+                     form="cat-{{ c.id }}">
+              <div class="text-muted small">{{ 'przychód' if c.kind == 'income' else 'koszt' }}</div>
+            </td>
+            <td><code>{{ c.slug }}</code></td>
+            <td class="text-right">
+              <input type="number" name="vat" value="{{ c.default_vat_deduction }}" min="0" max="100"
+                     class="filter-input" style="max-width:4.5rem" form="cat-{{ c.id }}">
+            </td>
+            <td class="text-right">
+              <input type="number" name="kup" value="{{ c.default_tax_deductible }}" min="0" max="100"
+                     class="filter-input" style="max-width:4.5rem" form="cat-{{ c.id }}">
+            </td>
+            <td>
+              <input type="checkbox" name="is_fixed_cost" value="1" form="cat-{{ c.id }}"
+                     {{ 'checked' if c.is_fixed_cost }}>
+            </td>
+            <td class="text-right">
+              <input type="number" name="sort_order" value="{{ c.sort_order }}"
+                     class="filter-input" style="max-width:5rem" form="cat-{{ c.id }}">
+            </td>
+            <td class="text-right">
+              <form method="post" action="{{ url_for('fin.save_category', category_id=c.id) }}"
+                    id="cat-{{ c.id }}">
+                <button type="submit" class="btn btn-outline btn-sm">Zapisz</button>
+              </form>
+            </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="post" action="{{ url_for('fin.add_category') }}" class="filter-bar">
+    <select name="kind" class="filter-select">
+      <option value="cost">Koszt</option>
+      <option value="income">Przychód</option>
+    </select>
+    <input type="text" name="name" class="filter-input" placeholder="Nazwa kategorii" required>
+    <input type="number" name="vat" class="filter-input" value="100" min="0" max="100"
+           style="max-width:5rem" title="Domyślne odliczenie VAT %">
+    <input type="number" name="kup" class="filter-input" value="100" min="0" max="100"
+           style="max-width:5rem" title="Domyślny koszt podatkowy %">
+    <label class="filter-check"><input type="checkbox" name="is_fixed_cost" value="1"> koszt stały</label>
+    <button type="submit" class="btn btn-primary btn-sm">Dodaj kategorię</button>
+  </form>
+</section>
+{% endblock %}
