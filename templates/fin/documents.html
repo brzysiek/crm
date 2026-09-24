@@ -1,0 +1,162 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Dokumenty{% endblock %}
+
+{% macro sort_link(key, label) %}
+  {% set next_dir = 'asc' if sort == key and direction == 'desc' else 'desc' %}
+  <a href="{{ url_for('fin.documents', kind=filters.kind, payment=filters.payment, ksef=filters.ksef,
+                      month=filters.month, search=filters.search, department_id=filters.department_id,
+                      uncategorized='1' if filters.uncategorized else none,
+                      all_kinds='1' if not filters.financial_only else none,
+                      sort=key, dir=next_dir) }}">
+    {{ label }}{% if sort == key %} {{ '↓' if direction == 'desc' else '↑' }}{% endif %}
+  </a>
+{% endmacro %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Dokumenty</h1>
+  <div class="header-actions">
+    <span class="text-muted">{{ total }} dokumentów</span>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('fin.documents') }}">
+  <input type="text" name="search" class="filter-input" value="{{ filters.search }}"
+         placeholder="Szukaj: numer, kontrahent, NIP, opis, KSeF…">
+
+  <select name="kind" class="filter-select">
+    <option value="cost" {{ 'selected' if filters.kind == 'cost' }}>Koszty</option>
+    <option value="income" {{ 'selected' if filters.kind == 'income' }}>Przychody</option>
+    <option value="all" {{ 'selected' if filters.kind == 'all' }}>Koszty i przychody</option>
+  </select>
+
+  <select name="payment" class="filter-select">
+    <option value="">Każdy stan płatności</option>
+    <option value="unpaid" {{ 'selected' if filters.payment == 'unpaid' }}>Nieopłacone</option>
+    <option value="overdue" {{ 'selected' if filters.payment == 'overdue' }}>Po terminie</option>
+    <option value="paid" {{ 'selected' if filters.payment == 'paid' }}>Opłacone</option>
+  </select>
+
+  <select name="month" class="filter-select">
+    <option value="">Wszystkie miesiące</option>
+    {% for m in months %}
+      <option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m|month_pl }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="ksef" class="filter-select">
+    <option value="">KSeF: wszystko</option>
+    <option value="with" {{ 'selected' if filters.ksef == 'with' }}>Z numerem KSeF</option>
+    <option value="without" {{ 'selected' if filters.ksef == 'without' }}>Bez KSeF</option>
+  </select>
+
+  {% if department_ids|length > 1 %}
+  <select name="department_id" class="filter-select">
+    <option value="">Wszystkie działy</option>
+    {% for d in department_ids %}
+      <option value="{{ d }}" {{ 'selected' if filters.department_id == d }}>Dział {{ d }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  <label class="filter-check">
+    <input type="checkbox" name="uncategorized" value="1" {{ 'checked' if filters.uncategorized }}>
+    Bez kategorii
+  </label>
+  <label class="filter-check">
+    <input type="checkbox" name="all_kinds" value="1" {{ 'checked' if not filters.financial_only }}>
+    Z proformami i notami
+  </label>
+
+  <button type="submit" class="btn btn-primary btn-sm">Filtruj</button>
+  <a href="{{ url_for('fin.documents') }}" class="btn btn-outline btn-sm">Wyczyść</a>
+</form>
+
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>{{ sort_link('issue_date', 'Wystawiona') }}</th>
+        <th>{{ sort_link('number', 'Numer') }}</th>
+        <th>{{ sort_link('counterparty', 'Kontrahent') }}</th>
+        <th>Kategoria</th>
+        <th class="text-right">Netto</th>
+        <th class="text-right">VAT</th>
+        <th class="text-right">{{ sort_link('gross', 'Brutto') }}</th>
+        <th>{{ sort_link('payment_to', 'Termin') }}</th>
+        <th>Stan</th>
+        <th>KSeF</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="{% if r.status == 'paid' %}row-paid{% elif r.payment_to and r.payment_to < today_date %}row-unpaid{% endif %}">
+        <td class="nowrap">{{ r.issue_date|ddmmyyyy }}</td>
+        <td class="nowrap">
+          <a href="{{ url_for('fin.document', fakturownia_id=r.fakturownia_id) }}">{{ r.number or '—' }}</a>
+          {% if r.kind in non_financial %}
+            <span class="badge badge-gray" title="Nie wchodzi do sum">{{ kind_labels.get(r.kind, r.kind) }}</span>
+          {% elif r.kind != 'vat' %}
+            <span class="badge badge-gray">{{ kind_labels.get(r.kind, r.kind) }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="desc-cell" title="{{ r.counterparty_name }}">{{ r.counterparty_name or '—' }}</span>
+          {% if r.counterparty_tax_no %}<div class="text-muted small">{{ r.counterparty_tax_no }}</div>{% endif %}
+        </td>
+        <td>
+          {% if r.category_name %}
+            {{ r.category_name }}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td class="text-right nowrap">
+          {{ r.net_pln|pln }}
+          {% if r.currency != 'PLN' %}
+            <div class="text-muted small">{{ r.price_net }} {{ r.currency }}</div>
+          {% endif %}
+        </td>
+        <td class="text-right nowrap">{{ r.tax_pln|pln }}</td>
+        <td class="text-right nowrap">{{ r.gross_pln|pln }}</td>
+        <td class="nowrap">{{ r.payment_to|ddmmyyyy or '—' }}</td>
+        <td class="nowrap">
+          {{ status_labels.get(r.status, r.status) }}
+          {% if r.status == 'partial' %}
+            <div class="text-muted small">wpłacono {{ r.paid_amount|pln }}</div>
+          {% endif %}
+        </td>
+        <td class="nowrap">
+          {% if r.gov_id %}
+            <span class="badge badge-green" title="{{ r.gov_id }}">{{ gov_labels.get(r.gov_status, r.gov_status) }}</span>
+          {% elif r.gov_status %}
+            <span class="badge badge-gray">{{ gov_labels.get(r.gov_status, r.gov_status) }}</span>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" class="text-muted">Brak dokumentów dla tych filtrów.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if pages > 1 %}
+<div class="pagination">
+  {% for p in range(1, pages + 1) %}
+    {% if p == page %}
+      <span class="pagination-current">{{ p }}</span>
+    {% elif p <= 3 or p > pages - 3 or (p - page)|abs <= 2 %}
+      <a href="{{ url_for('fin.documents', kind=filters.kind, payment=filters.payment, ksef=filters.ksef,
+                          month=filters.month, search=filters.search, department_id=filters.department_id,
+                          uncategorized='1' if filters.uncategorized else none,
+                          all_kinds='1' if not filters.financial_only else none,
+                          sort=sort, dir=direction, page=p) }}">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

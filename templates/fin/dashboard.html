@@ -1,0 +1,144 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Do zapłaty{% endblock %}
+
+{% macro doc_row(r, overdue) %}
+<tr class="{{ 'row-unpaid' if overdue }}">
+  <td class="nowrap">
+    {% if r.payment_to %}
+      {{ r.payment_to|ddmmyyyy }}
+      {% if r.days_left is not none %}
+        <div class="text-muted small">
+          {% if r.days_left < 0 %}{{ -r.days_left }} dni po terminie
+          {% elif r.days_left == 0 %}dziś
+          {% else %}za {{ r.days_left }} dni{% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <span class="text-muted">bez terminu</span>
+    {% endif %}
+  </td>
+  <td>
+    <a href="{{ url_for('fin.document', fakturownia_id=r.fakturownia_id) }}">{{ r.counterparty_name or '—' }}</a>
+    <div class="text-muted small">{{ r.number }}{% if r.category_name %} · {{ r.category_name }}{% endif %}</div>
+  </td>
+  <td class="text-right nowrap">
+    {{ r.amount_left|pln }}
+    {% if r.paid_amount and r.paid_amount > 0 %}
+      <div class="text-muted small">z {{ r.gross_pln|pln }}</div>
+    {% endif %}
+  </td>
+</tr>
+{% endmacro %}
+
+{% macro bucket_table(groups, empty_text) %}
+{% if groups %}
+  {% for g in groups %}
+  <div class="fin-bucket">
+    <div class="fin-bucket-head {{ 'is-overdue' if g.key == 'overdue' }}">
+      <span>{{ g.label }}</span>
+      <span class="fin-bucket-total">{{ g.total|pln }}</span>
+    </div>
+    <table class="data-table">
+      <tbody>
+        {% for r in g.rows %}{{ doc_row(r, g.key == 'overdue') }}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">{{ empty_text }}</p>
+{% endif %}
+{% endmacro %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Do zapłaty</h1>
+  <div class="header-actions">
+    <span class="text-muted">{{ today|ddmmyyyy }}</span>
+  </div>
+</div>
+
+{% if uncategorized > 0 %}
+<div class="fin-banner">
+  {{ icon('alert-triangle', 16) }}
+  <span>{{ uncategorized }} dokumentów bez kategorii — kategorie napędzają odliczenia VAT i koszty podatkowe.</span>
+  <a href="{{ url_for('fin.documents', uncategorized='1', kind='all') }}" class="btn btn-outline btn-sm">Pokaż</a>
+</div>
+{% endif %}
+
+<div class="kpi-row">
+  <div class="kpi-card kpi-alert">
+    <div class="kpi-label">Zobowiązania</div>
+    <div class="kpi-value">{{ payables_total|pln }}</div>
+    <div class="kpi-sub">w tym po terminie {{ overdue_payables|pln }}</div>
+  </div>
+  <div class="kpi-card kpi-green">
+    <div class="kpi-label">Należności</div>
+    <div class="kpi-value">{{ receivables_total|pln }}</div>
+    <div class="kpi-sub">w tym po terminie {{ overdue_receivables|pln }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Pozycja netto</div>
+    <div class="kpi-value">{{ (receivables_total - payables_total)|pln }}</div>
+    <div class="kpi-sub">należności minus zobowiązania</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Wynik {{ today.year }} (netto)</div>
+    <div class="kpi-value">{{ (year_totals.income.net - year_totals.cost.net)|pln }}</div>
+    <div class="kpi-sub">
+      przychód {{ year_totals.income.net|pln }} · koszty {{ year_totals.cost.net|pln }}
+    </div>
+  </div>
+</div>
+
+<div class="fin-columns">
+  <section class="fin-column">
+    <h2>Zobowiązania</h2>
+    {{ bucket_table(payable_groups, 'Nic nie czeka na zapłatę.') }}
+  </section>
+  <section class="fin-column">
+    <h2>Należności</h2>
+    {{ bucket_table(receivable_groups, 'Wszystkie faktury sprzedażowe opłacone.') }}
+  </section>
+</div>
+
+<section class="fin-section">
+  <h2>{{ month|month_pl }}</h2>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th class="text-right">Dokumenty</th>
+          <th class="text-right">Netto</th>
+          <th class="text-right">VAT</th>
+          <th class="text-right">Brutto</th>
+          <th class="text-right">Nieopłacone</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Przychody</td>
+          <td class="text-right">{{ month_totals.income.documents }}</td>
+          <td class="text-right nowrap">{{ month_totals.income.net|pln }}</td>
+          <td class="text-right nowrap">{{ month_totals.income.tax|pln }}</td>
+          <td class="text-right nowrap">{{ month_totals.income.gross|pln }}</td>
+          <td class="text-right nowrap">{{ month_totals.income.open_amount|pln }}</td>
+        </tr>
+        <tr>
+          <td>Koszty</td>
+          <td class="text-right">{{ month_totals.cost.documents }}</td>
+          <td class="text-right nowrap">{{ month_totals.cost.net|pln }}</td>
+          <td class="text-right nowrap">{{ month_totals.cost.tax|pln }}</td>
+          <td class="text-right nowrap">{{ month_totals.cost.gross|pln }}</td>
+          <td class="text-right nowrap">{{ month_totals.cost.open_amount|pln }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted small">
+    VAT pokazany wprost z dokumentów — symulacja podatku (z odliczeniami) pojawi się w zakładce Podatki.
+  </p>
+</section>
+{% endblock %}

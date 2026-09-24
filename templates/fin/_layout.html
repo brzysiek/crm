@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Finanse{% endblock %}
+
+{% block content %}
+<div class="settings-layout fin-fluxa">
+
+  <aside class="settings-sidebar">
+    <nav class="settings-nav">
+      <a href="{{ url_for('fin.index') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'dashboard' }}">
+        Do zapłaty
+      </a>
+      <a href="{{ url_for('fin.documents') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'documents' }}">
+        Dokumenty
+        {% if uncategorized > 0 %}
+          <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ uncategorized }}</span>
+        {% endif %}
+      </a>
+    </nav>
+
+    <div class="fin-sync-box">
+      <div class="fin-sync-label">Synchronizacja z Fakturownią</div>
+      <div class="fin-sync-when">
+        {% if sync.last_run_at %}
+          {{ sync.last_run_at|ddmmyyyy }} {{ sync.last_run_at.strftime('%H:%M') }}
+          {% if sync.last_status == 'error' %}
+            <span class="badge badge-red">błąd</span>
+          {% else %}
+            <span class="text-muted">· {{ sync.items_seen }} dok.</span>
+          {% endif %}
+        {% else %}
+          <span class="text-muted">jeszcze nie uruchomiona</span>
+        {% endif %}
+      </div>
+      {% if sync.message %}<div class="fin-sync-msg">{{ sync.message }}</div>{% endif %}
+      <form method="post" action="{{ url_for('fin.sync') }}">
+        <input type="hidden" name="back" value="{{ request.full_path }}">
+        <button type="submit" class="btn btn-outline btn-sm">{{ icon('rotate-ccw', 14) }} Synchronizuj</button>
+      </form>
+      <form method="post" action="{{ url_for('fin.sync') }}">
+        <input type="hidden" name="back" value="{{ request.full_path }}">
+        <input type="hidden" name="full" value="1">
+        <button type="submit" class="fin-sync-full">pełny przebieg</button>
+      </form>
+    </div>
+  </aside>
+
+  <section class="settings-content">
+    {% block fin_content %}{% endblock %}
+  </section>
+
+</div>
+{% endblock %}

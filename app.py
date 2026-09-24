@@ -2550,6 +2550,7 @@ from routes.crm_plan import bp as crm_plan_bp
 from routes.crm_invoices import bp as crm_invoices_bp
 from routes.email_campaigns import bp as email_campaigns_bp
 from routes.finance import bp as finance_bp
+from routes.fin import bp as fin_bp
 from routes.expenses import bp as expenses_bp
 from routes.imports import bp as imports_bp
 from routes.income import bp as income_bp
@@ -2570,6 +2571,7 @@ app.register_blueprint(crm_plan_bp)
 app.register_blueprint(crm_invoices_bp)
 app.register_blueprint(email_campaigns_bp)
 app.register_blueprint(finance_bp)
+app.register_blueprint(fin_bp)
 app.register_blueprint(expenses_bp)
 app.register_blueprint(imports_bp)
 app.register_blueprint(income_bp)

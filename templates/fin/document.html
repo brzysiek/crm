@@ -1,0 +1,138 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ doc.number or 'Dokument' }}{% endblock %}
+
+{% macro field(label, value, muted=False) %}
+<div class="fin-field">
+  <div class="fin-field-label">{{ label }}</div>
+  <div class="fin-field-value {{ 'text-muted' if muted }}">{{ value }}</div>
+</div>
+{% endmacro %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>{{ doc.number or 'Dokument bez numeru' }}</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('fin.documents', kind='income' if doc.is_income else 'cost') }}" class="btn btn-outline btn-sm">Wróć do listy</a>
+    {% if fakturownia_url %}
+      <a href="{{ fakturownia_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">
+        {{ icon('link', 14) }} Otwórz w Fakturowni
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">{{ 'Przychód' if doc.is_income else 'Koszt' }} netto</div>
+    <div class="kpi-value">{{ doc.net_pln|pln }}</div>
+    <div class="kpi-sub">
+      VAT {{ doc.tax_pln|pln }} · brutto {{ doc.gross_pln|pln }}
+      {% if doc.currency != 'PLN' %}<br>{{ doc.price_gross }} {{ doc.currency }} × {{ doc.exchange_rate }}{% endif %}
+    </div>
+  </div>
+  <div class="kpi-card {{ 'kpi-green' if doc.status == 'paid' else ('kpi-alert' if doc.payment_to and doc.payment_to < today and doc.status != 'paid') }}">
+    <div class="kpi-label">Płatność</div>
+    <div class="kpi-value">{{ status_labels.get(doc.status, doc.status) }}</div>
+    <div class="kpi-sub">
+      {% if doc.status == 'paid' %}
+        {{ ('zapłacono ' ~ doc.paid_date|ddmmyyyy) if doc.paid_date else 'data zapłaty nieznana' }}
+      {% elif doc.payment_to %}
+        termin {{ doc.payment_to|ddmmyyyy }} · zostało {{ (doc.gross_pln - doc.paid_amount)|pln }}
+      {% else %}
+        bez terminu · zostało {{ (doc.gross_pln - doc.paid_amount)|pln }}
+      {% endif %}
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Kategoria</div>
+    <div class="kpi-value">{{ doc.category_name or '—' }}</div>
+    <div class="kpi-sub">
+      {% if doc.category_name %}
+        VAT {{ doc.vat_deduction_percent }}% · KUP {{ doc.tax_deductible_percent }}%
+        {% if doc.category_source %} · źródło: {{ doc.category_source }}{% endif %}
+      {% else %}
+        jeszcze nieprzypisana
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<section class="fin-section">
+  <h2>Kontrahent</h2>
+  <div class="fin-fields">
+    {{ field('Nazwa', doc.counterparty_name or '—') }}
+    {{ field('NIP', doc.counterparty_tax_no or '—') }}
+    {{ field('Rodzaj dokumentu', kind_labels.get(doc.kind, doc.kind)) }}
+    {{ field('Dział', doc.department_id or '—') }}
+  </div>
+</section>
+
+<section class="fin-section">
+  <h2>Daty</h2>
+  <div class="fin-fields">
+    {{ field('Wystawienia', doc.issue_date|ddmmyyyy or '—') }}
+    {{ field('Sprzedaży', doc.sell_date|ddmmyyyy or '—') }}
+    {{ field('Dostawy', doc.delivery_date|ddmmyyyy or '—') }}
+    {{ field('Termin płatności', doc.payment_to|ddmmyyyy or '—') }}
+  </div>
+</section>
+
+<section class="fin-section">
+  <h2>KSeF i księgowość</h2>
+  <div class="fin-fields">
+    {{ field('Status KSeF', gov_labels.get(doc.gov_status, doc.gov_status or '—')) }}
+    {{ field('Numer KSeF', doc.gov_id or '—', not doc.gov_id) }}
+    {{ field('Wysłano', doc.gov_send_date|ddmmyyyy or '—', not doc.gov_send_date) }}
+    {{ field('accounting_kind', doc.accounting_kind or '—', not doc.accounting_kind) }}
+  </div>
+  {% if doc.description %}
+    <div class="fin-field">
+      <div class="fin-field-label">Opis</div>
+      <div class="fin-field-value">{{ doc.description }}</div>
+    </div>
+  {% endif %}
+  {% if doc.meta_note %}
+    <div class="fin-field">
+      <div class="fin-field-label">Notatka CRM</div>
+      <div class="fin-field-value">{{ doc.meta_note }}</div>
+    </div>
+  {% endif %}
+</section>
+
+{% if positions %}
+<section class="fin-section">
+  <h2>Pozycje</h2>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nazwa</th>
+          <th class="text-right">Ilość</th>
+          <th class="text-right">Netto</th>
+          <th class="text-right">VAT</th>
+          <th class="text-right">Brutto</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in positions %}
+        <tr>
+          <td>{{ p.name or '—' }}</td>
+          <td class="text-right nowrap">{{ p.quantity or '' }}</td>
+          <td class="text-right nowrap">{{ p.total_price_net or p.price_net or '' }}</td>
+          <td class="text-right nowrap">{{ p.tax if p.tax is not none else '' }}</td>
+          <td class="text-right nowrap">{{ p.total_price_gross or p.price_gross or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<p class="text-muted small">
+  Dane pochodzą z Fakturowni (id {{ doc.fakturownia_id }}), zsynchronizowane
+  {{ doc.synced_at|ddmmyyyy }}{% if doc.synced_at %} {{ doc.synced_at.strftime('%H:%M') }}{% endif %}.
+  Edycja dokumentu odbywa się w Fakturowni albo przez MCP.
+</p>
+{% endblock %}
