@@ -200,11 +200,20 @@ class GoogleDriveClient:
         return resp.json()
 
     def delete_file(self, file_id: str) -> None:
+        """Przenosi plik do kosza Drive.
+
+        Kosz, a nie trwałe usunięcie: na dysku współdzielonym DELETE wymaga roli
+        organizatora i dla naszego konta zwracał 404 („File not found”) na pliku, który
+        chwilę wcześniej dał się pobrać — w efekcie każdy plik usunięty w CRM zostawał
+        na Drive. PATCH trashed=true przechodzi z uprawnieniami, które mamy, a plik
+        znika z folderu (i daje się odzyskać z kosza, jeśli ktoś usunie go przez pomyłkę).
+        """
         self._require_write_capable()
-        resp = requests.delete(
+        resp = requests.patch(
             f'{self.DRIVE_API}/files/{file_id}',
-            headers=self._auth_headers(),
+            headers={**self._auth_headers(), 'Content-Type': 'application/json'},
             params={**self._auth_params(), 'supportsAllDrives': 'true'},
+            json={'trashed': True},
             timeout=TIMEOUT,
         )
         _raise_for_status(resp)

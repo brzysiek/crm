@@ -4,6 +4,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from models.crm_company import get_company_by_id
 from models.crm_contact import get_contact_by_id
+from models.crm_file import get_files_for_mna_offer
 from models.crm_mna_offer import (FIELD_LABELS, OFFER_TYPE_BADGE_CLASSES, OFFER_TYPE_LABELS,
                                    create_mna_offer, delete_mna_offer, get_all_mna_offers,
                                    get_deleted_mna_offers, get_mna_offer_by_id,
@@ -176,6 +177,12 @@ def view_mna_offer(offer_id):
         note_type_labels=NOTE_TYPE_LABELS,
         history_badge_labels=HISTORY_BADGE_LABELS,
         gtd_items=build_gtd_items(mna_offer_id=offer_id),
+        files=get_files_for_mna_offer(offer_id),
+        can_upload_files=True,
+        upload_company_id=None,
+        upload_contact_id=None,
+        upload_mna_deal_id=None,
+        upload_mna_offer_id=offer_id,
     )
 
 

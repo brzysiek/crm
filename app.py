@@ -2105,32 +2105,41 @@ def api_crm_contacts_bulk_delete():
 def api_crm_files_upload():
     from models.crm_company import get_company_by_id
     from models.crm_file import ALLOWED_EXTENSIONS, add_file, files_word, formats_label
+    from models.crm_mna_offer import get_mna_offer_by_id
     from models.crm_notes import log_history
     from models.mna_deal import get_mna_deal_by_id
     from models.settings import get_setting
-    from services.crm_files import DriveNotConfigured, upload_mna_deal_file
+    from services.crm_files import DriveNotConfigured, upload_mna_deal_file, upload_mna_offer_file
     from services.gdrive import GoogleDriveClient
     from services.images import resize_jpeg_if_needed
 
     company_id = request.form.get('company_id', type=int)
     contact_id = request.form.get('contact_id', type=int)
     mna_deal_id = request.form.get('mna_deal_id', type=int)
+    mna_offer_id = request.form.get('mna_offer_id', type=int)
     uploaded = request.files.getlist('files')
 
-    if not company_id and not mna_deal_id:
+    if not company_id and not mna_deal_id and not mna_offer_id:
         return jsonify({'status': 'error',
                          'message': 'Brak firmy — pliki można dodać tylko dla firmy, kontaktu przypisanego '
-                                    'do firmy albo deala M&A.'})
+                                    'do firmy, deala M&A albo oferty M&A.'})
     company = get_company_by_id(company_id) if company_id else None
     if company_id and not company:
         return jsonify({'status': 'error', 'message': 'Firma nie istnieje.'})
     if not uploaded:
         return jsonify({'status': 'error', 'message': 'Nie wybrano żadnego pliku.'})
 
-    if mna_deal_id:
-        deal = get_mna_deal_by_id(mna_deal_id)
-        if not deal:
-            return jsonify({'status': 'error', 'message': 'Deal M&A nie istnieje.'})
+    # Deale i oferty M&A idą tą samą drogą (serwis crm_files sam ogarnia folder na Drive,
+    # zapis w bazie i historię) — różni je tylko encja, więc jeden przebieg dla obu.
+    if mna_deal_id or mna_offer_id:
+        if mna_deal_id:
+            entity = get_mna_deal_by_id(mna_deal_id)
+            not_found, upload_one = 'Deal M&A nie istnieje.', upload_mna_deal_file
+        else:
+            entity = get_mna_offer_by_id(mna_offer_id)
+            not_found, upload_one = 'Oferta M&A nie istnieje.', upload_mna_offer_file
+        if not entity:
+            return jsonify({'status': 'error', 'message': not_found})
         saved, rejected = 0, []
         for f in uploaded:
             ext = f.filename.rsplit('.', 1)[-1].lower() if f.filename and '.' in f.filename else ''
@@ -2138,7 +2147,7 @@ def api_crm_files_upload():
                 rejected.append(f.filename)
                 continue
             try:
-                upload_mna_deal_file(deal, f.filename, f.read(), session.get('user_id'))
+                upload_one(entity, f.filename, f.read(), session.get('user_id'))
             except DriveNotConfigured as e:
                 return jsonify({'status': 'error', 'message': str(e)})
             except Exception as e:
@@ -2233,6 +2242,8 @@ def api_crm_files_delete(file_id):
     summary = f"Usunięto plik: {rec['file_name']}"
     if rec.get('mna_deal_id'):
         log_history('mna_deal', rec['mna_deal_id'], session.get('user_id'), 'file', summary)
+    if rec.get('mna_offer_id'):
+        log_history('mna_offer', rec['mna_offer_id'], session.get('user_id'), 'file', summary)
     if rec.get('company_id'):
         log_history('company', rec['company_id'], session.get('user_id'), 'file', summary)
     if rec.get('contact_id'):

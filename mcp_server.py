@@ -1415,7 +1415,8 @@ def upload_mna_deal_file(deal_id: int, file_name: str, content_base64: str) -> d
     """Dodaje plik do deala M&A: wrzuca go na Drive do "Deale M&A/<firma z oferty>/pliki",
     zapisuje w CRM i dopisuje wpis do historii deala.
 
-    file_name musi mieć rozszerzenie z listy: PDF, DOCX, JPG, JPEG, PNG, HEIC, XML.
+    file_name musi mieć rozszerzenie z listy: PDF, DOCX, XML, JPG, PNG, HEIC oraz nagrania
+    (MP3, M4A, WAV, OGG, OPUS, WEBM, FLAC, AAC).
     content_base64 to zawartość pliku zakodowana base64 (nadaje się do małych plików —
     większe wygodniej wrzucić przez stronę deala)."""
     import base64

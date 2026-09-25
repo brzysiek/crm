@@ -53,18 +53,19 @@ def _valid_user_id(user_id: int | None) -> int | None:
 
 def add_file(company_id: int | None, contact_id: int | None, file_name: str, drive_file_id: str,
              mime_type: str, file_size: int, user_id: int | None, category: str = 'file',
-             mna_deal_id: int | None = None) -> int:
-    """Plik należy do firmy CRM (company_id) albo do deala M&A (mna_deal_id)."""
+             mna_deal_id: int | None = None, mna_offer_id: int | None = None) -> int:
+    """Plik należy do firmy CRM (company_id), do deala M&A (mna_deal_id) albo do oferty M&A
+    (mna_offer_id) — dokładnie jednego z nich."""
     db = get_db()
     try:
         with db.cursor() as cur:
             cur.execute(
                 """INSERT INTO crm_files
-                   (company_id, contact_id, mna_deal_id, category, file_name, drive_file_id,
-                    mime_type, file_size, user_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                (company_id or None, contact_id, mna_deal_id or None, category, file_name,
-                 drive_file_id, mime_type, file_size, _valid_user_id(user_id))
+                   (company_id, contact_id, mna_deal_id, mna_offer_id, category, file_name,
+                    drive_file_id, mime_type, file_size, user_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (company_id or None, contact_id, mna_deal_id or None, mna_offer_id or None,
+                 category, file_name, drive_file_id, mime_type, file_size, _valid_user_id(user_id))
             )
         db.commit()
         return cur.lastrowid
@@ -97,6 +98,20 @@ def get_files_for_mna_deal(mna_deal_id: int) -> list[dict]:
                WHERE f.mna_deal_id=%s AND f.category='file'
                ORDER BY f.created_at DESC, f.id DESC""",
             (mna_deal_id,)
+        )
+        return cur.fetchall()
+
+
+def get_files_for_mna_offer(mna_offer_id: int) -> list[dict]:
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT f.*, u.full_name AS user_name
+               FROM crm_files f
+               LEFT JOIN users u ON u.id = f.user_id
+               WHERE f.mna_offer_id=%s AND f.category='file'
+               ORDER BY f.created_at DESC, f.id DESC""",
+            (mna_offer_id,)
         )
         return cur.fetchall()
 
