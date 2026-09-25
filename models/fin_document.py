@@ -49,7 +49,8 @@ DOC_SORTS = {
 
 UPSERT_FIELDS = (
     'fakturownia_id', 'department_id', 'kind', 'is_income', 'number', 'issue_date', 'sell_date',
-    'delivery_date', 'payment_to', 'paid_date', 'status', 'currency', 'exchange_rate',
+    'delivery_date', 'payment_to', 'paid_date', 'vat_date', 'income_tax_date',
+    'status', 'currency', 'exchange_rate',
     'price_net', 'price_tax', 'price_gross', 'paid_amount', 'net_pln', 'tax_pln', 'gross_pln',
     'counterparty_name', 'counterparty_tax_no', 'counterparty_tax_no_norm', 'accounting_kind', 'fakturownia_category_id',
     'gov_id', 'gov_status', 'gov_send_date', 'description', 'oid', 'raw_json',

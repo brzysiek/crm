@@ -4,6 +4,7 @@ Baza jest zamockowana — sprawdzamy warstwę narzędzi, nie SQL.
 Uruchomienie: venv/bin/python -m unittest discover tests
 """
 import unittest
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest import mock
 
@@ -239,3 +240,82 @@ class FinanceToolsTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class TaxEstimateToolTest(unittest.TestCase):
+    """Narzędzie podatkowe: sprawdzamy kontrakt odpowiedzi, nie arytmetykę
+    (ta ma własne testy w test_fin_tax.py)."""
+
+    def setUp(self):
+        self.overview = {
+            'period': '2026-08',
+            'vat': {'due': Decimal('2300.00'), 'deductible': Decimal('1000.00'),
+                    'to_pay': Decimal('1300'), 'carry_forward': Decimal('0'),
+                    'due_date': date(2026, 9, 25), 'income_count': 1, 'cost_count': 1,
+                    'uncategorized': [{'fakturownia_id': 9, 'tax': Decimal('230.00')}],
+                    'uncategorized_tax': Decimal('230.00'),
+                    'limited': [{'fakturownia_id': 8, 'percent': 50}],
+                    'exceptions': [{'fakturownia_id': 7, 'number': 'FV/7',
+                                    'counterparty_name': 'Microsoft', 'net': Decimal('100'),
+                                    'tax': Decimal('0'), 'is_income': False,
+                                    'reason': 'self_charge', 'reason_label': 'Import usług'}]},
+            'pit': {'income_net': Decimal('100000'), 'cost_net': Decimal('40000'),
+                    'social_paid': Decimal('5000'), 'health_deducted': Decimal('2000'),
+                    'taxable': Decimal('53000'), 'rate': Decimal('0.19'),
+                    'tax_ytd': Decimal('10070'), 'advances_paid': Decimal('4000'),
+                    'to_pay': Decimal('6070'), 'overpaid': Decimal('0'),
+                    'due_date': date(2026, 9, 21)},
+            'health': {'amount': Decimal('980.00'), 'basis_month': '2026-07',
+                       'due_date': date(2026, 9, 21),
+                       'basis_income': Decimal('20000'), 'is_minimum': False,
+                       'deduction_limit': Decimal('12900')},
+            'social': {'amount': Decimal('1773.96'), 'due_date': date(2026, 9, 21)},
+            'ytd': {'cost_uncategorized': 3, 'months': 8, 'year': 2026},
+            'rates_year': 2026,
+            'rates_warning': ['PRZENIESIONE Z 2025 — potwierdź składki społeczne na 2026'],
+            'obligations': {},
+        }
+        patches = [
+            mock.patch.object(mcp_server.fin_tax, 'period_overview', return_value=self.overview),
+            mock.patch.object(mcp_server.fin_tax_store, 'missing_rates', return_value=[]),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_zwraca_zobowiazania_terminy_i_wyjatki(self):
+        result = mcp_server.fin_tax_estimate(period='2026-08')
+        self.assertEqual(result['period'], '2026-08')
+        self.assertIn('Symulacja', result['disclaimer'])
+        self.assertEqual([o['kind'] for o in result['obligations']],
+                         ['vat', 'pit', 'zus_social', 'zus_health'])
+        self.assertEqual(result['obligations'][1]['amount'], Decimal('6070.00'))
+        self.assertEqual(result['vat']['exceptions'][0]['reason'], 'self_charge')
+        self.assertEqual(result['zus']['health_basis_month'], '2026-07')
+        self.assertTrue(result['rates_warnings'])
+
+    def test_kwoty_zostaja_dziesietne(self):
+        result = mcp_server.fin_tax_estimate(period='2026-08')
+        self.assertIsInstance(result['pit']['tax_ytd'], Decimal)
+        self.assertIsInstance(result['zus']['social'], Decimal)
+
+    def test_dokumenty_tylko_na_zyczenie(self):
+        self.assertNotIn('limited', mcp_server.fin_tax_estimate(period='2026-08')['vat'])
+        detailed = mcp_server.fin_tax_estimate(period='2026-08', include_documents=True)
+        self.assertEqual(detailed['vat']['limited'][0]['fakturownia_id'], 8)
+
+    def test_pusty_okres_to_poprzedni_miesiac(self):
+        mcp_server.fin_tax_estimate()
+        expected = (date.today().replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
+        mcp_server.fin_tax.period_overview.assert_called_with(expected)
+
+    def test_zly_format_okresu_odrzucony_przed_liczeniem(self):
+        with self.assertRaises(ValueError):
+            mcp_server.fin_tax_estimate(period='sierpień 2026')
+        mcp_server.fin_tax.period_overview.assert_not_called()
+
+    def test_brak_stawek_to_blad_z_podpowiedzia(self):
+        mcp_server.fin_tax_store.missing_rates.return_value = ['pit_rate']
+        with self.assertRaises(ValueError) as ctx:
+            mcp_server.fin_tax_estimate(period='2026-08')
+        self.assertIn('pit_rate', str(ctx.exception))
+        mcp_server.fin_tax.period_overview.assert_not_called()

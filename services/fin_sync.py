@@ -98,6 +98,12 @@ def map_invoice(raw: dict) -> dict:
         'delivery_date': _date(raw.get('delivery_date')),
         'payment_to': _date(raw.get('payment_to')),
         'paid_date': _date(raw.get('paid_date')),
+        # Daty księgowe Fakturowni: dla kosztów `accounting_vat_tax_date` to data
+        # otrzymania faktury, od której liczy się prawo do odliczenia — bywa
+        # w innym miesiącu niż wystawienie. Gdy pusta, zostaje data wystawienia.
+        'vat_date': _date(raw.get('accounting_vat_tax_date')) or _date(raw.get('issue_date')),
+        'income_tax_date': (_date(raw.get('accounting_income_tax_date'))
+                            or _date(raw.get('issue_date'))),
         'status': (raw.get('status') or 'issued')[:24],
         'currency': currency[:3],
         'exchange_rate': rate,

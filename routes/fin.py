@@ -19,11 +19,15 @@ from models.fin_document import (GOV_STATUS_LABELS, KIND_LABELS, NON_FINANCIAL_K
 from models.fin_category import (bulk_set_category, category_monthly, category_totals,
                                  clear_document_category, create_category, get_category_by_slug,
                                  list_categories, update_category)
+from models.fin_tax import (RATE_LABELS, list_obligations, list_rates, mark_obligation_paid,
+                            missing_rates, rate_years, set_rate, unmark_obligation_paid,
+                            upcoming_obligations, upsert_obligation, vat_months)
 from models.settings import get_setting
 from services.fakturownia_api import FakturowniaError
 from services.fin_rules import (FIELD_LABELS, MATCH_FIELDS, MATCH_TYPES, TYPE_LABELS,
                                 apply_rules, create_rule, delete_rule, list_rules, toggle_rule)
 from services.fin_sync import get_sync_state, sync_documents
+from services.fin_tax import OBLIGATION_LABELS, obligation_rows, period_overview
 
 bp = Blueprint('fin', __name__, url_prefix='/fin')
 
@@ -58,6 +62,25 @@ def index():
     payables = open_items(is_income=False)
     receivables = open_items(is_income=True)
 
+    # Podatki bieżącego rozliczenia: symulacja za ostatni zamknięty miesiąc plus to,
+    # co leży niezapłacone w rejestrze z innych okresów. Brak stawek nie może wywalić
+    # ekranu, na którym patrzy się głównie na faktury — stąd łagodne ominięcie.
+    tax_period = _tax_period()
+    tax_rows, tax_warning = [], ''
+    try:
+        tax_rows = [r for r in obligation_rows(period_overview(tax_period))
+                    if not r['paid_at'] and r['amount'] > 0]
+    except ValueError as e:
+        tax_warning = str(e)
+    for entry in upcoming_obligations():
+        if entry['period'] != tax_period:
+            tax_rows.append({'kind': entry['kind'], 'label': OBLIGATION_LABELS.get(entry['kind'],
+                             entry['kind']), 'period': entry['period'], 'amount': entry['amount'],
+                             'calculated': entry['amount_calculated'],
+                             'declared': entry['amount_declared'],
+                             'due_date': entry['due_date'], 'paid_at': None})
+    tax_rows.sort(key=lambda r: (r['due_date'] is None, r['due_date']))
+
     return render_template(
         'fin/dashboard.html',
         active_tab='dashboard',
@@ -69,6 +92,12 @@ def index():
         receivables_total=sum(r['amount_left'] for r in receivables),
         overdue_payables=sum(r['amount_left'] for r in payables if r['bucket'] == 'overdue'),
         overdue_receivables=sum(r['amount_left'] for r in receivables if r['bucket'] == 'overdue'),
+        tax_period=tax_period,
+        tax_rows=tax_rows,
+        tax_total=sum((r['amount'] for r in tax_rows), Decimal('0')),
+        tax_overdue=sum((r['amount'] for r in tax_rows
+                         if r['due_date'] and r['due_date'] < today), Decimal('0')),
+        tax_warning=tax_warning,
         month_totals=period_totals(f'{month}-01', month_end.isoformat()),
         year_totals=period_totals(f'{today.year}-01-01', f'{today.year}-12-31'),
         uncategorized=count_uncategorized(),
@@ -326,13 +355,138 @@ def result_view():
     )
 
 
+# ── Podatki ──────────────────────────────────────────────────────────────────
+
+def _tax_period(default_shift: int = 1) -> str:
+    """Okres z URL-a albo domyślnie poprzedni miesiąc — ten, który się właśnie płaci."""
+    given = request.args.get('period', '').strip()
+    if len(given) == 7 and given[4] == '-' and given[:4].isdigit() and given[5:7].isdigit():
+        return given
+    today = date.today()
+    month = today.month - default_shift
+    year = today.year
+    while month < 1:
+        month += 12
+        year -= 1
+    return f'{year}-{month:02d}'
+
+
+@bp.route('/podatki')
+def taxes_view():
+    period = _tax_period()
+    year = int(period[:4])
+    missing = missing_rates(year)
+    if missing:
+        flash('Brakuje stawek: ' + ', '.join(RATE_LABELS.get(k, k) for k in missing)
+              + '. Uzupełnij je w Ustawieniach — bez nich nie policzę zobowiązań.', 'error')
+        return redirect(url_for('fin.settings_view'))
+
+    overview = period_overview(period)
+    months = vat_months()
+    if period not in months:
+        months = sorted(set(months) | {period}, reverse=True)
+
+    return render_template(
+        'fin/taxes.html',
+        active_tab='taxes',
+        period=period,
+        periods=months,
+        today=date.today(),
+        overview=overview,
+        rows=obligation_rows(overview),
+        history=list_obligations(year=year),
+        kind_labels=KIND_LABELS,
+        obligation_labels=OBLIGATION_LABELS,
+        uncategorized=count_uncategorized(),
+        sync=get_sync_state('documents'),
+    )
+
+
+@bp.route('/podatki/zapisz', methods=['POST'])
+def save_obligations():
+    """Przepisuje symulację okresu do rejestru — dopiero wtedy wchodzi na „Do zapłaty”."""
+    period = request.form.get('period', '')[:7]
+    try:
+        overview = period_overview(period)
+    except ValueError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('fin.taxes_view', period=period))
+    for row in obligation_rows(overview):
+        upsert_obligation(row['kind'], period, row['calculated'], row['due_date'])
+    flash(f'Zobowiązania za {period} zapisane w rejestrze. To nadal symulacja, nie deklaracja.',
+          'success')
+    return redirect(url_for('fin.taxes_view', period=period))
+
+
+@bp.route('/podatki/<kind>/<period>/oplacone', methods=['POST'])
+def pay_obligation(kind: str, period: str):
+    if kind not in OBLIGATION_LABELS:
+        flash('Nie znam takiego zobowiązania.', 'error')
+        return redirect(url_for('fin.taxes_view'))
+    period = period[:7]
+    if request.form.get('undo') == '1':
+        unmark_obligation_paid(kind, period)
+        flash('Zdjąłem oznaczenie zapłaty.', 'success')
+        return redirect(request.form.get('back') or url_for('fin.taxes_view', period=period))
+
+    paid_at = request.form.get('paid_at', '').strip() or date.today().isoformat()
+    declared = request.form.get('amount', '').replace(' ', '').replace(',', '.')
+    try:
+        amount = Decimal(declared) if declared else None
+    except ArithmeticError:
+        flash('Kwota nie wygląda na liczbę — nic nie zapisałem.', 'error')
+        return redirect(url_for('fin.taxes_view', period=period))
+    mark_obligation_paid(kind, period, paid_at, amount_declared=amount,
+                         amount_calculated=amount or 0)
+    flash(f'{OBLIGATION_LABELS[kind]} za {period}: zapłacone.', 'success')
+    return redirect(request.form.get('back') or url_for('fin.taxes_view', period=period))
+
+
+@bp.route('/stawki/zapisz', methods=['POST'])
+def save_rates():
+    """Stawki na rok — jedyne miejsce, gdzie liczby podatkowe w ogóle istnieją."""
+    year = request.form.get('year', type=int)
+    if not year:
+        flash('Podaj rok.', 'error')
+        return redirect(url_for('fin.settings_view'))
+    saved = 0
+    for key in request.form.getlist('rate_key'):
+        raw = request.form.get(f'value_{key}', '').replace(' ', '').replace(',', '.')
+        if not raw:
+            continue
+        try:
+            value = Decimal(raw)
+        except ArithmeticError:
+            flash(f'„{RATE_LABELS.get(key, key)}”: {raw} to nie liczba — pominąłem.', 'error')
+            continue
+        set_rate(year, key, value, note=request.form.get(f'note_{key}', '').strip(),
+                 is_confirmed=request.form.get(f'confirmed_{key}') == '1')
+        saved += 1
+    flash(f'Zapisałem {saved} stawek na {year}.', 'success')
+    return redirect(url_for('fin.settings_view', rates_year=year))
+
+
 # ── Ustawienia modułu ────────────────────────────────────────────────────────
+
+def _rate_form_rows(year: int) -> list[dict]:
+    """Wiersze formularza stawek: wszystkie znane klucze, także te jeszcze nieuzupełnione."""
+    saved = {r['key']: r for r in list_rates(year)}
+    keys = list(RATE_LABELS) + [k for k in saved if k not in RATE_LABELS]
+    return [dict(saved.get(key) or {'key': key, 'value': None, 'note': '', 'is_confirmed': 1},
+                 label=RATE_LABELS.get(key, key)) for key in keys]
+
 
 @bp.route('/ustawienia')
 def settings_view():
+    rates_year = request.args.get('rates_year', type=int) or date.today().year
     return render_template(
         'fin/settings.html',
         active_tab='settings',
+        rates_year=rates_year,
+        rates=_rate_form_rows(rates_year),
+        rate_labels=RATE_LABELS,
+        rate_years=sorted(set(rate_years()) | {date.today().year, date.today().year + 1},
+                          reverse=True),
         categories=list_categories(include_archived=True),
         rules=list_rules(),
         match_fields=MATCH_FIELDS,

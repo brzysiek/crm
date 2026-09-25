@@ -159,4 +159,60 @@
     <button type="submit" class="btn btn-primary btn-sm">Dodaj kategorię</button>
   </form>
 </section>
+
+<section class="fin-section">
+  <h2>Stawki podatkowe</h2>
+  <p class="text-muted small">
+    Cała arytmetyka podatkowa czyta stawki wyłącznie stąd — w kodzie nie ma ani jednej
+    zapisanej na sztywno kwoty. Stawki zmieniają się co roku, więc to Ty je potwierdzasz.
+    Odznaczone „potwierdzona” oznacza wartość przeniesioną z poprzedniego roku: ekran Podatki
+    będzie o niej ostrzegał, dopóki jej nie zatwierdzisz.
+  </p>
+
+  <div class="fin-actions">
+    {% for y in rate_years %}
+    <a href="{{ url_for('fin.settings_view', rates_year=y) }}"
+       class="btn btn-sm {{ 'btn-primary' if y == rates_year else 'btn-outline' }}">{{ y }}</a>
+    {% endfor %}
+  </div>
+
+  <form method="post" action="{{ url_for('fin.save_rates') }}">
+    <input type="hidden" name="year" value="{{ rates_year }}">
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr><th>Stawka</th><th class="text-right">Wartość</th><th>Potwierdzona</th><th>Notatka</th></tr>
+        </thead>
+        <tbody>
+          {% for r in rates %}
+          <tr>
+            <td>
+              {{ r.label }}
+              <div class="text-muted small"><code>{{ r.key }}</code></div>
+              <input type="hidden" name="rate_key" value="{{ r.key }}">
+            </td>
+            <td class="text-right">
+              <input type="text" name="value_{{ r.key }}" class="filter-input" style="max-width:8rem"
+                     value="{{ r.value if r.value is not none else '' }}">
+            </td>
+            <td>
+              <input type="checkbox" name="confirmed_{{ r.key }}" value="1"
+                     {{ 'checked' if r.is_confirmed }}>
+            </td>
+            <td>
+              <input type="text" name="note_{{ r.key }}" class="filter-input" style="width:100%"
+                     value="{{ r.note or '' }}">
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="fin-actions">
+      <button type="submit" class="btn btn-primary btn-sm">Zapisz stawki na {{ rates_year }}</button>
+      <span class="text-muted small">Stawki procentowe podaj jako ułamek (0.19 = 19%),
+        kwoty w złotych.</span>
+    </div>
+  </form>
+</section>
 {% endblock %}

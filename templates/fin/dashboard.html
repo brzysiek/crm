@@ -78,6 +78,15 @@
     <div class="kpi-value">{{ receivables_total|pln }}</div>
     <div class="kpi-sub">w tym po terminie {{ overdue_receivables|pln }}</div>
   </div>
+  <div class="kpi-card {{ 'kpi-alert' if tax_overdue > 0 }}">
+    <div class="kpi-label">Podatki i ZUS</div>
+    <div class="kpi-value">{{ tax_total|pln }}</div>
+    <div class="kpi-sub">
+      {% if tax_warning %}brak stawek
+      {% elif tax_overdue > 0 %}w tym po terminie {{ tax_overdue|pln }}
+      {% else %}symulacja za {{ tax_period }}{% endif %}
+    </div>
+  </div>
   <div class="kpi-card">
     <div class="kpi-label">Pozycja netto</div>
     <div class="kpi-value">{{ (receivables_total - payables_total)|pln }}</div>
@@ -102,6 +111,54 @@
     {{ bucket_table(receivable_groups, 'Wszystkie faktury sprzedażowe opłacone.') }}
   </section>
 </div>
+
+<section class="fin-section">
+  <h2>Podatki i ZUS <span class="badge badge-amber">symulacja</span></h2>
+  {% if tax_warning %}
+    <p class="text-muted">{{ tax_warning }}</p>
+  {% elif tax_rows %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr><th>Okres</th><th>Zobowiązanie</th><th class="text-right">Kwota</th><th>Termin</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for r in tax_rows %}
+        <tr class="{{ 'row-unpaid' if r.due_date and r.due_date < today }}">
+          <td class="nowrap"><a href="{{ url_for('fin.taxes_view', period=r.period) }}">{{ r.period }}</a></td>
+          <td>{{ r.label }}</td>
+          <td class="text-right nowrap">{{ r.amount|pln }}</td>
+          <td class="nowrap">
+            {{ r.due_date|ddmmyyyy if r.due_date else '—' }}
+            {% if r.due_date %}
+              {% set days = (r.due_date - today).days %}
+              <div class="text-muted small">
+                {% if days < 0 %}{{ -days }} dni po terminie
+                {% elif days == 0 %}dziś
+                {% else %}za {{ days }} dni{% endif %}
+              </div>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            <form method="post" action="{{ url_for('fin.pay_obligation', kind=r.kind, period=r.period) }}">
+              <input type="hidden" name="back" value="{{ request.full_path }}">
+              <input type="hidden" name="amount" value="{{ r.amount }}">
+              <button type="submit" class="btn btn-outline btn-sm">Zapłacone</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted small">
+    Kwoty z symulacji za {{ tax_period }} — nie z deklaracji.
+    <a href="{{ url_for('fin.taxes_view', period=tax_period) }}">Zobacz, z czego wynikają</a>.
+  </p>
+  {% else %}
+  <p class="text-muted">Nic podatkowego nie czeka na zapłatę za {{ tax_period }}.</p>
+  {% endif %}
+</section>
 
 <section class="fin-section">
   <h2>{{ month|month_pl }}</h2>

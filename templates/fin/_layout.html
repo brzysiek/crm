@@ -19,6 +19,10 @@
          class="settings-nav-item {{ 'active' if active_tab == 'result' }}">
         Wynik
       </a>
+      <a href="{{ url_for('fin.taxes_view') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'taxes' }}">
+        Podatki
+      </a>
       <a href="{{ url_for('fin.documents') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'documents' }}">
         Dokumenty

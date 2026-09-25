@@ -32,6 +32,7 @@ from __future__ import annotations
 import asyncio
 import calendar
 import json
+import re
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Literal
@@ -56,10 +57,12 @@ import models.mna_deal as mna_deal
 import models.mna_tags as mna_tags
 import models.fin_category as fin_category
 import models.fin_document as fin_document
+import models.fin_tax as fin_tax_store
 import models.reconciliation as reconciliation
 import services.crm_files as crm_files_service
 import services.fin_rules as fin_rules
 import services.fin_sync as fin_sync_service
+import services.fin_tax as fin_tax
 import models.task as task_model
 from routes.gtd import _add_months, _month_range, _try_gcal_delete, _week_range
 
@@ -1752,6 +1755,74 @@ def fin_sync(full: bool = False) -> dict:
         result = fin_sync_service.sync_documents(full=bool(full))
         result['cursor'] = result['cursor'].isoformat() if result['cursor'] else None
         return result
+
+
+@mcp.tool()
+def fin_tax_estimate(period: str = "", include_documents: bool = False) -> dict:
+    """Symulacja podatków za miesiąc (VAT, zaliczka PIT liniowy, ZUS społeczny i zdrowotna).
+
+    `period` w formacie YYYY-MM; pusty = poprzedni miesiąc, czyli ten, który się właśnie
+    płaci. Zwraca kwoty, terminy zapłaty, listę wyjątków (dokumenty, których silnik nie
+    umie policzyć: odwrotne obciążenie, import usług, marża, OSS, zerowy VAT) oraz
+    ostrzeżenia o niepotwierdzonych stawkach.
+
+    To symulacja, nie deklaracja: nie nadaje się do wysłania do urzędu, a kwoty VAT nie
+    uwzględniają nadwyżki przeniesionej z poprzednich okresów. Kategoryzacja kosztów
+    wprost wpływa na wynik — dokument bez kategorii liczy się jak 100% odliczenia VAT
+    i 100% kosztu podatkowego.
+    """
+    period = (period or "").strip()
+    if not period:
+        today = date.today()
+        first = today.replace(day=1)
+        previous = first - timedelta(days=1)
+        period = previous.strftime("%Y-%m")
+    if not re.fullmatch(r"\d{4}-\d{2}", period):
+        raise ValueError("Okres podaj jako YYYY-MM, np. 2026-08.")
+
+    with flask_app.app_context():
+        missing = fin_tax_store.missing_rates(int(period[:4]))
+        if missing:
+            raise ValueError("Brak stawek podatkowych na "
+                             f"{period[:4]}: {', '.join(missing)}. Uzupełnij je w CRM "
+                             "(Finanse → Ustawienia) — bez nich nie policzę podatków.")
+        overview = fin_tax.period_overview(period)
+        rows = fin_tax.obligation_rows(overview)
+
+    vat, pit, health, social = overview['vat'], overview['pit'], overview['health'], overview['social']
+    result = {
+        'period': period,
+        'disclaimer': 'Symulacja, nie deklaracja. Sprawdź z księgową przed zapłatą.',
+        'obligations': [{'kind': r['kind'], 'label': r['label'], 'amount': r['amount'],
+                         'calculated': r['calculated'], 'declared': r['declared'],
+                         'due_date': r['due_date'], 'paid_at': r['paid_at']} for r in rows],
+        'vat': {'due': vat['due'], 'deductible': vat['deductible'], 'to_pay': vat['to_pay'],
+                'carry_forward': vat['carry_forward'], 'due_date': vat['due_date'],
+                'income_documents': vat['income_count'], 'cost_documents': vat['cost_count'],
+                'uncategorized_documents': len(vat['uncategorized']),
+                'uncategorized_tax': vat['uncategorized_tax'],
+                'exceptions': [{'fakturownia_id': e['fakturownia_id'], 'number': e['number'],
+                                'counterparty_name': e['counterparty_name'], 'net': e['net'],
+                                'tax': e['tax'], 'is_income': e['is_income'],
+                                'reason': e['reason'], 'reason_label': e['reason_label']}
+                               for e in vat['exceptions']]},
+        'pit': {'income_net_ytd': pit['income_net'], 'cost_net_ytd': pit['cost_net'],
+                'social_deducted': pit['social_paid'], 'health_deducted': pit['health_deducted'],
+                'taxable_ytd': pit['taxable'], 'rate': pit['rate'], 'tax_ytd': pit['tax_ytd'],
+                'advances_paid': pit['advances_paid'], 'to_pay': pit['to_pay'],
+                'overpaid': pit['overpaid'], 'due_date': pit['due_date'],
+                'uncategorized_costs_ytd': overview['ytd']['cost_uncategorized']},
+        'zus': {'social': social['amount'], 'health': health['amount'],
+                'health_basis_month': health['basis_month'],
+                'health_basis_income': health['basis_income'],
+                'health_is_minimum': health['is_minimum'], 'due_date': social['due_date']},
+        'rates_year': overview['rates_year'],
+        'rates_warnings': overview['rates_warning'],
+    }
+    if include_documents:
+        result['vat']['limited'] = vat['limited']
+        result['vat']['uncategorized'] = vat['uncategorized']
+    return result
 
 
 def _call_tool_sync(name: str, arguments: dict) -> dict:

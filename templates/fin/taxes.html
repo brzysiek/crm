@@ -1,0 +1,365 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Podatki{% endblock %}
+
+{% macro doc_link(d) %}
+<a href="{{ url_for('fin.document', fakturownia_id=d.fakturownia_id) }}">{{ d.number or d.fakturownia_id }}</a>
+{% endmacro %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Podatki <span class="badge badge-amber">symulacja, nie deklaracja</span></h1>
+  <div class="header-actions">
+    <form method="get" class="filter-bar" style="margin:0">
+      <select name="period" class="filter-select" onchange="this.form.submit()">
+        {% for p in periods %}
+        <option value="{{ p }}" {{ 'selected' if p == period }}>{{ p }}</option>
+        {% endfor %}
+      </select>
+      <noscript><button type="submit" class="btn btn-outline btn-sm">Pokaż</button></noscript>
+    </form>
+  </div>
+</div>
+
+<p class="text-muted small">
+  Liczby poniżej wyliczam z lustra Fakturowni i z Twojej kategoryzacji. Nie są deklaracją
+  ani poradą podatkową — służą do tego, żeby wiedzieć, ile odłożyć i kiedy zapłacić.
+  Każdą kwotę można rozwinąć do dokumentów, z których powstała.
+</p>
+
+{% if overview.rates_warning %}
+<div class="fin-banner">
+  {{ icon('alert-triangle', 16) }}
+  <div>
+    <strong>Stawki na {{ overview.rates_year }} nie są potwierdzone.</strong>
+    {% for note in overview.rates_warning %}<div class="small">{{ note }}</div>{% endfor %}
+  </div>
+  <a href="{{ url_for('fin.settings_view', rates_year=overview.rates_year) }}"
+     class="btn btn-outline btn-sm">Popraw stawki</a>
+</div>
+{% endif %}
+
+{% if uncategorized > 0 %}
+<div class="fin-banner">
+  {{ icon('alert-triangle', 16) }}
+  <span>{{ uncategorized }} dokumentów bez kategorii liczę jak 100% odliczenia VAT i 100% kosztu
+    podatkowego — dopóki tego nie uporządkujesz, kwoty są zawyżone na Twoją niekorzyść w drugą stronę.</span>
+  <a href="{{ url_for('fin.documents', uncategorized='1', kind='all') }}" class="btn btn-outline btn-sm">Pokaż</a>
+</div>
+{% endif %}
+
+{# ── Zobowiązania okresu ──────────────────────────────────────────────── #}
+<section class="fin-section">
+  <h2>Do zapłaty za {{ period }}</h2>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Zobowiązanie</th>
+          <th class="text-right">Symulacja</th>
+          <th class="text-right">Wpisane</th>
+          <th>Termin</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="{{ 'row-unpaid' if not r.paid_at and r.due_date and r.due_date < today and r.amount > 0 }}">
+          <td>{{ r.label }}</td>
+          <td class="text-right nowrap">{{ r.calculated|pln }}</td>
+          <td class="text-right nowrap">
+            {% if r.declared is not none %}{{ r.declared|pln }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="nowrap">
+            {{ r.due_date|ddmmyyyy if r.due_date else '—' }}
+            {% if not r.paid_at and r.due_date %}
+              <div class="text-muted small">
+                {% set days = (r.due_date - today).days %}
+                {% if days < 0 %}{{ -days }} dni po terminie
+                {% elif days == 0 %}dziś
+                {% else %}za {{ days }} dni{% endif %}
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.paid_at %}
+              <span class="badge badge-green">zapłacone {{ r.paid_at|ddmmyyyy }}</span>
+            {% elif r.amount <= 0 %}
+              <span class="text-muted">nic do zapłaty</span>
+            {% else %}
+              <span class="badge badge-amber">otwarte</span>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            {% if r.paid_at %}
+            <form method="post" action="{{ url_for('fin.pay_obligation', kind=r.kind, period=r.period) }}">
+              <input type="hidden" name="undo" value="1">
+              <input type="hidden" name="back" value="{{ request.full_path }}">
+              <button type="submit" class="link-danger">cofnij</button>
+            </form>
+            {% elif r.amount > 0 %}
+            <form method="post" action="{{ url_for('fin.pay_obligation', kind=r.kind, period=r.period) }}"
+                  class="filter-bar" style="margin:0;justify-content:flex-end">
+              <input type="hidden" name="back" value="{{ request.full_path }}">
+              <input type="text" name="amount" value="{{ r.amount }}" class="filter-input"
+                     style="max-width:7rem" title="Kwota faktycznie zapłacona">
+              <input type="date" name="paid_at" value="{{ today.isoformat() }}" class="filter-input"
+                     style="max-width:9rem">
+              <button type="submit" class="btn btn-outline btn-sm">Zapłacone</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="fin-actions">
+    <form method="post" action="{{ url_for('fin.save_obligations') }}">
+      <input type="hidden" name="period" value="{{ period }}">
+      <button type="submit" class="btn btn-primary btn-sm">Zapisz symulację w rejestrze</button>
+    </form>
+    <span class="text-muted small">Zapis przenosi te kwoty na ekran „Do zapłaty”.
+      Kwoty wpisane ręcznie i oznaczone zapłaty zostają nietknięte.</span>
+  </div>
+</section>
+
+{# ── VAT ──────────────────────────────────────────────────────────────── #}
+{% set vat = overview.vat %}
+<section class="fin-section">
+  <h2>VAT za {{ period }}</h2>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Należny (sprzedaż)</div>
+      <div class="kpi-value">{{ vat.due|pln }}</div>
+      <div class="kpi-sub">
+        <a href="{{ url_for('fin.documents', kind='income', month=period) }}">{{ vat.income_count }} dokumentów</a>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Naliczony (zakupy)</div>
+      <div class="kpi-value">{{ vat.deductible|pln }}</div>
+      <div class="kpi-sub">
+        <a href="{{ url_for('fin.documents', kind='cost', month=period) }}">{{ vat.cost_count }} dokumentów</a>
+      </div>
+    </div>
+    <div class="kpi-card {{ 'kpi-alert' if vat.to_pay > 0 else 'kpi-green' }}">
+      <div class="kpi-label">{{ 'Do zapłaty' if vat.to_pay > 0 else 'Nadwyżka do przeniesienia' }}</div>
+      <div class="kpi-value">{{ (vat.to_pay if vat.to_pay > 0 else vat.carry_forward)|pln }}</div>
+      <div class="kpi-sub">termin {{ vat.due_date|ddmmyyyy }}</div>
+    </div>
+  </div>
+
+  <p class="text-muted small">
+    Okres wyznacza data odliczenia z Fakturowni (<code>accounting_vat_tax_date</code>), nie data
+    wystawienia — przy kosztach to zwykle data otrzymania faktury.
+    Nadwyżki z poprzednich okresów nie wciągam automatycznie: kwota do przeniesienia bierze się
+    z Twojej deklaracji JPK_V7, a nie z mojej symulacji. Tu widzisz sam okres.
+  </p>
+
+  {% if vat.uncategorized %}
+  <h3>Bez kategorii — odliczenie przyjęte na 100% ({{ vat.uncategorized_tax|pln }})</h3>
+  <table class="data-table">
+    <tbody>
+      {% for d in vat.uncategorized %}
+      <tr>
+        <td>{{ doc_link(d) }}</td>
+        <td>{{ d.counterparty_name or '—' }}</td>
+        <td class="text-right nowrap">{{ d.tax|pln }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if vat.limited %}
+  <h3>Odliczenie ograniczone kategorią</h3>
+  <table class="data-table">
+    <thead>
+      <tr><th>Dokument</th><th>Kontrahent</th><th class="text-right">VAT</th>
+          <th class="text-right">%</th><th class="text-right">Odliczone</th></tr>
+    </thead>
+    <tbody>
+      {% for d in vat.limited %}
+      <tr>
+        <td>{{ doc_link(d) }}</td>
+        <td>{{ d.counterparty_name or '—' }}</td>
+        <td class="text-right nowrap">{{ d.tax|pln }}</td>
+        <td class="text-right">{{ d.percent }}%</td>
+        <td class="text-right nowrap">{{ d.deducted|pln }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h3>Wyjątki — poza automatem ({{ vat.exceptions|length }})</h3>
+  {% if vat.exceptions %}
+  <p class="text-muted small">
+    Tych dokumentów nie policzyłem: ich VAT nie wynika z prostego „podatek z faktury”.
+    Nie wchodzą do kwot powyżej — sprawdź je ręcznie albo z księgową.
+  </p>
+  <table class="data-table">
+    <thead>
+      <tr><th>Dokument</th><th>Kontrahent</th><th>Strona</th>
+          <th class="text-right">Netto</th><th class="text-right">VAT</th><th>Dlaczego</th></tr>
+    </thead>
+    <tbody>
+      {% for d in vat.exceptions %}
+      <tr>
+        <td>{{ doc_link(d) }}</td>
+        <td>{{ d.counterparty_name or '—' }}</td>
+        <td>{{ 'przychód' if d.is_income else 'koszt' }}</td>
+        <td class="text-right nowrap">{{ d.net|pln }}</td>
+        <td class="text-right nowrap">{{ d.tax|pln }}</td>
+        <td class="small">{{ d.reason_label }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">Brak — wszystkie dokumenty okresu dały się policzyć automatem.</p>
+  {% endif %}
+</section>
+
+{# ── PIT ──────────────────────────────────────────────────────────────── #}
+{% set pit = overview.pit %}
+<section class="fin-section">
+  <h2>Zaliczka PIT (liniowy {{ (pit.rate * 100)|round(0, 'floor')|int }}%)</h2>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <tbody>
+        <tr>
+          <td>Przychód netto narastająco (I–{{ overview.ytd.months }})</td>
+          <td class="text-right nowrap">{{ pit.income_net|pln }}</td>
+          <td><a href="{{ url_for('fin.documents', kind='income', year=overview.ytd.year) }}" class="small">dokumenty</a></td>
+        </tr>
+        <tr>
+          <td>− koszty podatkowe (po % KUP)</td>
+          <td class="text-right nowrap">{{ pit.cost_net|pln }}</td>
+          <td><a href="{{ url_for('fin.documents', kind='cost', year=overview.ytd.year) }}" class="small">dokumenty</a></td>
+        </tr>
+        <tr>
+          <td>− zapłacone składki społeczne</td>
+          <td class="text-right nowrap">{{ pit.social_paid|pln }}</td>
+          <td class="small text-muted">z rejestru zobowiązań</td>
+        </tr>
+        <tr>
+          <td>− odliczona składka zdrowotna
+            <span class="text-muted small">(limit {{ overview.health.deduction_limit|pln }})</span></td>
+          <td class="text-right nowrap">{{ pit.health_deducted|pln }}</td>
+          <td class="small text-muted">z rejestru zobowiązań</td>
+        </tr>
+        <tr class="row-total">
+          <td><strong>Dochód do opodatkowania</strong></td>
+          <td class="text-right nowrap"><strong>{{ pit.taxable|pln }}</strong></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Podatek narastająco</td>
+          <td class="text-right nowrap">{{ pit.tax_ytd|pln }}</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>− zaliczki zapłacone za wcześniejsze miesiące</td>
+          <td class="text-right nowrap">{{ pit.advances_paid|pln }}</td>
+          <td></td>
+        </tr>
+        <tr class="row-total">
+          <td><strong>Zaliczka za {{ period }}</strong>
+            <span class="text-muted small">termin {{ pit.due_date|ddmmyyyy }}</span></td>
+          <td class="text-right nowrap"><strong>{{ pit.to_pay|pln }}</strong></td>
+          <td class="small text-muted">
+            {% if pit.overpaid > 0 %}nadpłata {{ pit.overpaid|pln }}{% endif %}
+            {% if pit.loss > 0 %}strata {{ pit.loss|pln }}{% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% if pit.social_paid == 0 %}
+  <p class="text-muted small">
+    Nie odliczyłem żadnych składek społecznych — w rejestrze nie ma ani jednej zapłaconej.
+    Oznacz zapłacone ZUS-y, a dochód i zaliczka spadną.
+  </p>
+  {% endif %}
+  {% if overview.ytd.cost_uncategorized %}
+  <p class="text-muted small">
+    {{ overview.ytd.cost_uncategorized }} kosztów bez kategorii policzyłem jako 100% KUP.
+    Jeśli są wśród nich reprezentacja albo samochód, dochód jest zaniżony.
+  </p>
+  {% endif %}
+</section>
+
+{# ── ZUS ──────────────────────────────────────────────────────────────── #}
+<section class="fin-section">
+  <h2>ZUS za {{ period }}</h2>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <tbody>
+        <tr>
+          <td>Społeczne + Fundusz Pracy</td>
+          <td class="text-right nowrap">{{ overview.social.amount|pln }}</td>
+          <td class="small text-muted">
+            {{ overview.social.social|pln }} + {{ overview.social.fp|pln }},
+            termin {{ overview.social.due_date|ddmmyyyy }}
+          </td>
+        </tr>
+        <tr>
+          <td>Zdrowotna
+            <span class="text-muted small">
+              {{ (overview.health.rate * 100)|round(2) }}% od dochodu z {{ overview.health.basis_month }}
+            </span>
+          </td>
+          <td class="text-right nowrap">{{ overview.health.amount|pln }}</td>
+          <td class="small text-muted">
+            podstawa {{ overview.health.basis_income|pln }};
+            {% if overview.health.is_minimum %}
+              wyszło {{ overview.health.from_income|pln }}, więc obowiązuje minimum
+              {{ overview.health.minimum|pln }}
+            {% else %}
+              minimum {{ overview.health.minimum|pln }}
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── Rejestr ──────────────────────────────────────────────────────────── #}
+<section class="fin-section">
+  <h2>Rejestr zobowiązań {{ overview.rates_year }}</h2>
+  {% if history %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr><th>Okres</th><th>Zobowiązanie</th><th class="text-right">Symulacja</th>
+            <th class="text-right">Zapłacone</th><th>Termin</th><th>Zapłata</th></tr>
+      </thead>
+      <tbody>
+        {% for o in history %}
+        <tr>
+          <td><a href="{{ url_for('fin.taxes_view', period=o.period) }}">{{ o.period }}</a></td>
+          <td>{{ obligation_labels.get(o.kind, o.kind) }}</td>
+          <td class="text-right nowrap">{{ o.amount_calculated|pln }}</td>
+          <td class="text-right nowrap">
+            {% if o.amount_declared is not none %}{{ o.amount_declared|pln }}{% else %}—{% endif %}
+          </td>
+          <td class="nowrap">{{ o.due_date|ddmmyyyy if o.due_date else '—' }}</td>
+          <td class="nowrap">
+            {% if o.paid_at %}<span class="badge badge-green">{{ o.paid_at|ddmmyyyy }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">Rejestr jest pusty — zapisz symulację okresu, żeby zacząć porównywać
+    wyliczenia z tym, co faktycznie zapłaciłeś.</p>
+  {% endif %}
+</section>
+{% endblock %}
