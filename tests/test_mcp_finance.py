@@ -319,3 +319,195 @@ class TaxEstimateToolTest(unittest.TestCase):
             mcp_server.fin_tax_estimate(period='2026-08')
         self.assertIn('pit_rate', str(ctx.exception))
         mcp_server.fin_tax.period_overview.assert_not_called()
+
+
+class FakturowniaWriteToolsTest(unittest.TestCase):
+    """Narzędzia zapisu: interesuje nas, co narzędzie przekazuje do
+    `services.fin_invoice` i czego nie przepuszcza dalej (reguły samego serwisu
+    mają własne testy w test_fin_invoice.py)."""
+
+    def setUp(self):
+        self.create = mock.patch.object(mcp_server.fin_invoice, 'create_document',
+                                        return_value={'fakturownia_id': 1, 'ksef': {}}).start()
+        self.mark_paid = mock.patch.object(mcp_server.fin_invoice, 'mark_paid',
+                                           return_value={'status': 'paid'}).start()
+        self.update = mock.patch.object(mcp_server.fin_invoice, 'update_document',
+                                        return_value={'changed': ['description']}).start()
+        self.addCleanup(mock.patch.stopall)
+
+    def kwargs(self, call):
+        return call.call_args.kwargs
+
+    def test_cost_invoice_maps_supplier_onto_buyer_fields(self):
+        """Fakturownia trzyma dostawcę w `buyer_*` — agent tego nie musi wiedzieć."""
+        mcp_server.fin_create_cost_invoice(supplier_name='Dostawca sp. z o.o.',
+                                          supplier_tax_no='123-456-78-90',
+                                          total_gross='123,00', title='Hosting')
+        kwargs = self.kwargs(self.create)
+        self.assertFalse(kwargs['is_income'])
+        self.assertEqual(kwargs['counterparty']['buyer_name'], 'Dostawca sp. z o.o.')
+        self.assertEqual(kwargs['counterparty']['buyer_tax_no'], '123-456-78-90')
+        self.assertEqual(kwargs['positions'][0]['total_price_gross'], 123.0)
+        self.assertFalse(kwargs['send_to_ksef'])
+
+    def test_cost_invoice_has_no_way_to_ask_for_ksef(self):
+        self.assertNotIn('send_to_ksef',
+                         mcp_server.fin_create_cost_invoice.__annotations__)
+
+    def test_cost_invoice_needs_a_supplier_name(self):
+        with self.assertRaises(ValueError):
+            mcp_server.fin_create_cost_invoice(supplier_name='  ', total_gross='100')
+        self.create.assert_not_called()
+
+    def test_cost_invoice_needs_an_amount(self):
+        with self.assertRaises(mcp_server.fin_invoice.FinWriteError):
+            mcp_server.fin_create_cost_invoice(supplier_name='Dostawca')
+        self.create.assert_not_called()
+
+    def test_income_invoice_for_a_company_requires_a_tax_number(self):
+        """Bez NIP-u KSeF odrzuci fakturę B2B — lepiej powiedzieć to od razu."""
+        with self.assertRaises(ValueError) as ctx:
+            mcp_server.fin_create_income_invoice(buyer_name='Klient S.A.', total_gross='1230')
+        self.assertIn('NIP', str(ctx.exception))
+        self.create.assert_not_called()
+
+    def test_income_invoice_for_a_private_person_does_not(self):
+        mcp_server.fin_create_income_invoice(buyer_name='Jan Kowalski', total_gross='1230',
+                                            buyer_company=False)
+        kwargs = self.kwargs(self.create)
+        self.assertTrue(kwargs['is_income'])
+        self.assertFalse(kwargs['counterparty']['buyer_company'])
+
+    def test_income_invoice_does_not_send_to_ksef_by_default(self):
+        mcp_server.fin_create_income_invoice(buyer_name='Klient S.A.', buyer_tax_no='1234567890',
+                                            total_gross='1230')
+        self.assertFalse(self.kwargs(self.create)['send_to_ksef'])
+
+    def test_ksef_is_passed_through_when_explicitly_asked_for(self):
+        mcp_server.fin_create_income_invoice(buyer_name='Klient S.A.', buyer_tax_no='1234567890',
+                                            total_gross='1230', send_to_ksef=True)
+        self.assertTrue(self.kwargs(self.create)['send_to_ksef'])
+
+    def test_mark_paid_passes_total_amount_and_date_through(self):
+        mcp_server.fin_mark_paid(900, amount='50.00', date='2026-06-10')
+        self.assertEqual(self.kwargs(self.mark_paid)['amount'], '50.00')
+        self.assertEqual(self.kwargs(self.mark_paid)['paid_date'], '2026-06-10')
+
+    def test_mark_paid_with_no_amount_means_the_whole_invoice(self):
+        mcp_server.fin_mark_paid(900)
+        self.assertIsNone(self.kwargs(self.mark_paid)['amount'])
+        self.assertIsNone(self.kwargs(self.mark_paid)['paid_date'])
+
+    def test_update_needs_a_non_empty_object(self):
+        for fields in ({}, None, 'description'):
+            with self.assertRaises(ValueError, msg=repr(fields)):
+                mcp_server.fin_update_document(900, fields)
+        self.update.assert_not_called()
+
+    def test_write_errors_reach_the_agent_as_plain_errors(self):
+        """FinWriteError niesie komunikat dla człowieka — nie gubimy go."""
+        self.mark_paid.side_effect = mcp_server.fin_invoice.FinWriteError('Fakturownia: 422')
+        with self.assertRaises(ValueError) as ctx:
+            mcp_server.fin_mark_paid(900)
+        self.assertIn('422', str(ctx.exception))
+
+    def test_every_write_is_signed_with_the_mcp_actor(self):
+        mcp_server.fin_mark_paid(900)
+        self.assertTrue(self.kwargs(self.mark_paid)['actor'].startswith('mcp:'))
+
+
+class BankToolsTest(unittest.TestCase):
+    def setUp(self):
+        self.transaction = {'id': 1, 'amount': Decimal('-479.70'), 'title': 'FV 529091120526',
+                            'booked_date': date(2026, 6, 11), 'status': 'pending'}
+        patches = [
+            mock.patch.object(mcp_server.fin_bank_service, 'import_csv',
+                              return_value={'bank': 'alior', 'parsed': 2, 'new': 2}),
+            mock.patch.object(mcp_server.fin_bank_service, 'suggest_matches',
+                              return_value=[{'fakturownia_id': 500, 'score': 98}]),
+            mock.patch.object(mcp_server.fin_bank_service, 'suggest_for_pending',
+                              return_value=[]),
+            mock.patch.object(mcp_server.fin_bank_service, 'link_payment',
+                              return_value={'pushed': True}),
+            mock.patch.object(mcp_server.fin_bank_service, 'unlink_payment',
+                              return_value={'removed': 1}),
+            mock.patch.object(mcp_server.fin_bank_store, 'get_transaction',
+                              side_effect=lambda tid: self.transaction if tid == 1 else None),
+            mock.patch.object(mcp_server.fin_bank_store, 'list_transactions',
+                              return_value=[self.transaction]),
+            mock.patch.object(mcp_server.fin_bank_store, 'count_by_status',
+                              return_value={'pending': 1}),
+            mock.patch.object(mcp_server.fin_bank_store, 'set_ignored'),
+            mock.patch.object(mcp_server, 'get_db'),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_base64_is_decoded_before_parsing(self):
+        """Wyciągi Aliora są w cp1250 — base64 jest jedyną pewną drogą."""
+        import base64
+        payload = 'Szczegóły;Łukasz'.encode('cp1250')
+        mcp_server.fin_import_bank_csv(csv_base64=base64.b64encode(payload).decode())
+        self.assertEqual(mcp_server.fin_bank_service.import_csv.call_args[0][0], payload)
+
+    def test_plain_text_is_sent_as_utf8(self):
+        mcp_server.fin_import_bank_csv(csv_content='Data transakcji;x\n')
+        self.assertEqual(mcp_server.fin_bank_service.import_csv.call_args[0][0],
+                         b'Data transakcji;x\n')
+
+    def test_no_content_and_broken_base64_are_refused(self):
+        for kwargs in ({}, {'csv_content': '   '}, {'csv_base64': 'to nie base64!'}):
+            with self.assertRaises(ValueError, msg=repr(kwargs)):
+                mcp_server.fin_import_bank_csv(**kwargs)
+        mcp_server.fin_bank_service.import_csv.assert_not_called()
+
+    def test_import_error_is_translated_for_the_agent(self):
+        mcp_server.fin_bank_service.import_csv.side_effect = \
+            mcp_server.fin_bank_service.BankImportError('Nie rozpoznaję formatu pliku.')
+        with self.assertRaises(ValueError) as ctx:
+            mcp_server.fin_import_bank_csv(csv_content='cokolwiek')
+        self.assertIn('Nie rozpoznaję', str(ctx.exception))
+
+    def test_status_all_means_no_filter(self):
+        mcp_server.fin_bank_transactions(status='all')
+        self.assertEqual(mcp_server.fin_bank_store.list_transactions.call_args.kwargs['status'], '')
+
+    def test_suggestions_for_one_transaction(self):
+        out = mcp_server.fin_suggest_payment_matches(transaction_id=1)
+        self.assertEqual(out['matches'][0]['fakturownia_id'], 500)
+        mcp_server.fin_bank_service.suggest_for_pending.assert_not_called()
+
+    def test_unknown_transaction_is_refused(self):
+        with self.assertRaises(ValueError):
+            mcp_server.fin_suggest_payment_matches(transaction_id=99)
+
+    def test_queue_scan_is_independent_of_how_many_results_we_want(self):
+        mcp_server.fin_suggest_payment_matches(limit=3)
+        kwargs = mcp_server.fin_bank_service.suggest_for_pending.call_args.kwargs
+        self.assertEqual(kwargs['limit'], 3)
+        self.assertEqual(kwargs['scan'], 200)
+
+    def test_link_pushes_to_fakturownia_by_default(self):
+        mcp_server.fin_link_payment(1, 500)
+        kwargs = mcp_server.fin_bank_service.link_payment.call_args.kwargs
+        self.assertTrue(kwargs['push'])
+        self.assertIsNone(kwargs['amount'])
+        self.assertTrue(kwargs['actor'].startswith('mcp:'))
+
+    def test_link_can_stay_local(self):
+        mcp_server.fin_link_payment(1, 500, push_to_fakturownia=False)
+        self.assertFalse(mcp_server.fin_bank_service.link_payment.call_args.kwargs['push'])
+
+    def test_link_refusals_reach_the_agent(self):
+        mcp_server.fin_bank_service.link_payment.side_effect = \
+            mcp_server.fin_bank_service.BankImportError('nie wiążę przeciwnych stron')
+        with self.assertRaises(ValueError) as ctx:
+            mcp_server.fin_link_payment(1, 500)
+        self.assertIn('przeciwnych stron', str(ctx.exception))
+
+    def test_ignore_and_undo_flip_the_same_flag(self):
+        mcp_server.fin_ignore_transaction(1)
+        mcp_server.fin_bank_store.set_ignored.assert_called_with(1, True)
+        mcp_server.fin_ignore_transaction(1, undo=True)
+        mcp_server.fin_bank_store.set_ignored.assert_called_with(1, False)

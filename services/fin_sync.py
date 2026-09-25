@@ -129,6 +129,30 @@ def map_invoice(raw: dict) -> dict:
     }
 
 
+def sync_one(fakturownia_id: int, api: FakturowniaApi = None, raw: dict = None) -> dict:
+    """Wciąga jeden dokument do lustra — po zapisie do Fakturowni, żeby CRM nie
+    pokazywał stanu z przed zmiany do najbliższego pełnego synca.
+
+    `raw` pozwala podać odpowiedź, którą i tak już mamy z POST/PUT, zamiast
+    dopytywać API drugi raz. Reguły kategorii przechodzą tylko nowe dokumenty.
+    """
+    if raw is None:
+        api = api or FakturowniaApi.from_settings()
+        raw = api.get_invoice(int(fakturownia_id))
+    if not isinstance(raw, dict) or not raw.get('id'):
+        raise ValueError(f'Fakturownia nie zwróciła dokumentu {fakturownia_id}.')
+    data = map_invoice(raw)
+    db = get_db()
+    try:
+        result = upsert_document(data)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    categorized = apply_rules(only_ids=[data['fakturownia_id']])['assigned'] if result == 'new' else 0
+    return {'fakturownia_id': data['fakturownia_id'], 'result': result, 'categorized': categorized}
+
+
 def get_sync_state(resource: str = 'documents') -> dict:
     db = get_db()
     with db.cursor() as cur:

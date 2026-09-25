@@ -168,6 +168,42 @@
 </section>
 {% endif %}
 
+{% if payments %}
+<section class="fin-section">
+  <h2>Powiązane przelewy</h2>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Bank</th>
+          <th>Kontrahent i tytuł</th>
+          <th class="text-right">Kwota przelewu</th>
+          <th class="text-right">Zaliczone tu</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pay in payments %}
+        <tr>
+          <td class="nowrap">{{ pay.booked_date|ddmmyyyy }}</td>
+          <td class="nowrap">{{ bank_labels.get(pay.bank, pay.bank) }}</td>
+          <td>
+            {{ pay.counterparty_name or '—' }}
+            <div class="text-muted small">{{ pay.title }}</div>
+          </td>
+          <td class="text-right nowrap">{{ '%.2f'|format(pay.amount|float) }}</td>
+          <td class="text-right nowrap">{{ '%.2f'|format(pay.amount_applied|float) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted small">
+    Powiązania zmienia się na ekranie <a href="{{ url_for('fin.bank_view') }}">Bank</a>.
+  </p>
+</section>
+{% endif %}
+
 <p class="text-muted small">
   Dane pochodzą z Fakturowni (id {{ doc.fakturownia_id }}), zsynchronizowane
   {{ doc.synced_at|ddmmyyyy }}{% if doc.synced_at %} {{ doc.synced_at.strftime('%H:%M') }}{% endif %}.

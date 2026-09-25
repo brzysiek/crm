@@ -88,6 +88,44 @@ class FakturowniaApi:
     def get_invoice(self, invoice_id: int) -> dict:
         return self.get(f'/invoices/{invoice_id}.json')
 
+    def find_invoice_by_oid(self, oid: str) -> dict | None:
+        """Faktura po zewnętrznym identyfikatorze — klucz idempotencji zapisów.
+
+        Sprawdzone na żywo: `?oid=` filtruje po stronie serwera (nieistniejące
+        oid zwraca pustą listę, nie całą listę faktur). `period=all`, bo bez
+        tego API patrzy tylko na bieżący miesiąc.
+        """
+        if not (oid or '').strip():
+            return None
+        found = self.get('/invoices.json', {'oid': oid.strip(), 'period': 'all', 'per_page': 5})
+        if not isinstance(found, list):
+            return None
+        # Filtr serwera bierzemy na słowo tylko po sprawdzeniu — gdyby Fakturownia
+        # kiedyś go zignorowała, wolę nic nie znaleźć niż dopasować obcą fakturę.
+        exact = [d for d in found if str(d.get('oid') or '').strip() == oid.strip()]
+        return exact[0] if exact else None
+
+    # ── zapisy ───────────────────────────────────────────────────────────────
+    #
+    # `gov_save_and_send` i `send_to_ksef` to parametry poza obiektem `invoice`.
+    # Wysyłka do KSeF jest nieodwracalna, więc nigdy nie dokładamy jej domyślnie.
+
+    def create_invoice(self, invoice: dict, send_to_ksef: bool = False) -> dict:
+        payload = {'invoice': invoice}
+        if send_to_ksef:
+            payload['gov_save_and_send'] = True
+        return self.post('/invoices.json', payload)
+
+    def update_invoice(self, invoice_id: int, fields: dict) -> dict:
+        return self.put(f'/invoices/{invoice_id}.json', {'invoice': fields})
+
+    def send_invoice_to_ksef(self, invoice_id: int) -> dict:
+        """Wysyłka istniejącej faktury. Tak, to GET — tak każe dokumentacja
+        Fakturowni (`GET /invoices/{ID}.json?send_to_ksef=yes`); metoda nie jest
+        bezpieczna wbrew nazwie HTTP, dlatego stoi tu osobno i jawnie.
+        """
+        return self.get(f'/invoices/{invoice_id}.json', {'send_to_ksef': 'yes'})
+
     def test_connection(self) -> dict:
         try:
             self.get('/invoices.json', {'per_page': 1})

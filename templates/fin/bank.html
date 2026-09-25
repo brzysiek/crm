@@ -1,0 +1,182 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Bank{% endblock %}
+
+{% macro money(value) %}{{ '%.2f'|format(value|float) }}{% endmacro %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Bank</h1>
+  <div class="header-actions">
+    <form method="post" action="{{ url_for('fin.bank_import') }}" enctype="multipart/form-data"
+          class="filter-bar" style="margin:0">
+      <input type="file" name="file" accept=".csv,text/csv" required class="filter-input">
+      <button type="submit" class="btn btn-primary btn-sm">{{ icon('upload', 14) }} Wgraj wyciąg</button>
+    </form>
+  </div>
+</div>
+
+<p class="text-muted small">
+  Format rozpoznaję sam po treści pliku — obsługuję wyciągi CSV z
+  {{ bank_labels.values()|join(', ') }}. Ten sam plik możesz wgrać ponownie bez
+  obawy o duplikaty: każda operacja ma własny identyfikator, a wykonane
+  dopasowania zostają nietknięte.
+</p>
+
+{# ── Kubełki stanu ────────────────────────────────────────────────────── #}
+<div class="filter-bar">
+  <a href="{{ url_for('fin.bank_view', status='pending') }}"
+     class="btn btn-sm {{ 'btn-primary' if status == 'pending' else 'btn-outline' }}">
+    Do dopasowania{% if counts.pending %} ({{ counts.pending }}){% endif %}
+  </a>
+  <a href="{{ url_for('fin.bank_view', status='partial') }}"
+     class="btn btn-sm {{ 'btn-primary' if status == 'partial' else 'btn-outline' }}">
+    Częściowe{% if counts.partial %} ({{ counts.partial }}){% endif %}
+  </a>
+  <a href="{{ url_for('fin.bank_view', status='matched') }}"
+     class="btn btn-sm {{ 'btn-primary' if status == 'matched' else 'btn-outline' }}">
+    Dopasowane{% if counts.matched %} ({{ counts.matched }}){% endif %}
+  </a>
+  <a href="{{ url_for('fin.bank_view', status='ignored') }}"
+     class="btn btn-sm {{ 'btn-primary' if status == 'ignored' else 'btn-outline' }}">
+    Pominięte{% if counts.ignored %} ({{ counts.ignored }}){% endif %}
+  </a>
+  <a href="{{ url_for('fin.bank_view', status='all') }}"
+     class="btn btn-sm {{ 'btn-primary' if status == 'all' else 'btn-outline' }}">Wszystkie</a>
+
+  <form method="get" class="filter-bar" style="margin:0 0 0 auto">
+    <input type="hidden" name="status" value="{{ status }}">
+    <select name="direction" class="filter-select" onchange="this.form.submit()">
+      <option value="">wpływy i wypływy</option>
+      <option value="out" {{ 'selected' if filters.direction == 'out' }}>tylko wypływy</option>
+      <option value="in" {{ 'selected' if filters.direction == 'in' }}>tylko wpływy</option>
+    </select>
+    {% if banks|length > 1 %}
+    <select name="bank" class="filter-select" onchange="this.form.submit()">
+      <option value="">wszystkie banki</option>
+      {% for b in banks %}
+      <option value="{{ b }}" {{ 'selected' if filters.bank == b }}>{{ bank_labels.get(b, b) }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <input type="search" name="q" value="{{ filters.search }}" placeholder="Tytuł, kontrahent…"
+           class="filter-input">
+    <button type="submit" class="btn btn-outline btn-sm">Filtruj</button>
+  </form>
+</div>
+
+{% if not rows %}
+<p class="empty-state">
+  {% if counts %}Nic tu nie ma dla tego filtra.{% else %}
+  Jeszcze nie wgrałeś żadnego wyciągu. Wyeksportuj z banku historię operacji do CSV
+  i wrzuć plik powyżej.{% endif %}
+</p>
+{% else %}
+
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Kontrahent i tytuł</th>
+        <th class="text-right">Kwota</th>
+        <th>Stan</th>
+        <th>Dokument</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for txn in rows %}
+      <tr>
+        <td class="nowrap">{{ txn.booked_date|ddmmyyyy }}
+          <div class="text-muted small">{{ bank_labels.get(txn.bank, txn.bank) }}</div>
+        </td>
+        <td>
+          <strong>{{ txn.counterparty_name or '—' }}</strong>
+          <div class="text-muted small">{{ txn.title }}</div>
+        </td>
+        <td class="text-right nowrap fin-bank-amount {{ 'is-out' if txn.amount < 0 }}">
+          {{ money(txn.amount) }} {{ txn.currency }}
+          {% if txn.matched_amount > 0 and txn.status == 'partial' %}
+          <div class="text-muted small">powiązane {{ money(txn.matched_amount) }}</div>
+          {% endif %}
+        </td>
+        <td class="nowrap">
+          <span class="badge {{ 'badge-green' if txn.status == 'matched'
+                                else 'badge-amber' if txn.status == 'partial'
+                                else 'badge-gray' if txn.status == 'ignored' else 'badge-outline' }}">
+            {{ status_labels.get(txn.status, txn.status) }}
+          </span>
+        </td>
+        <td class="fin-bank-links">
+          {% for link in links.get(txn.id, []) %}
+          <div class="nowrap">
+            <a href="{{ url_for('fin.document', fakturownia_id=link.fakturownia_id) }}">{{ link.number or link.fakturownia_id }}</a>
+            <span class="text-muted small">{{ money(link.amount_applied) }}</span>
+            <form method="post" action="{{ url_for('fin.bank_unlink', txn_id=txn.id) }}"
+                  class="inline-form">
+              <input type="hidden" name="fakturownia_id" value="{{ link.fakturownia_id }}">
+              <input type="hidden" name="back" value="{{ request.full_path }}">
+              <button type="submit" class="link-danger small">odwiąż</button>
+            </form>
+          </div>
+          {% endfor %}
+
+          {% for match in suggestions.get(txn.id, []) %}
+          <form method="post" action="{{ url_for('fin.bank_link', txn_id=txn.id) }}"
+                class="fin-match-row">
+            <input type="hidden" name="fakturownia_id" value="{{ match.fakturownia_id }}">
+            <input type="hidden" name="back" value="{{ request.full_path }}">
+            <a href="{{ url_for('fin.document', fakturownia_id=match.fakturownia_id) }}">{{ match.number }}</a>
+            <span class="text-muted small">{{ match.counterparty_name }} · {{ money(match.amount_left) }} do zapłaty</span>
+            <button type="submit" class="btn btn-outline btn-sm">Powiąż</button>
+            <div class="fin-match-why">
+              <span class="badge badge-gray">{{ match.score }}</span>
+              {{ match.reasons|join(' · ') }}
+            </div>
+            <label class="fin-match-opt">
+              kwota
+              <input type="text" name="amount" inputmode="decimal" class="filter-input"
+                     placeholder="{{ money(match.amount_left) }}">
+            </label>
+            <label class="fin-match-opt">
+              <input type="checkbox" name="push" value="0">
+              bez zapłaty w Fakturowni
+            </label>
+          </form>
+          {% endfor %}
+
+          {% if not links.get(txn.id) and not suggestions.get(txn.id) and txn.status == 'pending' %}
+          <span class="text-muted small">brak podpowiedzi</span>
+          {% endif %}
+        </td>
+        <td class="text-right nowrap">
+          <form method="post" action="{{ url_for('fin.bank_ignore', txn_id=txn.id) }}"
+                class="inline-form">
+            <input type="hidden" name="back" value="{{ request.full_path }}">
+            {% if txn.status == 'ignored' %}
+            <input type="hidden" name="undo" value="1">
+            <button type="submit" class="btn btn-outline btn-sm">Przywróć</button>
+            {% else %}
+            <button type="submit" class="btn btn-outline btn-sm"
+                    title="Nie jest zapłatą faktury (ZUS, podatek, przelew własny…)">Pomiń</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="text-muted small">
+  „Powiąż” zapisuje powiązanie w CRM <strong>i</strong> dopisuje zapłatę w Fakturowni
+  (łączną kwotę powiązań tego dokumentu, z datą księgowania przelewu). Odwiązanie
+  cofa tylko zapis w CRM — zapłaty w Fakturowni nie ruszam, żeby nie zmieniać
+  księgowości za Twoimi plecami.
+  {% if status == 'pending' and rows|length > 60 %}
+  Podpowiedzi liczę dla pierwszych 60 operacji z tej listy.
+  {% endif %}
+</p>
+{% endif %}
+{% endblock %}

@@ -10,7 +10,8 @@ import unicodedata
 from datetime import date
 from decimal import Decimal
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import (Blueprint, flash, jsonify, redirect, render_template, request,
+                   session, url_for)
 
 from models.fin_document import (GOV_STATUS_LABELS, KIND_LABELS, NON_FINANCIAL_KINDS,
                                  STATUS_LABELS, available_months, available_years,
@@ -22,8 +23,14 @@ from models.fin_category import (bulk_set_category, category_monthly, category_t
 from models.fin_tax import (RATE_LABELS, list_obligations, list_rates, mark_obligation_paid,
                             missing_rates, rate_years, set_rate, unmark_obligation_paid,
                             upcoming_obligations, upsert_obligation, vat_months)
+import models.fin_bank as fin_bank_store
+from models.fin_bank import STATUS_LABELS as BANK_STATUS_LABELS
 from models.settings import get_setting
+from database import get_db
 from services.fakturownia_api import FakturowniaError
+from services.fin_bank import (BANK_LABELS, BankImportError, import_csv, link_payment,
+                               suggest_matches, unlink_payment)
+from services.fin_invoice import FinWriteError
 from services.fin_rules import (FIELD_LABELS, MATCH_FIELDS, MATCH_TYPES, TYPE_LABELS,
                                 apply_rules, create_rule, delete_rule, list_rules, toggle_rule)
 from services.fin_sync import get_sync_state, sync_documents
@@ -185,6 +192,8 @@ def document(fakturownia_id: int):
         today=date.today(),
         categories=list_categories(kind='income' if row['is_income'] else 'cost'),
         positions=_positions(row.get('raw_json')),
+        payments=fin_bank_store.links_for_document(fakturownia_id),
+        bank_labels=BANK_LABELS,
         fakturownia_url=(f'https://{subdomain}.fakturownia.pl/invoices/{fakturownia_id}'
                          if subdomain else None),
         kind_labels=KIND_LABELS,
@@ -465,6 +474,132 @@ def save_rates():
     flash(f'Zapisałem {saved} stawek na {year}.', 'success')
     return redirect(url_for('fin.settings_view', rates_year=year))
 
+
+# ── Bank ─────────────────────────────────────────────────────────────────────
+
+@bp.route('/bank')
+def bank_view():
+    """Wyciąg i kolejka dopasowań. Podpowiedzi liczymy na żywo — wyciąg i lustro
+    zmieniają się niezależnie, więc zapisany scoring i tak by się zestarzał."""
+    status = request.args.get('status', 'pending')
+    if status not in ('', 'all', *BANK_STATUS_LABELS):
+        status = 'pending'
+    filters = {
+        'status': '' if status in ('', 'all') else status,
+        'bank': request.args.get('bank', ''),
+        'month': request.args.get('month', '')[:7],
+        'direction': request.args.get('direction', ''),
+        'search': request.args.get('q', '').strip(),
+    }
+    rows = fin_bank_store.list_transactions(**filters, limit=300)
+    suggestions = {}
+    if status == 'pending':
+        # Scoring na 300 wierszach to 300 zapytań — na kolejce do zatwierdzenia
+        # ma sens, na całej historii już nie.
+        for txn in rows[:60]:
+            found = suggest_matches(txn, limit=3)
+            if found:
+                suggestions[txn['id']] = found
+    links = {}
+    for txn in rows:
+        if txn['link_count']:
+            links[txn['id']] = fin_bank_store.links_for_transaction(txn['id'])
+
+    return render_template(
+        'fin/bank.html',
+        active_tab='bank',
+        rows=rows,
+        status=status,
+        filters=filters,
+        suggestions=suggestions,
+        links=links,
+        counts=fin_bank_store.count_by_status(),
+        banks=fin_bank_store.banks(),
+        bank_labels=BANK_LABELS,
+        status_labels=BANK_STATUS_LABELS,
+        uncategorized=count_uncategorized(),
+        sync=get_sync_state('documents'),
+    )
+
+
+@bp.route('/bank/import', methods=['POST'])
+def bank_import():
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        flash('Nie wybrałeś pliku.', 'error')
+        return redirect(url_for('fin.bank_view'))
+    try:
+        result = import_csv(upload.read(), bank=request.form.get('bank', ''))
+    except BankImportError as e:
+        flash(str(e), 'error')
+    except Exception as e:                                  # noqa: BLE001
+        flash(f'Nie udało się wczytać wyciągu: {e}', 'error')
+    else:
+        flash(f"Wyciąg {result['bank_label']} ({result['date_from']} – {result['date_to']}): "
+              f"{result['parsed']} operacji, {result['new']} nowych, "
+              f"{result['updated'] + result['unchanged']} już znanych.", 'success')
+    return redirect(url_for('fin.bank_view'))
+
+
+@bp.route('/bank/<int:txn_id>/powiaz', methods=['POST'])
+def bank_link(txn_id: int):
+    fakturownia_id = request.form.get('fakturownia_id', '')
+    if not fakturownia_id.isdigit():
+        flash('Brak dokumentu do powiązania.', 'error')
+        return redirect(request.form.get('back') or url_for('fin.bank_view'))
+    amount = (request.form.get('amount') or '').replace(',', '.').strip()
+    push = request.form.get('push') != '0'
+    try:
+        result = link_payment(txn_id, int(fakturownia_id), amount=amount or None,
+                              push=push, actor=f'user:{session.get("user_id", "?")}')
+    except (BankImportError, FinWriteError) as e:
+        flash(str(e), 'error')
+    else:
+        message = f"Powiązano {result['amount_applied']} zł."
+        if result['pushed']:
+            doc = result['document']
+            message += (f" W Fakturowni: {doc['number']} → {doc['paid_amount']} zł "
+                        f"({STATUS_LABELS.get(doc['status'], doc['status'])}).")
+        else:
+            message += ' Zapłaty w Fakturowni nie dopisywałem.'
+        flash(message, 'success')
+    return redirect(request.form.get('back') or url_for('fin.bank_view'))
+
+
+@bp.route('/bank/<int:txn_id>/odwiaz', methods=['POST'])
+def bank_unlink(txn_id: int):
+    fakturownia_id = request.form.get('fakturownia_id', '')
+    if fakturownia_id.isdigit():
+        unlink_payment(txn_id, int(fakturownia_id))
+        flash('Powiązanie usunięte. Zapłaty w Fakturowni nie cofam — zrób to świadomie, '
+              'jeśli trzeba.', 'success')
+    return redirect(request.form.get('back') or url_for('fin.bank_view'))
+
+
+@bp.route('/bank/<int:txn_id>/pomin', methods=['POST'])
+def bank_ignore(txn_id: int):
+    ignored = request.form.get('undo') != '1'
+    fin_bank_store.set_ignored(txn_id, ignored)
+    get_db().commit()
+    flash('Operacja pominięta — nie będzie już w kolejce.' if ignored
+          else 'Operacja wróciła do kolejki.', 'success')
+    return redirect(request.form.get('back') or url_for('fin.bank_view'))
+
+
+@bp.route('/bank/<int:txn_id>/dopasowania')
+def bank_matches(txn_id: int):
+    """Podpowiedzi dla jednej operacji — dla wiersza rozwijanego na liście."""
+    txn = fin_bank_store.get_transaction(txn_id)
+    if not txn:
+        return jsonify({'ok': False, 'error': 'Nie znam tej operacji.'}), 404
+    matches = suggest_matches(txn, limit=8, min_score=0)
+    return jsonify({'ok': True, 'matches': [
+        {'fakturownia_id': m['fakturownia_id'], 'number': m['number'],
+         'counterparty_name': m['counterparty_name'], 'score': m['score'],
+         'gross_pln': str(m['gross_pln']), 'amount_left': str(m['amount_left']),
+         'status': m['status'], 'reasons': m['reasons'],
+         'payment_to': m['payment_to'].isoformat() if m['payment_to'] else None}
+        for m in matches]})
 
 # ── Ustawienia modułu ────────────────────────────────────────────────────────
 

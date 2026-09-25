@@ -794,6 +794,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .badge-blue    { background: var(--info-bg); color: var(--info-text); }
 .badge-gray    { background: var(--surface-secondary); color: var(--text-secondary); }
 .badge-yellow  { background: var(--warning-bg); color: var(--warning-text); }
+.badge-amber   { background: var(--warning-bg); color: var(--warning-text); }
 .badge-red     { background: var(--error-bg); color: var(--error-text); }
 .badge-waiting { background: #BE7165; color: #fff; }
 .badge-lime    { background: var(--success-bg); color: var(--success-text); }
@@ -3891,3 +3892,24 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem;
 }
 .fin-fluxa code { font-size: .78rem; word-break: break-all; }
+
+/* Bank: kolejka dopasowań. Wiersz podpowiedzi musi zmieścić numer, kwotę,
+   przycisk i powody scoringu w jednej komórce tabeli, bez rozpychania kolumny. */
+.fin-fluxa .fin-match-row {
+  display: grid; grid-template-columns: auto auto auto; align-items: baseline;
+  gap: .3rem .5rem; margin: .35rem 0 0; padding: .3rem .45rem;
+  border: 1px dashed var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-secondary); font-size: .8rem;
+}
+.fin-fluxa .fin-match-row .btn { justify-self: start; }
+.fin-fluxa .fin-match-why {
+  grid-column: 1 / -1; color: var(--text-muted); font-size: .76rem;
+}
+.fin-fluxa .fin-match-why .badge { margin-right: .3rem; font-size: .68rem; }
+.fin-fluxa .fin-match-opt {
+  display: inline-flex; align-items: center; gap: .3rem;
+  color: var(--text-muted); font-size: .75rem; margin: 0;
+}
+.fin-fluxa .fin-match-opt .filter-input { width: 5.5rem; padding: .15rem .3rem; font-size: .75rem; }
+.fin-fluxa .fin-bank-amount.is-out { color: var(--error-text); }
+.fin-fluxa .fin-bank-links > div + div { margin-top: .25rem; }

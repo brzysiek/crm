@@ -30,6 +30,10 @@
           <span class="nav-badge nav-badge-dark" style="margin-left:auto">{{ uncategorized }}</span>
         {% endif %}
       </a>
+      <a href="{{ url_for('fin.bank_view') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'bank' }}">
+        Bank
+      </a>
       <a href="{{ url_for('fin.settings_view') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'settings' }}">
         Ustawienia

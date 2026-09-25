@@ -15,10 +15,19 @@ w Ustawieniach CRM, do których jeden kontakt może należeć wielokrotnie; narz
 list_contact_lists / list_contacts_in_list / add_contacts_to_list /
 remove_contacts_from_list pozwalają je czytać i zmieniać.
 
-Moduł Finanse v2 (narzędzia z prefiksem fin_) czyta lustro faktur z Fakturowni
-i pozwala zmieniać wyłącznie metadane analityczne CRM: kategorię, procent
-odliczenia VAT i procent KUP oraz reguły, które je nadają automatycznie. Samych
-faktur w Fakturowni te narzędzia nie tworzą ani nie modyfikują.
+Moduł Finanse v2 (narzędzia z prefiksem fin_) czyta lustro faktur z Fakturowni,
+pozwala zmieniać metadane analityczne CRM (kategoria, procent odliczenia VAT,
+procent KUP i reguły, które je nadają automatycznie), a od Etapu 4 także pisać
+do Fakturowni: wystawiać faktury kosztowe i przychodowe, oznaczać zapłaty,
+poprawiać pola dokumentów i wysyłać faktury do KSeF. Każdy taki zapis nadaje
+dokumentowi `oid` (idempotencja), trafia do `fin_audit_log` i w odpowiedzi mówi
+wprost, czy dokument poszedł do KSeF. Wysyłka do KSeF jest domyślnie wyłączona,
+bo jest nieodwracalna.
+
+Po stronie banku moduł przyjmuje wyciągi CSV (fin_import_bank_csv), podpowiada
+dopasowania przelewów do dokumentów tym samym scoringiem, co ekran /fin/bank
+(fin_suggest_payment_matches), i wiąże je razem z dopisaniem zapłaty w Fakturowni
+(fin_link_payment).
 
 Serwer działa w tym samym procesie co aplikacja Flask (patrz passenger_wsgi.py) —
 każde wywołanie narzędzia otwiera kontekst aplikacji Flask (app_context), żeby
@@ -43,6 +52,7 @@ import mcp.types as types
 
 from app import app as flask_app
 from config import Config
+from database import get_db
 import models.crm_company as crm_company
 import models.crm_contact as crm_contact
 import models.crm_contact_list as crm_contact_list
@@ -56,10 +66,14 @@ import models.mna_contact as mna_contact
 import models.mna_deal as mna_deal
 import models.mna_tags as mna_tags
 import models.fin_category as fin_category
+import models.fin_audit as fin_audit_store
+import models.fin_bank as fin_bank_store
 import models.fin_document as fin_document
 import models.fin_tax as fin_tax_store
 import models.reconciliation as reconciliation
 import services.crm_files as crm_files_service
+import services.fin_bank as fin_bank_service
+import services.fin_invoice as fin_invoice
 import services.fin_rules as fin_rules
 import services.fin_sync as fin_sync_service
 import services.fin_tax as fin_tax
@@ -1823,6 +1837,327 @@ def fin_tax_estimate(period: str = "", include_documents: bool = False) -> dict:
         result['vat']['limited'] = vat['limited']
         result['vat']['uncategorized'] = vat['uncategorized']
     return result
+
+
+# ── Finanse v2: zapisy do Fakturowni ────────────────────────────────────────
+#
+# Tu kończy się „tylko czytam”. Te narzędzia zmieniają prawdziwą księgowość,
+# więc każde: nadaje `oid` (klucz idempotencji, powtórzone wywołanie zwraca
+# istniejący dokument), zapisuje wpis w `fin_audit_log` także przy porażce
+# i w odpowiedzi mówi wprost, czy dokument poleciał do KSeF.
+#
+# Wysyłka do KSeF jest nieodwracalna i domyślnie wyłączona. Konto Fakturowni
+# może jednak mieć własną automatyczną wysyłkę, której przez API nie da się ani
+# odczytać, ani wyłączyć — dlatego `ksef.sent` bierzemy z odpowiedzi API,
+# a nie z tego, o co poprosiliśmy.
+
+def _fin_actor() -> str:
+    return f'mcp:{_mcp_user_id()}'
+
+
+def _fin_write(call):
+    """Błędy zapisu wracają jako ValueError z czytelnym komunikatem — agent ma
+    wiedzieć, co poprawić, a nie zobaczyć ślad stosu."""
+    try:
+        return call()
+    except fin_invoice.FinWriteError as e:
+        raise ValueError(str(e)) from e
+
+
+@mcp.tool()
+def fin_create_cost_invoice(
+    supplier_name: str,
+    total_gross: str = "",
+    vat_rate: str = "23",
+    title: str = "",
+    positions: list[dict] | None = None,
+    supplier_tax_no: str = "",
+    number: str = "",
+    issue_date: str = "",
+    sell_date: str = "",
+    payment_to: str = "",
+    description: str = "",
+    currency: str = "PLN",
+    accounting_kind: str = "",
+    kind: str = "vat",
+    oid: str = "",
+) -> dict:
+    """Wpisuje fakturę kosztową (wydatek) do Fakturowni — np. z faktury znalezionej
+    w skrzynce, której nie ma w KSeF.
+
+    Kwotę podaj albo skrótem (`total_gross` + `vat_rate` + `title`), albo pełną listą
+    `positions` = [{"name", "quantity", "total_price_gross", "tax"}]. Daty w formacie
+    RRRR-MM-DD; `issue_date` pusta = dziś. `vat_rate` to liczba (23, 8, 5, 0) albo
+    zw/np/oo. `accounting_kind` to rodzaj wydatku w Fakturowni (purchases, expenses,
+    media, fuel_expl75, fixed_assets50, no_vat_deduction…).
+
+    `oid` to zewnętrzny identyfikator — podaj własny (np. ID maila), jeśli chcesz mieć
+    pewność, że powtórzone wywołanie nie wystawi bliźniaka; bez niego CRM nada swój.
+    Do KSeF tego nie wysyłam: fakturę kosztową wystawił dostawca, nie Ty.
+    """
+    with flask_app.app_context():
+        positions = fin_invoice.build_positions(positions, title=title,
+                                                total_gross=total_gross or None, vat_rate=vat_rate)
+        counterparty = {
+            'buyer_name': (supplier_name or '').strip()[:256],
+            'buyer_tax_no': (supplier_tax_no or '').strip()[:32],
+        }
+        if not counterparty['buyer_name']:
+            raise ValueError('Podaj nazwę dostawcy (`supplier_name`).')
+        return _fin_write(lambda: fin_invoice.create_document(
+            is_income=False, counterparty=counterparty, positions=positions, kind=kind,
+            issue_date=issue_date or None, sell_date=sell_date or None,
+            payment_to=payment_to or None, number=number, description=description,
+            currency=currency, accounting_kind=accounting_kind, oid=oid,
+            send_to_ksef=False, actor=_fin_actor()))
+
+
+@mcp.tool()
+def fin_create_income_invoice(
+    buyer_name: str,
+    total_gross: str = "",
+    vat_rate: str = "23",
+    title: str = "",
+    positions: list[dict] | None = None,
+    buyer_tax_no: str = "",
+    buyer_company: bool = True,
+    buyer_street: str = "",
+    buyer_post_code: str = "",
+    buyer_city: str = "",
+    buyer_country: str = "PL",
+    buyer_email: str = "",
+    issue_date: str = "",
+    sell_date: str = "",
+    payment_to: str = "",
+    description: str = "",
+    currency: str = "PLN",
+    kind: str = "vat",
+    oid: str = "",
+    send_to_ksef: bool = False,
+) -> dict:
+    """Wystawia fakturę przychodową w Fakturowni. **To dokument dla klienta —
+    czynność nieodwracalna**, a przy `send_to_ksef=True` faktura trafia do KSeF
+    i nie da się jej stamtąd wycofać. Domyślnie nie wysyłam.
+
+    Kwota: `total_gross` + `vat_rate` + `title`, albo pełne `positions`.
+    `buyer_company` (firma / osoba prywatna) decyduje o kwalifikacji do KSeF —
+    dla firmy wymagany jest `buyer_tax_no`. Dane sprzedawcy bierze Fakturownia
+    z Twojego działu.
+
+    Odpowiedź zawiera `ksef` z faktycznym `gov_status`. Uwaga: jeśli konto ma
+    włączoną automatyczną wysyłkę do KSeF, faktura może polecieć także przy
+    `send_to_ksef=False` — dlatego zawsze sprawdź `ksef.sent` w odpowiedzi.
+    Status `processing` znaczy „w drodze”; numer KSeF dopytaj `fin_ksef_status`.
+    """
+    with flask_app.app_context():
+        positions = fin_invoice.build_positions(positions, title=title,
+                                                total_gross=total_gross or None, vat_rate=vat_rate)
+        name = (buyer_name or '').strip()
+        if not name:
+            raise ValueError('Podaj nazwę nabywcy (`buyer_name`).')
+        if buyer_company and not (buyer_tax_no or '').strip():
+            raise ValueError('Dla nabywcy będącego firmą KSeF wymaga NIP-u (`buyer_tax_no`). '
+                             'Dla osoby prywatnej ustaw `buyer_company=False`.')
+        counterparty = {
+            'buyer_name': name[:256],
+            'buyer_tax_no': (buyer_tax_no or '').strip()[:32],
+            'buyer_company': bool(buyer_company),
+            'buyer_street': (buyer_street or '').strip()[:256],
+            'buyer_post_code': (buyer_post_code or '').strip()[:32],
+            'buyer_city': (buyer_city or '').strip()[:128],
+            'buyer_country': (buyer_country or 'PL').strip()[:2].upper(),
+            'buyer_email': (buyer_email or '').strip()[:128],
+        }
+        return _fin_write(lambda: fin_invoice.create_document(
+            is_income=True, counterparty=counterparty, positions=positions, kind=kind,
+            issue_date=issue_date or None, sell_date=sell_date or None,
+            payment_to=payment_to or None, description=description, currency=currency,
+            oid=oid, send_to_ksef=bool(send_to_ksef), actor=_fin_actor()))
+
+
+@mcp.tool()
+def fin_mark_paid(fakturownia_id: int, amount: str = "", date: str = "") -> dict:
+    """Oznacza fakturę w Fakturowni jako opłaconą.
+
+    `amount` to **łączna** kwota zapłacona na dokumencie (nie dopłata), więc
+    powtórzenie wywołania niczego nie podwoi; pusta = pełne brutto. `date` pusta
+    = dziś. Status ustawiam na `paid` przy pełnej kwocie, `partial` przy części.
+    """
+    with flask_app.app_context():
+        return _fin_write(lambda: fin_invoice.mark_paid(
+            int(fakturownia_id), amount=amount or None, paid_date=date or None,
+            actor=_fin_actor()))
+
+
+@mcp.tool()
+def fin_update_document(fakturownia_id: int, fields: dict) -> dict:
+    """Poprawia wybrane pola dokumentu w Fakturowni.
+
+    Dozwolone: description, oid, accounting_kind, accounting_vat_tax_date,
+    accounting_income_tax_date, number, issue_date, sell_date, payment_to,
+    payment_type oraz dane kontrahenta (buyer_name, buyer_tax_no, buyer_street,
+    buyer_post_code, buyer_city, buyer_country, buyer_email, buyer_company).
+    Kwot ani pozycji tą drogą nie zmieniam.
+
+    Na fakturze przychodowej już obecnej w KSeF przechodzą wyłącznie pola
+    porządkowe (opis, oid, daty księgowe, accounting_kind) — treść dokumentu
+    w obiegu KSeF poprawia się fakturą korygującą, nie edycją.
+    """
+    with flask_app.app_context():
+        if not isinstance(fields, dict) or not fields:
+            raise ValueError('`fields` to obiekt z polami do zmiany, np. {"description": "…"}.')
+        return _fin_write(lambda: fin_invoice.update_document(
+            int(fakturownia_id), fields, actor=_fin_actor()))
+
+
+@mcp.tool()
+def fin_send_to_ksef(fakturownia_id: int) -> dict:
+    """Wysyła istniejącą fakturę przychodową do KSeF. **Nieodwracalne** — faktury
+    raz przyjętej przez KSeF nie da się wycofać ani zmienić, można ją tylko
+    skorygować. Faktury już wysłanej nie wysyłam drugi raz. Dokumentów kosztowych
+    nie wysyłam wcale — odpowiada za nie dostawca."""
+    with flask_app.app_context():
+        return _fin_write(lambda: fin_invoice.send_to_ksef(int(fakturownia_id),
+                                                           actor=_fin_actor()))
+
+
+@mcp.tool()
+def fin_ksef_status(fakturownia_id: int) -> dict:
+    """Czyta status KSeF wprost z Fakturowni i odświeża lustro. Przydaje się po
+    wysyłce, gdy `gov_status` to `processing` — numer KSeF (`gov_id`) pojawia się
+    dopiero po przetworzeniu przez Ministerstwo Finansów."""
+    with flask_app.app_context():
+        return _fin_write(lambda: fin_invoice.ksef_status(int(fakturownia_id)))
+
+
+@mcp.tool()
+def fin_audit_log(limit: int = 30, action: str = "", fakturownia_id: int = 0) -> dict:
+    """Dziennik zapisów, które CRM wysłał do Fakturowni — co, kiedy, z jakim
+    payloadem i czy się udało (`ok`). `action` to np. create_invoice, mark_paid,
+    update_invoice, send_to_ksef."""
+    with flask_app.app_context():
+        rows = fin_audit_store.list_entries(limit=limit, action=(action or '').strip(),
+                                      fakturownia_id=int(fakturownia_id) or None)
+        return {'returned': len(rows), 'entries': rows}
+
+# ── Finanse v2: bank i dopasowania płatności ────────────────────────────────
+#
+# Jeden scoring dla UI i dla agenta — `services.fin_bank`. Gdyby agent liczył
+# dopasowania inaczej niż ekran /fin/bank, nie dałoby się ufać żadnemu z nich.
+
+@mcp.tool()
+def fin_import_bank_csv(csv_content: str = "", csv_base64: str = "", bank: str = "") -> dict:
+    """Wgrywa wyciąg bankowy CSV do CRM (nie do Fakturowni). Format rozpoznaję
+    sam po zawartości: Alior, mBank, UniCredit.
+
+    Podaj `csv_content` (zwykły tekst) albo `csv_base64` — **base64 jest
+    pewniejsze**, bo wyciągi Aliora są w cp1250 i przepisywanie ich jako tekst
+    psuje polskie znaki. `bank` podaj tylko, gdy rozpoznanie zawiedzie.
+
+    Powtórny import tego samego pliku jest bezpieczny: operacje mają własne
+    identyfikatory, a już zrobione dopasowania zostają nietknięte.
+    """
+    raw = b''
+    if csv_base64:
+        import base64
+        try:
+            raw = base64.b64decode(csv_base64, validate=True)
+        except Exception as e:                                          # noqa: BLE001
+            raise ValueError(f'`csv_base64` nie jest poprawnym base64: {e}')
+    elif csv_content:
+        raw = csv_content.encode('utf-8')
+    if not raw.strip():
+        raise ValueError('Podaj treść wyciągu w `csv_base64` albo `csv_content`.')
+    with flask_app.app_context():
+        try:
+            return fin_bank_service.import_csv(raw, bank=bank)
+        except fin_bank_service.BankImportError as e:
+            raise ValueError(str(e))
+
+
+@mcp.tool()
+def fin_bank_transactions(status: str = "pending", bank: str = "", direction: str = "",
+                          month: str = "", search: str = "", limit: int = 30) -> dict:
+    """Operacje z wgranych wyciągów. `status`: pending (do dopasowania), partial,
+    matched, ignored, all. `direction`: out (wypływy), in (wpływy).
+    `month` w formacie RRRR-MM. `search` szuka w tytule i nazwie kontrahenta."""
+    with flask_app.app_context():
+        rows = fin_bank_store.list_transactions(
+            status='' if status in ('', 'all') else status,
+            bank=bank, month=(month or '')[:7], direction=direction,
+            search=(search or '').strip(), limit=max(1, min(int(limit), 200)))
+        return {'returned': len(rows), 'counts': fin_bank_store.count_by_status(),
+                'transactions': rows}
+
+
+@mcp.tool()
+def fin_suggest_payment_matches(transaction_id: int = 0, limit: int = 5,
+                                min_score: int = 25, scan: int = 200) -> dict:
+    """Podpowiada, którym dokumentom odpowiadają przelewy. Bez `transaction_id`
+    przechodzi kolejkę niedopasowanych: `limit` to liczba zwróconych przelewów,
+    a `scan` — ile najświeższych przejrzeć (większość przelewów na wyciągu nie ma
+    żadnej faktury, więc te dwie liczby to nie to samo).
+
+    `score` to suma przesłanek z `reasons` (numer faktury w tytule, NIP, kwota,
+    nazwa kontrahenta, bliskość terminu). **To podpowiedź, nie decyzja** — przy
+    dwóch kandydatach o podobnym wyniku powiąż tylko wtedy, gdy wiesz, który jest
+    właściwy. `min_score=0` pokazuje też słabe trafienia.
+    """
+    with flask_app.app_context():
+        if transaction_id:
+            txn = fin_bank_store.get_transaction(int(transaction_id))
+            if not txn:
+                raise ValueError(f'Nie znam operacji {transaction_id}.')
+            matches = fin_bank_service.suggest_matches(txn, limit=limit, min_score=min_score)
+            return {'transaction': txn, 'matches': matches}
+        found = fin_bank_service.suggest_for_pending(limit=limit, min_score=min_score,
+                                                     scan=max(1, min(int(scan), 500)))
+        return {'returned': len(found), 'pending_with_suggestions': found}
+
+
+@mcp.tool()
+def fin_link_payment(transaction_id: int, fakturownia_id: int, amount: str = "",
+                     push_to_fakturownia: bool = True) -> dict:
+    """Wiąże przelew z dokumentem i domyślnie dopisuje zapłatę w Fakturowni.
+
+    `amount` puste = tyle, ile zostało do zapłaty (lub ile zostało na przelewie).
+    Do Fakturowni idzie **suma** wszystkich powiązań tego dokumentu, nie sama ta
+    rata, więc powtórzenie wywołania niczego nie podwoi. `push_to_fakturownia=False`
+    zostawia zapis tylko w CRM. Wpływu z dokumentem kosztowym (i odwrotnie) nie
+    powiążę. Sprawdź `document.status` w odpowiedzi — to stan po zapisie.
+    """
+    with flask_app.app_context():
+        try:
+            return fin_bank_service.link_payment(
+                int(transaction_id), int(fakturownia_id), amount=amount or None,
+                push=bool(push_to_fakturownia), actor=_fin_actor())
+        except fin_bank_service.BankImportError as e:
+            raise ValueError(str(e))
+        except fin_invoice.FinWriteError as e:
+            raise ValueError(str(e))
+
+
+@mcp.tool()
+def fin_unlink_payment(transaction_id: int, fakturownia_id: int) -> dict:
+    """Zdejmuje powiązanie przelewu z dokumentem w CRM. Zapłaty w Fakturowni
+    **nie cofa** — jeśli trzeba, zmień ją osobno przez `fin_mark_paid`."""
+    with flask_app.app_context():
+        return fin_bank_service.unlink_payment(int(transaction_id), int(fakturownia_id))
+
+
+@mcp.tool()
+def fin_ignore_transaction(transaction_id: int, undo: bool = False) -> dict:
+    """Wyrzuca operację z kolejki dopasowań (ZUS, podatek, przelew własny, odsetki
+    — wszystko, co nie jest zapłatą faktury). `undo=True` przywraca do kolejki."""
+    with flask_app.app_context():
+        db = get_db()
+        try:
+            fin_bank_store.set_ignored(int(transaction_id), not undo)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        return {'transaction': fin_bank_store.get_transaction(int(transaction_id))}
 
 
 def _call_tool_sync(name: str, arguments: dict) -> dict:
