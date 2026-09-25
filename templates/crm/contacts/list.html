@@ -97,7 +97,12 @@
   <table class="data-table" id="contacts-table">
     <thead>
       <tr>
-        <th class="col-checkbox"></th>
+        <th class="col-checkbox">
+          {# Widoczny dopiero w trybie zaznaczania — zaznacza wiersze tej strony,
+             pomijając te ukryte przez wyszukiwanie w tabeli. #}
+          <input type="checkbox" class="select-all-checkbox" onchange="toggleSelectAll(this)"
+                 title="Zaznacz wszystkie na tej stronie" style="display:none">
+        </th>
         {{ m.sort_th('Imię i nazwisko', 'last_name', sort, direction, endpoint, 'last_name', endpoint_args) }}
         {{ m.sort_th('Stanowisko', 'position', sort, direction, endpoint, 'position', endpoint_args) }}
         {{ m.sort_th('Firma', 'company_name', sort, direction, endpoint, 'company_name', endpoint_args) }}
@@ -244,8 +249,24 @@ function getCheckedIds() {
   return [...document.querySelectorAll('.row-checkbox:checked')].map(el => parseInt(el.value));
 }
 
+function visibleRowCheckboxes() {
+  return [...document.querySelectorAll('.row-checkbox')]
+    .filter(el => el.closest('tr').style.display !== 'none');
+}
+
+function toggleSelectAll(master) {
+  visibleRowCheckboxes().forEach(el => { el.checked = master.checked; });
+  updateBulkBar();
+}
+
 function updateBulkBar() {
   const ids = getCheckedIds();
+  const master = document.querySelector('.select-all-checkbox');
+  if (master) {
+    const boxes = visibleRowCheckboxes();
+    master.checked = boxes.length > 0 && boxes.every(el => el.checked);
+    master.indeterminate = !master.checked && boxes.some(el => el.checked);
+  }
   const bar = document.getElementById('bulkActions');
   const cnt = document.getElementById('bulkCount');
   if (!bar) return;
@@ -262,6 +283,11 @@ function toggleSelectionMode() {
     if (!selectionMode) el.checked = false;
   });
   document.querySelectorAll('.row-star').forEach(el => { el.style.display = selectionMode ? 'none' : ''; });
+  const master = document.querySelector('.select-all-checkbox');
+  if (master) {
+    master.style.display = selectionMode ? '' : 'none';
+    if (!selectionMode) { master.checked = false; master.indeterminate = false; }
+  }
   const btn = document.getElementById('btnToggleSelect');
   if (btn) btn.textContent = selectionMode ? 'Anuluj zaznaczanie' : 'Zaznacz';
   updateBulkBar();
