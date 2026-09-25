@@ -1,17 +1,45 @@
 from database import get_db
+from services.voice_notes import AUDIO_MIME_BY_EXT
 
-ALLOWED_EXTENSIONS = {
-    'pdf':  'application/pdf',
-    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+# Nagrania jako załącznik: te same formaty co w notatkach głosowych, żeby plik
+# wgrywalny do notatki nie odbijał się od sekcji Pliki. Bez .mp4 — ten kontener
+# to prawie zawsze wideo, a podawanie go jako audio dałoby odtwarzacz bez obrazu.
+AUDIO_EXTENSIONS = {ext: mime for ext, mime in AUDIO_MIME_BY_EXT.items() if ext != 'mp4'}
+
+IMAGE_EXTENSIONS = {
     'jpg':  'image/jpeg',
     'jpeg': 'image/jpeg',
     'png':  'image/png',
     'heic': 'image/heic',
-    'xml':  'application/xml',
 }
 
+ALLOWED_EXTENSIONS = {
+    'pdf':  'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xml':  'application/xml',
+    **IMAGE_EXTENSIONS,
+    **AUDIO_EXTENSIONS,
+}
+
+# Aliasy tego samego formatu — w komunikacie dla użytkownika wystarczy jeden.
+_EXT_ALIASES = {'jpeg': 'jpg', 'oga': 'ogg', 'aif': 'aiff'}
+
+
+def formats_label() -> str:
+    """Lista obsługiwanych formatów do komunikatów o błędzie.
+
+    Generowana, a nie zapisana ręcznie: trzy zahardkodowane kopie tej listy
+    rozjechały się z tym słownikiem i użytkownik dostawał komunikat wymieniający
+    formaty, których wcale nie było w zestawie (i odwrotnie).
+    """
+    shown = set(ALLOWED_EXTENSIONS) - set(_EXT_ALIASES)
+    return ', '.join(sorted(shown)).upper()
+
+
 # Rozszerzenia renderowalne bezpośrednio w przeglądarce w popupie podglądu.
-INLINE_PREVIEW_MIMES = {'application/pdf', 'image/jpeg', 'image/png'}
+# Audio leci inline, bo przeglądarka odtwarza je w <audio> — załącznik zmusiłby
+# do pobrania pliku, żeby odsłuchać nagranie z dyktafonu.
+INLINE_PREVIEW_MIMES = {'application/pdf', 'image/jpeg', 'image/png'} | set(AUDIO_EXTENSIONS.values())
 
 
 def _valid_user_id(user_id: int | None) -> int | None:

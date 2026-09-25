@@ -2104,7 +2104,7 @@ def api_crm_contacts_bulk_delete():
 @app.route('/api/crm/files/upload', methods=['POST'])
 def api_crm_files_upload():
     from models.crm_company import get_company_by_id
-    from models.crm_file import ALLOWED_EXTENSIONS, add_file, files_word
+    from models.crm_file import ALLOWED_EXTENSIONS, add_file, files_word, formats_label
     from models.crm_notes import log_history
     from models.mna_deal import get_mna_deal_by_id
     from models.settings import get_setting
@@ -2146,7 +2146,7 @@ def api_crm_files_upload():
             saved += 1
         if not saved:
             return jsonify({'status': 'error',
-                             'message': 'Niedozwolony format pliku. Obsługiwane: PDF, DOCX, JPG, PNG, HEIC, XML.'})
+                             'message': f'Niedozwolony format pliku. Obsługiwane: {formats_label()}.'})
         message = f'Dodano {saved} {files_word(saved)}.'
         if rejected:
             message += f' Pominięto nieobsługiwane pliki: {", ".join(rejected)}.'
@@ -2169,7 +2169,7 @@ def api_crm_files_upload():
 
     if not valid_files:
         return jsonify({'status': 'error',
-                         'message': 'Niedozwolony format pliku. Obsługiwane: PDF, DOCX, JPG, PNG, HEIC, XML.'})
+                         'message': f'Niedozwolony format pliku. Obsługiwane: {formats_label()}.'})
 
     try:
         client = GoogleDriveClient(api_token, crm_root_id)
@@ -2245,7 +2245,7 @@ def api_crm_files_delete(file_id):
 def api_crm_business_card_upload(contact_id):
     from models.crm_company import get_company_by_id
     from models.crm_contact import get_contact_by_id
-    from models.crm_file import (ALLOWED_EXTENSIONS, add_file, delete_file as db_delete_file,
+    from models.crm_file import (IMAGE_EXTENSIONS, add_file, delete_file as db_delete_file,
                                   get_business_card)
     from models.crm_notes import log_history
     from models.settings import get_setting
@@ -2263,10 +2263,12 @@ def api_crm_business_card_upload(contact_id):
     f = request.files.get('file')
     if not f or not f.filename:
         return jsonify({'status': 'error', 'message': 'Nie wybrano pliku.'})
+    # Wizytówka idzie do OCR-u, więc ma sens tylko jako zdjęcie — reszta zestawu
+    # plików (PDF, XML, nagrania) nie ma tu czego rozpoznać.
     ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in IMAGE_EXTENSIONS:
         return jsonify({'status': 'error',
-                         'message': 'Niedozwolony format pliku. Obsługiwane: PDF, DOCX, JPG, PNG, HEIC, XML.'})
+                         'message': 'Niedozwolony format zdjęcia. Obsługiwane: JPG, PNG, HEIC.'})
 
     api_token = get_setting('google_drive_api_token', '')
     crm_root_id = get_setting('google_drive_crm_folder_id', '')
@@ -2275,7 +2277,7 @@ def api_crm_business_card_upload(contact_id):
                          'message': 'Skonfiguruj Google Drive w Ustawieniach (token oraz ID folderu CRM).'})
 
     content = f.read()
-    mime_type = ALLOWED_EXTENSIONS[ext]
+    mime_type = IMAGE_EXTENSIONS[ext]
     if ext in ('jpg', 'jpeg'):
         content = resize_jpeg_if_needed(content)
 
@@ -2486,11 +2488,9 @@ def api_crm_companies_quick_create():
     return jsonify({'ok': True, 'id': company_id, 'name': company_data['name'], 'created': True})
 
 
-_CARD_ALLOWED_EXTENSIONS = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'heic': 'image/heic'}
-
-
 @app.route('/api/crm/business-cards/scan', methods=['POST'])
 def api_crm_business_cards_scan():
+    from models.crm_file import IMAGE_EXTENSIONS
     from models.settings import get_setting
     from services.business_card import process_business_card
     from services.images import resize_jpeg_if_needed
@@ -2500,10 +2500,10 @@ def api_crm_business_cards_scan():
         if not f or not f.filename:
             return None
         ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
-        if ext not in _CARD_ALLOWED_EXTENSIONS:
+        if ext not in IMAGE_EXTENSIONS:
             raise ValueError('Niedozwolony format zdjęcia. Obsługiwane: JPG, PNG, HEIC.')
         content = f.read()
-        mime_type = _CARD_ALLOWED_EXTENSIONS[ext]
+        mime_type = IMAGE_EXTENSIONS[ext]
         if ext in ('jpg', 'jpeg'):
             content = resize_jpeg_if_needed(content)
         return content, mime_type

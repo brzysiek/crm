@@ -1960,6 +1960,9 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .file-ext-xml                    { background: #f59e0b; }
 .file-ext-jpg, .file-ext-jpeg,
 .file-ext-png, .file-ext-heic    { background: #8b5cf6; }
+.file-ext-mp3, .file-ext-m4a, .file-ext-wav, .file-ext-ogg, .file-ext-oga,
+.file-ext-opus, .file-ext-webm, .file-ext-flac, .file-ext-aac,
+.file-ext-aiff, .file-ext-aif  { background: #0ea5e9; }
 .file-ext-other                  { background: #9ca3af; }
 .file-meta {
   display: flex;

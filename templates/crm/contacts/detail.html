@@ -77,7 +77,7 @@
               <label class="btn btn-outline btn-sm" style="cursor:pointer">
                 Podmień
                 <input type="file" id="businessCardInput" style="display:none"
-                       accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
+                       accept=".jpg,.jpeg,.png,.heic" onchange="uploadBusinessCard(this)">
               </label>
               <button type="button" class="btn btn-outline btn-sm" onclick="deleteBusinessCard({{ contact.id }})">Usuń</button>
               <span id="businessCardStatus" class="small text-muted"></span>
@@ -87,7 +87,7 @@
             <label class="btn btn-outline btn-sm" style="cursor:pointer">
               + Dodaj wizytówkę
               <input type="file" id="businessCardInput" style="display:none"
-                     accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml" onchange="uploadBusinessCard(this)">
+                     accept=".jpg,.jpeg,.png,.heic" onchange="uploadBusinessCard(this)">
             </label>
             <span id="businessCardStatus" class="small text-muted"></span>
           {% endif %}

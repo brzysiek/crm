@@ -8,7 +8,7 @@ from models.crm_company import create_company, derive_short_name, get_company_by
     search_companies
 from models.crm_contact import create_contact, search_contacts
 from models.crm_tags import set_contact_email_tags
-from models.crm_file import ALLOWED_EXTENSIONS, add_file
+from models.crm_file import IMAGE_EXTENSIONS, add_file
 from services.company_lookup import lookup_by_nip
 from services.company_profile import build_company_profile
 from services.gdrive import GoogleDriveClient
@@ -19,7 +19,7 @@ _PUBLIC_EMAIL_DOMAINS = {
     'gmail.com', 'wp.pl', 'o2.pl', 'onet.pl', 'onet.eu', 'interia.pl', 'interia.eu',
     'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'poczta.fm', 'tlen.pl',
 }
-_MIME_TO_EXT = {v: k for k, v in ALLOWED_EXTENSIONS.items() if k in ('jpg', 'png', 'heic')}
+_MIME_TO_EXT = {v: k for k, v in IMAGE_EXTENSIONS.items() if k != 'jpeg'}
 
 
 def _best_match(hint: str, candidates: list[dict], label_fn):

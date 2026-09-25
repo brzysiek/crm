@@ -13,7 +13,11 @@
       {% if upload_contact_id %}<input type="hidden" name="contact_id" value="{{ upload_contact_id }}">{% endif %}
       {% if upload_mna_deal_id %}<input type="hidden" name="mna_deal_id" value="{{ upload_mna_deal_id }}">{% endif %}
       <div class="form-group" style="margin-bottom:.5rem">
-        <input type="file" name="files" multiple accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml">
+        <input type="file" name="files" multiple
+               accept=".pdf,.docx,.jpg,.jpeg,.png,.heic,.xml,.mp3,.m4a,.wav,.ogg,.oga,.opus,.webm,.flac,.aac,.aiff,.aif">
+        <div class="text-muted small" style="margin-top:.35rem">
+          PDF, DOCX, XML, JPG, PNG, HEIC oraz nagrania: MP3, M4A, WAV, OGG, OPUS, WEBM, FLAC, AAC.
+        </div>
         <div class="files-queue" style="margin-top:.5rem"></div>
       </div>
       <button type="submit" class="btn btn-outline btn-sm" id="btnUploadFiles">+ Dodaj pliki</button>
@@ -163,6 +167,12 @@ function openFilePreview(btn) {
     iframe.title = 'Podgląd';
     wrap.appendChild(iframe);
     body.appendChild(wrap);
+  } else if (mime.startsWith('audio/')) {
+    const audio = document.createElement('audio');
+    audio.src = url;
+    audio.controls = true;
+    audio.style.width = '100%';
+    body.appendChild(audio);
   } else if (mime === 'image/jpeg' || mime === 'image/png') {
     const img = document.createElement('img');
     img.src = url;
