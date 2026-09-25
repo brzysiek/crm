@@ -128,6 +128,20 @@
     {% endif %}
 
     <div class="inv-section" style="margin-top:1rem">
+      <h4>Listy</h4>
+      <div style="padding:.85rem">
+        {% if contact_lists %}
+        <div class="detail-tags">
+          {% for l in contact_lists %}
+            <a href="{{ url_for('crm_contacts.list_view', list_id=l.id) }}" style="text-decoration:none"
+               {% if l.description %}title="{{ l.description }}"{% endif %}>{{ m.list_badge(l) }}</a>
+          {% endfor %}
+        </div>
+        {% else %}<p class="text-muted small">Kontakt nie należy do żadnej listy.</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="inv-section" style="margin-top:1rem">
       <h4>Zgody email (tagi)</h4>
       <div style="padding:.85rem">
         {% if email_tags %}

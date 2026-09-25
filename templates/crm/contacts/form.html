@@ -100,6 +100,28 @@
   </div>
 
   <div class="form-group">
+    <label>Listy</label>
+    {% if all_lists %}
+    <div class="chip-check-group">
+      {% for l in all_lists %}
+      {% set checked = l.id in contact_list_ids %}
+      <label class="chip-check {{ 'is-on' if checked }}"
+             style="--chip-bg:{{ l.badge_color }};--chip-fg:{{ l.text_color }}"
+             {% if l.description %}title="{{ l.description }}"{% endif %}>
+        <input type="checkbox" name="list_ids" value="{{ l.id }}" {{ 'checked' if checked }}>
+        <span>{{ l.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small" style="margin:0">
+      Nie zdefiniowano jeszcze żadnej listy — dodasz je w
+      <a href="{{ url_for('settings.contact_lists') }}">Ustawieniach → Listy kontaktów</a>.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="form-group">
     <label>Tagi email <span class="text-muted">(nadanie tagu = zgoda na ten cel komunikacji)</span></label>
     <div class="tag-input-wrap" id="email-tags-wrap">
       <input type="text" id="email-tags-input" class="tag-input-field" placeholder="np. Newsletter…" autocomplete="off">
@@ -131,5 +153,12 @@
 initEntityPicker('company-picker', '/api/crm/companies/search');
 initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
 initTagInput('email-tags-wrap', 'email-tags-input', 'email-tags-suggestions', 'email', {{ email_tags | tojson }});
+// Klasa is-on dubluje :has(input:checked) — dzięki niej chip zmienia kolor także
+// w przeglądarkach bez :has, a serwer może wyrenderować stan początkowy.
+document.querySelectorAll('.chip-check input[type=checkbox]').forEach(function (cb) {
+  cb.addEventListener('change', function () {
+    cb.closest('.chip-check').classList.toggle('is-on', cb.checked);
+  });
+});
 </script>
 {% endblock %}

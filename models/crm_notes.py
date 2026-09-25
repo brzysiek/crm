@@ -12,6 +12,8 @@ HISTORY_BADGE_LABELS = {
     'file': 'Dodany plik',
     'tag_add': 'Dodany tag',
     'tag_remove': 'Usunięty tag',
+    'list_add': 'Dodano do listy',
+    'list_remove': 'Usunięto z listy',
     'referral': 'Polecenie',
     'note': 'Notatka',
 }

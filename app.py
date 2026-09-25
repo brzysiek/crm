@@ -266,6 +266,13 @@ def inject_globals():
     except Exception as _e:
         app.logger.error('inject_globals: get appearance settings failed: %s', _e)
         app_name, logo_main, logo_thumb = Config.APP_NAME, None, None
+    contact_lists = []
+    if request.blueprint == 'crm_contacts':
+        try:
+            from models.crm_contact_list import get_all_lists
+            contact_lists = get_all_lists(with_counts=True)
+        except Exception as _e:
+            app.logger.error('inject_globals: get_all_lists failed: %s', _e)
     try:
         from models.task import count_ideas
         gtd_ideas_badge = count_ideas()
@@ -279,6 +286,7 @@ def inject_globals():
         'imports_badge':        cnt + bank_cnt + gdrive_cnt,
         'reconciliation_badge': bank_cnt,
         'gtd_ideas_badge':      gtd_ideas_badge,
+        'sidebar_contact_lists': contact_lists,
         'gtd_tomorrow_iso':     (_dt.now().date() + _timedelta(days=1)).isoformat(),
         'app_name':             app_name,
         'logo_main':            logo_main,
@@ -1998,6 +2006,28 @@ def api_crm_contacts_bulk_context():
         return jsonify({'status': 'error', 'message': 'Brak zaznaczonych kontaktów.'})
 
     affected = bulk_set_context(ids, context_id, session.get('user_id'))
+    return jsonify({'status': 'ok', 'affected': affected})
+
+
+@app.route('/api/crm/contacts/bulk-list', methods=['POST'])
+def api_crm_contacts_bulk_list():
+    """Hurtowe dopisanie/wypisanie zaznaczonych kontaktów z listy."""
+    from models.crm_contact_list import add_contacts_to_list, remove_contacts_from_list
+
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    list_id = data.get('list_id')
+    list_id = int(list_id) if str(list_id).isdigit() else None
+    action = data.get('action', 'add')
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych kontaktów.'})
+    if not list_id:
+        return jsonify({'status': 'error', 'message': 'Nie wskazano listy.'})
+
+    if action == 'remove':
+        affected = remove_contacts_from_list(list_id, ids, session.get('user_id'))
+    else:
+        affected = add_contacts_to_list(list_id, ids, session.get('user_id'))
     return jsonify({'status': 'ok', 'affected': affected})
 
 

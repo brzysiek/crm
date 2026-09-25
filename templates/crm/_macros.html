@@ -1,8 +1,11 @@
 {% from '_icons.html' import icon %}
 
-{% macro sort_th(label, col, sort, direction, endpoint, col_attr=None) %}
+{# endpoint_args: parametry ścieżki endpointu (np. list_id widoku listy kontaktów),
+   których nie ma w request.args, a bez których url_for by się wywalił. #}
+{% macro sort_th(label, col, sort, direction, endpoint, col_attr=None, endpoint_args={}) %}
   {% set next_dir = 'desc' if sort == col and direction == 'asc' else 'asc' %}
   {% set args = request.args.to_dict(flat=False) %}
+  {% set _ = args.update(endpoint_args) %}
   {% set _ = args.update({'sort': col, 'dir': next_dir}) %}
   <th{% if col_attr %} data-col="{{ col_attr }}"{% endif %}>
     <a class="sort-link" href="{{ url_for(endpoint, **args) }}">
@@ -12,8 +15,9 @@
   </th>
 {% endmacro %}
 
-{% macro pagination_bar(page, total_pages, total, page_size, endpoint, id_suffix='') %}
+{% macro pagination_bar(page, total_pages, total, page_size, endpoint, id_suffix='', endpoint_args={}) %}
   {% set base_args = request.args.to_dict(flat=False) %}
+  {% set _ = base_args.update(endpoint_args) %}
   <div class="pagination-bar">
     <div class="pagination-size">
       <label for="{{ endpoint }}-page-size{{ id_suffix }}">Pozycji na stronę:</label>
@@ -51,6 +55,10 @@
   {% else %}
   <span class="text-muted">—</span>
   {% endif %}
+{% endmacro %}
+
+{% macro list_badge(l) %}
+  <span class="badge" style="background:{{ l.badge_color }}40;color:{{ l.text_color }};border:1px solid {{ l.badge_color }}55">{{ l.name }}</span>
 {% endmacro %}
 
 {% macro deal_context_picker(d, all_contexts) %}

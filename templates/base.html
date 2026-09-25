@@ -67,6 +67,20 @@
         <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path></svg></span>
         <span class="sidebar-nav-label">Kontakty</span>
       </a>
+      {# Listy kontaktów rozwijają się tylko na ekranach kontaktów — inject_globals
+         wypełnia sidebar_contact_lists wyłącznie dla blueprintu crm_contacts. #}
+      {% if sidebar_contact_lists %}
+      <div class="sidebar-sublist">
+        {% for l in sidebar_contact_lists %}
+        <a href="{{ url_for('crm_contacts.list_view', list_id=l.id) }}" title="{{ l.description or l.name }}"
+           class="sidebar-sublist-item {{ 'active' if request.view_args and request.view_args.get('list_id') == l.id else '' }}">
+          <span class="sidebar-sublist-dot" style="background:{{ l.badge_color }}"></span>
+          <span class="sidebar-nav-label">{{ l.name }}</span>
+          {% if l.member_count %}<span class="sidebar-sublist-count">{{ l.member_count }}</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
       <a href="{{ url_for('crm_deals.list_deals') }}" title="Deale"
          class="sidebar-nav-item {{ 'active' if request.blueprint == 'crm_deals' else '' }}">
         <span class="sidebar-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg></span>

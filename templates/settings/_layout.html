@@ -30,6 +30,10 @@
          class="settings-nav-item {{ 'active' if active_tab == 'crm' }}">
         CRM
       </a>
+      <a href="{{ url_for('settings.contact_lists') }}"
+         class="settings-nav-item {{ 'active' if active_tab == 'contact_lists' }}">
+        Listy kontaktów
+      </a>
       <a href="{{ url_for('settings.gtd_contexts') }}"
          class="settings-nav-item {{ 'active' if active_tab == 'gtd_contexts' }}">
         Konteksty

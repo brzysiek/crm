@@ -1,23 +1,31 @@
 {% extends 'crm/_layout.html' %}
 {% import 'crm/_macros.html' as m %}
 {% from '_icons.html' import icon %}
-{% block title %}Kontakty{% endblock %}
+{% block title %}{{ contact_list.name if contact_list else 'Kontakty' }}{% endblock %}
 
 {% block crm_content %}
 <div class="rd-screen rd-kontakty">
 <div class="page-header">
-  <h1>Kontakty</h1>
+  <h1>
+    {% if contact_list %}{{ m.list_badge(contact_list) }} {{ contact_list.name }}{% else %}Kontakty{% endif %}
+  </h1>
   <div class="header-actions">
     {{ m.col_toggle('contacts-col-btn', 'contacts-col-menu', [
       ('position', 'Stanowisko'), ('company_name', 'Firma'), ('email', 'Email'), ('phone', 'Telefon'),
-      ('context_id', 'Kontekst'), ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
+      ('context_id', 'Kontekst'), ('contact_lists', 'Listy'),
+      ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
     ]) }}
     {% include 'crm/_scan_card_modal.html' %}
-    <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">+ Dodaj kontakt</a>
+    <a href="{{ url_for('crm_contacts.new_contact', list_id=contact_list.id if contact_list else none) }}"
+       class="btn btn-primary">+ Dodaj kontakt</a>
   </div>
 </div>
 
-<form class="filter-bar" method="get" action="{{ url_for('crm_contacts.list_contacts') }}">
+{% if contact_list and contact_list.description %}
+<p class="text-muted" style="margin:-.25rem 0 1rem">{{ contact_list.description }}</p>
+{% endif %}
+
+<form class="filter-bar" method="get" action="{{ url_for(endpoint, **endpoint_args) }}">
   <input type="text" id="contacts-search" name="search" placeholder="Szukaj imienia, email, firmy…"
          value="{{ filters.search }}" class="filter-input" autocomplete="off">
 
@@ -43,11 +51,14 @@
   </div>
 
   <button type="submit" class="btn btn-outline">Filtruj</button>
-  <a href="{{ url_for('crm_contacts.list_contacts') }}" class="btn btn-ghost">Wyczyść</a>
+  <a href="{{ url_for(endpoint, **endpoint_args) }}" class="btn btn-ghost">Wyczyść</a>
+  {% if not contact_list %}
   <a href="{{ url_for('crm_contacts.duplicates_view') }}" class="btn btn-outline">Wyszukaj duplikaty</a>
+  {% endif %}
 </form>
 
-<a href="{{ url_for('crm_contacts.new_contact') }}" class="rd-fab" title="Dodaj kontakt">+</a>
+<a href="{{ url_for('crm_contacts.new_contact', list_id=contact_list.id if contact_list else none) }}"
+   class="rd-fab" title="Dodaj kontakt">+</a>
 
 {% if contacts %}
 <div class="bulk-select-bar">
@@ -66,10 +77,20 @@
       </select>
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkContext">Ustaw kontekst</button>
 
+      {% if all_lists %}
+      <select id="bulkListSelect" class="filter-select">
+        {% for l in all_lists %}
+          <option value="{{ l.id }}" {{ 'selected' if contact_list and l.id == contact_list.id }}>{{ l.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkListAdd">Dodaj do listy</button>
+      <button type="button" class="btn btn-outline btn-sm" id="btnBulkListRemove">Usuń z listy</button>
+      {% endif %}
+
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkDelete">Usuń zaznaczone</button>
     </div>
   </div>
-  {{ m.pagination_bar(page, total_pages, total, page_size, 'crm_contacts.list_contacts', id_suffix='-top') }}
+  {{ m.pagination_bar(page, total_pages, total, page_size, endpoint, id_suffix='-top', endpoint_args=endpoint_args) }}
 </div>
 
 <div class="table-wrapper">
@@ -77,12 +98,13 @@
     <thead>
       <tr>
         <th class="col-checkbox"></th>
-        {{ m.sort_th('Imię i nazwisko', 'last_name', sort, direction, 'crm_contacts.list_contacts', 'last_name') }}
-        {{ m.sort_th('Stanowisko', 'position', sort, direction, 'crm_contacts.list_contacts', 'position') }}
-        {{ m.sort_th('Firma', 'company_name', sort, direction, 'crm_contacts.list_contacts', 'company_name') }}
-        {{ m.sort_th('Email', 'email', sort, direction, 'crm_contacts.list_contacts', 'email') }}
-        {{ m.sort_th('Telefon', 'phone', sort, direction, 'crm_contacts.list_contacts', 'phone') }}
+        {{ m.sort_th('Imię i nazwisko', 'last_name', sort, direction, endpoint, 'last_name', endpoint_args) }}
+        {{ m.sort_th('Stanowisko', 'position', sort, direction, endpoint, 'position', endpoint_args) }}
+        {{ m.sort_th('Firma', 'company_name', sort, direction, endpoint, 'company_name', endpoint_args) }}
+        {{ m.sort_th('Email', 'email', sort, direction, endpoint, 'email', endpoint_args) }}
+        {{ m.sort_th('Telefon', 'phone', sort, direction, endpoint, 'phone', endpoint_args) }}
         <th data-col="context_id">Kontekst</th>
+        <th data-col="contact_lists">Listy</th>
         <th data-col="company_tags" title="Tagi przypisane do firmy kontaktu">Tagi <span class="text-muted">(firma)</span></th>
         <th data-col="company_industries" title="Branże przypisane do firmy kontaktu">Branże <span class="text-muted">(firma)</span></th>
       </tr>
@@ -119,6 +141,12 @@
         <td data-col="email">{{ c.email or '—' }}</td>
         <td data-col="phone">{{ c.phone|phone_link }}</td>
         <td data-col="context_id">{{ m.context_badge(c) }}</td>
+        <td data-col="contact_lists">
+          {% if c.lists %}
+            {% for l in c.lists %}<a href="{{ url_for('crm_contacts.list_view', list_id=l.id) }}"
+               class="badge-btn" style="text-decoration:none">{{ m.list_badge(l) }}</a>{% endfor %}
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
         <td data-col="company_tags">
           {% if c.company_tags_list %}
             {% for t in c.company_tags_list.split(', ') %}
@@ -140,7 +168,7 @@
     </tbody>
   </table>
 </div>
-{{ m.pagination_bar(page, total_pages, total, page_size, 'crm_contacts.list_contacts') }}
+{{ m.pagination_bar(page, total_pages, total, page_size, endpoint, endpoint_args=endpoint_args) }}
 
 <div class="rd-card-list">
   {% for c in contacts %}
@@ -155,8 +183,11 @@
       {% endif %}
     </div>
     <div class="rd-card-meta">{{ c.position or '—' }}{% if c.company_id %} · {{ c.company_short_name or c.company_name }}{% endif %}</div>
-    {% if c.context_id %}
-    <div class="rd-card-chips">{{ m.context_badge(c) }}</div>
+    {% if c.context_id or c.lists %}
+    <div class="rd-card-chips">
+      {% if c.context_id %}{{ m.context_badge(c) }}{% endif %}
+      {% for l in c.lists %}{{ m.list_badge(l) }}{% endfor %}
+    </div>
     {% endif %}
     <div class="rd-card-actions">
       <button type="button" class="star-toggle row-star {{ 'starred' if c.is_starred }}" data-id="{{ c.id }}"
@@ -168,8 +199,14 @@
 
 {% else %}
 <div class="empty-state">
+  {% if contact_list %}
+  <p>Na liście „{{ contact_list.name }}” nie ma jeszcze żadnego kontaktu.</p>
+  <p class="text-muted small">Kontakty dodaje się do listy w ich edycji albo hurtem
+     z widoku <a href="{{ url_for('crm_contacts.list_contacts') }}">Kontakty</a>.</p>
+  {% else %}
   <p>Brak kontaktów spełniających kryteria.</p>
   <a href="{{ url_for('crm_contacts.new_contact') }}" class="btn btn-primary">Dodaj pierwszy kontakt</a>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -315,6 +352,32 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   const btnContext = document.getElementById('btnBulkContext');
   if (btnContext) btnContext.addEventListener('click', bulkSetContext);
+
+  async function bulkList(action) {
+    const ids = getCheckedIds();
+    if (!ids.length) return;
+    const select = document.getElementById('bulkListSelect');
+    if (!select || !select.value) return;
+    try {
+      const r = await fetch(window.API_BASE + '/api/crm/contacts/bulk-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, list_id: parseInt(select.value), action }),
+      });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        location.reload();
+      } else {
+        alert('Błąd: ' + (d.message || 'nieznany'));
+      }
+    } catch (e) {
+      alert('Błąd żądania: ' + e.message);
+    }
+  }
+  const btnListAdd = document.getElementById('btnBulkListAdd');
+  const btnListRemove = document.getElementById('btnBulkListRemove');
+  if (btnListAdd) btnListAdd.addEventListener('click', () => bulkList('add'));
+  if (btnListRemove) btnListRemove.addEventListener('click', () => bulkList('remove'));
 });
 </script>
 {% endblock %}

@@ -1,6 +1,7 @@
 from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
+from models.crm_contact_list import merge_list_memberships
 from models.crm_tags import (get_contact_email_tags, get_contact_tags, set_contact_email_tags,
                                set_contact_tags)
 from services.text_utils import format_phone
@@ -13,7 +14,8 @@ FIELD_LABELS = {
 
 
 def _contacts_where(search: str = None, company_id: int = None,
-                     context_ids: list[int] | None = None) -> tuple[str, list]:
+                     context_ids: list[int] | None = None,
+                     list_id: int | None = None) -> tuple[str, list]:
     where = "WHERE ct.archived_at IS NULL"
     params = []
     if company_id:
@@ -35,12 +37,17 @@ def _contacts_where(search: str = None, company_id: int = None,
         if 0 in context_ids:
             conds.append("ct.context_id IS NULL")
         where += f" AND ({' OR '.join(conds)})" if conds else " AND 1=0"
+    if list_id:
+        where += (" AND EXISTS (SELECT 1 FROM crm_contact_list_members m "
+                  "WHERE m.contact_id = ct.id AND m.list_id = %s)")
+        params.append(list_id)
     return where, params
 
 
 def count_contacts(search: str = None, company_id: int = None,
-                    context_ids: list[int] | None = None) -> int:
-    where, params = _contacts_where(search, company_id, context_ids)
+                    context_ids: list[int] | None = None,
+                    list_id: int | None = None) -> int:
+    where, params = _contacts_where(search, company_id, context_ids, list_id)
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
@@ -54,6 +61,7 @@ def count_contacts(search: str = None, company_id: int = None,
 def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
                       search: str = None, company_id: int = None,
                       context_ids: list[int] | None = None,
+                      list_id: int | None = None,
                       limit: int | None = None, offset: int = 0) -> list[dict]:
     allowed_sort = {'first_name', 'last_name', 'position', 'email', 'phone', 'created_at', 'company_name'}
     if sort not in allowed_sort:
@@ -77,7 +85,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
            "LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id ")
-    where, params = _contacts_where(search, company_id, context_ids)
+    where, params = _contacts_where(search, company_id, context_ids, list_id)
     sql += where
     sql += f" ORDER BY ct.is_starred DESC, {sort_col} {direction}, ct.id DESC"
     if limit is not None:
@@ -396,6 +404,7 @@ def merge_contacts(primary_id: int, secondary_id: int, data: dict, user_id: int 
 
     update_contact(primary_id, data, user_id, tags=merged_tags)
     set_contact_email_tags(primary_id, merged_email_tags, user_id)
+    merge_list_memberships(primary_id, secondary_id)
 
     try:
         with db.cursor() as cur:

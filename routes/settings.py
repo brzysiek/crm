@@ -366,3 +366,56 @@ def gtd_context_clear_default():
     flash('Wyczyszczono kontekst domyślny.', 'success')
     return redirect(url_for('settings.gtd_contexts'))
 
+
+
+@bp.route('/contact-lists', methods=['GET'])
+def contact_lists():
+    from models.crm_contact_list import get_all_lists
+    return render_template('settings/contact_lists.html', active_tab='contact_lists',
+        lists=get_all_lists(with_counts=True))
+
+
+@bp.route('/contact-lists/add', methods=['POST'])
+def contact_list_add():
+    from models.crm_contact_list import create_list
+    name = request.form.get('name', '').strip()
+    if name:
+        try:
+            create_list(
+                name,
+                request.form.get('badge_color', '').strip() or '#3B82F6',
+                request.form.get('text_color', '').strip() or '#1F2937',
+                request.form.get('description', '').strip(),
+                request.form.get('sort_order', type=int) or 0,
+            )
+            flash(f'Lista „{name}” została dodana.', 'success')
+        except Exception:
+            flash(f'Lista „{name}” już istnieje.', 'error')
+    return redirect(url_for('settings.contact_lists'))
+
+
+@bp.route('/contact-lists/<int:list_id>/update', methods=['POST'])
+def contact_list_update(list_id):
+    from models.crm_contact_list import update_list
+    name = request.form.get('name', '').strip()
+    if name:
+        try:
+            update_list(
+                list_id, name,
+                request.form.get('badge_color', '').strip() or '#3B82F6',
+                request.form.get('text_color', '').strip() or '#1F2937',
+                request.form.get('description', '').strip(),
+                request.form.get('sort_order', type=int) or 0,
+            )
+            flash('Lista została zaktualizowana.', 'success')
+        except Exception:
+            flash(f'Lista „{name}” już istnieje.', 'error')
+    return redirect(url_for('settings.contact_lists'))
+
+
+@bp.route('/contact-lists/<int:list_id>/delete', methods=['POST'])
+def contact_list_delete(list_id):
+    from models.crm_contact_list import delete_list
+    delete_list(list_id)
+    flash('Lista została usunięta. Kontakty pozostały w CRM.', 'success')
+    return redirect(url_for('settings.contact_lists'))

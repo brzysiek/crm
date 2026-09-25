@@ -1,0 +1,88 @@
+{% extends 'settings/_layout.html' %}
+{% block settings_content %}
+
+<h2 class="settings-section-title">Listy kontaktów</h2>
+<p class="text-muted" style="margin-bottom:1.5rem">
+  Nazwane grupy kontaktów (np. „Newsletter”, „Partnerzy”, „Klienci VIP”). Kontakt
+  może należeć do wielu list naraz — przypisanie ustawia się w edycji kontaktu
+  albo hurtem z widoku Kontakty. Każda lista ma własny widok, dostępny w menu
+  pod pozycją Kontakty.
+</p>
+
+<div class="settings-card" style="margin-bottom:1.5rem">
+  {% if lists %}
+  <table class="data-table data-table-sm" style="margin-bottom:1rem">
+    <thead>
+      <tr>
+        <th>Podgląd</th>
+        <th>Nazwa, opis i kolory</th>
+        <th class="text-right">Kontaktów</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in lists %}
+      <tr>
+        <td>
+          <span class="badge" style="background:{{ l.badge_color }}40;color:{{ l.text_color }};border:1px solid {{ l.badge_color }}55">{{ l.name }}</span>
+        </td>
+        <td>
+          {# Pola wiążą się z formularzem przez atrybut form= — <form> opakowujący
+             <td> jest niepoprawnym HTML-em i przeglądarka wyrzuca go poza tabelę. #}
+          <form method="post" action="{{ url_for('settings.contact_list_update', list_id=l.id) }}"
+                id="list-{{ l.id }}"></form>
+          <div class="dict-add-form">
+            <input type="text" name="name" value="{{ l.name }}" required form="list-{{ l.id }}"
+                   class="filter-input" style="max-width:180px">
+            <input type="text" name="description" value="{{ l.description or '' }}" form="list-{{ l.id }}"
+                   placeholder="Opis (opcjonalnie)" class="filter-input" style="max-width:240px">
+            <input type="color" name="badge_color" value="{{ l.badge_color }}" title="Kolor tła"
+                   form="list-{{ l.id }}"
+                   style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+            <input type="color" name="text_color" value="{{ l.text_color }}" title="Kolor tekstu"
+                   form="list-{{ l.id }}"
+                   style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+            <input type="number" name="sort_order" value="{{ l.sort_order }}" title="Kolejność w menu"
+                   form="list-{{ l.id }}" class="filter-input" style="max-width:70px">
+            <button type="submit" class="btn btn-outline btn-sm" form="list-{{ l.id }}">Zapisz</button>
+          </div>
+        </td>
+        <td class="text-right">
+          <a href="{{ url_for('crm_contacts.list_view', list_id=l.id) }}">{{ l.member_count }}</a>
+        </td>
+        <td style="text-align:right">
+          <form method="post" action="{{ url_for('settings.contact_list_delete', list_id=l.id) }}"
+                onsubmit="return confirm('Usunąć listę „{{ l.name }}”? Kontakty zostaną w CRM, zniknie tylko ich przypisanie do tej listy.')"
+                style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm">Usuń</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted small" style="margin-bottom:1rem">Nie zdefiniowano jeszcze żadnej listy.</p>
+  {% endif %}
+
+  <h3 style="margin:1rem 0 .75rem">Nowa lista</h3>
+  <form method="post" action="{{ url_for('settings.contact_list_add') }}" class="dict-add-form">
+    <input type="text" name="name" placeholder="np. Newsletter" required
+           class="filter-input" style="max-width:180px">
+    <input type="text" name="description" placeholder="Opis (opcjonalnie)"
+           class="filter-input" style="max-width:240px">
+    <input type="color" name="badge_color" value="#3B82F6" title="Kolor tła"
+           style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+    <input type="color" name="text_color" value="#1F2937" title="Kolor tekstu"
+           style="width:44px;height:34px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+    <input type="number" name="sort_order" value="0" title="Kolejność w menu"
+           class="filter-input" style="max-width:70px">
+    <button type="submit" class="btn btn-outline btn-sm">+ Dodaj</button>
+  </form>
+</div>
+
+<style>
+.dict-add-form { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+</style>
+
+{% endblock %}

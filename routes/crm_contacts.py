@@ -11,6 +11,8 @@ from models.crm_company import (RELATION_LABELS, get_companies_referred_by_compa
                                   get_company_by_id, get_company_tags)
 from models.crm_contact import (count_contacts, create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, merge_contacts, set_starred, update_contact)
+from models.crm_contact_list import (get_all_lists, get_contact_list_ids, get_contact_lists,
+                                       get_list, get_lists_for_contacts, set_contact_lists)
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
@@ -104,8 +106,25 @@ def _validate(data):
     return errors
 
 
+@bp.route('/lists/<int:list_id>')
+def list_view(list_id):
+    """Widok pojedynczej listy — ten sam ekran co Kontakty, zawężony do jej członków."""
+    contact_list = get_list(list_id)
+    if not contact_list:
+        flash('Lista nie istnieje.', 'error')
+        return redirect(url_for('crm_contacts.list_contacts'))
+    return _render_contacts(contact_list)
+
+
 @bp.route('/')
 def list_contacts():
+    return _render_contacts(None)
+
+
+def _render_contacts(contact_list):
+    list_id = contact_list['id'] if contact_list else None
+    endpoint = 'crm_contacts.list_view' if contact_list else 'crm_contacts.list_contacts'
+    endpoint_args = {'list_id': list_id} if contact_list else {}
     sort = request.args.get('sort', 'created_at')
     direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
@@ -124,14 +143,21 @@ def list_contacts():
     limit = None if page_size == 'all' else int(page_size)
     offset = (page - 1) * limit if limit else 0
 
-    total = count_contacts(search=search or None, context_ids=context_ids)
+    total = count_contacts(search=search or None, context_ids=context_ids, list_id=list_id)
     contacts = get_all_contacts(sort=sort, direction=direction, search=search or None,
-                                 context_ids=context_ids, limit=limit, offset=offset)
+                                 context_ids=context_ids, list_id=list_id,
+                                 limit=limit, offset=offset)
+    # Jedno zapytanie na całą stronę zamiast jednego na wiersz.
+    lists_by_contact = get_lists_for_contacts([c['id'] for c in contacts])
+    for c in contacts:
+        c['lists'] = lists_by_contact.get(c['id'], [])
     total_pages = 1 if not limit else max(1, -(-total // limit))
     return render_template('crm/contacts/list.html',
         active_tab='contacts', contacts=contacts,
         sort=sort, direction=direction, filters={'search': search},
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
+        all_lists=get_all_lists(), contact_list=contact_list,
+        endpoint=endpoint, endpoint_args=endpoint_args,
         page=page, page_size=page_size, total=total, total_pages=total_pages,
         relation_labels=RELATION_LABELS,
     )
@@ -195,23 +221,26 @@ def new_contact():
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         email_tags = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
+        list_ids = [int(i) for i in request.form.getlist('list_ids') if i.isdigit()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/contacts/form.html',
                 active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
-                email_tags=email_tags,
+                email_tags=email_tags, all_lists=get_all_lists(), contact_list_ids=list_ids,
                 action=url_for('crm_contacts.new_contact'), title='Nowy kontakt', all_contexts=get_all_contexts())
 
         contact_id = create_contact(data, session.get('user_id'), tags=tags)
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
+        set_contact_lists(contact_id, list_ids, session.get('user_id'))
         _maybe_send_vcard_email(contact_id, 'crm_vcard_email_on_create')
         flash('Kontakt został zapisany.', 'success')
         return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
 
+    prefill_list_ids = [request.args.get('list_id', type=int)] if request.args.get('list_id', type=int) else []
     return render_template('crm/contacts/form.html',
         active_tab='contacts', contact={'company_id': company_id} if company_id else {}, tags=[], email_tags=[],
-        prefill_company=prefill_company,
+        prefill_company=prefill_company, all_lists=get_all_lists(), contact_list_ids=prefill_list_ids,
         action=url_for('crm_contacts.new_contact'), title='Nowy kontakt', all_contexts=get_all_contexts())
 
 
@@ -227,17 +256,19 @@ def edit_contact(contact_id):
         errors = _validate(data)
         tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         email_tags = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
+        list_ids = [int(i) for i in request.form.getlist('list_ids') if i.isdigit()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/contacts/form.html',
                 active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
-                email_tags=email_tags,
+                email_tags=email_tags, all_lists=get_all_lists(), contact_list_ids=list_ids,
                 action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
                 title='Edytuj kontakt', all_contexts=get_all_contexts())
 
         update_contact(contact_id, data, session.get('user_id'), tags=tags)
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
+        set_contact_lists(contact_id, list_ids, session.get('user_id'))
         _maybe_send_vcard_email(contact_id, 'crm_vcard_email_on_edit')
         flash('Kontakt został zaktualizowany.', 'success')
         return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
@@ -246,6 +277,7 @@ def edit_contact(contact_id):
     return render_template('crm/contacts/form.html',
         active_tab='contacts', contact=contact, prefill_company=prefill_company,
         tags=get_contact_tags(contact_id), email_tags=get_contact_email_tags(contact_id),
+        all_lists=get_all_lists(), contact_list_ids=get_contact_list_ids(contact_id),
         action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
         title='Edytuj kontakt', all_contexts=get_all_contexts())
 
@@ -308,6 +340,7 @@ def view_contact(contact_id):
         active_tab='contacts', contact=contact, company=company, company_tags=company_tags,
         company_industries=company_industries, company_source=company_source,
         email_tags=get_contact_email_tags(contact_id), relation_labels=RELATION_LABELS,
+        contact_lists=get_contact_lists(contact_id),
         deals=deals, stage_labels=STAGE_LABELS,
         referred_companies=referred_companies,
         stage_badge_classes=STAGE_BADGE_CLASSES,
