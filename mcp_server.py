@@ -10,6 +10,16 @@ przywracaniem (kolumna archived_at) oraz zarządzaniem pozycjami na long/short
 liście danego deala M&A (mna_deal_targets). Firmy i kontakty M&A mają też własne
 tagi (mna_tags) — osobna pula od tagów CRM, nie są ze sobą współdzielone.
 
+Kontakty mają też listy (crm_contact_lists) — nazwane grupy definiowane
+w Ustawieniach CRM, do których jeden kontakt może należeć wielokrotnie; narzędzia
+list_contact_lists / list_contacts_in_list / add_contacts_to_list /
+remove_contacts_from_list pozwalają je czytać i zmieniać.
+
+Moduł Finanse v2 (narzędzia z prefiksem fin_) czyta lustro faktur z Fakturowni
+i pozwala zmieniać wyłącznie metadane analityczne CRM: kategorię, procent
+odliczenia VAT i procent KUP oraz reguły, które je nadają automatycznie. Samych
+faktur w Fakturowni te narzędzia nie tworzą ani nie modyfikują.
+
 Serwer działa w tym samym procesie co aplikacja Flask (patrz passenger_wsgi.py) —
 każde wywołanie narzędzia otwiera kontekst aplikacji Flask (app_context), żeby
 modele mogły korzystać ze wspólnego database.get_db().
@@ -20,8 +30,10 @@ ten serwer (patrz passenger_wsgi.py) — patrz Config.MCP_TOKEN i Config.MCP_USE
 from __future__ import annotations
 
 import asyncio
+import calendar
 import json
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -32,6 +44,7 @@ from app import app as flask_app
 from config import Config
 import models.crm_company as crm_company
 import models.crm_contact as crm_contact
+import models.crm_contact_list as crm_contact_list
 import models.crm_deal as crm_deal
 import models.crm_mna_offer as crm_mna_offer
 import models.crm_file as crm_file
@@ -41,8 +54,12 @@ import models.mna_company as mna_company
 import models.mna_contact as mna_contact
 import models.mna_deal as mna_deal
 import models.mna_tags as mna_tags
+import models.fin_category as fin_category
+import models.fin_document as fin_document
 import models.reconciliation as reconciliation
 import services.crm_files as crm_files_service
+import services.fin_rules as fin_rules
+import services.fin_sync as fin_sync_service
 import models.task as task_model
 from routes.gtd import _add_months, _month_range, _try_gcal_delete, _week_range
 
@@ -208,6 +225,108 @@ def update_contact(
         data = {**current, **{k: v for k, v in updates.items() if v is not None}}
         crm_contact.update_contact(contact_id, data, _mcp_user_id())
         return crm_contact.get_contact_by_id(contact_id)
+
+
+# ── Listy kontaktów ─────────────────────────────────────────────────────────
+#
+# Lista to nazwana grupa kontaktów definiowana w Ustawieniach CRM (nazwa, opis,
+# kolory). Kontakt może być na wielu listach naraz — inaczej niż kontekst GTD,
+# którego kontakt ma najwyżej jeden. Każde dopisanie i wypisanie trafia do
+# historii kontaktu, więc te operacje są odwracalne i widoczne w CRM.
+
+
+def _require_contact_list(list_id: int) -> dict:
+    row = crm_contact_list.get_list(list_id)
+    if not row:
+        raise ValueError(f"Nie znaleziono listy kontaktów o id={list_id}.")
+    return row
+
+
+@mcp.tool()
+def list_contact_lists() -> list[dict]:
+    """Zwraca listy kontaktów zdefiniowane w CRM wraz z liczbą kontaktów na każdej."""
+    with flask_app.app_context():
+        return [
+            {"id": row["id"], "name": row["name"], "description": row["description"],
+             "contacts": row.get("member_count", 0)}
+            for row in crm_contact_list.get_all_lists(with_counts=True)
+        ]
+
+
+@mcp.tool()
+def create_contact_list(name: str, description: str | None = None) -> dict:
+    """Tworzy nową listę kontaktów. Nazwy są unikalne — jeśli lista już istnieje,
+    zwraca tę istniejącą, żeby nie mnożyć duplikatów."""
+    with flask_app.app_context():
+        name = (name or "").strip()
+        if not name:
+            raise ValueError("Lista potrzebuje nazwy.")
+        for row in crm_contact_list.get_all_lists():
+            if row["name"].lower() == name.lower():
+                return {"id": row["id"], "name": row["name"], "created": False}
+        list_id = crm_contact_list.create_list(name, description=(description or "").strip() or None)
+        return {"id": list_id, "name": name, "created": True}
+
+
+@mcp.tool()
+def list_contacts_in_list(list_id: int, search: str | None = None, limit: int = 100) -> dict:
+    """Zwraca kontakty z danej listy — to samo zawężenie co widok listy w CRM.
+    `search` filtruje po imieniu, nazwisku, emailu, telefonie i nazwie firmy."""
+    with flask_app.app_context():
+        contact_list = _require_contact_list(list_id)
+        limit = max(1, min(int(limit), 500))
+        rows = crm_contact.get_all_contacts(search=search or None, list_id=list_id, limit=limit)
+        return {
+            "list": {"id": contact_list["id"], "name": contact_list["name"]},
+            "total": crm_contact.count_contacts(search=search or None, list_id=list_id),
+            "returned": len(rows),
+            "contacts": [
+                {"id": r["id"], "first_name": r["first_name"], "last_name": r["last_name"],
+                 "position": r["position"], "email": r["email"], "phone": r["phone"],
+                 "company_id": r["company_id"], "company_name": r.get("company_name")}
+                for r in rows
+            ],
+        }
+
+
+@mcp.tool()
+def get_contact_list_membership(contact_id: int) -> list[dict]:
+    """Zwraca listy, na których jest dany kontakt."""
+    with flask_app.app_context():
+        if not crm_contact.get_contact_by_id(contact_id):
+            raise ValueError(f"Nie znaleziono kontaktu o id={contact_id}.")
+        return [{"id": row["id"], "name": row["name"]}
+                for row in crm_contact_list.get_contact_lists(contact_id)]
+
+
+@mcp.tool()
+def add_contacts_to_list(list_id: int, contact_ids: list[int]) -> dict:
+    """Dopisuje kontakty do listy. Kontakty już na liście są pomijane —
+    `added` mówi, ile dopisań faktycznie nastąpiło."""
+    with flask_app.app_context():
+        contact_list = _require_contact_list(list_id)
+        ids = [int(i) for i in contact_ids]
+        if not ids:
+            raise ValueError("Podaj co najmniej jeden contact_id.")
+        added = crm_contact_list.add_contacts_to_list(list_id, ids, _mcp_user_id())
+        return {"list": {"id": contact_list["id"], "name": contact_list["name"]},
+                "requested": len(ids), "added": added,
+                "already_on_list": len(ids) - added}
+
+
+@mcp.tool()
+def remove_contacts_from_list(list_id: int, contact_ids: list[int]) -> dict:
+    """Usuwa kontakty z listy. Same kontakty zostają w CRM — znika tylko
+    przynależność do tej listy."""
+    with flask_app.app_context():
+        contact_list = _require_contact_list(list_id)
+        ids = [int(i) for i in contact_ids]
+        if not ids:
+            raise ValueError("Podaj co najmniej jeden contact_id.")
+        removed = crm_contact_list.remove_contacts_from_list(list_id, ids, _mcp_user_id())
+        return {"list": {"id": contact_list["id"], "name": contact_list["name"]},
+                "requested": len(ids), "removed": removed,
+                "not_on_list": len(ids) - removed}
 
 
 # ── Notatki (firmy/kontakty) ────────────────────────────────────────────────
@@ -1399,6 +1518,240 @@ def unlink_transaction_from_record(record_type: Literal["expense", "income"], re
 def _list_tools_sync() -> list[dict]:
     tools = asyncio.run(mcp.list_tools())
     return [t.model_dump(by_alias=True, exclude_none=True, mode="json") for t in tools]
+
+
+# ── Finanse v2: faktury z Fakturowni ────────────────────────────────────────
+#
+# `fin_documents` to lustro Fakturowni — tu się dokumentów nie tworzy ani nie
+# zmienia. Modyfikowalne są wyłącznie metadane analityczne CRM (kategoria,
+# procent odliczenia VAT, procent KUP) i reguły, które je nadają automatycznie.
+# Kwoty wracają jako łańcuchy znaków, bo to Decimal — nie float — i nie chcę
+# gubić groszy w konwersji.
+
+_FIN_DOC_FIELDS = ('fakturownia_id', 'number', 'kind', 'is_income', 'issue_date', 'sell_date',
+                   'payment_to', 'paid_date', 'status', 'currency', 'net_pln', 'tax_pln',
+                   'gross_pln', 'paid_amount', 'counterparty_name', 'counterparty_tax_no',
+                   'description', 'gov_id', 'gov_status', 'category_id', 'category_name',
+                   'vat_deduction_percent', 'tax_deductible_percent')
+
+
+def _fin_doc(row: dict, extra: tuple = ()) -> dict:
+    """Dokument w skrócie — bez raw_json, który ma kilka kilobajtów na sztukę."""
+    out = {k: row.get(k) for k in _FIN_DOC_FIELDS if k in row}
+    out['is_income'] = bool(row.get('is_income'))
+    for k in extra:
+        out[k] = row.get(k)
+    return out
+
+
+def _fin_category_id(category: str | int | None) -> int | None:
+    """Kategoria podana jako id albo jako slug (agentowi łatwiej trafić slugiem)."""
+    if category is None or category == '':
+        return None
+    if isinstance(category, int) or str(category).isdigit():
+        found = fin_category.get_category(int(category))
+        if not found:
+            raise ValueError(f"Nie znaleziono kategorii o id={category}.")
+        return found['id']
+    found = fin_category.get_category_by_slug(str(category).strip())
+    if not found:
+        raise ValueError(f"Nie znaleziono kategorii o identyfikatorze „{category}”.")
+    return found['id']
+
+
+@mcp.tool()
+def fin_list_documents(
+    kind: Literal["cost", "income", "all"] = "cost",
+    month: str | None = None,
+    payment: Literal["paid", "unpaid", "overdue"] | None = None,
+    category: str | None = None,
+    uncategorized: bool = False,
+    search: str | None = None,
+    limit: int = 50,
+) -> dict:
+    """Lista faktur z lustra Fakturowni. `month` w formacie RRRR-MM (po dacie
+    wystawienia), `category` to id albo identyfikator kategorii, `search` szuka
+    w numerze, kontrahencie, NIP-ie, opisie i numerze KSeF. Proformy, wyceny
+    i noty są pomijane — nie są zdarzeniem finansowym."""
+    with flask_app.app_context():
+        filters = {
+            'kind': '' if kind == 'all' else kind,
+            'month': (month or '').strip(),
+            'payment': payment or '',
+            'category_id': _fin_category_id(category),
+            'uncategorized': bool(uncategorized),
+            'search': (search or '').strip(),
+            'financial_only': True,
+        }
+        limit = max(1, min(int(limit), 200))
+        rows = fin_document.list_documents(filters, limit=limit)
+        return {
+            'total': fin_document.count_documents(filters),
+            'returned': len(rows),
+            'documents': [_fin_doc(r) for r in rows],
+        }
+
+
+@mcp.tool()
+def fin_get_document(fakturownia_id: int) -> dict:
+    """Pełne dane jednej faktury z lustra, razem z kategorią i procentami
+    odliczeń. `fakturownia_id` to identyfikator dokumentu w Fakturowni."""
+    with flask_app.app_context():
+        row = fin_document.get_document(int(fakturownia_id))
+        if not row:
+            raise ValueError(f"Nie znam dokumentu o fakturownia_id={fakturownia_id} — "
+                              "może nie został jeszcze zsynchronizowany.")
+        return _fin_doc(row, extra=('department_id', 'exchange_rate', 'price_net', 'price_tax',
+                                     'price_gross', 'accounting_kind', 'meta_note',
+                                     'category_source', 'oid', 'synced_at'))
+
+
+@mcp.tool()
+def fin_unpaid(kind: Literal["cost", "income"] = "cost", limit: int = 100) -> dict:
+    """Nieopłacone dokumenty w kubełkach terminów: overdue (po terminie),
+    week (7 dni), month (30 dni), later, no_date. `amount_left` to brutto
+    minus już wpłacone. kind='cost' — do zapłaty, kind='income' — należności."""
+    with flask_app.app_context():
+        rows = fin_document.open_items(is_income=(kind == 'income'), limit=max(1, min(int(limit), 300)))
+        buckets: dict[str, list] = {}
+        for row in rows:
+            buckets.setdefault(row['bucket'], []).append(
+                _fin_doc(row, extra=('amount_left', 'days_left', 'bucket')))
+        return {
+            'kind': kind,
+            'total_amount_left': sum((r['amount_left'] for r in rows), Decimal('0')),
+            'overdue_amount': sum((r['amount_left'] for r in rows if r['bucket'] == 'overdue'),
+                                   Decimal('0')),
+            'count': len(rows),
+            'buckets': buckets,
+        }
+
+
+@mcp.tool()
+def fin_summary(period: str | None = None) -> dict:
+    """Podsumowanie okresu: sumy netto/VAT/brutto osobno dla kosztów i przychodów
+    plus wynik. `period` to RRRR-MM albo RRRR; brak = bieżący miesiąc."""
+    with flask_app.app_context():
+        today = date.today()
+        period = (period or today.strftime('%Y-%m')).strip()
+        if len(period) == 4 and period.isdigit():
+            date_from, date_to = f'{period}-01-01', f'{period}-12-31'
+        else:
+            try:
+                year, month = int(period[:4]), int(period[5:7])
+                last = calendar.monthrange(year, month)[1]
+            except (ValueError, IndexError):
+                raise ValueError("Okres podaj jako RRRR-MM albo RRRR.")
+            date_from, date_to = f'{year}-{month:02d}-01', f'{year}-{month:02d}-{last}'
+        totals = fin_document.period_totals(date_from, date_to)
+        cost, income = totals['cost'], totals['income']
+        return {
+            'period': period, 'from': date_from, 'to': date_to,
+            'cost': cost, 'income': income,
+            'result_net': Decimal(str(income['net'])) - Decimal(str(cost['net'])),
+            'uncategorized_documents': fin_document.count_uncategorized(),
+        }
+
+
+@mcp.tool()
+def fin_categories() -> list[dict]:
+    """Taksonomia kategorii finansowych CRM z domyślnymi procentami odliczenia
+    VAT i kosztów podatkowych (KUP). Identyfikator (slug) można podawać wszędzie
+    tam, gdzie narzędzia przyjmują kategorię."""
+    with flask_app.app_context():
+        return [{'id': c['id'], 'kind': c['kind'], 'name': c['name'], 'slug': c['slug'],
+                 'vat_deduction_percent': c['default_vat_deduction'],
+                 'tax_deductible_percent': c['default_tax_deductible'],
+                 'is_fixed_cost': bool(c['is_fixed_cost'])}
+                for c in fin_category.list_categories()]
+
+
+@mcp.tool()
+def fin_uncategorized(kind: Literal["cost", "income", "all"] = "all", limit: int = 50) -> dict:
+    """Dokumenty bez kategorii — kolejka do rozdysponowania. Zwraca też łączną
+    liczbę, żeby było wiadomo, ile zostało poza zwróconą stroną."""
+    with flask_app.app_context():
+        filters = {'kind': '' if kind == 'all' else kind, 'uncategorized': True,
+                   'financial_only': True}
+        rows = fin_document.list_documents(filters, limit=max(1, min(int(limit), 200)))
+        return {'total': fin_document.count_documents(filters), 'returned': len(rows),
+                'documents': [_fin_doc(r) for r in rows]}
+
+
+@mcp.tool()
+def fin_set_category(
+    fakturownia_id: int,
+    category: str | None,
+    vat_deduction_percent: int | None = None,
+    tax_deductible_percent: int | None = None,
+    note: str | None = None,
+) -> dict:
+    """Przypisuje kategorię jednemu dokumentowi. `category` to id albo slug;
+    None czyści przypisanie. Bez podanych procentów brane są domyślne
+    z kategorii. Zmiana dotyczy metadanych CRM — faktura w Fakturowni
+    zostaje nietknięta."""
+    with flask_app.app_context():
+        if not fin_document.get_document(int(fakturownia_id)):
+            raise ValueError(f"Nie znam dokumentu o fakturownia_id={fakturownia_id}.")
+        category_id = _fin_category_id(category)
+        if category_id is None:
+            fin_category.clear_document_category(int(fakturownia_id))
+        else:
+            fin_category.set_document_category(
+                int(fakturownia_id), category_id, source='agent',
+                vat_percent=vat_deduction_percent, kup_percent=tax_deductible_percent,
+                note=note)
+        return _fin_doc(fin_document.get_document(int(fakturownia_id)))
+
+
+@mcp.tool()
+def fin_bulk_categorize(fakturownia_ids: list[int], category: str) -> dict:
+    """Przypisuje jedną kategorię wielu dokumentom naraz. Zwraca liczbę
+    zmienionych wpisów."""
+    with flask_app.app_context():
+        category_id = _fin_category_id(category)
+        if category_id is None:
+            raise ValueError("Do masowego przypisania potrzebna jest kategoria.")
+        ids = [int(i) for i in fakturownia_ids]
+        if not ids:
+            raise ValueError("Podaj co najmniej jeden fakturownia_id.")
+        count = fin_category.bulk_set_category(ids, category_id, source='agent')
+        return {'category_id': category_id, 'requested': len(ids), 'updated': count}
+
+
+@mcp.tool()
+def fin_add_rule(
+    match_field: Literal["counterparty_tax_no_norm", "counterparty_name", "number",
+                          "description", "accounting_kind"],
+    match_type: Literal["equals", "contains", "starts_with", "regex"],
+    match_value: str,
+    category: str,
+    priority: int = 100,
+    apply_now: bool = True,
+) -> dict:
+    """Dodaje regułę auto-kategoryzacji („wszystko od tego kontrahenta idzie
+    w tę kategorię”). Reguły działają przy każdej synchronizacji; `apply_now`
+    przepuszcza przez nie także dokumenty już w bazie, ale bez kategorii."""
+    with flask_app.app_context():
+        category_id = _fin_category_id(category)
+        rule_id = fin_rules.create_rule(match_field, match_type, (match_value or '').strip(),
+                                         category_id, priority=int(priority))
+        result = {'rule_id': rule_id, 'category_id': category_id}
+        if apply_now:
+            applied = fin_rules.apply_rules()
+            result['checked'] = applied['checked']
+            result['assigned'] = applied['assigned']
+        return result
+
+
+@mcp.tool()
+def fin_sync(full: bool = False) -> dict:
+    """Ściąga z Fakturowni faktury zmienione od ostatniego przebiegu (full=True —
+    wszystkie od początku) i przepuszcza nowe przez reguły kategoryzacji."""
+    with flask_app.app_context():
+        result = fin_sync_service.sync_documents(full=bool(full))
+        result['cursor'] = result['cursor'].isoformat() if result['cursor'] else None
+        return result
 
 
 def _call_tool_sync(name: str, arguments: dict) -> dict:
