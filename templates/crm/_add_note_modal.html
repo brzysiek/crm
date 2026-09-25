@@ -1,5 +1,5 @@
-{# Wspólny partial: przycisk "+ Notatka" w pasku akcji + modal dodawania notatki (tekst/głos).
-   Wymaga: add_note_url, entity_type, entity_id #}
+{# Wspólny partial: przycisk "+ Dodaj notatkę" + popup (nagranie / plik audio / tekst).
+   Wymaga: add_note_url, entity_type, entity_id, note_type_labels #}
 {% from '_icons.html' import icon %}
 
 <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('addNoteModal').classList.add('open')">+ Dodaj notatkę</button>
@@ -11,12 +11,25 @@
       <button class="modal-close" onclick="document.getElementById('addNoteModal').classList.remove('open')">{{ icon('x', 16) }}</button>
     </div>
     <div class="modal-body">
-      <div class="voice-note-cta">
-        <button type="button" class="btn btn-primary btn-voice-large" id="btnVoiceNote"
-                data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}">
+      <div class="voice-note-cta"
+           data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}" id="voiceNoteBox">
+        <button type="button" class="btn btn-primary btn-voice-large" id="btnVoiceNote">
           {{ icon('mic', 16) }} Nagraj notatkę głosową
         </button>
+
+        <div class="voice-note-upload">
+          <span class="text-muted small">albo wgraj gotowe nagranie</span>
+          <label class="btn btn-outline btn-sm" for="voiceNoteFile">
+            {{ icon('arrow-up', 16) }} Wybierz plik nagrania
+            <input type="file" id="voiceNoteFile" accept="audio/*,.mp3,.m4a,.wav,.ogg,.opus,.webm,.flac,.aac" hidden>
+          </label>
+        </div>
+
         <div id="voiceNoteStatus" class="small text-muted" style="margin-top:.5rem"></div>
+        <div class="text-muted small">
+          MP3, M4A, WAV, OGG, OPUS, WEBM, FLAC — do 10 MB. Wgrany plik transkrybujesz
+          tym samym przyciskiem co nagranie z mikrofonu.
+        </div>
       </div>
 
       <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
@@ -40,15 +53,23 @@
 
 <script>
 (function() {
+  const box = document.getElementById('voiceNoteBox');
+  if (!box) return;
   const btnVoice = document.getElementById('btnVoiceNote');
+  const fileInput = document.getElementById('voiceNoteFile');
   const statusEl = document.getElementById('voiceNoteStatus');
   const iconMic = {{ icon('mic', 16)|tojson }};
   const iconStop = {{ icon('square', 16)|tojson }};
+  const MAX_BYTES = {{ max_audio_bytes }};
   let mediaRecorder = null;
   let audioChunks = [];
   let recording = false;
 
   function setStatus(text) { if (statusEl) statusEl.textContent = text; }
+  function setBusy(busy) {
+    btnVoice.disabled = busy;
+    if (fileInput) fileInput.disabled = busy;
+  }
 
   async function startRecording() {
     let stream;
@@ -72,7 +93,11 @@
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || mimeType || 'audio/webm' });
-      uploadVoiceNote(blob);
+      /* Nazwa pliku niesie rozszerzenie, po którym serwer rozpoznaje format —
+         dla nagrania musimy je wywnioskować z typu bloba. */
+      const ext = (blob.type.includes('mp4') || blob.type.includes('m4a')) ? 'm4a'
+        : blob.type.includes('ogg') ? 'ogg' : 'webm';
+      uploadAudio(blob, 'notatka.' + ext);
     };
     mediaRecorder.start();
     recording = true;
@@ -88,15 +113,22 @@
     }
   }
 
-  function uploadVoiceNote(blob) {
+  function uploadAudio(blob, fileName) {
+    if (blob.size > MAX_BYTES) {
+      /* Sprawdzamy po stronie przeglądarki, żeby nie wysyłać w górę pliku,
+         który serwer i tak odrzuci — przy 30 MB przez LTE to minuty. */
+      setStatus('');
+      setBusy(false);
+      alert('Nagranie ma ' + (blob.size / 1048576).toFixed(1) + ' MB, a limit to '
+            + Math.round(MAX_BYTES / 1048576) + ' MB. Skompresuj plik albo podziel go na części.');
+      return;
+    }
     setStatus('Zapisywanie…');
-    btnVoice.disabled = true;
-    const ext = (blob.type.includes('mp4') || blob.type.includes('m4a')) ? 'm4a'
-      : blob.type.includes('ogg') ? 'ogg' : 'webm';
+    setBusy(true);
     const form = new FormData();
-    form.append('audio', blob, 'notatka.' + ext);
-    form.append('entity_type', btnVoice.dataset.entityType);
-    form.append('entity_id', btnVoice.dataset.entityId);
+    form.append('audio', blob, fileName);
+    form.append('entity_type', box.dataset.entityType);
+    form.append('entity_id', box.dataset.entityId);
     fetch(window.API_BASE + '/api/crm/notes/voice', { method: 'POST', body: form })
       .then(r => r.json())
       .then(data => {
@@ -104,20 +136,27 @@
           location.reload();
         } else {
           setStatus('');
-          btnVoice.disabled = false;
+          setBusy(false);
           alert(data.message || 'Nie udało się zapisać notatki głosowej.');
         }
       })
       .catch(() => {
         setStatus('');
-        btnVoice.disabled = false;
+        setBusy(false);
         alert('Błąd sieci przy zapisie notatki głosowej.');
       });
   }
 
-  if (btnVoice) {
-    btnVoice.addEventListener('click', () => {
-      if (!recording) startRecording(); else stopRecording();
+  btnVoice.addEventListener('click', () => {
+    if (!recording) startRecording(); else stopRecording();
+  });
+
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      uploadAudio(file, file.name);
+      fileInput.value = '';
     });
   }
 })();

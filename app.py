@@ -11,6 +11,7 @@ import os
 import re
 from datetime import datetime as _dt, timedelta as _timedelta
 from logging.handlers import RotatingFileHandler
+from services.voice_notes import MAX_AUDIO_BYTES
 
 _BUILD_ID = _dt.now().strftime('%Y%m%d.%H%M')
 
@@ -295,6 +296,9 @@ def inject_globals():
         'payment_methods':      payment_methods,
         'build_id':             _BUILD_ID,
         'git_commit':           _GIT_COMMIT,
+        # Limit nagrania trzyma serwis — szablon popupu notatki sprawdza rozmiar
+        # pliku przed wysłaniem i musi znać dokładnie tę samą liczbę.
+        'max_audio_bytes':      MAX_AUDIO_BYTES,
         'current_user': {
             'id':        session.get('user_id'),
             'username':  session.get('username', ''),
@@ -1114,9 +1118,14 @@ def api_gemini_test():
 
 @app.route('/api/crm/notes/voice', methods=['POST'])
 def api_crm_notes_voice():
-    """Zapisuje nagraną notatkę głosową (jeszcze bez transkrypcji)."""
-    import base64
+    """Zapisuje notatkę głosową — nagranie z mikrofonu albo wgrany plik audio
+    (jeszcze bez transkrypcji; tę odpala osobne wywołanie /transcribe).
+
+    Oba źródła idą tą samą drogą, bo dalej niczym się nie różnią: nagranie to
+    też tylko plik z rozszerzeniem, a transkrypcja nie wie, skąd przyszło.
+    """
     from models.crm_notes import VALID_ENTITY_TYPES, add_voice_note
+    from services.voice_notes import AudioNoteError, audio_mime, build_data_uri
 
     entity_type = request.form.get('entity_type', '')
     entity_id = request.form.get('entity_id', type=int)
@@ -1127,13 +1136,11 @@ def api_crm_notes_voice():
     if not audio_file or not audio_file.filename:
         return jsonify({'status': 'error', 'message': 'Brak nagrania.'})
 
-    audio_bytes = audio_file.read()
-    if not audio_bytes:
-        return jsonify({'status': 'error', 'message': 'Puste nagranie.'})
-
-    mime_type = audio_file.mimetype or 'audio/webm'
-    encoded = base64.b64encode(audio_bytes).decode('ascii')
-    audio_data = f'data:{mime_type};base64,{encoded}'
+    try:
+        mime_type = audio_mime(audio_file.filename, audio_file.mimetype or '')
+        audio_data = build_data_uri(audio_file.read(), mime_type)
+    except AudioNoteError as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
     note_id = add_voice_note(entity_type, entity_id, session.get('user_id'), audio_data)
     return jsonify({'status': 'ok', 'note_id': note_id})
@@ -1155,10 +1162,10 @@ def api_crm_notes_set_type(note_id):
 @app.route('/api/crm/notes/<int:note_id>/transcribe', methods=['POST'])
 def api_crm_notes_transcribe(note_id):
     """Transkrybuje notatkę głosową na tekst za pomocą Gemini."""
-    import base64
     from models.settings import get_setting
     from models.crm_notes import get_note_by_id, set_note_transcript
     from services.gemini_ocr import transcribe_audio
+    from services.voice_notes import AudioNoteError, split_data_uri
 
     note = get_note_by_id(note_id)
     if not note or not note.get('audio_data'):
@@ -1170,11 +1177,9 @@ def api_crm_notes_transcribe(note_id):
         return jsonify({'status': 'error', 'message': 'Brak klucza API Gemini (Ustawienia).'})
 
     try:
-        header, b64_payload = note['audio_data'].split(',', 1)
-        mime_type = header.split(':', 1)[1].split(';', 1)[0]
-        audio_bytes = base64.b64decode(b64_payload)
-    except Exception:
-        return jsonify({'status': 'error', 'message': 'Nieprawidłowe dane nagrania.'})
+        audio_bytes, mime_type = split_data_uri(note['audio_data'])
+    except AudioNoteError as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
     result = transcribe_audio(audio_bytes, mime_type, api_key, model=model)
     if 'error' in result:

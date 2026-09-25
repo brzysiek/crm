@@ -346,26 +346,61 @@ def remove_contacts_from_list(list_id: int, contact_ids: list[int]) -> dict:
                 "not_on_list": len(ids) - removed}
 
 
-# ── Notatki (firmy/kontakty) ────────────────────────────────────────────────
+# ── Notatki ─────────────────────────────────────────────────────────────────
+# Notatki wiszą na encjach obu modułów — CRM i M&A. Bez tego agent nie ma gdzie
+# zapisać ustaleń z deala i wkleja je do opisu, gdzie mieszają się z treścią.
+
+NoteEntity = Literal["company", "contact", "deal",
+                     "mna_company", "mna_contact", "mna_deal", "mna_offer"]
+
+_NOTE_ENTITY_LOOKUPS = {
+    "company": (crm_company.get_company_by_id, "firmy"),
+    "contact": (crm_contact.get_contact_by_id, "kontaktu"),
+    "deal": (crm_deal.get_deal_by_id, "interesu"),
+    "mna_company": (mna_company.get_mna_company_by_id_any, "firmy M&A"),
+    "mna_contact": (mna_contact.get_mna_contact_by_id_any, "kontaktu M&A"),
+    "mna_deal": (mna_deal.get_mna_deal_by_id, "deala M&A"),
+    "mna_offer": (crm_mna_offer.get_mna_offer_by_id, "oferty M&A"),
+}
+
+
+def _require_note_entity(entity_type: str, entity_id: int) -> None:
+    """Notatki nie mają klucza obcego do encji — bez tej kontroli literówka w id
+    tworzy notatkę, której nikt już nigdy nie zobaczy w żadnym widoku."""
+    lookup = _NOTE_ENTITY_LOOKUPS.get(entity_type)
+    if not lookup:
+        raise ValueError(f"Nieznany typ encji: {entity_type}.")
+    getter, label = lookup
+    if not getter(entity_id):
+        raise ValueError(f"Nie znaleziono {label} o id={entity_id}.")
+
 
 @mcp.tool()
 def add_note(
-    entity_type: Literal["company", "contact"],
+    entity_type: NoteEntity,
     entity_id: int,
     body: str,
     note_type: Literal["phone", "meeting", "task", "other"] = "other",
 ) -> dict:
-    """Dodaje notatkę do firmy lub kontaktu."""
+    """Dodaje notatkę do firmy, kontaktu, interesu albo encji M&A (firma, kontakt,
+    deal, oferta). Notatki to właściwe miejsce na ustalenia i przebieg rozmów —
+    nie dopisuj ich do opisu encji."""
     with flask_app.app_context():
+        _require_note_entity(entity_type, entity_id)
         note_id = crm_notes.add_note(entity_type, entity_id, _mcp_user_id(), body, note_type)
         return crm_notes.get_note_by_id(note_id)
 
 
 @mcp.tool()
-def list_notes(entity_type: Literal["company", "contact"], entity_id: int) -> list[dict]:
-    """Zwraca listę notatek dla firmy lub kontaktu."""
+def list_notes(entity_type: NoteEntity, entity_id: int) -> list[dict]:
+    """Zwraca listę notatek encji (od najnowszej). Notatki głosowe przed
+    transkrypcją mają puste body — kolumna audio_data nie jest zwracana."""
     with flask_app.app_context():
-        return crm_notes.get_notes(entity_type, entity_id)
+        _require_note_entity(entity_type, entity_id)
+        notes = crm_notes.get_notes(entity_type, entity_id)
+        # audio_data to base64 nagrania (do 13 MB na notatkę) — w odpowiedzi MCP
+        # zjadłoby cały kontekst agenta i nie da się z niego nic wyczytać.
+        return [{k: v for k, v in n.items() if k != 'audio_data'} for n in notes]
 
 
 @mcp.tool()
@@ -375,7 +410,8 @@ def update_note(note_id: int, body: str, note_type: Literal["phone", "meeting", 
         if not crm_notes.get_note_by_id(note_id):
             raise ValueError(f"Nie znaleziono notatki o id={note_id}.")
         crm_notes.update_note(note_id, body, note_type)
-        return crm_notes.get_note_by_id(note_id)
+        note = crm_notes.get_note_by_id(note_id)
+        return {k: v for k, v in note.items() if k != 'audio_data'}
 
 
 # ── Zadania ────────────────────────────────────────────────────────────────

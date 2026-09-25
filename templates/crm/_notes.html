@@ -1,38 +1,26 @@
-{# Wspólny partial: sekcja Notatki. Wymaga: notes, add_note_url, entity_type, entity_id, note_type_labels #}
+{# Wspólny partial: sekcja Notatki z przyciskiem "+ Dodaj notatkę" w nagłówku, otwierającym
+   popup (nagranie z mikrofonu / wgrany plik audio / tekst). Używany przez wszystkie karty
+   z notatkami — kontakt, firma, deal, oferta M&A, firma/kontakt/deal M&A — żeby notatki
+   wyglądały i działały wszędzie tak samo.
+   Wymaga: notes, add_note_url, entity_type, entity_id, note_type_labels.
+   Opcjonalnie: history_badge_labels (odznaka „Notatka”). #}
 {% from '_icons.html' import icon %}
 
 <div class="inv-section">
-  <h4>Notatki</h4>
+  <div class="inv-section-header">
+    <h4>Notatki</h4>
+    {% include 'crm/_add_note_modal.html' %}
+  </div>
   <div style="padding:.85rem">
-    <form method="post" action="{{ add_note_url }}" style="margin-bottom:.5rem">
-      <div class="form-group" style="margin-bottom:.5rem">
-        <textarea name="body" rows="2" placeholder="Dodaj notatkę…" required></textarea>
-      </div>
-      <div class="form-group" style="margin-bottom:.5rem">
-        <select name="note_type">
-          {% for key, label in note_type_labels.items() %}
-          <option value="{{ key }}" {% if key == 'other' %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button type="submit" class="btn btn-outline btn-sm">+ Dodaj notatkę</button>
-    </form>
-
-    <div style="margin-bottom:1rem">
-      <button type="button" class="btn btn-outline btn-sm" id="btnVoiceNote"
-              data-entity-type="{{ entity_type }}" data-entity-id="{{ entity_id }}">
-        {{ icon('mic', 16) }} Nagraj notatkę głosową
-      </button>
-      <span id="voiceNoteStatus" class="small text-muted" style="margin-left:.5rem"></span>
-    </div>
-
     {% if notes %}
     <div class="notes-list">
       {% for n in notes %}
       <div class="note-item">
         <div class="note-meta">
           <span>
+            {% if history_badge_labels %}
             <span class="history-action history-action-note">{{ history_badge_labels.note }}</span>
+            {% endif %}
             {{ n.user_name or 'System' }} · {{ n.created_at|ddmmyyyy }}{% if n.source_label %} · {{ n.source_label }}{% endif %}
             · <select class="note-type-select" data-note-id="{{ n.id }}" onchange="updateNoteType(this)">
                 {% for key, label in note_type_labels.items() %}
@@ -70,112 +58,29 @@
 </div>
 
 <script>
-(function() {
-  const btnVoice = document.getElementById('btnVoiceNote');
-  const statusEl = document.getElementById('voiceNoteStatus');
-  const iconMic = {{ icon('mic', 16)|tojson }};
-  const iconStop = {{ icon('square', 16)|tojson }};
-  let mediaRecorder = null;
-  let audioChunks = [];
-  let recording = false;
-
-  function setStatus(text) { if (statusEl) statusEl.textContent = text; }
-
-  async function startRecording() {
-    let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err) {
-      alert('Brak dostępu do mikrofonu: ' + err.message);
-      return;
-    }
-    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
-    const mimeType = candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
-    try {
-      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    } catch (err) {
-      alert('Nagrywanie audio nie jest wspierane w tej przeglądarce.');
-      stream.getTracks().forEach(t => t.stop());
-      return;
-    }
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop());
-      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || mimeType || 'audio/webm' });
-      uploadVoiceNote(blob);
-    };
-    mediaRecorder.start();
-    recording = true;
-    btnVoice.innerHTML = iconStop + ' Zatrzymaj i zapisz';
-    setStatus('Nagrywanie…');
-  }
-
-  function stopRecording() {
-    if (mediaRecorder && recording) {
-      mediaRecorder.stop();
-      recording = false;
-      btnVoice.innerHTML = iconMic + ' Nagraj notatkę głosową';
-    }
-  }
-
-  function uploadVoiceNote(blob) {
-    setStatus('Zapisywanie…');
-    btnVoice.disabled = true;
-    const ext = (blob.type.includes('mp4') || blob.type.includes('m4a')) ? 'm4a'
-      : blob.type.includes('ogg') ? 'ogg' : 'webm';
-    const form = new FormData();
-    form.append('audio', blob, 'notatka.' + ext);
-    form.append('entity_type', btnVoice.dataset.entityType);
-    form.append('entity_id', btnVoice.dataset.entityId);
-    fetch(window.API_BASE + '/api/crm/notes/voice', { method: 'POST', body: form })
+document.querySelectorAll('.btn-transcribe-note').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const noteId = btn.dataset.noteId;
+    btn.disabled = true;
+    btn.textContent = 'Transkrybuję…';
+    fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/transcribe', { method: 'POST' })
       .then(r => r.json())
       .then(data => {
         if (data.status === 'ok') {
           location.reload();
         } else {
-          setStatus('');
-          btnVoice.disabled = false;
-          alert(data.message || 'Nie udało się zapisać notatki głosowej.');
+          btn.disabled = false;
+          btn.textContent = 'Transkrybuj';
+          alert(data.message || 'Nie udało się przetranskrybować notatki.');
         }
       })
       .catch(() => {
-        setStatus('');
-        btnVoice.disabled = false;
-        alert('Błąd sieci przy zapisie notatki głosowej.');
+        btn.disabled = false;
+        btn.textContent = 'Transkrybuj';
+        alert('Błąd sieci przy transkrypcji.');
       });
-  }
-
-  if (btnVoice) {
-    btnVoice.addEventListener('click', () => {
-      if (!recording) startRecording(); else stopRecording();
-    });
-  }
-
-  document.querySelectorAll('.btn-transcribe-note').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const noteId = btn.dataset.noteId;
-      btn.disabled = true;
-      btn.textContent = 'Transkrybuję…';
-      fetch(window.API_BASE + '/api/crm/notes/' + noteId + '/transcribe', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-          if (data.status === 'ok') {
-            location.reload();
-          } else {
-            btn.disabled = false;
-            btn.textContent = 'Transkrybuj';
-            alert(data.message || 'Nie udało się przetranskrybować notatki.');
-          }
-        })
-        .catch(() => {
-          btn.disabled = false;
-          btn.textContent = 'Transkrybuj';
-          alert('Błąd sieci przy transkrypcji.');
-        });
-    });
   });
-})();
+});
 
 function updateNoteType(sel) {
   const noteId = sel.dataset.noteId;

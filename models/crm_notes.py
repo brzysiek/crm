@@ -1,6 +1,10 @@
 from database import get_db
 
-VALID_ENTITY_TYPES = ('company', 'contact', 'deal')
+# Musi odpowiadać ENUM-owi crm_notes.entity_type w bazie. Notatki (także głosowe)
+# wiszą na encjach obu modułów — CRM i M&A — a walidacja po tej liście jest jedyną
+# bramką dla API notatek głosowych.
+VALID_ENTITY_TYPES = ('company', 'contact', 'deal',
+                      'mna_company', 'mna_contact', 'mna_deal', 'mna_offer')
 
 NOTE_TYPE_LABELS = {'phone': 'Telefon', 'meeting': 'Spotkanie', 'task': 'Zadanie', 'other': 'Inne'}
 VALID_NOTE_TYPES = tuple(NOTE_TYPE_LABELS)

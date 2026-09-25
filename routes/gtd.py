@@ -616,6 +616,7 @@ def api_create_task():
         crm_company_id=data.get('crm_company_id') or None,
         crm_deal_id=data.get('crm_deal_id') or None,
         crm_mna_offer_id=data.get('crm_mna_offer_id') or None,
+        crm_mna_deal_id=data.get('crm_mna_deal_id') or None,
     )
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
@@ -634,6 +635,8 @@ def api_projects():
         'crm_deal_name': p.get('crm_deal_name'),
         'crm_mna_offer_id': p.get('crm_mna_offer_id'),
         'crm_mna_offer_name': p.get('crm_mna_offer_name'),
+        'crm_mna_deal_id': p.get('crm_mna_deal_id'),
+        'crm_mna_deal_name': p.get('crm_mna_deal_name'),
         'context_id': p.get('context_id'),
         'context_name': p.get('context_name'),
     } for p in projects])
@@ -651,7 +654,8 @@ def api_bulk_assign_tasks():
     data = request.get_json(silent=True) or {}
     ids = data.get('ids') or []
     updates = data.get('updates') or {}
-    allowed = {'context_id', 'parent_id', 'crm_company_id', 'crm_contact_id', 'crm_deal_id', 'crm_mna_offer_id'}
+    allowed = {'context_id', 'parent_id', 'crm_company_id', 'crm_contact_id', 'crm_deal_id',
+               'crm_mna_offer_id', 'crm_mna_deal_id'}
     fields = {k: v for k, v in updates.items() if k in allowed}
     if not ids or not fields:
         return jsonify({'status': 'error', 'message': 'Brak zaznaczonych pozycji lub pól do zmiany.'}), 400

@@ -7,6 +7,11 @@ import requests
 
 TIMEOUT = 90
 
+# Nagranie jest dłuższe do przetworzenia niż faktura: kilkunastominutowy plik
+# wgrany z dyktafonu spokojnie przekracza 90 s, a timeout po stronie klienta
+# oznacza dla użytkownika utratę transkrypcji przy zapisanym już nagraniu.
+AUDIO_TIMEOUT = 300
+
 SYSTEM_PROMPT = (
     "You are an invoice data extraction assistant. "
     "Extract the following fields from the invoice PDF and return ONLY a valid JSON object "
@@ -255,7 +260,7 @@ def extract_business_card_text(text: str, api_key: str, model: str = 'gemini-2.5
 
 
 def transcribe_audio(audio_bytes: bytes, mime_type: str, api_key: str,
-                     model: str = 'gemini-2.5-flash') -> dict:
+                     model: str = 'gemini-2.5-flash', timeout: int = AUDIO_TIMEOUT) -> dict:
     """Transkrybuje nagranie głosowe (notatka CRM) na tekst po polsku.
 
     Zwraca {'text': <transkrypt>} albo {'error': <komunikat>}.
@@ -291,7 +296,7 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str, api_key: str,
             'https://generativelanguage.googleapis.com/v1beta/'
             f'models/{model}:generateContent?key={api_key}'
         )
-        resp = requests.post(url, json=payload, timeout=TIMEOUT)
+        resp = requests.post(url, json=payload, timeout=timeout)
         resp.raise_for_status()
 
         data = resp.json()

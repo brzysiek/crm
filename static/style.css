@@ -1449,6 +1449,16 @@ input[type="file"]:hover::-webkit-file-upload-button {
 }
 .voice-note-cta { text-align: center; }
 
+/* Wgranie gotowego nagrania: alternatywa dla mikrofonu, ale nie równorzędna —
+   dlatego niżej, mniejsza i bez wypełnienia. Input file jest ukryty, klikalną
+   powierzchnią jest <label>, więc musi wyglądać i zachowywać się jak przycisk. */
+.voice-note-upload {
+  display: flex; align-items: center; justify-content: center;
+  gap: .5rem; flex-wrap: wrap; margin-top: .75rem;
+}
+.voice-note-upload label { margin: 0; cursor: pointer; }
+.voice-note-upload label:has(input:disabled) { opacity: .5; cursor: default; }
+
 @media (min-width: 761px) {
   .modal-note {
     max-width: 1320px;
