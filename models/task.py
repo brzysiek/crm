@@ -163,7 +163,11 @@ def update_task(task_id: int, data: dict) -> None:
         fields['context_id'] = fields['context_id'] or None
     if 'is_important' in fields:
         fields['is_important'] = 1 if fields['is_important'] else 0
-    for key in ('planned_week', 'planned_month'):
+    # Puste daty muszą iść do bazy jako NULL. MySQL bez strict mode zapisuje '' w kolumnie
+    # DATE jako 0000-00-00, a pymysql oddaje taką wartość jako napis '0000-00-00' — wtedy
+    # każdy widok porównujący termin z dzisiejszą datą wysypywał się na TypeError.
+    for key in ('due_date', 'scheduled_date', 'scheduled_time',
+                'planned_week', 'planned_month', 'waiting_on'):
         if key in fields:
             fields[key] = fields[key] or None
     db = get_db()

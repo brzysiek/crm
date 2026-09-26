@@ -485,7 +485,7 @@ function gtdOpenTimeBlock(taskId, currentDate, currentTime, currentDuration) {
 
 function gtdSubmitTimeBlock() {
   const taskId = document.getElementById('gtdTimeBlockTaskId').value;
-  const scheduled_date = document.getElementById('gtdTimeBlockDate').value;
+  const scheduled_date = document.getElementById('gtdTimeBlockDate').value || null;
   const scheduled_time = document.getElementById('gtdTimeBlockTime').value;
   const scheduled_duration_min = parseInt(document.getElementById('gtdTimeBlockDuration').value, 10) || 30;
   fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/schedule', {
