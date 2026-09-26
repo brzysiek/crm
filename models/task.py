@@ -4,6 +4,7 @@ from database import get_db
 import models.gtd_context as gtd_context_model
 import models.crm_deal as crm_deal_model
 import models.crm_mna_offer as crm_mna_offer_model
+import models.mna_deal as mna_deal_model
 
 VALID_STATUSES = ('ideas', 'next', 'waiting', 'someday', 'done')
 
@@ -814,6 +815,31 @@ def get_context_board(context_ids: list[int] | None = None, deal_id: int | None 
     return groups
 
 
+def _group_tasks_by_link(tasks: list[dict], id_field: str, name_field: str,
+                          info_by_ids) -> tuple[list[dict], list[dict]]:
+    """Dzieli zadania na te przypięte do encji (deal CRM, oferta M&A, deal M&A) i resztę.
+
+    Zwraca (grupy posortowane po nazwie, zadania bez tej encji) — reszta idzie do
+    kolejnego wywołania, więc zadanie trafia dokładnie do jednej grupy. Grupy mają
+    wspólne klucze entity_id/entity_name, żeby szablon renderował je jednym makrem
+    niezależnie od rodzaju encji; info_by_ids dokłada dane encji (licznik zadań itd.).
+    """
+    groups: dict[int, dict] = {}
+    rest: list[dict] = []
+    for t in tasks:
+        entity_id = t.get(id_field)
+        if entity_id:
+            g = groups.setdefault(entity_id, {'entity_id': entity_id,
+                                              'entity_name': t.get(name_field), 'tasks': []})
+            g['tasks'].append(t)
+        else:
+            rest.append(t)
+    info = info_by_ids(list(groups.keys()))
+    for entity_id, g in groups.items():
+        g.update(info.get(entity_id, {}))
+    return sorted(groups.values(), key=lambda g: (g['entity_name'] or '').lower()), rest
+
+
 def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dict],
                           cfilter: dict | None) -> dict:
     """Buduje jedną sekcję widoku „Wg kontekstu”: dzieli luźne zadania na grupy wg deala
@@ -864,40 +890,19 @@ def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dic
     f_projects = [p for p in projects if cmatches(p) or any(cmatches(s) for s in p['subtasks'])]
     f_tasks = [t for t in tasks if cmatches(t)]
 
-    deal_map: dict[int, dict] = {}
-    bare_tasks = []
-    for t in f_tasks:
-        if t.get('crm_deal_id'):
-            d = deal_map.setdefault(t['crm_deal_id'],
-                                     {'deal_id': t['crm_deal_id'], 'deal_name': t.get('crm_deal_name'), 'tasks': []})
-            d['tasks'].append(t)
-        else:
-            bare_tasks.append(t)
-    deal_info = crm_deal_model.get_deals_by_ids(list(deal_map.keys()))
-    for did, d in deal_map.items():
-        d.update(deal_info.get(did, {}))
-    group_deals = sorted(deal_map.values(), key=lambda d: (d['deal_name'] or '').lower())
-
-    mna_offer_map: dict[int, dict] = {}
-    truly_bare_tasks = []
-    for t in bare_tasks:
-        if t.get('crm_mna_offer_id'):
-            o = mna_offer_map.setdefault(
-                t['crm_mna_offer_id'],
-                {'offer_id': t['crm_mna_offer_id'], 'offer_name': t.get('crm_mna_offer_name'), 'tasks': []})
-            o['tasks'].append(t)
-        else:
-            truly_bare_tasks.append(t)
-    offer_info = crm_mna_offer_model.get_mna_offers_by_ids(list(mna_offer_map.keys()))
-    for oid, o in mna_offer_map.items():
-        o.update(offer_info.get(oid, {}))
-    group_mna_offers = sorted(mna_offer_map.values(), key=lambda o: (o['offer_name'] or '').lower())
+    group_deals, rest = _group_tasks_by_link(
+        f_tasks, 'crm_deal_id', 'crm_deal_name', crm_deal_model.get_deals_by_ids)
+    group_mna_offers, rest = _group_tasks_by_link(
+        rest, 'crm_mna_offer_id', 'crm_mna_offer_name', crm_mna_offer_model.get_mna_offers_by_ids)
+    group_mna_deals, truly_bare_tasks = _group_tasks_by_link(
+        rest, 'crm_mna_deal_id', 'crm_mna_deal_name', mna_deal_model.get_mna_deals_by_ids)
 
     return {
         'context': ctx,
         'projects': f_projects,
         'deals': group_deals,
         'mna_offers': group_mna_offers,
+        'mna_deals': group_mna_deals,
         'tasks': truly_bare_tasks,
         'filter_projects': filter_projects,
         'filter_deals': filter_deals,

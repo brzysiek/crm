@@ -344,6 +344,54 @@ def reorder_targets(deal_id: int, ordered_target_ids: list[int]) -> None:
         raise
 
 
+def get_mna_deals_by_ids(ids: list[int]) -> dict[int, dict]:
+    """Deale M&A z licznikiem przypiętych zadań — odpowiednik get_deals_by_ids dla dealy CRM,
+    używany przez tablicę „Wg kontekstu”."""
+    if not ids:
+        return {}
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(ids))
+    with db.cursor() as cur:
+        cur.execute(
+            f"""SELECT d.id, d.name, d.stage,
+                      (SELECT COUNT(*) FROM tasks t WHERE t.crm_mna_deal_id = d.id AND t.deleted_at IS NULL) AS task_total,
+                      (SELECT COUNT(*) FROM tasks t WHERE t.crm_mna_deal_id = d.id AND t.deleted_at IS NULL AND t.status = 'done') AS task_done
+               FROM mna_deals d
+               WHERE d.id IN ({placeholders})""",
+            tuple(ids)
+        )
+        return {row['id']: row for row in cur.fetchall()}
+
+
+def _deals_for_crm_entity(column: str, entity_id: int) -> list[dict]:
+    """Deale M&A dotyczące firmy albo kontaktu z CRM-u.
+
+    Deal nie trzyma firmy CRM bezpośrednio — wiąże go z nią oferta, w której ta firma jest
+    przedmiotem transakcji (target) albo stroną zlecającą (source). Bez tego na karcie firmy
+    widać było tylko deale CRM, choć prawdziwy proces sprzedaży tej spółki toczył się w M&A.
+    """
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            f"""SELECT d.id, d.name, d.stage, d.amount, d.start_date, d.end_date,
+                       d.offer_id, o.name AS offer_name
+                FROM mna_deals d JOIN crm_mna_offers o ON o.id = d.offer_id
+                WHERE d.archived_at IS NULL
+                  AND (o.target_{column}=%s OR o.source_{column}=%s)
+                ORDER BY d.created_at DESC""",
+            (entity_id, entity_id)
+        )
+        return cur.fetchall()
+
+
+def get_deals_for_crm_company(company_id: int) -> list[dict]:
+    return _deals_for_crm_entity('company_id', company_id)
+
+
+def get_deals_for_crm_contact(contact_id: int) -> list[dict]:
+    return _deals_for_crm_entity('contact_id', contact_id)
+
+
 def get_deals_for_company(company_id: int) -> list[dict]:
     db = get_db()
     with db.cursor() as cur:

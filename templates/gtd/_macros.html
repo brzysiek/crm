@@ -82,49 +82,88 @@
 </tr>
 {% endmacro %}
 
+{% macro task_progress_cell(total, done) %}
+<td style="min-width:180px">
+  {% if total %}
+  <div class="progress-wrap">
+    <div class="progress-bar {{ 'prog-green' if done == total else 'prog-yellow' }}"
+         style="width:{{ (done / total * 100)|round|int }}%"></div>
+  </div>
+  <span class="text-muted" style="font-size:.78rem">{{ done }}/{{ total }} zadań</span>
+  {% else %}
+  <span class="text-muted" style="font-size:.8rem">Brak zadań</span>
+  {% endif %}
+</td>
+{% endmacro %}
+
 {% macro deal_row(d, ctx_key) %}
 <tr>
   <td>
     <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń zadania"
-            onclick="gtdBoardToggleDeal('{{ ctx_key }}_{{ d.deal_id }}')"><span id="gtdBoardDealChevron{{ ctx_key }}_{{ d.deal_id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
-    <a href="{{ url_for('crm_deals.view_deal', deal_id=d.deal_id) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ d.deal_name }}</a>
+            onclick="gtdBoardToggleDeal('{{ ctx_key }}_{{ d.entity_id }}')"><span id="gtdBoardDealChevron{{ ctx_key }}_{{ d.entity_id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
+    <a href="{{ url_for('crm_deals.view_deal', deal_id=d.entity_id) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ d.entity_name }}</a>
     {% if d.context_id %}<span class="badge" style="margin-left:.4rem;background:{{ d.context_badge_color }}40;color:{{ d.context_text_color }};border:1px solid {{ d.context_badge_color }}55">@{{ d.context_name }}</span>{% endif %}
     {% if d.contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=d.contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ d.contact_first_name }} {{ d.contact_last_name }}</a>{% endif %}
     {% if d.company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=d.company_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('building', 12) }} {{ d.company_short_name or d.company_name }}</a>{% endif %}
   </td>
-  <td style="min-width:180px">
-    {% if d.task_total %}
-    <div class="progress-wrap">
-      <div class="progress-bar {{ 'prog-green' if d.task_done == d.task_total else 'prog-yellow' }}"
-           style="width:{{ (d.task_done / d.task_total * 100)|round|int }}%"></div>
-    </div>
-    <span class="text-muted" style="font-size:.78rem">{{ d.task_done }}/{{ d.task_total }} zadań</span>
-    {% else %}
-    <span class="text-muted" style="font-size:.8rem">Brak zadań</span>
-    {% endif %}
-  </td>
+  {{ task_progress_cell(d.task_total, d.task_done) }}
 </tr>
 {% endmacro %}
 
-{% macro mna_offer_row(o, ctx_key) %}
-<tr>
-  <td>
-    <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń zadania"
-            onclick="gtdBoardToggleDeal('{{ ctx_key }}_mna_{{ o.offer_id }}')"><span id="gtdBoardDealChevron{{ ctx_key }}_mna_{{ o.offer_id }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
-    <a href="{{ url_for('mna_offers.view_mna_offer', offer_id=o.offer_id) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ o.offer_name }}</a>
-  </td>
-  <td style="min-width:180px">
-    {% if o.task_total %}
-    <div class="progress-wrap">
-      <div class="progress-bar {{ 'prog-green' if o.task_done == o.task_total else 'prog-yellow' }}"
-           style="width:{{ (o.task_done / o.task_total * 100)|round|int }}%"></div>
-    </div>
-    <span class="text-muted" style="font-size:.78rem">{{ o.task_done }}/{{ o.task_total }} zadań</span>
-    {% else %}
-    <span class="text-muted" style="font-size:.8rem">Brak zadań</span>
-    {% endif %}
-  </td>
-</tr>
+{# Sekcja tablicy „Wg kontekstu” dla encji M&A: oferty i deale różni tylko nagłówek,
+   adres encji i prefiks klucza zwijania, więc renderuje je jedno makro — druga kopia
+   tej tabeli (z rozwijaną listą zadań) rozjechałaby się przy pierwszej zmianie wiersza. #}
+{% macro mna_group_table(items, ctx_key, hdr_style, label, endpoint, id_arg, key_prefix) %}
+<div class="table-wrapper">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>{{ label }}</th>
+      <th{% if hdr_style %} style="{{ hdr_style }}"{% endif %}>Postęp</th>
+      <th class="col-actions" style="width:160px{{ ';' ~ hdr_style if hdr_style }}"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for it in items %}
+    {% set key = ctx_key ~ '_' ~ key_prefix ~ '_' ~ it.entity_id %}
+    <tr>
+      <td>
+        <button type="button" class="action-btn gtd-board-chevron-btn" style="margin-right:.3rem" title="Rozwiń/zwiń zadania"
+                onclick="gtdBoardToggleDeal('{{ key }}')"><span id="gtdBoardDealChevron{{ key }}" class="gtd-board-chevron">{{ icon('chevron-right', 14) }}</span></button>
+        <a href="{{ url_for(endpoint, **{id_arg: it.entity_id}) }}" style="font-weight:600">{{ icon('briefcase', 14) }} {{ it.entity_name }}</a>
+      </td>
+      {{ task_progress_cell(it.task_total, it.task_done) }}
+    </tr>
+    <tr id="gtdBoardDealSubtasks{{ key }}" hidden>
+      <td colspan="3" class="gtd-board-subtasks-cell">
+        <table class="data-table data-table-sm">
+          <thead>
+            <tr>
+              <th class="col-checkbox"></th>
+              <th>Zadanie</th>
+              <th>Termin</th>
+              <th class="col-actions" style="width:220px"></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for t in it.tasks %}
+          <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+            {{ task_cells(t, inline_actions=false) }}
+            <td class="col-actions nowrap">
+              {{ task_extra_actions(t) }}
+              <button type="button" class="action-btn" title="Czeka" onclick="gtdSetWaiting({{ t.id }})">{{ icon('hourglass', 16) }}</button>
+              <button type="button" class="action-btn action-danger" title="Usuń" onclick="gtdDeleteTask({{ t.id }})">{{ icon('trash', 16) }}</button>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
 {% endmacro %}
 
 {% macro task_cells(t, today=none, week_start=none, day_actions=false, inline_actions=true) %}
@@ -141,6 +180,7 @@
       {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}
       {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_deal_name }}</a>{% endif %}
       {% if t.crm_mna_offer_name %}<a href="{{ url_for('mna_offers.view_mna_offer', offer_id=t.crm_mna_offer_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_mna_offer_name }}</a>{% endif %}
+      {% if t.crm_mna_deal_name %}<a href="{{ url_for('mna_deals.view_deal', deal_id=t.crm_mna_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_mna_deal_name }}</a>{% endif %}
       {% if t.is_project %}<span class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} projekt</span>{% endif %}
       {% if t.waiting_on %}<span class="badge badge-yellow" style="margin-left:.4rem">czeka: {{ t.waiting_on }}</span>{% endif %}
       {% if inline_actions %}
@@ -269,6 +309,7 @@
           {% if t.project_title %}<a href="{{ url_for('gtd.project_detail', project_id=t.parent_id) }}" class="badge badge-purple" style="margin-left:.4rem">{{ icon('folder', 12) }} {{ t.project_title }}</a>{% endif %}
           {% if t.crm_deal_name %}<a href="{{ url_for('crm_deals.view_deal', deal_id=t.crm_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_deal_name }}</a>{% endif %}
           {% if t.crm_mna_offer_name %}<a href="{{ url_for('mna_offers.view_mna_offer', offer_id=t.crm_mna_offer_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_mna_offer_name }}</a>{% endif %}
+          {% if t.crm_mna_deal_name %}<a href="{{ url_for('mna_deals.view_deal', deal_id=t.crm_mna_deal_id) }}" class="badge badge-green" style="margin-left:.4rem">{{ icon('briefcase', 12) }} {{ t.crm_mna_deal_name }}</a>{% endif %}
           {% if t.due_date %}<span class="badge badge-gray" style="margin-left:.4rem">{{ t.due_date|ddmmyyyy }}</span>{% endif %}
           <button type="button" class="btn-ghost btn-sm" style="font-size:.85rem;padding:.1rem .3rem" title="Edytuj termin"
                   onclick="gtdOpenEditTask({{ t.id }}, '{{ t.due_date or '' }}', {{ t.parent_id or 'null' }}, {{ t.title|tojson|forceescape }}, {{ t.crm_contact_id or 'null' }}, {{ t.crm_company_id or 'null' }}, '{{ t.scheduled_date or '' }}', '{{ t.planned_week or '' }}', {{ t.crm_deal_id or 'null' }}, {{ t.crm_deal_name|tojson|forceescape if t.crm_deal_name else 'null' }}, {{ t.context_id or 'null' }}, {{ t.notes|tojson|forceescape if t.notes else 'null' }}, {{ t.crm_mna_offer_id or 'null' }}, {{ t.crm_mna_offer_name|tojson|forceescape if t.crm_mna_offer_name else 'null' }}, {{ t.crm_mna_deal_id or 'null' }}, {{ t.crm_mna_deal_name|tojson|forceescape if t.crm_mna_deal_name else 'null' }})">{{ icon('edit', 14) }}</button>

@@ -10,6 +10,8 @@ from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
 from models.gtd_context import get_all_contexts
+from models.mna_deal import (STAGE_BADGE_CLASSES as MNA_STAGE_BADGE_CLASSES,
+                             STAGE_LABELS as MNA_STAGE_LABELS, get_deals_for_crm_company)
 from models.user import get_active_users
 from models.user_settings import get_user_setting, set_user_setting
 from routes.crm_contacts import build_gtd_items
@@ -335,6 +337,8 @@ def view_company(company_id):
         referred_companies=referred_companies,
         contacts=contacts,
         deals=deals, stage_labels=STAGE_LABELS,
+        mna_deals=get_deals_for_crm_company(company_id), mna_stage_labels=MNA_STAGE_LABELS,
+        mna_stage_badge_classes=MNA_STAGE_BADGE_CLASSES,
         stage_badge_classes=STAGE_BADGE_CLASSES,
         notes=notes,
         history=history,

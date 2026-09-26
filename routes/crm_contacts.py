@@ -18,6 +18,8 @@ from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, 
                                 get_history_multi, get_notes_multi)
 from models.crm_tags import get_contact_email_tags, get_contact_tags, set_contact_email_tags
 from models.gtd_context import get_all_contexts
+from models.mna_deal import (STAGE_BADGE_CLASSES as MNA_STAGE_BADGE_CLASSES,
+                             STAGE_LABELS as MNA_STAGE_LABELS, get_deals_for_crm_contact)
 from models.settings import get_setting
 from models.user import get_user_by_id
 from models.user_settings import get_user_setting, set_user_setting
@@ -342,6 +344,8 @@ def view_contact(contact_id):
         email_tags=get_contact_email_tags(contact_id), relation_labels=RELATION_LABELS,
         contact_lists=get_contact_lists(contact_id),
         deals=deals, stage_labels=STAGE_LABELS,
+        mna_deals=get_deals_for_crm_contact(contact_id), mna_stage_labels=MNA_STAGE_LABELS,
+        mna_stage_badge_classes=MNA_STAGE_BADGE_CLASSES,
         referred_companies=referred_companies,
         stage_badge_classes=STAGE_BADGE_CLASSES,
         notes=notes,

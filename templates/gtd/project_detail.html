@@ -52,6 +52,8 @@
         <dd>{% if project.crm_deal_id %}<a href="{{ url_for('crm_deals.view_deal', deal_id=project.crm_deal_id) }}">{{ project.crm_deal_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Oferta M&A</dt>
         <dd>{% if project.crm_mna_offer_id %}<a href="{{ url_for('mna_offers.view_mna_offer', offer_id=project.crm_mna_offer_id) }}">{{ project.crm_mna_offer_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Deal M&A</dt>
+        <dd>{% if project.crm_mna_deal_id %}<a href="{{ url_for('mna_deals.view_deal', deal_id=project.crm_mna_deal_id) }}">{{ project.crm_mna_deal_name }}</a>{% else %}—{% endif %}</dd>
         <dt>Czeka na</dt>
         <dd>{{ project.waiting_on or '—' }}</dd>
         <dt>Termin</dt>

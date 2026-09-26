@@ -184,6 +184,34 @@
       </div>
     </div>
 
+    {# Deale M&A pokazujemy tylko wtedy, gdy jakiś istnieje — z encją CRM wiąże je oferta
+       (firma/kontakt jest w niej stroną transakcji albo zlecającym), więc dla większości
+       rekordów sekcja byłaby pustym nagłówkiem. #}
+    {% if mna_deals %}
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Deale M&A</h4>
+      </div>
+      <div style="padding:.85rem">
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Nazwa</th><th>Etap</th><th class="text-right">Kwota</th><th>Oferta</th></tr></thead>
+            <tbody>
+              {% for d in mna_deals %}
+              <tr>
+                <td><a href="{{ url_for('mna_deals.view_deal', deal_id=d.id) }}">{{ d.name }}</a></td>
+                <td><span class="badge {{ mna_stage_badge_classes[d.stage] }}">{{ mna_stage_labels[d.stage] }}</span></td>
+                <td class="text-right">{{ d.amount|pln if d.amount is not none else '—' }}</td>
+                <td><a href="{{ url_for('mna_offers.view_mna_offer', offer_id=d.offer_id) }}">{{ d.offer_name }}</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="inv-section" style="margin-top:1rem">
       <div class="inv-section-header">
         <h4>Otrzymane polecenia</h4>
