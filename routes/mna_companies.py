@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
-                                get_history, get_notes)
+                                get_history, get_notes_multi)
 from models.mna_company import (create_mna_company, delete_mna_company, get_all_mna_companies,
                                   get_mna_company_by_id, search_mna_companies, set_starred,
                                   update_mna_company)
@@ -111,9 +111,20 @@ def view_company(company_id):
     contacts = get_all_mna_contacts(company_id=company_id)
     deal_targets = get_deals_for_company(company_id)
 
-    notes = get_notes('mna_company', company_id)
+    # Notatki firmy razem z notatkami jej osób — rozmowa z osobą z firmy jest wiedzą o firmie,
+    # a szukanie jej po kartach poszczególnych kontaktów gubiło kontekst. Etykieta mówi, kogo dotyczy.
+    contacts_by_id = {c['id']: c for c in contacts}
+    notes = get_notes_multi([('mna_company', company_id)]
+                            + [('mna_contact', c['id']) for c in contacts])
     for n in notes:
-        n['delete_url'] = url_for('mna_companies.delete_note_view', company_id=company_id, note_id=n['id'])
+        if n['entity_type'] == 'mna_company':
+            n['source_label'] = 'Notatka firmy'
+            n['delete_url'] = url_for('mna_companies.delete_note_view', company_id=company_id, note_id=n['id'])
+        else:
+            contact = contacts_by_id.get(n['entity_id'])
+            contact_name = f"{contact['first_name']} {contact['last_name']}".strip() if contact else ''
+            n['source_label'] = f'Notatka kontaktu: {contact_name}' if contact_name else 'Notatka kontaktu'
+            n['delete_url'] = url_for('mna_contacts.delete_note_view', contact_id=n['entity_id'], note_id=n['id'])
     history = get_history('mna_company', company_id)
 
     street_line = ' '.join(filter(None, [company.get('street'), company.get('house_number')]))
