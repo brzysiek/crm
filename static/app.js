@@ -81,6 +81,19 @@ function initFilterBarCollapse() {
 }
 document.addEventListener('DOMContentLoaded', initFilterBarCollapse);
 
+/* ── Sekcje zwijane (.inv-collapsible) — klik w nagłówek zwija/rozwija treść.
+   Przyciski i linki w nagłówku (np. „Otwórz pełny widok") mają działać po swojemu,
+   więc klik w nie nie przełącza sekcji. ── */
+function initCollapsibleSections() {
+  document.querySelectorAll('.inv-collapsible > .inv-section-header').forEach(header => {
+    header.addEventListener('click', e => {
+      if (e.target.closest('a, button, input, select, label')) return;
+      header.parentElement.classList.toggle('is-collapsed');
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', initCollapsibleSections);
+
 /* ── VAT calculator ──────────────────────────────────────────────────────────── */
 function calcNet() {
   const grossEl = document.getElementById('amount_gross');

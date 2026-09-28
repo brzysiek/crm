@@ -64,9 +64,11 @@
 
   <div>
 
-    <div class="inv-section">
-      <h4>Opis</h4>
-      <div style="padding:.85rem">
+    <div class="inv-section inv-collapsible is-collapsed">
+      <div class="inv-section-header">
+        <h4>Opis</h4>
+      </div>
+      <div class="inv-section-body" style="padding:.85rem">
         <p class="{{ 'text-muted small' if not offer.description }}" style="white-space:pre-wrap; margin:0">{{ offer.description or 'Brak opisu.' }}</p>
       </div>
     </div>

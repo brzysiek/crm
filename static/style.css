@@ -1534,6 +1534,25 @@ input[type="file"]:hover::-webkit-file-upload-button {
   padding: 0;
 }
 
+/* Sekcja zwijana — nagłówek działa jak przełącznik. Używane tam, gdzie treść sekcji jest
+   długa i rzadko potrzebna od razu (opis, long/short lista na karcie deala M&A). Stan
+   startowy ustawia szablon klasą is-collapsed, żeby nic nie migało po załadowaniu. */
+.inv-collapsible > .inv-section-header { cursor: pointer; }
+.inv-collapsible > .inv-section-header h4 { margin-right: auto; }
+.inv-collapsible > .inv-section-header::after {
+  content: '';
+  width: 7px; height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: #fff;
+  flex-shrink: 0;
+  margin-left: .35rem;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .15s ease;
+}
+.inv-collapsible.is-collapsed > .inv-section-header::after { transform: translateY(1px) rotate(-45deg); }
+.inv-collapsible.is-collapsed > .inv-section-body { display: none; }
+
 .inv-dl {
   display: grid;
   grid-template-columns: max-content 1fr;

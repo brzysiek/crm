@@ -44,9 +44,11 @@
       </dl>
     </div>
 
-    <div class="inv-section" style="margin-top:1rem">
-      <h4>Opis</h4>
-      <div style="padding:.85rem">
+    <div class="inv-section inv-collapsible is-collapsed" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Opis</h4>
+      </div>
+      <div class="inv-section-body" style="padding:.85rem">
         <p class="{{ 'text-muted small' if not deal.description }}" style="white-space:pre-wrap; margin:0">{{ deal.description or 'Brak opisu.' }}</p>
       </div>
     </div>
@@ -128,15 +130,16 @@
       </div>
     </div>
 
-    {% for list_key, list_items in [('long_list', long_list), ('short_list', short_list)] %}
-    <div class="inv-section" style="margin-top:1rem">
+    {# Short lista najpierw — to na niej toczy się praca, long lista jest zapleczem. #}
+    {% for list_key, list_items in [('short_list', short_list), ('long_list', long_list)] %}
+    <div class="inv-section inv-collapsible is-collapsed" style="margin-top:1rem">
       <div class="inv-section-header">
         <h4>{{ list_type_labels[list_key] }} ({{ list_items|length }})</h4>
         <a href="{{ url_for('mna_deals.deal_targets', deal_id=deal.id, list=list_key) }}" class="btn btn-outline btn-sm">
           Otwórz pełny widok {{ icon('arrow-right', 14) }}
         </a>
       </div>
-      <div style="padding:.85rem">
+      <div class="inv-section-body" style="padding:.85rem">
         {% if list_items %}
         <div class="table-wrapper">
           <table class="data-table data-table-sm">
