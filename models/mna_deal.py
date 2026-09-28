@@ -196,7 +196,10 @@ def get_targets_for_deal(deal_id: int, list_type: str = None) -> list[dict]:
     if list_type:
         sql += " AND dt.list_type = %s"
         params.append(list_type)
-    sql += " ORDER BY dt.is_valuable DESC, dt.sort_order ASC, dt.id ASC"
+    # Scoring malejąco (puste na końcu) — na karcie deala liczy się to, kto rokuje najlepiej,
+    # a nie kolejność dodawania; sort_order zostaje jako rozstrzygnięcie przy równym scoringu.
+    sql += (" ORDER BY dt.is_valuable DESC, (dt.score IS NULL), dt.score DESC,"
+            " dt.sort_order ASC, dt.id ASC")
     with db.cursor() as cur:
         cur.execute(sql, params)
         return cur.fetchall()

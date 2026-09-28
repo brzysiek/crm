@@ -31,6 +31,32 @@ class OrderByTest(unittest.TestCase):
         self.assertNotIn("IS NULL)", mna_deal._targets_order_by("name", "asc"))
 
 
+class DealCardOrderTest(unittest.TestCase):
+    """Long i short lista na karcie deala — scoring malejąco, puste na końcu."""
+
+    def setUp(self):
+        self.cur = mock.MagicMock()
+        self.cur.fetchall.return_value = []
+        db = mock.MagicMock()
+        db.cursor.return_value.__enter__.return_value = self.cur
+        patch = mock.patch.object(mna_deal, 'get_db', return_value=db)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def _sql(self, list_type):
+        mna_deal.get_targets_for_deal(3, list_type)
+        return self.cur.execute.call_args[0][0]
+
+    def test_both_lists_sorted_by_score_desc(self):
+        for list_type in ('long_list', 'short_list'):
+            sql = self._sql(list_type)
+            self.assertIn("(dt.score IS NULL), dt.score DESC", sql, list_type)
+            self.assertLess(sql.index("dt.score DESC"), sql.index("dt.sort_order"), list_type)
+
+    def test_valuable_still_first(self):
+        self.assertIn("ORDER BY dt.is_valuable DESC, (dt.score IS NULL)", self._sql('long_list'))
+
+
 class TargetsQueryTest(unittest.TestCase):
     """Zapytanie o pozycje listy — filtr osób i doklejanie osób kontaktowych."""
 
