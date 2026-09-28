@@ -22,8 +22,6 @@
   <a href="{{ url_for('mna_offers.list_for_sale' if offer_type == 'for_sale' else 'mna_offers.list_wanted') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
 
-<a href="{{ new_url }}" class="rd-fab" title="Dodaj ofertę">+</a>
-
 {% if offers %}
 <div class="table-wrapper">
   <table class="data-table">
@@ -69,6 +67,29 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div class="rd-card-list">
+  {% for o in offers %}
+  <div class="rd-card">
+    <a href="{{ url_for('mna_offers.view_mna_offer', offer_id=o.id) }}" class="rd-card-link" aria-label="{{ o.name }}"></a>
+    <div class="rd-card-top">
+      <span class="rd-card-name">{{ o.name }}</span>
+      {% if o.ref_number %}<span class="badge badge-gray nowrap">{{ o.ref_number }}</span>{% endif %}
+    </div>
+    <div class="rd-card-meta">
+      {{ o.industry or '—' }}
+      {% if o.revenue is not none %} · obroty <strong style="color:var(--rd-bottle-green)">{{ o.revenue|pln }}</strong>{% endif %}
+      {% if o.ebitda is not none %} · EBITDA {{ o.ebitda|pln }}{% endif %}
+    </div>
+    <div class="rd-card-chips">
+      {% if o.target_company_id %}<span class="badge badge-green">{{ o.target_company_short_name or o.target_company_name }}</span>
+      {% elif o.target_contact_id %}<span class="badge badge-green">{{ o.target_contact_first_name }} {{ o.target_contact_last_name }}</span>{% endif %}
+      {% if o.source_company_id %}<span class="badge badge-gray">źródło: {{ o.source_company_short_name or o.source_company_name }}</span>
+      {% elif o.source_contact_id %}<span class="badge badge-gray">źródło: {{ o.source_contact_first_name }} {{ o.source_contact_last_name }}</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <p class="text-muted">Brak ofert. {% if filters.search %}Spróbuj innego wyszukiwania.{% else %}Dodaj pierwszą ofertę M&A.{% endif %}</p>

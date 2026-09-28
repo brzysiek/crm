@@ -335,7 +335,6 @@ html.sidebar-collapsed .sidebar-user-name { display: none; }
 }
 .sidebar-mobile-close:hover { background: rgba(245,245,243,.08); }
 .mobile-menu-backdrop { display: none; }
-button.mobile-tabbar-item { background: none; border: none; font-family: inherit; }
 @media (max-width: 880px) {
   .sidebar-mobile-close { display: flex; }
   html.mobile-menu-open .sidebar {
@@ -424,37 +423,6 @@ button.mobile-tabbar-item { background: none; border: none; font-family: inherit
 
 @media (max-width: 880px) {
   .mobile-topbar { display: flex; }
-}
-
-/* ── Mobile bottom tab bar ───────────────────────────────────────────────────── */
-.mobile-tabbar {
-  display: none;
-  width: 100%;
-  background: #FFFFFF;
-  border-top: 1px solid var(--rd-border);
-  align-items: stretch;
-  box-sizing: border-box;
-  font-family: var(--rd-font);
-  flex-shrink: 0;
-  padding-bottom: 6px;
-  position: sticky;
-  bottom: 0;
-  z-index: 90;
-}
-.mobile-tabbar-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 4px 0; text-decoration: none; font-size: 10.5px; font-weight: 500;
-  color: #9C9C97;
-}
-.mobile-tabbar-item svg { stroke: #9C9C97; }
-.mobile-tabbar-item.active { font-weight: 600; color: var(--rd-bottle-green); background: var(--rd-lime-tint-bg); }
-.mobile-tabbar-item.active svg { stroke: var(--rd-bottle-green); }
-.mobile-tabbar-item.tapped { font-weight: 600; color: #F5F5F3; background: var(--rd-bottle-green); }
-.mobile-tabbar-item.tapped svg { stroke: #F5F5F3; }
-.mobile-tabbar-item:hover { text-decoration: none; }
-
-@media (max-width: 880px) {
-  .mobile-tabbar { display: flex; }
 }
 
 /* ── Page wrapper ───────────────────────────────────────────────────────────── */
@@ -2988,25 +2956,32 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 /* Empty state */
 .rd-screen .empty-state { font-family: var(--rd-font); color: var(--rd-text-muted); }
 
-/* Mobile floating add button */
-.rd-fab {
+/* Mobile: okrągły hamburger w lewym dolnym rogu — jedyne wejście do menu na telefonie.
+   Zastąpił dolny pasek zakładek (zabierał stałą wysokość i nie trzymał się krawędzi)
+   oraz przyciski „+” rozsiane po listach — dodawanie zostało tam, gdzie jest na desktopie:
+   w nagłówku strony. */
+.rd-menu-fab {
   display: none;
   position: fixed;
-  right: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  left: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
   width: 52px; height: 52px;
+  border: none;
+  padding: 0;
   border-radius: 50%;
   background: var(--rd-lime);
   color: var(--rd-deep-green);
-  font-size: 26px;
-  font-weight: 600;
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 20px rgba(13,40,32,.28);
   z-index: 95;
-  text-decoration: none !important;
-  line-height: 1;
+  cursor: pointer;
 }
-.rd-fab:hover { color: var(--rd-deep-green); text-decoration: none; }
+.rd-menu-fab svg { stroke: var(--rd-deep-green); }
+html.mobile-menu-open .rd-menu-fab { display: none; }
+
+@media (max-width: 880px) {
+  .rd-menu-fab { display: flex; }
+}
 
 /* Mobile card list (shown <=880px in place of the data table) */
 .rd-card-list { display: none; flex-direction: column; gap: 10px; }
@@ -3031,11 +3006,13 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .rd-card-actions { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rd-border-light); display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 
 @media (max-width: 880px) {
-  .rd-screen { margin: calc(var(--space-lg) * -1) -3% -3rem; padding: var(--space-lg) 3% 5.5rem; }
-  .rd-screen .table-wrapper { display: none; }
-  .rd-screen .table-count { display: none; }
+  .rd-screen { margin: calc(var(--space-lg) * -1) -3% -3rem; padding: var(--space-lg) 3% 5rem; }
+  /* Tabelę zastępujemy kartami tylko na stronach, które te karty mają. Wcześniej reguła
+     ukrywała każdą tabelę w .rd-screen — widoki bez kart (oferty i deale M&A) świeciły na
+     telefonie pustką. Bez kart tabela zostaje i przewija się w bok. */
+  .rd-screen:has(.rd-card-list) .table-wrapper { display: none; }
+  .rd-screen:has(.rd-card-list) .table-count { display: none; }
   .rd-card-list { display: flex; }
-  .rd-fab { display: flex; bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
   .rd-screen .page-header { gap: .5rem; }
   .rd-screen .filter-bar { flex-direction: column; align-items: stretch; }
   .rd-screen .filter-bar .filter-input,
@@ -3051,19 +3028,11 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
   .rd-firmy .bulk-select-bar { display: none; }
 }
 
-/* ── Redesign: sekcje szczegółów (Kontakty/Deale/Zadania na karcie firmy, kontaktu, deala) —
-   tabele w .inv-section nie mają odpowiednika w postaci kart, więc pozostają widoczne
-   (z przewijaniem w bok) zamiast się ukrywać ── */
-@media (max-width: 880px) {
-  .inv-section .table-wrapper { display: block; }
-}
-
 /* ── Redesign: Zadania — wszystkie widoki GTD (mobile) — tabele (zaległe, priorytety,
-   bez godziny/dnia itp.) nie mają odpowiednika w postaci kart, więc pozostają widoczne
-   zamiast się ukrywać ── */
+   bez godziny/dnia itp.) nie mają kart, więc zostają tabelami, ale renderują się jako
+   składane wiersze zamiast przewijania w bok ── */
 @media (max-width: 880px) {
-  .rd-zadania .table-wrapper { display: block; background: transparent; border: none; border-radius: 0; }
-  .rd-zadania .table-count { display: block; }
+  .rd-zadania .table-wrapper { background: transparent; border: none; border-radius: 0; }
 
   /* Tabele jako skladane karty zamiast przewijania w bok */
   .rd-zadania .data-table,

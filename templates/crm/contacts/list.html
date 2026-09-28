@@ -57,9 +57,6 @@
   {% endif %}
 </form>
 
-<a href="{{ url_for('crm_contacts.new_contact', list_id=contact_list.id if contact_list else none) }}"
-   class="rd-fab" title="Dodaj kontakt">+</a>
-
 {% if contacts %}
 <div class="bulk-select-bar">
   <div class="bulk-select-bar-left">

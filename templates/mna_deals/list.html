@@ -25,8 +25,6 @@
   <a href="{{ url_for('mna_deals.list_deals') }}" class="btn btn-ghost">Wyczyść</a>
 </form>
 
-<a href="{{ url_for('mna_deals.new_deal') }}" class="rd-fab" title="Nowy deal">+</a>
-
 {% if deals %}
 <div class="table-wrapper">
   <table class="data-table">
@@ -61,6 +59,27 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div class="rd-card-list">
+  {% for d in deals %}
+  <div class="rd-card">
+    <a href="{{ url_for('mna_deals.view_deal', deal_id=d.id) }}" class="rd-card-link" aria-label="{{ d.name }}"></a>
+    <div class="rd-card-top">
+      <span class="rd-card-name">{{ d.name }}</span>
+      <span class="badge {{ stage_badge_classes[d.stage] }}">{{ stage_labels[d.stage] }}</span>
+    </div>
+    <div class="rd-card-meta">
+      {% if d.amount is not none %}<strong style="color:var(--rd-bottle-green)">{{ d.amount|pln }}</strong> · {% endif %}
+      long {{ d.long_list_count }} · short {{ d.short_list_count }}
+    </div>
+    {% if d.offer_id %}
+    <div class="rd-card-chips">
+      <span class="badge badge-gray">{{ d.offer_name }}</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <p class="text-muted">Brak deali. {% if filters.search or filters.stage %}Spróbuj innego wyszukiwania.{% else %}Dodaj pierwszy deal M&A.{% endif %}</p>
