@@ -11,6 +11,7 @@ from models.crm_mna_offer import (FIELD_LABELS, OFFER_TYPE_BADGE_CLASSES, OFFER_
                                    next_mna_offer_ref, permanently_delete_mna_offer, restore_mna_offer,
                                    update_mna_offer)
 from models.crm_notes import HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note, get_history, get_notes
+from models.mna_deal import STAGE_BADGE_CLASSES, STAGE_LABELS, get_deals_for_offer
 from models.user import get_active_users
 from routes.crm_contacts import build_gtd_items
 
@@ -170,6 +171,8 @@ def view_mna_offer(offer_id):
     return render_template('mna_offers/detail.html',
         active_tab='mna_offers', offer=offer,
         offer_type_labels=OFFER_TYPE_LABELS, offer_type_badge_classes=OFFER_TYPE_BADGE_CLASSES,
+        deals=get_deals_for_offer(offer_id),
+        stage_labels=STAGE_LABELS, stage_badge_classes=STAGE_BADGE_CLASSES,
         notes=notes,
         history=get_history('mna_offer', offer_id),
         add_note_url=url_for('mna_offers.add_note_view', offer_id=offer_id),

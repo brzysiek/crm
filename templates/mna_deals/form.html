@@ -59,6 +59,23 @@
     </div>
   </div>
 
+  {# Wejście z karty oferty: zadania i pliki oferty domyślnie idą na deal — od jego powstania
+     to na nim toczy się praca. Odznaczenie zostawia je przy ofercie. #}
+  {% if offer_links and (offer_links.tasks or offer_links.files) %}
+  <div class="form-group">
+    <label class="checkbox-label">
+      <input type="checkbox" name="move_links" value="1" {{ 'checked' if not offer_links.other_deals }}>
+      Przenieś z oferty zadania ({{ offer_links.tasks }}) i pliki ({{ offer_links.files }}) na ten deal
+    </label>
+    {% if offer_links.other_deals %}
+    <p class="text-muted small" style="margin:.35rem 0 0">
+      Ta oferta prowadzi już inne deale ({{ offer_links.other_deals }}) —
+      przeniesienie zabrałoby powiązania tamtym procesom, więc domyślnie jest wyłączone.
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Zapisz deal</button>
     <a href="{{ url_for('mna_deals.list_deals') }}" class="btn btn-outline">Anuluj</a>

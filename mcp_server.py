@@ -1240,6 +1240,49 @@ def create_mna_deal(
 
 
 @mcp.tool()
+def convert_mna_offer_to_deal(
+    offer_id: int,
+    name: str | None = None,
+    stage: str | None = None,
+    amount: float | None = None,
+    description: str | None = None,
+    move_links: bool = True,
+) -> dict:
+    """Zakłada deal M&A na podstawie oferty i przepina na niego jej powiązania.
+
+    Deal dostaje z oferty nazwę i opis (można je nadpisać) oraz powiązanie offer_id — branża,
+    obroty, EBITDA i target zostają na ofercie i są czytane przez to powiązanie, żeby nie
+    utrzymywać dwóch rozjeżdżających się kopii tych samych danych.
+
+    move_links=True (domyślnie) przenosi zadania GTD i pliki z oferty na nowy deal; ustaw
+    False, gdy z tej oferty prowadzisz kilka procesów i powiązania mają zostać przy ofercie.
+    Zwraca deal oraz liczbę przeniesionych zadań i plików."""
+    with flask_app.app_context():
+        result = mna_deal.convert_offer_to_deal(
+            offer_id, _mcp_user_id(),
+            overrides={"name": name, "stage": stage, "amount": amount, "description": description},
+            move_links=move_links,
+        )
+        return {**result["deal"], "moved": result["moved"]}
+
+
+@mcp.tool()
+def move_mna_offer_links_to_deal(deal_id: int) -> dict:
+    """Przepina zadania GTD i pliki z oferty na powiązany z nią deal M&A.
+
+    Dla deali założonych zanim istniała konwersja: powiązania zostały przy ofercie, a praca
+    toczy się na dealu. Rusza tylko to, co nie ma jeszcze innego deala. Zwraca liczby
+    przeniesionych zadań i plików."""
+    with flask_app.app_context():
+        deal = mna_deal.get_mna_deal_by_id(deal_id)
+        if not deal:
+            raise ValueError(f"Nie znaleziono deala M&A o id={deal_id}.")
+        if not deal.get("offer_id"):
+            raise ValueError(f"Deal M&A {deal_id} nie jest powiązany z żadną ofertą.")
+        return mna_deal.move_offer_links_to_deal(deal["offer_id"], deal_id, _mcp_user_id())
+
+
+@mcp.tool()
 def update_mna_deal(
     deal_id: int,
     name: str | None = None,

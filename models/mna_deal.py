@@ -366,6 +366,98 @@ def get_mna_deals_by_ids(ids: list[int]) -> dict[int, dict]:
         return {row['id']: row for row in cur.fetchall()}
 
 
+def get_deals_for_offer(offer_id: int) -> list[dict]:
+    """Deale prowadzone na podstawie tej oferty — jedna oferta może mieć ich kilka
+    (np. osobny proces z każdym poważnym kupującym)."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT d.id, d.name, d.stage, d.amount, d.start_date, d.end_date,
+                      (SELECT COUNT(*) FROM mna_deal_targets dt
+                        WHERE dt.deal_id = d.id AND dt.list_type = 'long_list') AS long_list_count,
+                      (SELECT COUNT(*) FROM mna_deal_targets dt
+                        WHERE dt.deal_id = d.id AND dt.list_type = 'short_list') AS short_list_count
+               FROM mna_deals d
+               WHERE d.offer_id = %s AND d.archived_at IS NULL
+               ORDER BY d.created_at DESC""",
+            (offer_id,)
+        )
+        return cur.fetchall()
+
+
+def count_offer_links(offer_id: int) -> dict:
+    """Ile zadań i plików wisi jeszcze przy ofercie — potrzebne, żeby przy tworzeniu deala
+    powiedzieć wprost, co zostanie przeniesione."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS c FROM tasks WHERE crm_mna_offer_id = %s AND deleted_at IS NULL",
+                    (offer_id,))
+        tasks = cur.fetchone()['c']
+        cur.execute("SELECT COUNT(*) AS c FROM crm_files WHERE mna_offer_id = %s", (offer_id,))
+        files = cur.fetchone()['c']
+    return {'tasks': tasks, 'files': files}
+
+
+def move_offer_links_to_deal(offer_id: int, deal_id: int, user_id: int | None = None) -> dict:
+    """Przepina zadania GTD i pliki z oferty na deal.
+
+    Od momentu powstania deala to on jest miejscem, w którym toczy się praca, więc zadanie
+    „zadzwoń do zarządu” ma wisieć przy dealu, nie przy ofercie. Nic się nie gubi: deal trzyma
+    offer_id, więc droga z powrotem do oferty jest zawsze jedna, przez kartę deala.
+    Przepinamy tylko to, co nie ma jeszcze innego deala — cudzych powiązań nie ruszamy.
+    """
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE tasks SET crm_mna_deal_id = %s, crm_mna_offer_id = NULL"
+                " WHERE crm_mna_offer_id = %s AND crm_mna_deal_id IS NULL",
+                (deal_id, offer_id)
+            )
+            moved_tasks = cur.rowcount
+            cur.execute(
+                "UPDATE crm_files SET mna_deal_id = %s, mna_offer_id = NULL"
+                " WHERE mna_offer_id = %s AND mna_deal_id IS NULL",
+                (deal_id, offer_id)
+            )
+            moved_files = cur.rowcount
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if moved_tasks or moved_files:
+        log_history('mna_deal', deal_id, user_id, 'update',
+                    f"Przeniesiono z oferty: zadania ({moved_tasks}), pliki ({moved_files}).")
+        log_history('mna_offer', offer_id, user_id, 'update',
+                    f"Przeniesiono na deal #{deal_id}: zadania ({moved_tasks}), pliki ({moved_files}).")
+    return {'tasks': moved_tasks, 'files': moved_files}
+
+
+def convert_offer_to_deal(offer_id: int, user_id: int | None, overrides: dict | None = None,
+                          move_links: bool = True) -> dict:
+    """Tworzy deal na podstawie oferty M&A.
+
+    Deal dostaje z oferty tylko to, co naprawdę jest jego własne — nazwę i opis. Branża,
+    obroty, EBITDA czy target zostają na ofercie i deal czyta je przez offer_id; skopiowane
+    rozjechałyby się przy pierwszej korekcie oferty.
+    """
+    from models.crm_mna_offer import get_mna_offer_by_id
+
+    offer = get_mna_offer_by_id(offer_id)
+    if not offer:
+        raise ValueError(f"Nie znaleziono oferty M&A o id={offer_id}.")
+
+    data = {'name': offer['name'], 'description': offer.get('description'),
+            'offer_id': offer_id, 'stage': 'long_list'}
+    data.update({k: v for k, v in (overrides or {}).items() if v is not None})
+    deal_id = create_mna_deal(data, user_id)
+    log_history('mna_offer', offer_id, user_id, 'update',
+                f"Utworzono deal „{data['name']}” (#{deal_id}) z tej oferty.")
+
+    moved = move_offer_links_to_deal(offer_id, deal_id, user_id) if move_links else {'tasks': 0, 'files': 0}
+    return {'deal': get_mna_deal_by_id(deal_id), 'moved': moved}
+
+
 def _deals_for_crm_entity(column: str, entity_id: int) -> list[dict]:
     """Deale M&A dotyczące firmy albo kontaktu z CRM-u.
 

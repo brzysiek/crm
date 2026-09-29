@@ -44,6 +44,47 @@
       </dl>
     </div>
 
+    {# Dane przedmiotu transakcji czytane z powiązanej oferty — deal ich nie kopiuje,
+       więc korekta na ofercie od razu widać tutaj. #}
+    {% if offer %}
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Z oferty</h4>
+        <a href="{{ url_for('mna_offers.view_mna_offer', offer_id=offer.id) }}" class="btn btn-outline btn-sm">
+          Otwórz ofertę {{ icon('arrow-right', 14) }}
+        </a>
+      </div>
+      {% if offer_links and (offer_links.tasks or offer_links.files) %}
+      <div style="padding:.85rem .85rem 0">
+        <p class="text-muted small" style="margin:0 0 .4rem">
+          Przy ofercie wiszą jeszcze zadania ({{ offer_links.tasks }}) i pliki ({{ offer_links.files }}).
+        </p>
+        <form method="post" action="{{ url_for('mna_deals.move_offer_links_view', deal_id=deal.id) }}" class="inline-form">
+          <button type="submit" class="btn btn-outline btn-sm">Przenieś je na ten deal</button>
+        </form>
+      </div>
+      {% endif %}
+      <dl class="inv-dl">
+        <dt>Oferta</dt>
+        <dd><a href="{{ url_for('mna_offers.view_mna_offer', offer_id=offer.id) }}">{{ offer.name }}</a>{% if offer.ref_number %} <span class="text-muted">({{ offer.ref_number }})</span>{% endif %}</dd>
+        <dt>Branża</dt>
+        <dd>{{ offer.industry or '—' }}</dd>
+        <dt>Obroty</dt>
+        <dd>{{ offer.revenue|pln if offer.revenue is not none else '—' }}</dd>
+        <dt>EBITDA</dt>
+        <dd>{{ offer.ebitda|pln if offer.ebitda is not none else '—' }}</dd>
+        <dt>Firma (target)</dt>
+        <dd>{% if offer.target_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=offer.target_company_id) }}">{{ offer.target_company_short_name or offer.target_company_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Kontakt (target)</dt>
+        <dd>{% if offer.target_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=offer.target_contact_id) }}">{{ offer.target_contact_first_name }} {{ offer.target_contact_last_name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Źródło</dt>
+        <dd>{% if offer.source_company_id %}<a href="{{ url_for('crm_companies.view_company', company_id=offer.source_company_id) }}">{{ offer.source_company_short_name or offer.source_company_name }}</a>
+            {% elif offer.source_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=offer.source_contact_id) }}">{{ offer.source_contact_first_name }} {{ offer.source_contact_last_name }}</a>
+            {% else %}—{% endif %}</dd>
+      </dl>
+    </div>
+    {% endif %}
+
     <div class="inv-section inv-collapsible is-collapsed" style="margin-top:1rem">
       <div class="inv-section-header">
         <h4>Opis</h4>

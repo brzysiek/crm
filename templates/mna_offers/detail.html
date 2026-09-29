@@ -23,6 +23,7 @@
       <button type="submit" class="btn btn-outline">{{ icon('trash', 14) }} Usuń na zawsze</button>
     </form>
     {% else %}
+    <a href="{{ url_for('mna_deals.new_deal', offer_id=offer.id) }}" class="btn btn-primary">{{ icon('briefcase', 14) }} Utwórz deal z tej oferty</a>
     <a href="{{ url_for('mna_offers.edit_mna_offer', offer_id=offer.id) }}" class="btn btn-outline">{{ icon('edit', 14) }} Edytuj</a>
     <form method="post" action="{{ url_for('mna_offers.delete_mna_offer_view', offer_id=offer.id) }}"
           class="inline-form" onsubmit="return confirm('Zarchiwizować tę ofertę M&A?')">
@@ -70,6 +71,39 @@
       </div>
       <div class="inv-section-body" style="padding:.85rem">
         <p class="{{ 'text-muted small' if not offer.description }}" style="white-space:pre-wrap; margin:0">{{ offer.description or 'Brak opisu.' }}</p>
+      </div>
+    </div>
+
+    {# Deale prowadzone z tej oferty — oferta opisuje przedmiot, deal prowadzi proces,
+       więc z jednej oferty może ich wyjść kilka (osobny proces z każdym kupującym). #}
+    <div class="inv-section" style="margin-top:1rem">
+      <div class="inv-section-header">
+        <h4>Deale z tej oferty ({{ deals|length }})</h4>
+        {% if not offer.deleted_at %}
+        <a href="{{ url_for('mna_deals.new_deal', offer_id=offer.id) }}" class="btn btn-outline btn-sm">+ Nowy deal</a>
+        {% endif %}
+      </div>
+      <div style="padding:.85rem">
+        {% if deals %}
+        <div class="table-wrapper">
+          <table class="data-table data-table-sm">
+            <thead><tr><th>Nazwa</th><th>Etap</th><th class="text-right">Kwota</th><th>Long</th><th>Short</th></tr></thead>
+            <tbody>
+              {% for d in deals %}
+              <tr>
+                <td><a href="{{ url_for('mna_deals.view_deal', deal_id=d.id) }}">{{ icon('briefcase', 14) }} {{ d.name }}</a></td>
+                <td><span class="badge {{ stage_badge_classes[d.stage] }}">{{ stage_labels[d.stage] }}</span></td>
+                <td class="text-right nowrap">{{ d.amount|pln if d.amount is not none else '—' }}</td>
+                <td>{{ d.long_list_count }}</td>
+                <td>{{ d.short_list_count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small">Z tej oferty nie powstał jeszcze żaden deal.</p>
+        {% endif %}
       </div>
     </div>
 

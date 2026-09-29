@@ -3,17 +3,18 @@ from datetime import date
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from models.crm_file import get_files_for_mna_deal
-from models.crm_mna_offer import get_all_mna_offers
+from models.crm_mna_offer import get_all_mna_offers, get_mna_offer_by_id
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history, get_notes)
 from models.mna_company import search_mna_companies
 from models.mna_contact import search_mna_contacts
 from models.mna_deal import (STAGE_BADGE_CLASSES, STAGE_LABELS, STAGE_ORDER, LIST_TYPE_LABELS,
                                INTEREST_STATUS_LABELS, TARGET_CONTACT_FILTER_LABELS, TARGET_CONTACT_FILTERS,
-                               TARGET_SORTS, add_target, create_mna_deal,
+                               TARGET_SORTS, add_target, count_offer_links, create_mna_deal,
                                delete_mna_deal, get_all_mna_deals, get_deal_target_tags,
-                               get_deal_targets, get_deal_targets_stats, get_mna_deal_by_id,
-                               get_targets_for_deal, move_target_list, remove_target, reorder_targets,
+                               get_deal_targets, get_deal_targets_stats, get_deals_for_offer,
+                               get_mna_deal_by_id, get_targets_for_deal, move_offer_links_to_deal,
+                               move_target_list, remove_target, reorder_targets,
                                restore_mna_deal, set_target_contacted, set_target_interest,
                                set_target_note, set_target_score, set_target_valuable, update_mna_deal)
 from routes.crm_contacts import build_gtd_items
@@ -67,12 +68,32 @@ def new_deal():
                 stage_order=STAGE_ORDER, action=url_for('mna_deals.new_deal'), title='Nowy deal M&A')
 
         deal_id = create_mna_deal(data, session.get('user_id'))
+        # Zadania i pliki oferty przechodzą na deal, jeśli użytkownik tego nie odznaczył —
+        # od teraz praca toczy się na dealu, a droga do oferty prowadzi przez jego kartę.
+        if data.get('offer_id') and request.form.get('move_links'):
+            moved = move_offer_links_to_deal(int(data['offer_id']), deal_id, session.get('user_id'))
+            if moved['tasks'] or moved['files']:
+                flash(f"Przeniesiono z oferty: zadania ({moved['tasks']}), pliki ({moved['files']}).",
+                      'success')
         flash('Deal został zapisany.', 'success')
         return redirect(url_for('mna_deals.view_deal', deal_id=deal_id))
 
+    # Wejście z karty oferty („Utwórz deal z tej oferty”): przepisujemy tylko to, co deal
+    # naprawdę ma własne — nazwę i opis. Branża, obroty, EBITDA czy target zostają na ofercie
+    # i deal czyta je przez powiązanie; skopiowane rozjechałyby się przy pierwszej korekcie oferty.
+    prefill = {}
+    offer = get_mna_offer_by_id(request.args.get('offer_id', type=int)) if request.args.get('offer_id') else None
+    offer_links = None
+    if offer:
+        prefill = {'name': offer['name'], 'description': offer.get('description'),
+                   'offer_id': offer['id']}
+        offer_links = count_offer_links(offer['id'])
+        offer_links['other_deals'] = len(get_deals_for_offer(offer['id']))
+
     return render_template('mna_deals/form.html',
-        active_tab='mna_deals', deal={}, offers=offers, stage_labels=STAGE_LABELS,
-        stage_order=STAGE_ORDER, action=url_for('mna_deals.new_deal'), title='Nowy deal M&A')
+        active_tab='mna_deals', deal=prefill, offers=offers, stage_labels=STAGE_LABELS,
+        stage_order=STAGE_ORDER, offer_links=offer_links,
+        action=url_for('mna_deals.new_deal'), title='Nowy deal M&A')
 
 
 @bp.route('/<int:deal_id>/edit', methods=['GET', 'POST'])
@@ -112,6 +133,11 @@ def view_deal(deal_id):
         flash('Deal nie istnieje.', 'error')
         return redirect(url_for('mna_deals.list_deals'))
 
+    offer = get_mna_offer_by_id(deal['offer_id']) if deal.get('offer_id') else None
+    # Powiązania, które zostały jeszcze przy ofercie — deale sprzed tej funkcji mają je tam,
+    # więc karta deala pozwala je dociągnąć jednym kliknięciem.
+    offer_links = count_offer_links(offer['id']) if offer else None
+
     long_list = get_targets_for_deal(deal_id, 'long_list')
     short_list = get_targets_for_deal(deal_id, 'short_list')
 
@@ -121,7 +147,8 @@ def view_deal(deal_id):
     history = get_history('mna_deal', deal_id)
 
     return render_template('mna_deals/detail.html',
-        active_tab='mna_deals', deal=deal, long_list=long_list, short_list=short_list,
+        active_tab='mna_deals', deal=deal, offer=offer, offer_links=offer_links,
+        long_list=long_list, short_list=short_list,
         stage_labels=STAGE_LABELS, stage_order=STAGE_ORDER, stage_badge_classes=STAGE_BADGE_CLASSES,
         list_type_labels=LIST_TYPE_LABELS, interest_status_labels=INTEREST_STATUS_LABELS,
         contact_filter_labels=TARGET_CONTACT_FILTER_LABELS,
@@ -143,6 +170,17 @@ def delete_deal_view(deal_id):
     delete_mna_deal(deal_id, session.get('user_id'))
     flash('Deal został zarchiwizowany.', 'success')
     return redirect(url_for('mna_deals.list_deals'))
+
+
+@bp.route('/<int:deal_id>/przenies-z-oferty', methods=['POST'])
+def move_offer_links_view(deal_id):
+    deal = get_mna_deal_by_id(deal_id)
+    if not deal or not deal.get('offer_id'):
+        flash('Deal nie jest powiązany z ofertą.', 'error')
+        return redirect(url_for('mna_deals.view_deal', deal_id=deal_id))
+    moved = move_offer_links_to_deal(deal['offer_id'], deal_id, session.get('user_id'))
+    flash(f"Przeniesiono z oferty: zadania ({moved['tasks']}), pliki ({moved['files']}).", 'success')
+    return redirect(url_for('mna_deals.view_deal', deal_id=deal_id))
 
 
 @bp.route('/<int:deal_id>/restore', methods=['POST'])
