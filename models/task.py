@@ -171,12 +171,19 @@ def update_task(task_id: int, data: dict) -> None:
                 'planned_week', 'planned_month', 'waiting_on'):
         if key in fields:
             fields[key] = fields[key] or None
+    # Data zamknięcia idzie w parze ze statusem — inaczej zadanie zamknięte przez formularz
+    # albo MCP (a nie przez set_status) trafiało do zrobionych bez daty i wypadało z osi czasu.
+    # COALESCE, żeby ponowny zapis „done” nie przestawiał pierwotnej daty zamknięcia.
+    completed_sql = ''
+    if 'status' in fields:
+        completed_sql = (", completed_at=COALESCE(completed_at, NOW())"
+                         if fields['status'] == 'done' else ", completed_at=NULL")
     db = get_db()
     try:
         with db.cursor() as cur:
             set_clause = ", ".join(f"{k}=%s" for k in fields)
             cur.execute(
-                f"UPDATE tasks SET {set_clause} WHERE id=%s",
+                f"UPDATE tasks SET {set_clause}{completed_sql} WHERE id=%s",
                 (*fields.values(), task_id)
             )
             client_fields = {k: fields[k] for k in
@@ -310,7 +317,7 @@ def set_status(task_id: int, status: str) -> bool:
         with db.cursor() as cur:
             if status == 'done':
                 cur.execute(
-                    "UPDATE tasks SET status=%s, completed_at=NOW() WHERE id=%s",
+                    "UPDATE tasks SET status=%s, completed_at=COALESCE(completed_at, NOW()) WHERE id=%s",
                     (status, task_id)
                 )
             elif status == 'someday':
@@ -552,6 +559,38 @@ def get_ideas_tasks() -> list[dict]:
         return cur.fetchall()
 
 
+def _week_start(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _month_tail_week(m: date) -> date:
+    """Tydzień, w którym kończy się dany miesiąc — po nim ustawiamy zadania «na miesiąc»."""
+    last_day = (m.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    return _week_start(last_day)
+
+
+def upcoming_sort_key(task: dict) -> tuple:
+    """Klucz sortowania listy „Zadania nadchodzące" — od najbliższego zobowiązania do najluźniejszego.
+
+    W obrębie każdego tygodnia najpierw idą zadania z konkretnym dniem (posortowane po dacie),
+    a po nich te wrzucone do tygodnia bez daty dziennej. Zadania przypisane tylko do miesiąca
+    lądują za ostatnim tygodniem tego miesiąca, bo są najmniej zobowiązujące. Zaległe wychodzą
+    na samą górę — ich tydzień już minął. Bez żadnego przypisania: na koniec listy.
+    Poziom (dzień → tydzień → miesiąc) rozstrzyga dopiero wewnątrz tygodnia, dlatego jest
+    drugim, a nie pierwszym elementem klucza.
+    """
+    dates = [d for d in (task.get('scheduled_date'), task.get('due_date')) if d]
+    if dates:
+        day = min(dates)
+        return (_week_start(day), 0, day)
+    if task.get('planned_week'):
+        week = _week_start(task['planned_week'])
+        return (week, 1, week)
+    if task.get('planned_month'):
+        return (_month_tail_week(task['planned_month']), 2, task['planned_month'])
+    return (date.max, 3, date.max)
+
+
 def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
                       company_id: int | None = None, contact_id: int | None = None,
                       search: str | None = None,
@@ -584,10 +623,12 @@ def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
             clause = f"({clause} OR t.context_id IS NULL)"
         sql += f" AND {clause}"
         params.extend(context_ids)
-    sql += " ORDER BY (t.status='done'), t.due_date IS NULL, t.due_date ASC, t.id DESC"
     with db.cursor() as cur:
         cur.execute(sql, params)
-        return cur.fetchall()
+        tasks = cur.fetchall()
+    # Kolejność liczona w Pythonie, bo miesza dzień, tydzień i miesiąc w jedną oś czasu —
+    # w SQL wyszedłby CASE, którego nie da się przetestować bez bazy (patrz upcoming_sort_key).
+    return sorted(tasks, key=lambda t: (*upcoming_sort_key(t), -t['id']))
 
 
 def find_tasks(search: str | None = None, company_id: int | None = None,

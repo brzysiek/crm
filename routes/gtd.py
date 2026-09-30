@@ -166,6 +166,23 @@ def _gcal_events_by_day(start: date, end: date) -> tuple[dict, str | None]:
     return by_day, ('; '.join(errors) if errors else None)
 
 
+def _past_timeline(done_tasks: list[dict], past_events: list[dict]) -> list[dict]:
+    """Jedna oś czasu tego, co już za nami: zamknięte zadania i minione wydarzenia z kalendarza.
+
+    Zadania układa data zamknięcia, wydarzenia — data wydarzenia, wszystko od najnowszego.
+    Zadania zamknięte, zanim data zamknięcia była zapisywana, nie mają completed_at — wtedy
+    najbliższym śladem jest updated_at i lepiej postawić je w przybliżonym miejscu niż zepchnąć
+    na koniec listy.
+    """
+    items = [{'kind': 'task', 'task': t,
+              'sort_key': t.get('completed_at') or t.get('updated_at') or datetime.min}
+             for t in done_tasks]
+    items += [{'kind': 'gcal', 'event': e,
+               'sort_key': datetime.fromisoformat(e['date'])} for e in past_events]
+    items.sort(key=lambda i: i['sort_key'], reverse=True)
+    return items
+
+
 def _enrich_cached_events(rows: list[dict]) -> list[dict]:
     """Dogrywa tytuły projektów/kontaktów/firm/kontekstów do wierszy z lokalnego
     cache wydarzeń kalendarza (gcal_event_done) — bez odpytywania Google Calendar.
@@ -429,9 +446,14 @@ def next_actions():
     context_ids = [int(x) for x in contexts_param.split(',') if x.strip().isdigit()] if contexts_param else None
     filter_options = task_model.get_next_action_filter_options()
     past_events = _enrich_cached_events(gcal_event_model.get_cached_past_events(context_ids))
+    # Zamknięte zadania nie należą do listy nadchodzących — idą na oś czasu razem z minionymi
+    # wydarzeniami z kalendarza, gdzie porządkuje je data zamknięcia.
+    tasks = task_model.get_next_actions(project_id, deal_id, company_id, search, include_done, context_ids)
+    done_tasks = [t for t in tasks if t['status'] == 'done']
     return render_template(
         'gtd/next_actions.html', active_tab='next',
-        tasks=task_model.get_next_actions(project_id, deal_id, company_id, search, include_done, context_ids),
+        tasks=[t for t in tasks if t['status'] != 'done'],
+        past_items=_past_timeline(done_tasks, past_events),
         projects=task_model.get_projects(include_done=True),
         deals=filter_options['deals'],
         companies=filter_options['companies'],
@@ -442,7 +464,6 @@ def next_actions():
         selected_company=company_id,
         search_query=search or '',
         include_done=include_done,
-        past_events=past_events,
     )
 
 

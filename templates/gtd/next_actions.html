@@ -71,6 +71,10 @@
           onclick="gtdOpenFollowUp({{ selected_project or 'null' }}, null, null, null, null, null, null, null, document.getElementById('gtdNextAddInput').value, 'next')">{{ icon('edit', 14) }} Zaawansowane…</button>
 </div>
 
+<div class="page-header" style="margin-top:1rem">
+  <h3 style="margin:0">Zadania nadchodzące</h3>
+</div>
+
 {% if not tasks %}
   <p class="text-muted">Brak zadań spełniających kryteria{{ ' filtra' if selected_project or selected_deal or selected_company or search_query }}.</p>
 {% else %}
@@ -116,13 +120,15 @@
 </div>
 {% endif %}
 
-{% if past_events %}
+{% if past_items %}
 <div class="page-header" style="margin-top:1.5rem">
-  <h3 style="margin:0">Przeszłe wydarzenia z kalendarza</h3>
+  {# Zamknięte zadania dokładają się do tej osi dopiero po włączeniu „Pokaż zakończone" —
+     nagłówek mówi, co faktycznie jest niżej. #}
+  <h3 style="margin:0">{{ 'Zamknięte zadania i przeszłe wydarzenia' if include_done else 'Przeszłe wydarzenia z kalendarza' }}</h3>
 </div>
 <div class="gtd-timeline">
-  {% for e in past_events %}
-    {{ timeline_item({'kind': 'gcal', 'event': e}) }}
+  {% for item in past_items %}
+    {{ timeline_item(item) }}
   {% endfor %}
 </div>
 {% endif %}
