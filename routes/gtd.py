@@ -464,6 +464,7 @@ def next_actions():
         selected_company=company_id,
         search_query=search or '',
         include_done=include_done,
+        today=date.today(),
     )
 
 

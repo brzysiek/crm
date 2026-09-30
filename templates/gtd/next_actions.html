@@ -100,11 +100,13 @@
   </thead>
   <tbody>
     {% for t in tasks %}
-    <tr data-task-id="{{ t.id }}" class="{{ row_class(t) }}">
+    {# Zaległe na czerwono, tak jak w widoku „Dziś” — o przeterminowanym zobowiązaniu
+       ma mówić kolor wiersza, a nie samodzielne wyłapywanie dat z kolumny „Termin”. #}
+    <tr data-task-id="{{ t.id }}" class="{{ row_class(t, overdue=t.is_overdue) }}">
       <td class="col-checkbox">
         <input type="checkbox" class="row-checkbox" value="{{ t.id }}" onchange="updateBulkBar()" style="display:none">
       </td>
-      {{ task_cells(t) }}
+      {{ task_cells(t, today) }}
       <td class="nowrap">{{ priority_stars(t) }}</td>
       <td class="col-actions nowrap">
         <button type="button" class="action-btn" title="Zaplanuj na dziś" onclick="gtdScheduleToday({{ t.id }})">{{ icon('calendar', 16) }}</button>

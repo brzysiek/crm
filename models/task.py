@@ -591,6 +591,19 @@ def upcoming_sort_key(task: dict) -> tuple:
     return (date.max, 3, date.max)
 
 
+def is_overdue(task: dict, today: date) -> bool:
+    """Czy zobowiązanie już minęło — dzień przed dzisiaj, tydzień przed bieżącym, miesiąc
+    przed bieżącym. Zadania bez przypisanej daty nie mogą być zaległe: nic nie obiecywały."""
+    week, level, anchor = upcoming_sort_key(task)
+    if level == 0:
+        return anchor < today
+    if level == 1:
+        return week < _week_start(today)
+    if level == 2:
+        return (anchor.year, anchor.month) < (today.year, today.month)
+    return False
+
+
 def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
                       company_id: int | None = None, contact_id: int | None = None,
                       search: str | None = None,
@@ -628,7 +641,11 @@ def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
         tasks = cur.fetchall()
     # Kolejność liczona w Pythonie, bo miesza dzień, tydzień i miesiąc w jedną oś czasu —
     # w SQL wyszedłby CASE, którego nie da się przetestować bez bazy (patrz upcoming_sort_key).
-    return sorted(tasks, key=lambda t: (*upcoming_sort_key(t), -t['id']))
+    tasks = sorted(tasks, key=lambda t: (*upcoming_sort_key(t), -t['id']))
+    today = date.today()
+    for t in tasks:
+        t['is_overdue'] = t['status'] != 'done' and is_overdue(t, today)
+    return tasks
 
 
 def find_tasks(search: str | None = None, company_id: int | None = None,

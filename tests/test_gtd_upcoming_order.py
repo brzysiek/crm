@@ -77,6 +77,28 @@ class UpcomingOrderTest(unittest.TestCase):
         self.assertEqual(klucz, (date(2026, 9, 28), 0, date(2026, 9, 28)))
 
 
+class OverdueTest(unittest.TestCase):
+    DZIS = date(2026, 9, 30)  # środa, tydzień od 28.09
+
+    def test_dzien_przed_dzisiaj_jest_zalegly_nawet_w_tym_samym_tygodniu(self):
+        self.assertTrue(task_model.is_overdue(t('x', due=date(2026, 9, 29)), self.DZIS))
+        self.assertFalse(task_model.is_overdue(t('x', due=self.DZIS), self.DZIS))
+
+    def test_biezacy_tydzien_i_miesiac_nie_sa_zalegle(self):
+        self.assertFalse(task_model.is_overdue(t('x', week=date(2026, 9, 28)), self.DZIS))
+        self.assertFalse(task_model.is_overdue(t('x', month=date(2026, 9, 1)), self.DZIS))
+
+    def test_miniony_tydzien_i_miesiac_sa_zalegle(self):
+        self.assertTrue(task_model.is_overdue(t('x', week=date(2026, 9, 21)), self.DZIS))
+        self.assertTrue(task_model.is_overdue(t('x', month=date(2026, 8, 1)), self.DZIS))
+
+    def test_bez_przypisania_nigdy_nie_jest_zalegle(self):
+        self.assertFalse(task_model.is_overdue(t('x'), self.DZIS))
+
+    def test_szablon_koloruje_wiersz_tak_jak_widok_dzis(self):
+        self.assertIn('row_class(t, overdue=t.is_overdue)', read('templates/gtd/next_actions.html'))
+
+
 class PastTimelineTest(unittest.TestCase):
     def test_zadania_po_dacie_zamkniecia_wydarzenia_po_dacie_wydarzenia(self):
         tasks = [
