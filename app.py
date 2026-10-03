@@ -7,6 +7,7 @@ import database
 import subprocess
 import traceback as _tb
 import logging
+import hashlib
 import os
 import re
 from datetime import datetime as _dt, timedelta as _timedelta
@@ -214,7 +215,10 @@ def index():
 
 @app.before_request
 def require_login():
-    open_endpoints = {'auth.login', 'auth.logout', 'static', 'email_campaigns.unsubscribe'}
+    # Ikona i manifest muszą działać bez sesji: przeglądarka pobiera favikonę także na ekranie
+    # logowania i z paska zakładek, a przekierowanie na /login zapamiętywała jako „brak ikony”.
+    open_endpoints = {'auth.login', 'auth.logout', 'static', 'email_campaigns.unsubscribe',
+                      'branding_icon', 'favicon_ico', 'web_manifest'}
     ep = request.endpoint or ''
     if ep in open_endpoints or ep.startswith('static'):
         return
@@ -292,6 +296,7 @@ def inject_globals():
         'app_name':             app_name,
         'logo_main':            logo_main,
         'logo_thumb':           logo_thumb,
+        'logo_version':         _branding_version(logo_thumb or logo_main),
         'vat_rates':            vat_rates,
         'payment_methods':      payment_methods,
         'build_id':             _BUILD_ID,
@@ -314,8 +319,13 @@ def _parse_data_uri(data_uri):
     return m.group(1), m.group(2)
 
 
-@app.route('/branding/icon')
-def branding_icon():
+def _branding_version(data_uri):
+    """Odcisk ustawionej ikony — wisi w adresie favikony, żeby podmiana logo w ustawieniach
+    dotarła do przeglądarki mimo rocznego cache'u favikon."""
+    return hashlib.md5((data_uri or '').encode('utf-8')).hexdigest()[:8] if data_uri else ''
+
+
+def _branding_icon_response():
     import base64
     from models.settings import get_setting
     data_uri = get_setting('logo_thumb') or get_setting('logo_main')
@@ -331,6 +341,18 @@ def branding_icon():
     return resp
 
 
+@app.route('/branding/icon')
+def branding_icon():
+    return _branding_icon_response()
+
+
+# Przeglądarki pytają o /favicon.ico same z siebie — z zakładek, z historii i z każdej strony,
+# która nie poda <link rel="icon">. Bez tej trasy pytanie kończyło się na ekranie logowania.
+@app.route('/favicon.ico')
+def favicon_ico():
+    return _branding_icon_response()
+
+
 @app.route('/manifest.webmanifest')
 def web_manifest():
     from models.settings import get_setting
@@ -339,7 +361,7 @@ def web_manifest():
     mimetype, _ = _parse_data_uri(data_uri)
     icons = []
     if mimetype:
-        icon_url = url_for('branding_icon')
+        icon_url = url_for('branding_icon', v=_branding_version(data_uri))
         sizes = 'any' if mimetype == 'image/svg+xml' else '192x192 512x512'
         icons.append({'src': icon_url, 'sizes': sizes, 'type': mimetype, 'purpose': 'any'})
         if mimetype != 'image/svg+xml':

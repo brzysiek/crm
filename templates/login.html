@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ app_name }} – Logowanie</title>
+  {# Ekran logowania też ma ikonę — to on jest pierwszą stroną, na której przeglądarka
+     szuka favikony i zapamiętuje wynik na długo. #}
+  {% if logo_thumb or logo_main %}
+  <link rel="icon" href="{{ url_for('branding_icon', v=logo_version) }}">
+  <link rel="apple-touch-icon" href="{{ url_for('branding_icon', v=logo_version) }}">
+  {% endif %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
