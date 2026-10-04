@@ -41,26 +41,6 @@ function initSidebarMoreToggle() {
 }
 document.addEventListener('DOMContentLoaded', initSidebarMoreToggle);
 
-/* ── Rozwijane menu użytkownika (Ustawienia / Wyloguj) — sidebar + mobile topbar ── */
-function initNavUserMenu() {
-  document.querySelectorAll('.nav-user').forEach(navUser => {
-    const toggle = navUser.querySelector('.nav-user-toggle');
-    if (!toggle) return;
-
-    toggle.addEventListener('click', e => {
-      e.stopPropagation();
-      navUser.classList.toggle('open');
-    });
-
-    document.addEventListener('click', e => {
-      if (navUser.classList.contains('open') && !navUser.contains(e.target)) {
-        navUser.classList.remove('open');
-      }
-    });
-  });
-}
-document.addEventListener('DOMContentLoaded', initNavUserMenu);
-
 /* ── CRM: domyślnie zwinięte paski filtrów na urządzeniach mobilnych ──────────── */
 function initFilterBarCollapse() {
   document.querySelectorAll('.filter-bar:not([data-no-collapse])').forEach(bar => {

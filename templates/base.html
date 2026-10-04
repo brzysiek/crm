@@ -290,14 +290,12 @@
           <span class="mobile-topbar-logo-badge">{{ (app_name or 'B')[0] }}</span>
         {% endif %}
       </a>
-      <div class="mobile-topbar-actions nav-user" id="nav-user-mobile">
-        <button type="button" class="mobile-topbar-avatar nav-user-toggle" id="nav-user-toggle-mobile">
+      {# Awatar prowadzi wprost do „Moje konto", tak samo jak na desktopie.
+         Wylogowanie jest osobną pozycją w menu pod hamburgerem. #}
+      <div class="mobile-topbar-actions">
+        <a href="{{ url_for('settings.account') }}" title="Moje konto" class="mobile-topbar-avatar">
           {{ (current_user.full_name or current_user.username or '?')[:2] | upper }}
-        </button>
-        <div class="nav-user-menu" id="nav-user-menu-mobile">
-          <a href="{{ url_for('settings.index') }}" class="nav-user-menu-item">Ustawienia</a>
-          <a href="{{ url_for('auth.logout') }}" class="nav-user-menu-item">Wyloguj</a>
-        </div>
+        </a>
       </div>
     </div>
 

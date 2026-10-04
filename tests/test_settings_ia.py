@@ -116,6 +116,16 @@ class SettingsNavigationTest(unittest.TestCase):
         self.assertIn("url_for('settings.account')", footer)
         self.assertNotIn('nav-user-menu', footer)
 
+    def test_mobile_topbar_avatar_opens_my_account_without_a_dropdown(self):
+        """Na telefonie awatar działa tak samo jak na desktopie — prowadzi do
+        „Moje konto". Wylogowanie jest w menu pod hamburgerem, więc rozwijane
+        menu przy awatarze byłoby drugą, niepotrzebną drogą do tego samego."""
+        topbar = self.base[self.base.index('mobile-topbar-actions'):self.base.index('page-wrapper')]
+        self.assertIn("url_for('settings.account')", topbar)
+        self.assertNotIn('nav-user', self.base)
+        for dead in (read('static/app.js'), read('static/style.css')):
+            self.assertNotIn('nav-user', dead)
+
     def test_gtd_still_uses_the_shared_sidebar_classes(self):
         """`.settings-sidebar` zostaje w CSS, bo GTD buduje na niej swoje menu."""
         self.assertIn('settings-sidebar', read('templates/gtd/_layout.html'))
