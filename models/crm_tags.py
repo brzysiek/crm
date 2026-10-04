@@ -22,50 +22,39 @@ def _normalize_word(word: str) -> str:
     return ''.join(out)
 
 
-def _is_written_in_caps(word: str) -> bool:
-    """Czy słowo zostało napisane „z wielkiej litery" w sensie akronimu lub marki,
-    a nie zwykłego słowa na początku zdania. Rozstrzyga wielka litera na dalszej
-    pozycji (BNI, M&A, SaaS, HoReCa, MŚP, eCommerce, myTherapy) albo pojedyncza
-    wielka litera (E w „E-Commerce"). Takich słów normalizacja nie rusza."""
-    letters = [c for c in word if c.isalpha()]
-    if not letters:
-        return True
-    if any(c.isupper() for c in word[1:] if c.isalpha()):
-        return True
-    return len(letters) == 1 and letters[0].isupper()
-
-
 def _split_compound(token: str) -> list[str]:
     """Rozbija złożenia po / i -, żeby każdy człon oceniać osobno: w „IT/Edukacja"
     pierwszy człon jest akronimem, drugi zwykłym słowem."""
     return re.split(r'([/-])', token)
 
 
-def sentence_case_name(name: str) -> str:
-    """Zapis zdaniowy: tylko pierwsze słowo z wielkiej litery, reszta z małej —
-    chyba że słowo zostało napisane wielkimi literami, wtedy zostaje bez zmian.
-    „fundusze Inwestycyjne" -> „Fundusze inwestycyjne", „zaprosić na bni" zostaje
-    z małym „bni", ale „Zaprosić Na BNI" -> „Zaprosić na BNI".
+def _has_own_capital(word: str) -> bool:
+    """Czy słowo samo w sobie niesie wielką literę — akronim (BNI, M&A, SaaS),
+    marka (eCommerce, myTherapy) albo nazwa własna. Takiego słowa nie ruszamy,
+    bo podniesienie pierwszej litery zrobiłoby z „eCommerce" → „ECommerce"."""
+    return any(c.isupper() for c in word)
 
-    Po co: słownik tagów i branż rósł z trzech źródeł (formularz, wizytówki,
-    import), każde z inną konwencją, więc ta sama branża trafiała na listę po
-    dwa razy („biuro księgowe" i „Biura Rachunkowe"). Jeden zapis to jedna
-    pozycja na liście."""
-    tokens = name.split()
-    out = []
-    for i, token in enumerate(tokens):
-        parts = _split_compound(token)
-        normalized = ''.join(p if (p in ('/', '-') or _is_written_in_caps(p)) else p.lower()
-                             for p in parts)
-        # Wielka litera tylko na początku całej nazwy i tylko wtedy, gdy pierwszy
-        # człon w ogóle podlega zmianie — inaczej „eCommerce" stałoby się „ECommerce".
-        if i == 0 and parts and not _is_written_in_caps(parts[0]):
-            for j, c in enumerate(normalized):
-                if c.isalpha():
-                    normalized = normalized[:j] + c.upper() + normalized[j + 1:]
-                    break
-        out.append(normalized)
-    return ' '.join(out)
+
+def capitalize_first(name: str) -> str:
+    """Pierwsza litera całej nazwy z wielkiej, reszta dokładnie tak, jak wpisał
+    użytkownik. „fundusze inwestycyjne" -> „Fundusze inwestycyjne",
+    „Business Mixer Katowice" zostaje bez zmian.
+
+    Po co tylko tyle: słownik tagów i branż rósł z trzech źródeł (formularz,
+    wizytówki, import) i ta sama branża trafiała na listę raz z wielkiej, raz
+    z małej litery. Dalej idąca normalizacja (każde kolejne słowo z małej)
+    psuła nazwy własne — „Rafał Wiśniewski" stawał się „Rafał wiśniewski" —
+    a tego z nazwy nie da się odróżnić od zwykłego słowa."""
+    name = ' '.join(name.split())
+    if not name:
+        return name
+    first_word = name.split(' ', 1)[0]
+    if _has_own_capital(first_word):
+        return name
+    for i, c in enumerate(name):
+        if c.isalpha():
+            return name[:i] + c.upper() + name[i + 1:]
+    return name
 
 
 def title_case_name(name: str) -> str:
@@ -81,8 +70,8 @@ def title_case_name(name: str) -> str:
 def normalize_tag_name(name: str, kind: str = 'tag') -> str:
     """Jedno wejście dla wszystkich zapisów wartości słownikowych. Źródła trzymają
     nazwiska, więc zostają przy zapisie tytułowym; tagi, branże i tagi email
-    (zgody marketingowe) idą zapisem zdaniowym."""
-    return title_case_name(name) if kind == 'source' else sentence_case_name(name)
+    (zgody marketingowe) dostają tylko wielką pierwszą literę."""
+    return title_case_name(name) if kind == 'source' else capitalize_first(name)
 
 
 def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
@@ -170,6 +159,37 @@ def add_tag(kind: str, name: str) -> int:
             new_id = cur.lastrowid
         db.commit()
         return new_id
+    except Exception:
+        db.rollback()
+        raise
+
+
+def rename_tag(tag_id: int, name: str) -> None:
+    """Zmienia nazwę wartości słownikowej w miejscu. Firmy, kontakty i kampanie
+    wiążą się po tag_id, nie po nazwie, więc przemianowanie niczego nie odpina —
+    to jedyny bezpieczny sposób na poprawienie literówki w pozycji, która jest
+    już w użyciu (skasowanie i dodanie od nowa zrywa wszystkie powiązania).
+
+    Zgłasza ValueError przy pustej nazwie i przy nazwie już zajętej w tym samym
+    rodzaju — porównanie w MySQL jest bez względu na wielkość liter, więc sama
+    zmiana wielkości liter („cfo" -> „CFO") przechodzi."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT kind FROM crm_tags WHERE id=%s", (tag_id,))
+        row = cur.fetchone()
+    if not row:
+        raise ValueError('Nie ma takiej pozycji.')
+    name = normalize_tag_name(name.strip(), row['kind'])
+    if not name:
+        raise ValueError('Nazwa nie może być pusta.')
+    try:
+        with db.cursor() as cur:
+            cur.execute("SELECT id FROM crm_tags WHERE kind=%s AND name=%s AND id<>%s",
+                        (row['kind'], name, tag_id))
+            if cur.fetchone():
+                raise ValueError(f'„{name}" już jest na liście.')
+            cur.execute("UPDATE crm_tags SET name=%s WHERE id=%s", (name, tag_id))
+        db.commit()
     except Exception:
         db.rollback()
         raise
@@ -278,8 +298,10 @@ def get_or_create_tag_ids(kind: str, names: list[str]) -> list[int]:
                 )
                 row = cur.fetchone()
                 if row:
-                    if row['name'] != name:
-                        cur.execute("UPDATE crm_tags SET name=%s WHERE id=%s", (name, row['id']))
+                    # Porównanie w MySQL jest bez względu na wielkość liter, więc trafiamy
+                    # tu też przy innym zapisie niż w słowniku. Zostawiamy nazwę taką, jaka
+                    # jest: wpisanie „cfo" przy firmie nie ma przemianowywać wszystkim
+                    # „CFO" na „Cfo". Nazwę zmienia się świadomie, w Słownikach.
                     ids.append(row['id'])
                 else:
                     cur.execute(

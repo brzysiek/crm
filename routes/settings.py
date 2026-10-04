@@ -296,6 +296,20 @@ def tag_add():
     return _back_to_dictionaries(request.form.get('anchor', '').strip())
 
 
+@bp.route('/slowniki/tag/<int:tag_id>/nazwa', methods=['POST'])
+def tag_rename(tag_id):
+    """Zmiana nazwy zamiast „usuń i dodaj od nowa" — powiązania idą po tag_id,
+    więc poprawka literówki nie odpina wartości od firm i kontaktów."""
+    from models.crm_tags import rename_tag
+    try:
+        rename_tag(tag_id, request.form.get('name', ''))
+    except ValueError as e:
+        flash(str(e), 'error')
+    except Exception:
+        flash('Nie udało się zmienić nazwy.', 'error')
+    return _back_to_dictionaries(request.form.get('anchor', '').strip())
+
+
 @bp.route('/slowniki/tag/<int:tag_id>/usun', methods=['POST'])
 def tag_delete(tag_id):
     from models.crm_tags import delete_tag

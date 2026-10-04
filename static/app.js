@@ -2087,3 +2087,29 @@ function initHtmlEditor(wrapId, editorId, hiddenInputId, initialHtml, footers, u
   if (form) form.addEventListener('submit', sync);
   sync();
 }
+
+/* ── Ustawienia → Słowniki: zmiana nazwy tagu/branży/źródła w miejscu ─────────
+   Pole edycji siedzi w wierszu od razu, ukryte CSS-em — przełączamy klasę
+   zamiast dorzucać formularz, bo inaczej po zapisie trzeba by odtwarzać stan
+   otwartego wiersza. Escape zamyka bez zapisu. */
+function toggleDictRename(btn, editing) {
+  const item = btn.closest('.rd-dict-item');
+  if (!item) { return; }
+  item.classList.toggle('renaming', editing);
+  const input = item.querySelector('.rd-dict-rename input[name="name"]');
+  if (!input) { return; }
+  if (editing) {
+    input.focus();
+    input.select();
+  } else {
+    input.value = input.defaultValue;
+  }
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') { return; }
+  const open = document.querySelector('.rd-dict-item.renaming');
+  if (open) {
+    toggleDictRename(open.querySelector('.rd-dict-rename .action-btn'), false);
+  }
+});

@@ -1,10 +1,10 @@
 """Jednolity zapis wartości słownikowych (tagi, branże, źródła).
 
-Błąd, przed którym to broni: ta sama branża wpisana w trzech miejscach trafiała
-na listę trzy razy („biuro księgowe", „Biura Rachunkowe", „Biuro Księgowe").
-Druga pułapka to normalizacja zbyt gorliwa — akronimy (BNI, M&A, SaaS) i marki
-(eCommerce, myTherapy) muszą przetrwać zapis bez zmian, a źródła, w których
-siedzą imiona i nazwiska, nie mogą dostać małej litery w nazwisku.
+Błąd, przed którym to broni: ta sama branża wpisana raz z wielkiej, raz z małej
+litery trafiała na listę dwa razy. Druga pułapka jest przeciwna — normalizacja
+zbyt gorliwa: wcześniejsza wersja obniżała każde kolejne słowo i robiła
+z „Rafał Wiśniewski" → „Rafał wiśniewski", a z „MBA Polska" → „MBA polska".
+Dlatego reguła rusza wyłącznie pierwszą literę nazwy.
 Uruchomienie: venv/bin/python -m unittest discover tests
 """
 import inspect
@@ -12,52 +12,48 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 
-class SentenceCaseTest(unittest.TestCase):
+def _read(rel: str) -> str:
+    with open(os.path.join(ROOT, rel), encoding='utf-8') as f:
+        return f.read()
+
+
+class CapitalizeFirstTest(unittest.TestCase):
 
     def setUp(self):
-        from models.crm_tags import sentence_case_name
-        self.f = sentence_case_name
+        from models.crm_tags import capitalize_first
+        self.f = capitalize_first
 
-    def test_only_the_first_word_gets_a_capital(self):
-        self.assertEqual('Fundusze inwestycyjne', self.f('Fundusze Inwestycyjne'))
-        self.assertEqual('Doradztwo biznesowe', self.f('doradztwo Biznesowe'))
-        self.assertEqual('Usługi dla firm', self.f('Usługi Dla Firm'))
-
-    def test_lowercase_input_gets_the_first_capital(self):
+    def test_first_letter_goes_up(self):
         self.assertEqual('Księgowość', self.f('księgowość'))
-        self.assertEqual('Cold calling', self.f('cold calling'))
+        self.assertEqual('Fundusze inwestycyjne', self.f('fundusze inwestycyjne'))
+        self.assertEqual('3M polska', self.f('3m polska'))
 
-    def test_acronyms_survive(self):
-        self.assertEqual('Zaprosić na BNI', self.f('Zaprosić Na BNI'))
-        self.assertEqual('Rozwiązania IT', self.f('Rozwiązania IT'))
-        self.assertEqual('B2B SaaS', self.f('B2B SaaS'))
-        self.assertEqual('MŚP i HR', self.f('MŚP i HR'))
-        self.assertEqual('Newsletter M&A', self.f('Newsletter M&A'))
+    def test_the_rest_of_the_name_is_left_exactly_as_typed(self):
+        """Sedno reguły: poza pierwszą literą nic się nie zmienia, bo z samej
+        nazwy nie da się odróżnić nazwiska i nazwy własnej od zwykłego słowa."""
+        for name in ('Rafał Wiśniewski', 'MBA Polska', 'Business Mixer Katowice 12/2025',
+                     'Zaprosić Na BNI', 'Fundusze Inwestycyjne', 'IT/Edukacja',
+                     'SPA & Wellness', 'Piekarnia - Cukiernia', 'Doradztwo biznesowe'):
+            self.assertEqual(name, self.f(name))
 
-    def test_brands_with_an_inner_capital_are_left_alone(self):
-        """„eCommerce" i „myTherapy" nie są zdaniem — podniesienie pierwszej
-        litery zrobiłoby z nich „ECommerce" i „MyTherapy"."""
-        self.assertEqual('eCommerce', self.f('eCommerce'))
-        self.assertEqual('Poszukiwania nabywcy myTherapy', self.f('poszukiwania nabywcy myTherapy'))
-        self.assertEqual('HoReCa', self.f('HoReCa'))
+    def test_acronyms_and_brands_keep_their_own_shape(self):
+        """Słowo, które samo niesie wielką literę, zostaje nietknięte — inaczej
+        „eCommerce" stałoby się „ECommerce"."""
+        for name in ('eCommerce', 'myTherapy', 'BNI', 'M&A', 'B2B SaaS', 'HoReCa'):
+            self.assertEqual(name, self.f(name))
 
-    def test_compounds_are_judged_member_by_member(self):
-        self.assertEqual('IT/edukacja', self.f('IT/Edukacja'))
-        self.assertEqual('E-commerce', self.f('E-Commerce'))
-        self.assertEqual('Medycyna/zdrowie', self.f('Medycyna/Zdrowie'))
-        self.assertEqual('Firma konstrukcyjno-budowlana', self.f('Firma Konstrukcyjno-Budowlana'))
-
-    def test_separators_and_whitespace(self):
-        self.assertEqual('Piekarnia - cukiernia', self.f('Piekarnia - Cukiernia'))
-        self.assertEqual('SPA & wellness', self.f('SPA & Wellness'))
+    def test_whitespace_is_tidied(self):
         self.assertEqual('Wiele spacji', self.f('  wiele   spacji  '))
         self.assertEqual('', self.f('   '))
 
-    def test_digits_before_the_first_letter(self):
-        self.assertEqual('3M polska', self.f('3m Polska'))
+    def test_the_first_letter_is_found_past_leading_punctuation(self):
+        self.assertEqual('(Kuek) ania', self.f('(kuek) ania'))
+        self.assertEqual('„Cytat”', self.f('„cytat”'))
+        self.assertEqual('123', self.f('123'))
 
 
 class TitleCaseForSourcesTest(unittest.TestCase):
@@ -68,27 +64,27 @@ class TitleCaseForSourcesTest(unittest.TestCase):
         self.assertEqual('Ada Hurbol', normalize_tag_name('ada hurbol', 'source'))
         self.assertEqual('BNI Milion', normalize_tag_name('BNI milion', 'source'))
 
-    def test_other_kinds_use_sentence_case(self):
+    def test_other_kinds_only_get_the_first_capital(self):
         from models.crm_tags import normalize_tag_name
         for kind in ('tag', 'industry', 'email'):
-            self.assertEqual('Fundusze inwestycyjne',
-                             normalize_tag_name('Fundusze Inwestycyjne', kind), kind)
+            self.assertEqual('Fundusze Inwestycyjne',
+                             normalize_tag_name('fundusze Inwestycyjne', kind), kind)
 
     def test_default_kind_is_not_source(self):
         """Wywołanie bez kind nie może po cichu wrócić do zapisu tytułowego."""
         from models.crm_tags import normalize_tag_name
-        self.assertEqual('Fundusze inwestycyjne', normalize_tag_name('Fundusze Inwestycyjne'))
+        self.assertEqual('Doradztwo biznesowe', normalize_tag_name('doradztwo biznesowe'))
 
 
 class EveryWriteKnowsTheKindTest(unittest.TestCase):
     """Reguła zależy od rodzaju wartości, więc każdy zapis musi go przekazać —
-    inaczej źródło zapisane z poziomu firmy dostałoby małą literę w nazwisku."""
+    inaczej źródło zapisane z poziomu firmy dostałoby inną regułę niż w słowniku."""
 
     def test_tag_writes_pass_the_kind(self):
         import models.crm_tags as crm_tags
         import models.crm_company as crm_company
         for fn in (crm_tags.add_tag, crm_tags.get_or_create_tag_ids,
-                    crm_company.bulk_add_tag, crm_company.bulk_remove_tag):
+                   crm_company.bulk_add_tag, crm_company.bulk_remove_tag):
             src = inspect.getsource(fn)
             self.assertIn('normalize_tag_name(', src, fn.__name__)
             self.assertIn('kind)', src.split('normalize_tag_name(')[1][:60], fn.__name__)
@@ -102,6 +98,50 @@ class EveryWriteKnowsTheKindTest(unittest.TestCase):
         do tego, co już jest, a nie do konwencji słownika CRM."""
         import models.mna_tags as mna_tags
         self.assertIn('title_case_name', inspect.getsource(mna_tags._get_or_create_tag_ids))
+
+    def test_using_a_tag_never_renames_it(self):
+        """Dopisanie firmie tagu „cfo" nie ma przemianować wszystkim „CFO" na
+        „Cfo" — nazwę zmienia się świadomie, w Słownikach."""
+        import models.crm_tags as crm_tags
+        src = inspect.getsource(crm_tags.get_or_create_tag_ids)
+        self.assertNotIn('UPDATE crm_tags SET name', src)
+
+
+class RenameInDictionariesTest(unittest.TestCase):
+    """Literówkę w pozycji, która jest już w użyciu, trzeba móc poprawić bez
+    kasowania — kasowanie odpina wartość od wszystkich firm i kontaktów."""
+
+    @classmethod
+    def setUpClass(cls):
+        from app import app
+        cls.app = app
+        cls.macros = _read('templates/settings/_macros.html')
+
+    def test_rename_normalizes_by_the_row_kind(self):
+        """Nazwę normalizuje rodzaj z bazy, a nie to, co przyszło z formularza —
+        źródło zmieniane z listy ma dostać regułę źródeł."""
+        src = inspect.getsource(__import__('models.crm_tags', fromlist=['x']).rename_tag)
+        self.assertIn("SELECT kind FROM crm_tags WHERE id=%s", src)
+        self.assertIn("normalize_tag_name(name.strip(), row['kind'])", src)
+
+    def test_rename_refuses_an_empty_or_taken_name(self):
+        src = inspect.getsource(__import__('models.crm_tags', fromlist=['x']).rename_tag)
+        self.assertIn('AND id<>%s', src, 'bez wykluczenia samego siebie zmiana wielkości liter padnie')
+        self.assertIn('ValueError', src)
+
+    def test_the_route_exists_and_takes_only_post(self):
+        rules = [r for r in self.app.url_map.iter_rules() if r.endpoint == 'settings.tag_rename']
+        self.assertEqual(1, len(rules))
+        self.assertIn('POST', rules[0].methods)
+        self.assertNotIn('GET', rules[0].methods)
+
+    def test_the_list_offers_renaming_next_to_deleting(self):
+        card = self.macros[self.macros.index('{% macro tag_card'):]
+        self.assertIn("url_for('settings.tag_rename'", card)
+        self.assertIn("url_for('settings.tag_delete'", card)
+        self.assertIn('toggleDictRename', card)
+        self.assertIn('toggleDictRename', _read('static/app.js'))
+        self.assertIn('.rd-dict-item.renaming', _read('static/style.css'))
 
 
 if __name__ == '__main__':

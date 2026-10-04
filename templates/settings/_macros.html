@@ -76,11 +76,24 @@
         <a href="{{ url_for('crm_companies.list_companies', **{kind: item.name}) }}"
            title="Pokaż firmy z tą wartością">{{ item.name }}</a>
         {%- else %}{{ item.name }}{% endif %} {{ usage_count(item) }}</span>
-      <form method="post" action="{{ url_for('settings.tag_delete', tag_id=item.id) }}"
-            onsubmit="return confirm('Usunąć „{{ item.name }}”? Zostanie odpięta od firm i kontaktów, które jej używają.')">
+      {# Zmiana nazwy w miejscu. Powiązania wiszą na id, więc poprawienie literówki
+         nie odpina wartości od firm — skasowanie i dodanie od nowa by odpięło. #}
+      <form method="post" action="{{ url_for('settings.tag_rename', tag_id=item.id) }}" class="rd-dict-rename">
         <input type="hidden" name="anchor" value="{{ anchor }}">
-        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 15) }}</button>
+        <input type="text" name="name" value="{{ item.name }}" class="filter-input" required maxlength="128">
+        <button type="submit" class="action-btn" title="Zapisz nazwę">{{ icon('check', 15) }}</button>
+        <button type="button" class="action-btn" title="Anuluj"
+                onclick="toggleDictRename(this, false)">{{ icon('x', 15) }}</button>
       </form>
+      <div class="rd-dict-actions">
+        <button type="button" class="action-btn" title="Zmień nazwę"
+                onclick="toggleDictRename(this, true)">{{ icon('edit', 15) }}</button>
+        <form method="post" action="{{ url_for('settings.tag_delete', tag_id=item.id) }}"
+              onsubmit="return confirm('Usunąć „{{ item.name }}”? Zostanie odpięta od firm i kontaktów, które jej używają.')">
+          <input type="hidden" name="anchor" value="{{ anchor }}">
+          <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 15) }}</button>
+        </form>
+      </div>
     </li>
     {% endfor %}
   </ul>

@@ -4062,6 +4062,14 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .rd-dict-value small { color: var(--rd-text-muted); font-size: 12px; }
 /* Licznik użyć przy tagu/branży/źródle — ma nie łamać się w środku frazy. */
 .rd-dict-count { white-space: nowrap; }
+/* Zmiana nazwy w miejscu: pole zajmuje wiersz dopiero po kliknięciu ołówka,
+   żeby lista w spoczynku pozostała listą, a nie ścianą inputów. */
+.rd-dict-actions { display: flex; align-items: center; gap: .15rem; flex-shrink: 0; }
+.rd-dict-rename { display: none; align-items: center; gap: .35rem; flex: 1; min-width: 0; }
+.rd-dict-rename .filter-input { flex: 1; min-width: 100px; }
+.rd-dict-item.renaming .rd-dict-value,
+.rd-dict-item.renaming .rd-dict-actions { display: none; }
+.rd-dict-item.renaming .rd-dict-rename { display: flex; }
 .rd-dict-add { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
 .rd-dict-add .filter-input { flex: 1; min-width: 120px; }
 
