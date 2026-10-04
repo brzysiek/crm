@@ -126,6 +126,18 @@ class SettingsNavigationTest(unittest.TestCase):
         for dead in (read('static/app.js'), read('static/style.css')):
             self.assertNotIn('nav-user', dead)
 
+    def test_sidebar_keeps_its_scroll_position_across_page_loads(self):
+        """Menu jest wyższe niż ekran, a nawigacja przeładowuje stronę — pozycja
+        przewinięcia musi przetrwać kliknięcie, i to przed pierwszym malowaniem,
+        inaczej widać skok do góry."""
+        nav_end = self.base.index('</nav>')
+        after_nav = self.base[nav_end:self.base.index('sidebar-footer')]
+        self.assertIn('sidebarNavScroll', after_nav)
+        self.assertIn('sessionStorage', after_nav)
+        self.assertIn('scrollTop', after_nav)
+        self.assertNotIn('sidebarNavScroll', read('static/app.js'),
+                         'odtwarzanie w app.js byłoby po pierwszym malowaniu')
+
     def test_gtd_still_uses_the_shared_sidebar_classes(self):
         """`.settings-sidebar` zostaje w CSS, bo GTD buduje na niej swoje menu."""
         self.assertIn('settings-sidebar', read('templates/gtd/_layout.html'))

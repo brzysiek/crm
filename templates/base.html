@@ -264,6 +264,29 @@
         <span class="sidebar-nav-label">Wyloguj</span>
       </a>
     </nav>
+    <script>
+    // Menu jest dłuższe niż ekran, a każde kliknięcie przeładowuje stronę — bez tego
+    // lista wracałaby na górę i po wyborze „Deale M&A" trzeba by znów przewijać w dół.
+    // Skrypt stoi tuż za <nav>, a nie w app.js, bo odtworzenie pozycji musi wyprzedzić
+    // pierwsze malowanie; inaczej widać skok. sessionStorage, więc nowa karta zaczyna od góry.
+    (function () {
+      var nav = document.currentScript.previousElementSibling;
+      var KEY = 'sidebarNavScroll';
+      try {
+        var saved = sessionStorage.getItem(KEY);
+        if (saved) { nav.scrollTop = parseInt(saved, 10) || 0; }
+      } catch (e) {}
+      var pending = false;
+      nav.addEventListener('scroll', function () {
+        if (pending) { return; }
+        pending = true;
+        requestAnimationFrame(function () {
+          pending = false;
+          try { sessionStorage.setItem(KEY, String(nav.scrollTop)); } catch (e) {}
+        });
+      }, { passive: true });
+    })();
+    </script>
 
     <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Zwiń/rozwiń menu">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9C4BB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>
