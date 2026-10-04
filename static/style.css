@@ -306,7 +306,10 @@ html.sidebar-collapsed .sidebar-footer { padding: 16px 0; justify-content: cente
 .sidebar-user-toggle {
   display: flex; align-items: center; gap: 10px; min-width: 0;
   background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; width: 100%; text-align: left;
+  text-decoration: none;
 }
+.sidebar-user-toggle:hover .sidebar-user-name,
+.sidebar-user-toggle.active .sidebar-user-name { color: var(--rd-lime); }
 html.sidebar-collapsed .sidebar-user-toggle { width: auto; justify-content: center; }
 
 .sidebar-avatar {

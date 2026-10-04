@@ -102,6 +102,20 @@ class SettingsNavigationTest(unittest.TestCase):
         self.assertNotIn('settings-sidebar', self.layout)
         self.assertNotIn('settings-nav-item', self.layout)
 
+    def test_logout_sits_between_settings_and_the_user(self):
+        """Kolejność w menu: Ustawienia → Wyloguj → nazwisko użytkownika."""
+        settings_at = self.base.index("url_for('settings.account')")
+        logout_at = self.base.index("url_for('auth.logout')")
+        user_at = self.base.index('sidebar-user-toggle')
+        self.assertLess(settings_at, logout_at)
+        self.assertLess(logout_at, user_at)
+
+    def test_user_footer_opens_my_account(self):
+        """Klik w użytkownika prowadzi wprost do „Moje konto", bez menu po drodze."""
+        footer = self.base[self.base.index('sidebar-footer'):self.base.index('</aside>')]
+        self.assertIn("url_for('settings.account')", footer)
+        self.assertNotIn('nav-user-menu', footer)
+
     def test_gtd_still_uses_the_shared_sidebar_classes(self):
         """`.settings-sidebar` zostaje w CSS, bo GTD buduje na niej swoje menu."""
         self.assertIn('settings-sidebar', read('templates/gtd/_layout.html'))

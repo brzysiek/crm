@@ -255,6 +255,14 @@
         {% endfor %}
       </div>
       {% endif %}
+
+      {# Wylogowanie jest czynnością, nie ustawieniem — stoi w menu jako osobna
+         pozycja, a nie w menu rozwijanym pod nazwiskiem (klik w użytkownika
+         prowadzi teraz wprost do „Moje konto"). #}
+      <a href="{{ url_for('auth.logout') }}" title="Wyloguj" class="sidebar-nav-item">
+        <span class="sidebar-nav-icon">{{ icon('log-out', 18) }}</span>
+        <span class="sidebar-nav-label">Wyloguj</span>
+      </a>
     </nav>
 
     <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Zwiń/rozwiń menu">
@@ -262,15 +270,12 @@
       <span class="sidebar-nav-label">Zwiń menu</span>
     </button>
 
-    <div class="sidebar-footer nav-user" id="nav-user">
-      <button type="button" class="sidebar-user-toggle nav-user-toggle" id="nav-user-toggle">
+    <div class="sidebar-footer">
+      <a href="{{ url_for('settings.account') }}" title="Moje konto"
+         class="sidebar-user-toggle {{ 'active' if request.endpoint == 'settings.account' else '' }}">
         <span class="sidebar-avatar">{{ (current_user.full_name or current_user.username or '?')[:2] | upper }}</span>
         <span class="sidebar-user-name">{{ current_user.full_name or current_user.username }}</span>
-      </button>
-      <div class="nav-user-menu" id="nav-user-menu">
-        <a href="{{ url_for('settings.index') }}" class="nav-user-menu-item">Ustawienia</a>
-        <a href="{{ url_for('auth.logout') }}" class="nav-user-menu-item">Wyloguj</a>
-      </div>
+      </a>
     </div>
   </aside>
 
