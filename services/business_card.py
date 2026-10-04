@@ -78,7 +78,7 @@ def process_business_card(front: tuple[bytes, str] | None, back: tuple[bytes, st
     OCR -> enrichment (WWW / NIP) -> dopasowanie lub utworzenie firmy i kontaktu ->
     zapis zdjęć w Google Drive. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
     if not api_key:
-        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach ogólnych.'}
+        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach → Integracje.'}
 
     images = [img for img in (front, back) if img is not None]
     if not images:
@@ -107,7 +107,7 @@ def process_business_card_from_text(text: str, api_key: str, model: str, drive_a
     """Przetwarza wklejony tekst stopki maila: ekstrakcja danych -> enrichment (WWW / NIP) ->
     dopasowanie lub utworzenie firmy i kontaktu. Zwraca słownik wyniku albo {'ok': False, 'error': ...}."""
     if not api_key:
-        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach ogólnych.'}
+        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach → Integracje.'}
 
     text = (text or '').strip()
     if not text:
@@ -239,7 +239,7 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
             except Exception as e:
                 warning = f'Firma/kontakt zapisane, ale nie udało się zapisać zdjęć wizytówki w Google Drive: {e}'
         else:
-            warning = 'Firma/kontakt zapisane, ale zdjęcia wizytówki nie zostały zapisane — skonfiguruj Google Drive w Ustawieniach.'
+            warning = 'Firma/kontakt zapisane, ale zdjęcia wizytówki nie zostały zapisane — skonfiguruj Google Drive w Ustawieniach → Integracje.'
 
     return {
         'ok': True,

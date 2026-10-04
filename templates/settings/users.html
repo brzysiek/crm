@@ -1,14 +1,16 @@
 {% extends 'settings/_layout.html' %}
 {% from '_icons.html' import icon %}
-{% block settings_content %}
+{% from 'settings/_macros.html' import section %}
+{% block page_heading %}Użytkownicy{% endblock %}
 
-<div class="section-header">
-  <h2>Użytkownicy</h2>
-  <button class="btn btn-primary btn-sm"
-          onclick="document.getElementById('addUserForm').classList.toggle('hidden')">
-    + Dodaj użytkownika
-  </button>
-</div>
+{% block header_actions %}
+<button class="btn btn-primary"
+        onclick="document.getElementById('addUserForm').classList.toggle('hidden')">
+  + Dodaj użytkownika
+</button>
+{% endblock %}
+
+{% block settings_content %}
 
 {# ── Tabela użytkowników ──────────────────────────────────────────────────── #}
 <div class="table-wrapper">
@@ -69,8 +71,8 @@
 </div>
 
 {# ── Formularz dodawania użytkownika ─────────────────────────────────────── #}
-<div id="addUserForm" class="settings-section hidden" style="margin-top:2rem">
-  <h3>Nowy użytkownik</h3>
+<div id="addUserForm" class="rd-settings-grid hidden" style="margin-top:1.25rem">
+{% call section('Nowy użytkownik', wide=True) %}
   <form method="post" action="{{ url_for('users.new_user') }}">
     <div class="form-grid form-grid-2">
       <div class="form-group">
@@ -113,6 +115,7 @@
       </button>
     </div>
   </form>
+{% endcall %}
 </div>
 
 {# ── Modal zmiany hasła ──────────────────────────────────────────────────── #}

@@ -1,0 +1,91 @@
+{% extends 'gtd/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Konteksty — GTD{% endblock %}
+
+{% block gtd_content %}
+<div class="rd-screen rd-zadania">
+
+<div class="page-header">
+  <h1>Konteksty</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('gtd.context_board') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć do widoku</a>
+  </div>
+</div>
+
+<p class="rd-settings-lead">
+  Konteksty (np. „@dom”, „@praca”) grupują zadania i projekty. Każde zadanie
+  i projekt może mieć co najwyżej jeden kontekst — widoczny jako badge zaraz za
+  nazwą na liście, w kolorze ustawionym poniżej.
+</p>
+
+{% if contexts %}
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Podgląd</th>
+        <th>Nazwa i kolory</th>
+        <th>Domyślny</th>
+        <th class="col-actions">Akcje</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ctx in contexts %}
+      <tr>
+        <td>
+          <span class="badge" style="background:{{ ctx.badge_color }}40;color:{{ ctx.text_color }};border:1px solid {{ ctx.badge_color }}55">@{{ ctx.name }}</span>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('gtd.context_update', context_id=ctx.id) }}"
+                class="rd-inline-add">
+            <input type="text" name="name" value="{{ ctx.name }}" required
+                   class="filter-input" style="max-width:180px">
+            <input type="color" name="badge_color" value="{{ ctx.badge_color }}" title="Kolor tła" class="rd-color-input">
+            <input type="color" name="text_color" value="{{ ctx.text_color }}" title="Kolor tekstu" class="rd-color-input">
+            <button type="submit" class="btn btn-outline btn-sm">Zapisz</button>
+          </form>
+        </td>
+        <td class="nowrap">
+          {% if ctx.is_default %}
+          <span class="badge badge-green">Domyślny</span>
+          <form method="post" action="{{ url_for('gtd.context_clear_default') }}" style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm">Wyczyść</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('gtd.context_set_default', context_id=ctx.id) }}" style="display:inline">
+            <button type="submit" class="btn btn-outline btn-sm">Ustaw domyślny</button>
+          </form>
+          {% endif %}
+        </td>
+        <td class="col-actions nowrap">
+          <form method="post"
+                action="{{ url_for('gtd.context_delete', context_id=ctx.id) }}"
+                onsubmit="return confirm('Usunąć kontekst „@{{ ctx.name }}”? Zostanie odpięty od zadań/projektów, które go używają.')"
+                style="display:inline">
+            <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 16) }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">Brak zdefiniowanych kontekstów.</div>
+{% endif %}
+
+<div class="inv-section rd-settings-section rd-settings-wide" style="margin-top:1.5rem">
+  <div class="inv-section-header"><h4>Nowy kontekst</h4></div>
+  <div class="rd-settings-body">
+    <form method="post" action="{{ url_for('gtd.context_add') }}" class="rd-inline-add">
+      <input type="text" name="name" placeholder="np. dom" required
+             class="filter-input" style="max-width:180px">
+      <input type="color" name="badge_color" value="#3B82F6" title="Kolor tła" class="rd-color-input">
+      <input type="color" name="text_color" value="#1F2937" title="Kolor tekstu" class="rd-color-input">
+      <button type="submit" class="btn btn-primary btn-sm">+ Dodaj kontekst</button>
+    </form>
+  </div>
+</div>
+
+</div>
+{% endblock %}

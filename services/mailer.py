@@ -7,7 +7,7 @@ reset hasła). Kampanie mailowe mają własną drogę: tam liczą się limity i 
 """
 from models.settings import get_setting
 
-SETUP_HINT = 'Brak konfiguracji wysyłki e-mail (Ustawienia → Email).'
+SETUP_HINT = 'Brak konfiguracji wysyłki e-mail (Ustawienia → Integracje → E-mail).'
 
 
 def _config() -> tuple[str, str, str | None]:

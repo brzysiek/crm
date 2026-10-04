@@ -1,61 +1,17 @@
+{# Ustawienia nie mają już własnego podmenu — nawigacja po nich wisi w menu głównym,
+   pod pozycją „Ustawienia”, tak jak listy pod Kontaktami. Ten szablon daje im tylko
+   wspólną ramę w palecie redesignu. #}
 {% extends 'base.html' %}
-{% block title %}Ustawienia{% endblock %}
+{% block title %}{{ self.page_heading() }} — Ustawienia{% endblock %}
 
 {% block content %}
-<div class="settings-layout">
+<div class="rd-screen rd-settings">
+  <div class="page-header">
+    <h1>{% block page_heading %}Ustawienia{% endblock %}</h1>
+    <div class="header-actions">{% block header_actions %}{% endblock %}</div>
+  </div>
 
-  <aside class="settings-sidebar">
-    <nav class="settings-nav">
-      <a href="{{ url_for('settings.account') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'account' }}">
-        Moje konto
-      </a>
-      <a href="{{ url_for('settings.appearance') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'appearance' }}">
-        Wygląd
-      </a>
-      <a href="{{ url_for('settings.general') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'general' }}">
-        Integracje
-      </a>
-      <a href="{{ url_for('settings.email_settings') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'email' }}">
-        Email
-      </a>
-      <a href="{{ url_for('settings.finance') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'finance' }}">
-        Finanse
-      </a>
-      <a href="{{ url_for('settings.crm_settings') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'crm' }}">
-        CRM
-      </a>
-      <a href="{{ url_for('settings.contact_lists') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'contact_lists' }}">
-        Listy kontaktów
-      </a>
-      <a href="{{ url_for('settings.gtd_contexts') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'gtd_contexts' }}">
-        Konteksty
-      </a>
-      <a href="{{ url_for('settings.dictionary') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'dictionary' }}">
-        Słownik
-      </a>
-      <a href="{{ url_for('users.list_users') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'users' }}">
-        Użytkownicy
-      </a>
-      <a href="{{ url_for('settings.logs') }}"
-         class="settings-nav-item {{ 'active' if active_tab == 'logs' }}">
-        Logi
-      </a>
-    </nav>
-  </aside>
-
-  <section class="settings-content">
-    {% block settings_content %}{% endblock %}
-  </section>
-
+  {% block settings_lead %}{% endblock %}
+  {% block settings_content %}{% endblock %}
 </div>
 {% endblock %}

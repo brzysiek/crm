@@ -1,40 +1,37 @@
 {% extends 'settings/_layout.html' %}
+{% from 'settings/_macros.html' import section %}
+{% block page_heading %}Dziennik zdarzeń{% endblock %}
+
+{% block settings_lead %}
+<p class="rd-settings-lead">
+  Ogon pliku logów aplikacji — pierwsze miejsce do sprawdzenia, gdy synchronizacja
+  albo wysyłka zachowa się inaczej, niż powinna.
+</p>
+{% endblock %}
+
 {% block settings_content %}
-
-<h2>Logi aplikacji</h2>
-
-<div class="settings-section">
-  <div style="display:flex; gap:.75rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap;">
-    <label style="font-size:.875rem;">
+<div class="rd-settings-grid">
+{% call section('Podgląd logu', wide=True) %}
+  <div class="rd-log-toolbar">
+    <label>
       Liczba linii:
-      <select id="linesSelect" style="margin-left:.4rem;">
+      <select id="linesSelect">
         <option value="50">50</option>
         <option value="200" selected>200</option>
         <option value="500">500</option>
         <option value="1000">1000</option>
       </select>
     </label>
-    <label style="font-size:.875rem; display:flex; align-items:center; gap:.4rem;">
+    <label class="checkbox-label" style="margin:0">
       <input type="checkbox" id="autoRefresh"> Odświeżaj co 10 s
     </label>
-    <button class="btn btn-outline" id="btnRefresh">Odśwież</button>
-    <button class="btn btn-outline" id="btnClear" style="margin-left:auto;">Wyczyść plik logów</button>
+    <button class="btn btn-outline btn-sm" id="btnRefresh">Odśwież</button>
+    <button class="btn btn-outline btn-sm" id="btnClear" style="margin-left:auto">Wyczyść plik logów</button>
   </div>
 
-  <pre id="logOutput" style="
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem;
-    font-size: .78rem;
-    line-height: 1.5;
-    max-height: 70vh;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
-  ">Ładowanie…</pre>
+  <pre id="logOutput" class="rd-log-output">Ładowanie…</pre>
+{% endcall %}
 </div>
-
 {% endblock %}
 
 {% block scripts %}

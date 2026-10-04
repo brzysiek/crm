@@ -1,3 +1,11 @@
+"""Ustawienia aplikacji.
+
+Zakres celowo wąski: konto, wygląd, integracje z usługami zewnętrznymi, słowniki
+podpowiedzi, użytkownicy i dziennik zdarzeń. Rzeczy, które edytuje się w trakcie
+pracy — listy kontaktów, konteksty GTD, stopki kampanii — mieszkają przy swoich
+widokach (crm_contacts, gtd, email_campaigns), bo tam się ich szuka.
+"""
+
 from flask import (Blueprint, flash, redirect,
                    render_template, request, session, url_for)
 
@@ -8,10 +16,10 @@ bp = Blueprint('settings', __name__, url_prefix='/settings')
 
 @bp.route('/')
 def index():
-    return redirect(url_for('settings.general'))
+    return redirect(url_for('settings.account'))
 
 
-@bp.route('/account', methods=['GET', 'POST'])
+@bp.route('/konto', methods=['GET', 'POST'])
 def account():
     from models.user import (change_password, get_user_by_id,
                               get_user_by_username, update_user_profile)
@@ -65,7 +73,12 @@ def account():
         login_2fa=get_setting('login_2fa', 'on') != 'off', mail_configured=is_configured())
 
 
-@bp.route('/general', methods=['GET', 'POST'])
+# ── Integracje ───────────────────────────────────────────────────────────────
+# Jedna strona, cztery karty (Fakturownia, Google, e-mail, Gemini). Każda karta
+# zapisuje się osobno — `form_section` mówi, których kluczy dotyczy POST, więc
+# zapis jednej integracji nie czyści pól sąsiedniej.
+
+@bp.route('/integracje', methods=['GET', 'POST'])
 def general():
     from models.settings import get_all_settings, set_many
     if request.method == 'POST':
@@ -83,6 +96,13 @@ def general():
             drive_token = request.form.get('google_drive_api_token', '').strip()
             if drive_token:
                 data['google_drive_api_token'] = drive_token
+        if section in ('email', 'all'):
+            data['gmail_sender_email'] = request.form.get('gmail_sender_email', '').strip()
+            data['gmail_sender_name'] = request.form.get('gmail_sender_name', '').strip()
+            data['email_daily_limit'] = request.form.get('email_daily_limit', '150').strip() or '150'
+            data['email_batch_per_run'] = request.form.get('email_batch_per_run', '3').strip() or '3'
+            data['crm_vcard_email_on_create'] = '1' if request.form.get('crm_vcard_email_on_create') == '1' else '0'
+            data['crm_vcard_email_on_edit'] = '1' if request.form.get('crm_vcard_email_on_edit') == '1' else '0'
         if section in ('gemini', 'all'):
             data['gemini_model'] = request.form.get('gemini_model', 'gemini-2.5-flash').strip()
             gemini_key = request.form.get('gemini_api_key', '').strip()
@@ -95,86 +115,6 @@ def general():
     return render_template('settings/general.html', active_tab='general', cfg=cfg)
 
 
-@bp.route('/email', methods=['GET', 'POST'])
-def email_settings():
-    from models.email_footers import get_all_footers
-    from models.settings import get_all_settings, set_many
-
-    if request.method == 'POST':
-        data = {
-            'gmail_sender_email': request.form.get('gmail_sender_email', '').strip(),
-            'gmail_sender_name': request.form.get('gmail_sender_name', '').strip(),
-            'email_daily_limit': request.form.get('email_daily_limit', '150').strip() or '150',
-            'email_batch_per_run': request.form.get('email_batch_per_run', '3').strip() or '3',
-        }
-        set_many(data)
-        flash('Konfiguracja wysyłki została zapisana.', 'success')
-        return redirect(url_for('settings.email_settings'))
-
-    cfg = get_all_settings()
-    return render_template('settings/email.html', active_tab='email', cfg=cfg,
-        footers=get_all_footers('footer'), unsubscribe_texts=get_all_footers('unsubscribe'))
-
-
-@bp.route('/email/footers/new', methods=['GET', 'POST'])
-def email_footer_new():
-    from models.email_footers import create_footer
-
-    if request.method == 'POST':
-        kind = request.form.get('kind', 'footer')
-        name = request.form.get('name', '').strip()
-        html_content = request.form.get('html_content', '').strip()
-        title = 'Nowy tekst wypisania' if kind == 'unsubscribe' else 'Nowa stopka'
-        if not name or not html_content:
-            flash('Nazwa i treść są wymagane.', 'error')
-            return render_template('settings/email_footer_form.html', active_tab='email',
-                footer=request.form, kind=kind, action=url_for('settings.email_footer_new'), title=title)
-        create_footer(name, html_content, kind)
-        flash('Zapisano.', 'success')
-        return redirect(url_for('settings.email_settings'))
-
-    kind = request.args.get('kind', 'footer')
-    title = 'Nowy tekst wypisania' if kind == 'unsubscribe' else 'Nowa stopka'
-    return render_template('settings/email_footer_form.html', active_tab='email',
-        footer={}, kind=kind, action=url_for('settings.email_footer_new'), title=title)
-
-
-@bp.route('/email/footers/<int:footer_id>/edit', methods=['GET', 'POST'])
-def email_footer_edit(footer_id):
-    from models.email_footers import get_footer_by_id, update_footer
-
-    footer = get_footer_by_id(footer_id)
-    if not footer:
-        flash('Stopka nie istnieje.', 'error')
-        return redirect(url_for('settings.email_settings'))
-
-    title = 'Edytuj tekst wypisania' if footer.get('kind') == 'unsubscribe' else 'Edytuj stopkę'
-
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        html_content = request.form.get('html_content', '').strip()
-        if not name or not html_content:
-            flash('Nazwa i treść są wymagane.', 'error')
-            return render_template('settings/email_footer_form.html', active_tab='email',
-                footer=request.form, kind=footer.get('kind', 'footer'),
-                action=url_for('settings.email_footer_edit', footer_id=footer_id), title=title)
-        update_footer(footer_id, name, html_content)
-        flash('Zaktualizowano.', 'success')
-        return redirect(url_for('settings.email_settings'))
-
-    return render_template('settings/email_footer_form.html', active_tab='email',
-        footer=footer, kind=footer.get('kind', 'footer'),
-        action=url_for('settings.email_footer_edit', footer_id=footer_id), title=title)
-
-
-@bp.route('/email/footers/<int:footer_id>/delete', methods=['POST'])
-def email_footer_delete(footer_id):
-    from models.email_footers import delete_footer
-    delete_footer(footer_id)
-    flash('Stopka została usunięta.', 'success')
-    return redirect(url_for('settings.email_settings'))
-
-
 _ALLOWED_LOGO_MIMES = {
     'image/png', 'image/jpeg', 'image/svg+xml', 'image/webp',
     'image/x-icon', 'image/vnd.microsoft.icon',
@@ -182,7 +122,7 @@ _ALLOWED_LOGO_MIMES = {
 _MAX_LOGO_BYTES = 1_500_000
 
 
-@bp.route('/appearance', methods=['GET', 'POST'])
+@bp.route('/aplikacja', methods=['GET', 'POST'])
 def appearance():
     import base64
     from models.settings import get_all_settings, set_many
@@ -214,42 +154,48 @@ def appearance():
 
         if data:
             set_many(data)
-            flash('Ustawienia wyglądu zostały zapisane.', 'success')
+            flash('Ustawienia aplikacji zostały zapisane.', 'success')
         return redirect(url_for('settings.appearance'))
 
     cfg = get_all_settings()
     return render_template('settings/appearance.html', active_tab='appearance', cfg=cfg)
 
 
-@bp.route('/logs')
+@bp.route('/dziennik')
 def logs():
     return render_template('settings/logs.html', active_tab='logs')
 
 
-@bp.route('/finance', methods=['GET'])
-def finance():
+# ── Słowniki ─────────────────────────────────────────────────────────────────
+# Wszystkie listy podpowiedzi w jednym miejscu, pogrupowane po module, którego
+# dotyczą. Wcześniej te same treści siedziały pod czterema pozycjami menu
+# („Finanse", „CRM", „Słownik", „Konteksty") i nie dało się zgadnąć, gdzie czego
+# szukać. Konteksty GTD pokazujemy tu tylko poglądowo — edytuje się je przy
+# zadaniach, więc nie ma dwóch edytorów tej samej rzeczy.
+
+@bp.route('/slowniki')
+def dictionaries():
+    from models.crm_tags import get_tags
     from models.dictionary import get_dict_items
-    return render_template('settings/finance.html',
-        active_tab='finance',
+    from models.gtd_context import get_all_contexts
+    return render_template('settings/dictionaries.html',
+        active_tab='dictionaries',
+        tags=get_tags('tag'),
+        industries=get_tags('industry'),
+        sources=get_tags('source'),
         expense_categories=get_dict_items('expense_category'),
         income_categories=get_dict_items('income_category'),
-    )
-
-
-@bp.route('/dictionary', methods=['GET'])
-def dictionary():
-    from models.dictionary import get_dict_items
-    return render_template('settings/dictionary.html',
-        active_tab='dictionary',
         vat_rates=get_dict_items('vat_rate'),
         payment_methods=get_dict_items('payment_method'),
+        contexts=get_all_contexts(),
     )
 
 
-_FINANCE_DICT_TYPES = ('expense_category', 'income_category')
+def _back_to_dictionaries(anchor):
+    return redirect(url_for('settings.dictionaries') + ('#' + anchor if anchor else ''))
 
 
-@bp.route('/dictionary/add', methods=['POST'])
+@bp.route('/slowniki/pozycja/dodaj', methods=['POST'])
 def dictionary_add():
     from models.dictionary import add_dict_item
     dict_type = request.form.get('dict_type', '').strip()
@@ -260,43 +206,18 @@ def dictionary_add():
             add_dict_item(dict_type, value, label)
         except Exception:
             flash('Taka pozycja już istnieje.', 'error')
-    target = 'settings.finance' if dict_type in _FINANCE_DICT_TYPES else 'settings.dictionary'
-    return redirect(url_for(target))
+    return _back_to_dictionaries(request.form.get('anchor', '').strip())
 
 
-@bp.route('/dictionary/<int:item_id>/delete', methods=['POST'])
+@bp.route('/slowniki/pozycja/<int:item_id>/usun', methods=['POST'])
 def dictionary_delete(item_id):
-    from models.dictionary import delete_dict_item, get_dict_item_type
-    dict_type = get_dict_item_type(item_id)
+    from models.dictionary import delete_dict_item
     delete_dict_item(item_id)
-    target = 'settings.finance' if dict_type in _FINANCE_DICT_TYPES else 'settings.dictionary'
-    return redirect(url_for(target))
+    return _back_to_dictionaries(request.form.get('anchor', '').strip())
 
 
-@bp.route('/crm', methods=['GET', 'POST'])
-def crm_settings():
-    from models.crm_tags import get_tags
-    from models.settings import get_all_settings, set_many
-
-    if request.method == 'POST':
-        set_many({
-            'crm_vcard_email_on_create': '1' if request.form.get('crm_vcard_email_on_create') == '1' else '0',
-            'crm_vcard_email_on_edit': '1' if request.form.get('crm_vcard_email_on_edit') == '1' else '0',
-        })
-        flash('Konfiguracja CRM została zapisana.', 'success')
-        return redirect(url_for('settings.crm_settings'))
-
-    return render_template('settings/crm.html',
-        active_tab='crm',
-        cfg=get_all_settings(),
-        tags=get_tags('tag'),
-        industries=get_tags('industry'),
-        sources=get_tags('source'),
-    )
-
-
-@bp.route('/crm/add', methods=['POST'])
-def crm_tag_add():
+@bp.route('/slowniki/tag/dodaj', methods=['POST'])
+def tag_add():
     from models.crm_tags import add_tag
     kind = request.form.get('kind', '').strip()
     name = request.form.get('name', '').strip()
@@ -305,125 +226,11 @@ def crm_tag_add():
             add_tag(kind, name)
         except Exception:
             flash('Taka pozycja już istnieje.', 'error')
-    return redirect(url_for('settings.crm_settings'))
+    return _back_to_dictionaries(request.form.get('anchor', '').strip())
 
 
-@bp.route('/crm/<int:tag_id>/delete', methods=['POST'])
-def crm_tag_delete(tag_id):
+@bp.route('/slowniki/tag/<int:tag_id>/usun', methods=['POST'])
+def tag_delete(tag_id):
     from models.crm_tags import delete_tag
     delete_tag(tag_id)
-    return redirect(url_for('settings.crm_settings'))
-
-
-@bp.route('/gtd-contexts', methods=['GET'])
-def gtd_contexts():
-    from models.gtd_context import get_all_contexts
-    return render_template('settings/gtd_contexts.html', active_tab='gtd_contexts',
-        contexts=get_all_contexts())
-
-
-@bp.route('/gtd-contexts/add', methods=['POST'])
-def gtd_context_add():
-    from models.gtd_context import create_context
-    name = request.form.get('name', '').strip().lstrip('@')
-    badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
-    text_color = request.form.get('text_color', '').strip() or '#1F2937'
-    if name:
-        try:
-            create_context(name, badge_color, text_color)
-        except Exception:
-            flash(f'Kontekst „{name}" już istnieje.', 'error')
-    return redirect(url_for('settings.gtd_contexts'))
-
-
-@bp.route('/gtd-contexts/<int:context_id>/update', methods=['POST'])
-def gtd_context_update(context_id):
-    from models.gtd_context import update_context
-    name = request.form.get('name', '').strip().lstrip('@')
-    badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
-    text_color = request.form.get('text_color', '').strip() or '#1F2937'
-    if name:
-        try:
-            update_context(context_id, name, badge_color, text_color)
-            flash('Kontekst został zaktualizowany.', 'success')
-        except Exception:
-            flash(f'Kontekst „{name}" już istnieje.', 'error')
-    return redirect(url_for('settings.gtd_contexts'))
-
-
-@bp.route('/gtd-contexts/<int:context_id>/delete', methods=['POST'])
-def gtd_context_delete(context_id):
-    from models.gtd_context import delete_context
-    delete_context(context_id)
-    flash('Kontekst został usunięty.', 'success')
-    return redirect(url_for('settings.gtd_contexts'))
-
-
-@bp.route('/gtd-contexts/<int:context_id>/set-default', methods=['POST'])
-def gtd_context_set_default(context_id):
-    from models.gtd_context import set_default_context
-    set_default_context(context_id)
-    flash('Ustawiono kontekst domyślny.', 'success')
-    return redirect(url_for('settings.gtd_contexts'))
-
-
-@bp.route('/gtd-contexts/clear-default', methods=['POST'])
-def gtd_context_clear_default():
-    from models.gtd_context import set_default_context
-    set_default_context(None)
-    flash('Wyczyszczono kontekst domyślny.', 'success')
-    return redirect(url_for('settings.gtd_contexts'))
-
-
-
-@bp.route('/contact-lists', methods=['GET'])
-def contact_lists():
-    from models.crm_contact_list import get_all_lists
-    return render_template('settings/contact_lists.html', active_tab='contact_lists',
-        lists=get_all_lists(with_counts=True))
-
-
-@bp.route('/contact-lists/add', methods=['POST'])
-def contact_list_add():
-    from models.crm_contact_list import create_list
-    name = request.form.get('name', '').strip()
-    if name:
-        try:
-            create_list(
-                name,
-                request.form.get('badge_color', '').strip() or '#3B82F6',
-                request.form.get('text_color', '').strip() or '#1F2937',
-                request.form.get('description', '').strip(),
-                request.form.get('sort_order', type=int) or 0,
-            )
-            flash(f'Lista „{name}” została dodana.', 'success')
-        except Exception:
-            flash(f'Lista „{name}” już istnieje.', 'error')
-    return redirect(url_for('settings.contact_lists'))
-
-
-@bp.route('/contact-lists/<int:list_id>/update', methods=['POST'])
-def contact_list_update(list_id):
-    from models.crm_contact_list import update_list
-    name = request.form.get('name', '').strip()
-    if name:
-        try:
-            update_list(
-                list_id, name,
-                request.form.get('badge_color', '').strip() or '#3B82F6',
-                request.form.get('text_color', '').strip() or '#1F2937',
-                request.form.get('description', '').strip(),
-                request.form.get('sort_order', type=int) or 0,
-            )
-            flash('Lista została zaktualizowana.', 'success')
-        except Exception:
-            flash(f'Lista „{name}” już istnieje.', 'error')
-    return redirect(url_for('settings.contact_lists'))
-
-
-@bp.route('/contact-lists/<int:list_id>/delete', methods=['POST'])
-def contact_list_delete(list_id):
-    from models.crm_contact_list import delete_list
-    delete_list(list_id)
-    flash('Lista została usunięta. Kontakty pozostały w CRM.', 'success')
-    return redirect(url_for('settings.contact_lists'))
+    return _back_to_dictionaries(request.form.get('anchor', '').strip())

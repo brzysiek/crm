@@ -2,7 +2,7 @@ import calendar
 import re
 from datetime import date, datetime, timedelta
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 import models.task as task_model
 import models.gcal_event as gcal_event_model
@@ -1048,3 +1048,62 @@ def api_day_busy(day_iso):
         return jsonify({'status': 'ok', 'events': simplified})
     except Exception:
         return jsonify({'status': 'ok', 'events': []})
+
+
+# ── Konteksty GTD ────────────────────────────────────────────────────────────
+# Kontekst jest narzędziem pracy z zadaniami, nie ustawieniem aplikacji — edytuje
+# się go tam, gdzie się go widzi, czyli przy widoku „Wg kontekstu”.
+
+@bp.route('/gtd/konteksty')
+def contexts():
+    return render_template('gtd/contexts.html',
+        contexts=gtd_context_model.get_all_contexts(),
+        active_tab='kontekst')
+
+
+@bp.route('/gtd/konteksty/dodaj', methods=['POST'])
+def context_add():
+    name = request.form.get('name', '').strip().lstrip('@')
+    badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
+    text_color = request.form.get('text_color', '').strip() or '#1F2937'
+    if name:
+        try:
+            gtd_context_model.create_context(name, badge_color, text_color)
+        except Exception:
+            flash(f'Kontekst „{name}" już istnieje.', 'error')
+    return redirect(url_for('gtd.contexts'))
+
+
+@bp.route('/gtd/konteksty/<int:context_id>/zapisz', methods=['POST'])
+def context_update(context_id):
+    name = request.form.get('name', '').strip().lstrip('@')
+    badge_color = request.form.get('badge_color', '').strip() or '#3B82F6'
+    text_color = request.form.get('text_color', '').strip() or '#1F2937'
+    if name:
+        try:
+            gtd_context_model.update_context(context_id, name, badge_color, text_color)
+            flash('Kontekst został zaktualizowany.', 'success')
+        except Exception:
+            flash(f'Kontekst „{name}" już istnieje.', 'error')
+    return redirect(url_for('gtd.contexts'))
+
+
+@bp.route('/gtd/konteksty/<int:context_id>/usun', methods=['POST'])
+def context_delete(context_id):
+    gtd_context_model.delete_context(context_id)
+    flash('Kontekst został usunięty.', 'success')
+    return redirect(url_for('gtd.contexts'))
+
+
+@bp.route('/gtd/konteksty/<int:context_id>/domyslny', methods=['POST'])
+def context_set_default(context_id):
+    gtd_context_model.set_default_context(context_id)
+    flash('Ustawiono kontekst domyślny.', 'success')
+    return redirect(url_for('gtd.contexts'))
+
+
+@bp.route('/gtd/konteksty/domyslny/wyczysc', methods=['POST'])
+def context_clear_default():
+    gtd_context_model.set_default_context(None)
+    flash('Wyczyszczono kontekst domyślny.', 'success')
+    return redirect(url_for('gtd.contexts'))

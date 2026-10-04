@@ -1,0 +1,73 @@
+{% extends 'settings/_layout.html' %}
+{% from 'settings/_macros.html' import section, dict_card, tag_card %}
+{% from '_icons.html' import icon %}
+{% block page_heading %}Słowniki{% endblock %}
+
+{% block settings_lead %}
+<p class="rd-settings-lead">
+  Listy podpowiedzi, z których wybiera się wartości w formularzach — pogrupowane
+  według modułu, którego dotyczą. Usunięcie pozycji nie kasuje rekordów, które jej
+  używały; odpina ją tylko od nich.
+</p>
+{% endblock %}
+
+{% block settings_content %}
+
+<h2 class="rd-settings-group">CRM</h2>
+<div class="rd-settings-grid">
+  {{ tag_card('Tagi', 'tagi', 'tag', tags, 'np. VIP',
+     hint='Swobodne etykiety firm i kontaktów — filtruje się po nich listy i dobiera odbiorców kampanii.') }}
+  {{ tag_card('Branże', 'branze', 'industry', industries, 'np. Produkcja') }}
+  {{ tag_card('Źródła', 'zrodla', 'source', sources, 'np. Polecenie') }}
+</div>
+
+<h2 class="rd-settings-group">Finanse</h2>
+<div class="rd-settings-grid">
+  {{ dict_card('Kategorie wydatków', 'kategorie-wydatkow', 'expense_category', expense_categories, 'Nazwa kategorii') }}
+  {{ dict_card('Kategorie przychodów', 'kategorie-przychodow', 'income_category', income_categories, 'Nazwa kategorii') }}
+  {{ dict_card('Stawki VAT', 'vat', 'vat_rate', vat_rates, 'Wartość (np. 23)', 'Etykieta (np. 23%)') }}
+  {{ dict_card('Formy płatności', 'platnosci', 'payment_method', payment_methods, 'Klucz (np. transfer)', 'Nazwa wyświetlana') }}
+</div>
+
+{# Te trzy słowniki świadomie nie mają tu edytora — żyją przy swoich widokach.
+   Zostaje skrót, żeby ktoś, kto szuka ich w Ustawieniach, nie trafił w pustkę. #}
+<h2 class="rd-settings-group">Edytowane przy pracy</h2>
+<div class="rd-settings-grid">
+  {% call section('Konteksty zadań', id='konteksty',
+     hint='Konteksty edytuje się przy zadaniach — tam, gdzie widać ich wpływ na listy.') %}
+    {% if contexts %}
+    <div class="rd-chip-row">
+      {% for ctx in contexts %}
+      <span class="badge" style="background:{{ ctx.badge_color }}40;color:{{ ctx.text_color }};border:1px solid {{ ctx.badge_color }}55">@{{ ctx.name }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small">Brak zdefiniowanych kontekstów.</p>
+    {% endif %}
+    <div class="form-actions">
+      <a href="{{ url_for('gtd.contexts') }}" class="btn btn-outline btn-sm">
+        {{ icon('settings', 14) }} Zarządzaj kontekstami
+      </a>
+    </div>
+  {% endcall %}
+
+  {% call section('Listy kontaktów', id='listy',
+     hint='Listy mieszkają przy kontaktach — razem z widokiem, który filtrują.') %}
+    <div class="form-actions">
+      <a href="{{ url_for('crm_contacts.lists') }}" class="btn btn-outline btn-sm">
+        {{ icon('settings', 14) }} Zarządzaj listami kontaktów
+      </a>
+    </div>
+  {% endcall %}
+
+  {% call section('Stopki kampanii', id='stopki',
+     hint='Stopki i teksty wypisania to treść wiadomości — wybiera się je przy tworzeniu kampanii.') %}
+    <div class="form-actions">
+      <a href="{{ url_for('email_campaigns.footers') }}" class="btn btn-outline btn-sm">
+        {{ icon('settings', 14) }} Zarządzaj stopkami
+      </a>
+    </div>
+  {% endcall %}
+</div>
+
+{% endblock %}

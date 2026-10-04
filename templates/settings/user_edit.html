@@ -1,13 +1,15 @@
 {% extends 'settings/_layout.html' %}
 {% from '_icons.html' import icon %}
+{% from 'settings/_macros.html' import section %}
+{% block page_heading %}Edytuj użytkownika{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('users.list_users') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć</a>
+{% endblock %}
+
 {% block settings_content %}
-
-<div class="section-header">
-  <h2>Edytuj użytkownika</h2>
-  <a href="{{ url_for('users.list_users') }}" class="btn btn-outline btn-sm">{{ icon('arrow-left', 14) }} Wróć</a>
-</div>
-
-<div class="settings-section">
+<div class="rd-settings-grid">
+{% call section(user.username) %}
   <form method="post" action="{{ url_for('users.edit_user', user_id=user.id) }}">
     <div class="form-grid form-grid-2">
       <div class="form-group">
@@ -45,6 +47,6 @@
       <a href="{{ url_for('users.list_users') }}" class="btn btn-outline">Anuluj</a>
     </div>
   </form>
+{% endcall %}
 </div>
-
 {% endblock %}

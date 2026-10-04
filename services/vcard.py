@@ -42,7 +42,7 @@ def build_vcard(contact: dict) -> str:
 
 def send_vcard_email(contact: dict, to_email: str) -> None:
     """Wysyła wizytówkę kontaktu (.vcf) mailem na wskazany adres — używane po
-    dodaniu/edycji kontaktu, gdy w Ustawieniach → CRM włączona jest odpowiednia
+    dodaniu/edycji kontaktu, gdy w Ustawieniach → Integracje → E-mail włączona jest odpowiednia
     automatyzacja, żeby móc od razu otworzyć załącznik na telefonie i zapisać kontakt."""
     from services.mailer import send_email
 

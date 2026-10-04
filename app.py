@@ -1537,7 +1537,7 @@ def api_gdrive_folders():
     api_token = get_setting('google_drive_api_token', '')
     root_folder_id = get_setting('google_drive_folder_id', '')
     if not api_token or not root_folder_id:
-        return jsonify({'error': 'Brak konfiguracji Google Drive. Skonfiguruj w Ustawieniach ogólnych.'}), 400
+        return jsonify({'error': 'Brak konfiguracji Google Drive. Skonfiguruj w Ustawieniach → Integracje.'}), 400
     parent_id = request.args.get('parent_id', '').strip() or root_folder_id
     try:
         client = GoogleDriveClient(api_token, root_folder_id)

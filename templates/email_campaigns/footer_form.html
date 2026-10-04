@@ -1,13 +1,18 @@
-{% extends 'settings/_layout.html' %}
+{% extends 'email_campaigns/_layout.html' %}
 {% from '_icons.html' import icon %}
-{% block settings_content %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block ec_content %}
+<div class="rd-screen">
 
 <div class="page-header">
-  <h2>{{ title }}</h2>
-  <a href="{{ url_for('settings.email_settings') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć</a>
+  <h1>{{ title }}</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('email_campaigns.footers') }}" class="btn btn-outline">{{ icon('arrow-left', 14) }} Wróć</a>
+  </div>
 </div>
 
-<div class="settings-section">
+<div class="form-card">
   <form method="post" action="{{ action }}" id="footer-form">
     <input type="hidden" name="kind" value="{{ kind }}">
 
@@ -32,11 +37,12 @@
 
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Zapisz</button>
-      <a href="{{ url_for('settings.email_settings') }}" class="btn btn-outline">Anuluj</a>
+      <a href="{{ url_for('email_campaigns.footers') }}" class="btn btn-outline">Anuluj</a>
     </div>
   </form>
 </div>
 
+</div>
 {% endblock %}
 
 {% block scripts %}

@@ -369,7 +369,7 @@ def extract_company_profile(homepage_text: str, contact_text: str,
 
 def build_company_profile(url: str, api_key: str, model: str = 'gemini-2.5-flash') -> dict:
     if not api_key:
-        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach ogólnych.'}
+        return {'ok': False, 'error': 'Brak klucza API Gemini — skonfiguruj go w Ustawieniach → Integracje.'}
     scraped = scrape_company_site(url)
     if not scraped.get('ok'):
         return scraped

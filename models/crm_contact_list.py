@@ -1,4 +1,4 @@
-"""Listy kontaktów — nazwane grupy definiowane w Ustawieniach.
+"""Listy kontaktów — nazwane grupy definiowane przy kontaktach (Kontakty → Listy).
 
 Kontakt może być na wielu listach naraz (M:N przez crm_contact_list_members),
 w odróżnieniu od kontekstu GTD, którego kontakt ma najwyżej jeden. Każde
@@ -15,7 +15,7 @@ DEFAULT_TEXT_COLOR = '#1F2937'
 def get_all_lists(with_counts: bool = False) -> list[dict]:
     """Listy w kolejności ręcznej (sort_order), potem alfabetycznie.
 
-    `with_counts=True` dokłada `member_count` — używane w Ustawieniach i w menu
+    `with_counts=True` dokłada `member_count` — używane na ekranie list i w menu
     bocznym, gdzie liczba obok nazwy mówi, czy lista w ogóle jest zapełniona.
     Liczone są tylko kontakty nieprzeniesione do archiwum.
     """

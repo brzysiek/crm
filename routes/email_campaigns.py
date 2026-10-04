@@ -152,3 +152,76 @@ def unsubscribe(token):
         if recipient.get('contact_id'):
             remove_all_contact_email_tags(recipient['contact_id'])
     return render_template('unsubscribe.html', found=bool(recipient))
+
+
+# ── Stopki i teksty wypisania ────────────────────────────────────────────────
+# To treść wstawiana do kampanii, a nie konfiguracja wysyłki — mieszka przy
+# kampaniach, gdzie się ją wybiera z listy przy tworzeniu wiadomości.
+
+@bp.route('/stopki')
+def footers():
+    return render_template('email_campaigns/footers.html',
+        footers=get_all_footers('footer'),
+        unsubscribe_texts=get_all_footers('unsubscribe'))
+
+
+@bp.route('/stopki/nowa', methods=['GET', 'POST'])
+def footer_new():
+    from models.email_footers import create_footer
+
+    kind = request.form.get('kind') if request.method == 'POST' else request.args.get('kind', 'footer')
+    kind = kind if kind in ('footer', 'unsubscribe') else 'footer'
+    title = 'Nowy tekst wypisania' if kind == 'unsubscribe' else 'Nowa stopka'
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        html_content = request.form.get('html_content', '').strip()
+        if not name or not html_content:
+            flash('Nazwa i treść są wymagane.', 'error')
+            return render_template('email_campaigns/footer_form.html',
+                footer=request.form, kind=kind,
+                action=url_for('email_campaigns.footer_new'), title=title)
+        create_footer(name, html_content, kind)
+        flash('Zapisano.', 'success')
+        return redirect(url_for('email_campaigns.footers'))
+
+    return render_template('email_campaigns/footer_form.html',
+        footer={}, kind=kind,
+        action=url_for('email_campaigns.footer_new'), title=title)
+
+
+@bp.route('/stopki/<int:footer_id>/edytuj', methods=['GET', 'POST'])
+def footer_edit(footer_id):
+    from models.email_footers import get_footer_by_id, update_footer
+
+    footer = get_footer_by_id(footer_id)
+    if not footer:
+        flash('Stopka nie istnieje.', 'error')
+        return redirect(url_for('email_campaigns.footers'))
+
+    kind = footer.get('kind', 'footer')
+    title = 'Edytuj tekst wypisania' if kind == 'unsubscribe' else 'Edytuj stopkę'
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        html_content = request.form.get('html_content', '').strip()
+        if not name or not html_content:
+            flash('Nazwa i treść są wymagane.', 'error')
+            return render_template('email_campaigns/footer_form.html',
+                footer=request.form, kind=kind,
+                action=url_for('email_campaigns.footer_edit', footer_id=footer_id), title=title)
+        update_footer(footer_id, name, html_content)
+        flash('Zaktualizowano.', 'success')
+        return redirect(url_for('email_campaigns.footers'))
+
+    return render_template('email_campaigns/footer_form.html',
+        footer=footer, kind=kind,
+        action=url_for('email_campaigns.footer_edit', footer_id=footer_id), title=title)
+
+
+@bp.route('/stopki/<int:footer_id>/usun', methods=['POST'])
+def footer_delete(footer_id):
+    from models.email_footers import delete_footer
+    delete_footer(footer_id)
+    flash('Usunięto.', 'success')
+    return redirect(url_for('email_campaigns.footers'))

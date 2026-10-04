@@ -412,3 +412,60 @@ def add_note_view(contact_id):
 def delete_note_view(contact_id, note_id):
     delete_note(note_id)
     return redirect(url_for('crm_contacts.view_contact', contact_id=contact_id))
+
+
+# ── Listy kontaktów ──────────────────────────────────────────────────────────
+# Lista to sposób opisania kontaktów, a nie konfiguracja aplikacji — zarządza się
+# nimi tam, gdzie się ich używa: obok kontaktów, nie w ustawieniach.
+
+@bp.route('/listy')
+def lists():
+    from models.crm_contact_list import get_all_lists
+    return render_template('crm/contacts/lists.html',
+        lists=get_all_lists(with_counts=True))
+
+
+@bp.route('/listy/dodaj', methods=['POST'])
+def list_add():
+    from models.crm_contact_list import create_list
+    name = request.form.get('name', '').strip()
+    if name:
+        try:
+            create_list(
+                name,
+                request.form.get('badge_color', '').strip() or '#3B82F6',
+                request.form.get('text_color', '').strip() or '#1F2937',
+                request.form.get('description', '').strip(),
+                request.form.get('sort_order', type=int) or 0,
+            )
+            flash(f'Lista „{name}” została dodana.', 'success')
+        except Exception:
+            flash(f'Lista „{name}” już istnieje.', 'error')
+    return redirect(url_for('crm_contacts.lists'))
+
+
+@bp.route('/listy/<int:list_id>/zapisz', methods=['POST'])
+def list_update(list_id):
+    from models.crm_contact_list import update_list
+    name = request.form.get('name', '').strip()
+    if name:
+        try:
+            update_list(
+                list_id, name,
+                request.form.get('badge_color', '').strip() or '#3B82F6',
+                request.form.get('text_color', '').strip() or '#1F2937',
+                request.form.get('description', '').strip(),
+                request.form.get('sort_order', type=int) or 0,
+            )
+            flash('Lista została zaktualizowana.', 'success')
+        except Exception:
+            flash(f'Lista „{name}” już istnieje.', 'error')
+    return redirect(url_for('crm_contacts.lists'))
+
+
+@bp.route('/listy/<int:list_id>/usun', methods=['POST'])
+def list_delete(list_id):
+    from models.crm_contact_list import delete_list
+    delete_list(list_id)
+    flash('Lista została usunięta. Kontakty pozostały w CRM.', 'success')
+    return redirect(url_for('crm_contacts.lists'))

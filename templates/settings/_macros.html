@@ -1,0 +1,74 @@
+{% from '_icons.html' import icon %}
+
+{# Karta ustawień — nagłówek w butelkowej zieleni + białe ciało, jak sekcje na kartach firm. #}
+{% macro section(title, id=None, hint=None, wide=False) %}
+<div class="inv-section rd-settings-section {{ 'rd-settings-wide' if wide }}" {% if id %}id="{{ id }}"{% endif %}>
+  <div class="inv-section-header"><h4>{{ title }}</h4></div>
+  <div class="rd-settings-body">
+    {% if hint %}<p class="rd-settings-hint">{{ hint }}</p>{% endif %}
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}
+
+{# Lista pozycji słownika + dopisywanie w jednej linii. `anchor` wraca w POST, żeby po
+   zapisie przeglądarka wróciła do tej samej karty, a nie na górę długiej strony. #}
+{% macro dict_card(title, anchor, dict_type, items, placeholder, label_placeholder=None, hint=None) %}
+{% call section(title, id=anchor, hint=hint) %}
+  {% if items %}
+  <ul class="rd-dict-list">
+    {% for item in items %}
+    <li class="rd-dict-item">
+      <span class="rd-dict-value">{{ item.value }}{% if item.label %} <span class="text-muted">— {{ item.label }}</span>{% endif %}</span>
+      <form method="post" action="{{ url_for('settings.dictionary_delete', item_id=item.id) }}"
+            onsubmit="return confirm('Usunąć pozycję „{{ item.label or item.value }}”?')">
+        <input type="hidden" name="anchor" value="{{ anchor }}">
+        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 15) }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted small">Brak pozycji.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('settings.dictionary_add') }}" class="rd-dict-add">
+    <input type="hidden" name="dict_type" value="{{ dict_type }}">
+    <input type="hidden" name="anchor" value="{{ anchor }}">
+    <input type="text" name="value" placeholder="{{ placeholder }}" required class="filter-input">
+    {% if label_placeholder %}
+    <input type="text" name="label" placeholder="{{ label_placeholder }}" class="filter-input">
+    {% endif %}
+    <button type="submit" class="btn btn-outline btn-sm">+ Dodaj</button>
+  </form>
+{% endcall %}
+{% endmacro %}
+
+{# To samo dla tagów/branż/źródeł CRM — inna tabela w bazie, ta sama interakcja. #}
+{% macro tag_card(title, anchor, kind, items, placeholder, hint=None) %}
+{% call section(title, id=anchor, hint=hint) %}
+  {% if items %}
+  <ul class="rd-dict-list">
+    {% for item in items %}
+    <li class="rd-dict-item">
+      <span class="rd-dict-value">{{ item.name }}</span>
+      <form method="post" action="{{ url_for('settings.tag_delete', tag_id=item.id) }}"
+            onsubmit="return confirm('Usunąć „{{ item.name }}”? Zostanie odpięta od firm i kontaktów, które jej używają.')">
+        <input type="hidden" name="anchor" value="{{ anchor }}">
+        <button type="submit" class="action-btn action-danger" title="Usuń">{{ icon('trash', 15) }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted small">Brak pozycji.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('settings.tag_add') }}" class="rd-dict-add">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="anchor" value="{{ anchor }}">
+    <input type="text" name="name" placeholder="{{ placeholder }}" required class="filter-input">
+    <button type="submit" class="btn btn-outline btn-sm">+ Dodaj</button>
+  </form>
+{% endcall %}
+{% endmacro %}

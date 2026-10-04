@@ -1,11 +1,19 @@
 {% extends 'settings/_layout.html' %}
+{% from 'settings/_macros.html' import section %}
+{% block page_heading %}Integracje{% endblock %}
+
+{% block settings_lead %}
+<p class="rd-settings-lead">
+  Połączenia z usługami zewnętrznymi. Każda karta zapisuje się osobno —
+  wypełnienie jednej nie wymaga dotykania pozostałych.
+</p>
+{% endblock %}
+
 {% block settings_content %}
+<div class="rd-settings-grid">
 
-<h2>Ustawienia ogólne</h2>
-
-{# ── Konfiguracja Fakturowni ───────────────────────────────────────────────── #}
-<div class="settings-section">
-  <h3>Konfiguracja Fakturowni</h3>
+{% call section('Fakturownia', id='fakturownia',
+   hint='Źródło faktur kosztowych i przychodowych wczytywanych do modułu finansów.') %}
   <form method="post" action="{{ url_for('settings.general') }}">
     <input type="hidden" name="form_section" value="fakturownia">
 
@@ -25,29 +33,21 @@
         <input type="password" id="api_key" name="api_key"
                value="{{ cfg.fakturownia_api_key or '' }}"
                autocomplete="off">
-        <button type="button" class="btn-reveal" onclick="toggleReveal('api_key', this)">
-          Pokaż
-        </button>
+        <button type="button" class="btn-reveal" onclick="toggleReveal('api_key', this)">Pokaż</button>
       </div>
     </div>
 
     <div class="form-group">
       <label for="sync_schedule">Harmonogram synchronizacji</label>
       <select id="sync_schedule" name="sync_schedule">
-        <option value="manual"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'manual' }}>
-          Ręcznie
-        </option>
-        <option value="daily"   {{ 'selected' if cfg.fakturownia_sync_schedule == 'daily' }}>
-          Codziennie o 08:00
-        </option>
-        <option value="hourly"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'hourly' }}>
-          Co godzinę
-        </option>
+        <option value="manual"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'manual' }}>Ręcznie</option>
+        <option value="daily"   {{ 'selected' if cfg.fakturownia_sync_schedule == 'daily' }}>Codziennie o 08:00</option>
+        <option value="hourly"  {{ 'selected' if cfg.fakturownia_sync_schedule == 'hourly' }}>Co godzinę</option>
       </select>
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Zapisz konfigurację</button>
+      <button type="submit" class="btn btn-primary">Zapisz</button>
       <button type="button" class="btn btn-outline" id="btnTest">Testuj połączenie</button>
     </div>
     <div id="testResult" class="api-result" style="display:none"></div>
@@ -55,18 +55,16 @@
     {% if cfg.fakturownia_last_sync %}
     <p class="text-muted small">Ostatnia synchronizacja: {{ cfg.fakturownia_last_sync }}</p>
     {% endif %}
-
   </form>
-</div>
+{% endcall %}
 
-{# ── Konfiguracja Google Drive ─────────────────────────────────────────────── #}
-<div class="settings-section">
-  <h3>Konfiguracja Google Drive</h3>
+{% call section('Google — Dysk i Kalendarz', id='google', wide=True,
+   hint='Konto usługi (service account) obsługuje naraz Dysk, Kalendarz i wysyłkę poczty — ten sam token wykorzystuje karta e-mail poniżej.') %}
   <form method="post" action="{{ url_for('settings.general') }}">
     <input type="hidden" name="form_section" value="gdrive">
 
     <div class="form-group">
-      <label for="google_drive_folder_id">ID folderu zawierającego faktury</label>
+      <label for="google_drive_folder_id">ID folderu z fakturami</label>
       <input type="text" id="google_drive_folder_id" name="google_drive_folder_id"
              placeholder="np. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
              value="{{ cfg.google_drive_folder_id or '' }}">
@@ -79,10 +77,9 @@
              placeholder="np. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
              value="{{ cfg.google_drive_crm_folder_id or '' }}">
       <small class="text-muted">
-        Osobny folder na pliki dodawane do firm/kontaktów w CRM
-        (struktura: ten folder / nazwa firmy / pliki). Wymaga konta usługi
-        (service account) z uprawnieniem do edycji tego folderu — sam klucz API nie
-        wystarczy do zapisu.
+        Osobny folder na pliki dodawane do firm i kontaktów (struktura: ten folder /
+        nazwa firmy / pliki). Do zapisu potrzeba konta usługi z prawem edycji —
+        sam klucz API nie wystarczy.
       </small>
     </div>
 
@@ -93,52 +90,118 @@
                autocomplete="off"
                placeholder="Wklej token lub JSON konta usługi"
                value="{{ cfg.google_drive_api_token or '' }}">
-        <button type="button" class="btn-reveal" onclick="toggleReveal('google_drive_api_token', this)">
-          Pokaż
-        </button>
+        <button type="button" class="btn-reveal" onclick="toggleReveal('google_drive_api_token', this)">Pokaż</button>
       </div>
       {% if cfg.google_drive_api_token %}
-      <small class="text-muted">Token jest zapisany. Wpisz nowy, aby go zastąpić — pozostaw puste, żeby zachować obecny.</small>
+      <small class="text-muted">Token jest zapisany. Wpisz nowy, aby go zastąpić — zostaw puste, żeby zachować obecny.</small>
       {% else %}
-      <small class="text-muted">Jeśli wartość zaczyna się od <code>{</code> — traktowana jako JSON konta usługi (service account). W przeciwnym razie — prosty klucz API.</small>
+      <small class="text-muted">Wartość zaczynająca się od <code>{</code> jest traktowana jako JSON konta usługi; w przeciwnym razie jako prosty klucz API.</small>
       {% endif %}
     </div>
 
     <div class="form-group">
-      <label>GTD: kalendarze Google (odczyt / zapis)</label>
+      <label>Kalendarze Google (odczyt / zapis)</label>
       <div id="gcalPickerLoading" class="text-muted small">Wczytywanie skonfigurowanych kalendarzy…</div>
       <div id="gcalPickerList" style="display:none"></div>
       <div class="api-result api-error" id="gcalAddError" style="display:none"></div>
-      <div style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem">
-        <input type="text" id="gcalAddId" placeholder="ID kalendarza Google (np. nazwa@grupa.calendar.google.com)" style="flex:1">
+      <div class="rd-inline-add">
+        <input type="text" id="gcalAddId" class="filter-input"
+               placeholder="ID kalendarza Google (np. nazwa@grupa.calendar.google.com)">
         <button type="button" class="btn btn-outline btn-sm" id="btnGcalAdd">Dodaj kalendarz</button>
       </div>
       <small class="text-muted" style="display:block;margin-top:.4rem">
-        Dodaj tu ID każdego kalendarza udostępnionego kontu usługi (Google nie
-        pozwala ich wylistować automatycznie) — nazwa zostanie rozpoznana
-        automatycznie. Zaznacz „czytaj” przy kalendarzach, których wydarzenia
-        mają się pokazywać w widokach GTD. Wybierz jeden kalendarz jako
-        „domyślny do zapisu” — na niego GTD jednokierunkowo wypycha zablokowane
-        bloki czasu zadań. Wymaga service account w polu „Token / klucz API”
-        powyżej.
+        Dodaj ID każdego kalendarza udostępnionego kontu usługi (Google nie pozwala
+        ich wylistować automatycznie) — nazwa rozpozna się sama. „Czytaj” wpuszcza
+        wydarzenia do widoków zadań, „domyślny do zapisu” wskazuje kalendarz, na który
+        trafiają bloki czasu zadań.
       </small>
       <input type="hidden" id="gtd_gcal_calendar_id" name="gtd_gcal_calendar_id" value="{{ cfg.gtd_gcal_calendar_id or '' }}">
       <input type="hidden" id="gtd_gcal_read_calendar_id" name="gtd_gcal_read_calendar_id" value="{{ cfg.gtd_gcal_read_calendar_id or '' }}">
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Zapisz konfigurację Google Drive</button>
+      <button type="submit" class="btn btn-primary">Zapisz</button>
       <button type="button" class="btn btn-outline" id="btnTestDrive">Testuj połączenie</button>
       <button type="button" class="btn btn-outline" id="btnGcalBackfill">Uzupełnij tytuły przeszłych wydarzeń</button>
     </div>
     <div id="driveTestResult" class="api-result" style="display:none"></div>
     <div id="gcalBackfillResult" class="api-result" style="display:none"></div>
   </form>
-</div>
+{% endcall %}
 
-{# ── Konfiguracja Gemini ───────────────────────────────────────────────────── #}
-<div class="settings-section">
-  <h3>Konfiguracja Gemini (OCR)</h3>
+{% call section('E-mail', id='email', wide=True,
+   hint='Wysyłka kampanii, kodów logowania, linków do resetu hasła i wizytówek — wszystko z tej jednej skrzynki.') %}
+  <form method="post" action="{{ url_for('settings.general') }}">
+    <input type="hidden" name="form_section" value="email">
+
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label for="gmail_sender_email">Adres nadawcy (Google Workspace)</label>
+        <input type="email" id="gmail_sender_email" name="gmail_sender_email"
+               placeholder="np. kontakt@twoja-domena.pl"
+               value="{{ cfg.gmail_sender_email or '' }}">
+        <small class="text-muted">
+          Skrzynka, w imieniu której wysyłamy — przez konto usługi z delegacją domenową,
+          ten sam token co w karcie Google powyżej. Wymaga nadania temu kontu zakresu
+          <code>gmail.send</code> w Workspace Admin Console
+          (Security → API Controls → Domain-wide Delegation).
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="gmail_sender_name">Nazwa nadawcy</label>
+        <input type="text" id="gmail_sender_name" name="gmail_sender_name"
+               placeholder="np. Łukasz Brzyski"
+               value="{{ cfg.gmail_sender_name or '' }}">
+        <small class="text-muted">Widoczna w skrzynce odbiorcy obok adresu. Puste = sam adres.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="email_daily_limit">Dzienny limit wysyłek</label>
+        <input type="number" id="email_daily_limit" name="email_daily_limit" min="1"
+               value="{{ cfg.email_daily_limit or 150 }}">
+        <small class="text-muted">
+          Limit dzielony ze zwykłą pocztą z tego samego adresu — ustaw wyraźnie poniżej
+          limitu Google (2000/dzień), żeby nie zaszkodzić reputacji skrzynki.
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="email_batch_per_run">Maili na jedno uruchomienie crona</label>
+        <input type="number" id="email_batch_per_run" name="email_batch_per_run" min="1"
+               value="{{ cfg.email_batch_per_run or 3 }}">
+        <small class="text-muted">Skrypt wysyłkowy odpala się cyklicznie z cPanel Cron Jobs.</small>
+      </div>
+    </div>
+
+    <div class="form-section-divider"></div>
+    <p class="form-section-title">Wizytówka kontaktu mailem</p>
+    <p class="text-muted small" style="margin:0 0 .6rem">
+      Po zapisaniu kontaktu wyślij jego wizytówkę (.vcf) na adres z Twojego konta —
+      do zapisania w telefonie.
+    </p>
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="crm_vcard_email_on_create" value="1"
+               {{ 'checked' if cfg.get('crm_vcard_email_on_create') == '1' }}>
+        Po dodaniu nowego kontaktu
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" name="crm_vcard_email_on_edit" value="1"
+               {{ 'checked' if cfg.get('crm_vcard_email_on_edit') == '1' }}>
+        Po edycji kontaktu
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz</button>
+      <a href="{{ url_for('email_campaigns.footers') }}" class="btn btn-outline">Stopki i teksty wypisania</a>
+    </div>
+  </form>
+{% endcall %}
+
+{% call section('Gemini (OCR dokumentów)', id='gemini',
+   hint='Model odczytuje faktury z PDF-ów i zdjęć przy imporcie z Dysku.') %}
   <form method="post" action="{{ url_for('settings.general') }}">
     <input type="hidden" name="form_section" value="gemini">
 
@@ -146,15 +209,12 @@
       <label for="gemini_api_key">Klucz API Gemini (Google AI)</label>
       <div class="input-reveal-wrap">
         <input type="password" id="gemini_api_key" name="gemini_api_key"
-               autocomplete="off"
-               placeholder="AIza…"
+               autocomplete="off" placeholder="AIza…"
                value="{{ cfg.gemini_api_key or '' }}">
-        <button type="button" class="btn-reveal" onclick="toggleReveal('gemini_api_key', this)">
-          Pokaż
-        </button>
+        <button type="button" class="btn-reveal" onclick="toggleReveal('gemini_api_key', this)">Pokaż</button>
       </div>
       {% if cfg.gemini_api_key %}
-      <small class="text-muted">Klucz jest zapisany. Wpisz nowy, aby go zastąpić — pozostaw puste, żeby zachować obecny. Źródło: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</small>
+      <small class="text-muted">Klucz jest zapisany. Wpisz nowy, aby go zastąpić — zostaw puste, żeby zachować obecny. Źródło: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</small>
       {% else %}
       <small class="text-muted">Klucz API z <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</small>
       {% endif %}
@@ -189,19 +249,20 @@
         </optgroup>
       </select>
       <small class="text-muted">
-        Wszystkie modele na liście obsługują wczytywanie plików PDF.
-        ★ = domyślny zalecany. Ceny orientacyjne za 1M tokenów wejściowych.
+        Wszystkie modele na liście czytają PDF-y. ★ = zalecany domyślny.
+        Ceny orientacyjne za 1M tokenów wejściowych.
       </small>
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Zapisz konfigurację Gemini</button>
+      <button type="submit" class="btn btn-primary">Zapisz</button>
       <button type="button" class="btn btn-outline" id="btnTestGemini">Testuj połączenie</button>
     </div>
     <div id="geminiTestResult" class="api-result" style="display:none"></div>
   </form>
-</div>
+{% endcall %}
 
+</div>
 {% endblock %}
 
 {% block scripts %}

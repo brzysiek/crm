@@ -1,10 +1,11 @@
 {% extends 'settings/_layout.html' %}
+{% from 'settings/_macros.html' import section %}
+{% block page_heading %}Moje konto{% endblock %}
+
 {% block settings_content %}
+<div class="rd-settings-grid">
 
-<h2>Moje konto</h2>
-
-<div class="settings-section">
-  <h3>Dane konta</h3>
+{% call section('Dane konta') %}
   <form method="post" action="{{ url_for('settings.account') }}">
     <input type="hidden" name="form" value="profile">
     <div class="form-group">
@@ -16,21 +17,20 @@
       <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}" required>
     </div>
     <div class="form-group">
-      <label for="email">Email</label>
+      <label for="email">E-mail</label>
       <input type="email" id="email" name="email" value="{{ user.email or '' }}">
-      <p class="text-muted small" style="margin-top:.25rem">
-        Używany m.in. do wysyłki wizytówek kontaktów (Ustawienia → CRM).
-      </p>
+      <small class="text-muted">
+        Na ten adres idzie kod logowania dwuetapowego, link do odzyskania hasła
+        i wizytówki zapisywanych kontaktów.
+      </small>
     </div>
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Zapisz dane konta</button>
     </div>
   </form>
-</div>
+{% endcall %}
 
-{# ── Logowanie dwuetapowe ──────────────────────────────────────────────────── #}
-<div class="settings-section">
-  <h3>Logowanie dwuetapowe</h3>
+{% call section('Logowanie dwuetapowe') %}
   <form method="post" action="{{ url_for('settings.account') }}">
     <input type="hidden" name="form" value="security">
     <div class="form-group">
@@ -40,7 +40,7 @@
       </label>
       <p class="text-muted small" style="margin-top:.35rem">
         Kod ma 6 znaków, jest ważny 10 minut i działa raz. Leci na adres z sekcji „Dane konta”,
-        przez wysyłkę skonfigurowaną w Ustawienia → Email.
+        przez wysyłkę skonfigurowaną w <a href="{{ url_for('settings.general') }}#email">Ustawieniach → Integracje → E-mail</a>.
         {% if not user.email %}
         <br><strong>Konto nie ma adresu e-mail</strong> — dopóki go nie uzupełnisz, logowanie
         zostaje przy samym haśle.
@@ -54,11 +54,9 @@
       <button type="submit" class="btn btn-primary">Zapisz ustawienia logowania</button>
     </div>
   </form>
-</div>
+{% endcall %}
 
-{# ── Zmiana hasła ──────────────────────────────────────────────────────────── #}
-<div class="settings-section">
-  <h3>Zmień hasło</h3>
+{% call section('Zmiana hasła') %}
   <form method="post" action="{{ url_for('settings.account') }}">
     <input type="hidden" name="form" value="password">
     <div class="form-group">
@@ -75,6 +73,7 @@
       <button type="submit" class="btn btn-primary">Zmień hasło</button>
     </div>
   </form>
-</div>
+{% endcall %}
 
+</div>
 {% endblock %}

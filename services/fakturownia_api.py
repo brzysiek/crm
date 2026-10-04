@@ -23,7 +23,7 @@ class FakturowniaError(RuntimeError):
 class FakturowniaApi:
     def __init__(self, subdomain: str, api_token: str):
         if not subdomain or not api_token:
-            raise FakturowniaError('Brak subdomeny lub klucza API Fakturowni (Ustawienia → Ogólne).')
+            raise FakturowniaError('Brak subdomeny lub klucza API Fakturowni (Ustawienia → Integracje).')
         self.base_url = f"https://{subdomain.strip()}.fakturownia.pl"
         self.api_token = api_token.strip()
 

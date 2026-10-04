@@ -103,7 +103,7 @@ def login():
                 }
                 return redirect(url_for('auth.login_code'))
             error = ('Nie udało się wysłać kodu na e-mail. Spróbuj ponownie za chwilę '
-                     'albo sprawdź Ustawienia → Email.')
+                     'albo sprawdź Ustawienia → Integracje → E-mail.')
         else:
             error = 'Nieprawidłowy login lub hasło.'
 

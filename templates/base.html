@@ -69,7 +69,7 @@
       </a>
       {# Listy kontaktów rozwijają się tylko na ekranach kontaktów — inject_globals
          wypełnia sidebar_contact_lists wyłącznie dla blueprintu crm_contacts. #}
-      {% if sidebar_contact_lists %}
+      {% if request.blueprint == 'crm_contacts' %}
       <div class="sidebar-sublist">
         {% for l in sidebar_contact_lists %}
         <a href="{{ url_for('crm_contacts.list_view', list_id=l.id) }}" title="{{ l.description or l.name }}"
@@ -79,6 +79,11 @@
           {% if l.member_count %}<span class="sidebar-sublist-count">{{ l.member_count }}</span>{% endif %}
         </a>
         {% endfor %}
+        <a href="{{ url_for('crm_contacts.lists') }}" title="Zarządzaj listami"
+           class="sidebar-sublist-item {{ 'active' if request.endpoint == 'crm_contacts.lists' else '' }}">
+          <span class="sidebar-sublist-dot sidebar-sublist-dot-plain"></span>
+          <span class="sidebar-nav-label">Zarządzaj listami</span>
+        </a>
       </div>
       {% endif %}
       <a href="{{ url_for('crm_deals.list_deals') }}" title="Deale"
@@ -222,6 +227,34 @@
           <span class="sidebar-nav-badge">{{ imports_badge }}</span>
         {% endif %}
       </a>
+
+      {# Ustawienia mają własną pozycję w menu głównym, a ich działy rozwijają się
+         pod nią — tak jak listy pod Kontaktami. Dzięki temu w samym widoku
+         ustawień nie ma już drugiego, wewnętrznego menu. #}
+      <div class="sidebar-section-label">System</div>
+      <a href="{{ url_for('settings.account') }}" title="Ustawienia"
+         class="sidebar-nav-item {{ 'active' if settings_active else '' }}">
+        <span class="sidebar-nav-icon">{{ icon('settings', 18) }}</span>
+        <span class="sidebar-nav-label">Ustawienia</span>
+      </a>
+      {% if settings_active %}
+      <div class="sidebar-sublist">
+        {% for item in [
+          ('settings.account',      'Moje konto'),
+          ('settings.appearance',   'Aplikacja'),
+          ('settings.general',      'Integracje'),
+          ('settings.dictionaries', 'Słowniki'),
+          ('users.list_users',      'Użytkownicy'),
+          ('settings.logs',         'Dziennik zdarzeń')
+        ] %}
+        <a href="{{ url_for(item[0]) }}" title="{{ item[1] }}"
+           class="sidebar-sublist-item {{ 'active' if request.endpoint == item[0] or (item[0] == 'users.list_users' and request.blueprint == 'users') else '' }}">
+          <span class="sidebar-sublist-dot sidebar-sublist-dot-plain"></span>
+          <span class="sidebar-nav-label">{{ item[1] }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </nav>
 
     <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Zwiń/rozwiń menu">
