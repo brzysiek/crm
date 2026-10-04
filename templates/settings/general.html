@@ -9,8 +9,10 @@
 </p>
 {% endblock %}
 
+{# Dwie równe kolumny: cztery karty integracji mieszczą się bez przewijania,
+   a żadna nie rozpycha się na całą szerokość. #}
 {% block settings_content %}
-<div class="rd-settings-grid">
+<div class="rd-settings-grid rd-settings-grid-2">
 
 {% call section('Fakturownia', id='fakturownia',
    hint='Źródło faktur kosztowych i przychodowych wczytywanych do modułu finansów.') %}
@@ -58,7 +60,7 @@
   </form>
 {% endcall %}
 
-{% call section('Google — Dysk i Kalendarz', id='google', wide=True,
+{% call section('Google — Dysk i Kalendarz', id='google',
    hint='Konto usługi (service account) obsługuje naraz Dysk, Kalendarz i wysyłkę poczty — ten sam token wykorzystuje karta e-mail poniżej.') %}
   <form method="post" action="{{ url_for('settings.general') }}">
     <input type="hidden" name="form_section" value="gdrive">
@@ -129,12 +131,12 @@
   </form>
 {% endcall %}
 
-{% call section('E-mail', id='email', wide=True,
+{% call section('E-mail', id='email',
    hint='Wysyłka kampanii, kodów logowania, linków do resetu hasła i wizytówek — wszystko z tej jednej skrzynki.') %}
   <form method="post" action="{{ url_for('settings.general') }}">
     <input type="hidden" name="form_section" value="email">
 
-    <div class="form-grid form-grid-2">
+    <div class="form-grid">
       <div class="form-group">
         <label for="gmail_sender_email">Adres nadawcy (Google Workspace)</label>
         <input type="email" id="gmail_sender_email" name="gmail_sender_email"

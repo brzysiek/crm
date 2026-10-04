@@ -4049,6 +4049,12 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 }
 .rd-settings-grid + .rd-settings-group { margin-top: 2rem; }
 .rd-settings-wide { grid-column: 1 / -1; }
+/* Stały układ dwukolumnowy tam, gdzie kart jest mało i mają stać parami
+   (Integracje) — auto-fill rozsypałby je zależnie od szerokości okna. */
+.rd-settings-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1000px) {
+  .rd-settings-grid-2 { grid-template-columns: 1fr; }
+}
 
 .rd-settings-body { padding: 1rem 1.1rem 1.1rem; }
 .rd-settings-body > :last-child { margin-bottom: 0; }
