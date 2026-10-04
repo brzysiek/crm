@@ -30,6 +30,34 @@
   </form>
 {% endcall %}
 
+{% call section('Zdjęcie') %}
+  <form method="post" action="{{ url_for('settings.account') }}" enctype="multipart/form-data">
+    <input type="hidden" name="form" value="avatar">
+    <div class="form-group">
+      <div class="rd-avatar-row">
+        {% if has_avatar %}
+          <img src="{{ url_for('settings.avatar', user_id=user.id, v=current_user.avatar_version) }}"
+               alt="Twoje zdjęcie" class="rd-avatar-preview">
+          <label class="checkbox-label" style="margin:0">
+            <input type="checkbox" name="remove_avatar" value="1"> Usuń zdjęcie
+          </label>
+        {% else %}
+          <span class="rd-avatar-preview rd-avatar-initials">{{ (user.full_name or user.username or '?')[:2] | upper }}</span>
+          <span class="text-muted small">Bez zdjęcia ikonka pokazuje inicjały.</span>
+        {% endif %}
+      </div>
+      <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif">
+      <small class="text-muted">
+        JPG/PNG/WEBP/GIF, maks. 8 MB. Zdjęcie jest przycinane do kwadratu ze środka
+        i zmniejszane do 256 px — pojawia się w ikonce użytkownika w menu.
+      </small>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz zdjęcie</button>
+    </div>
+  </form>
+{% endcall %}
+
 {% call section('Logowanie dwuetapowe') %}
   <form method="post" action="{{ url_for('settings.account') }}">
     <input type="hidden" name="form" value="security">

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db
 
@@ -101,6 +103,47 @@ def update_user_profile(user_id: int, username: str, full_name: str, email: str 
             cur.execute(
                 "UPDATE users SET username=%s, full_name=%s, email=%s WHERE id = %s",
                 (username, full_name, email or None, user_id)
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def get_user_avatar(user_id: int) -> str | None:
+    """Zdjęcie jako data URI. Czytane osobnym zapytaniem, nie w get_user_by_id —
+    to kilkanaście kB, których nie chcemy wozić przy każdym odczycie użytkownika."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("SELECT avatar FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        return (row or {}).get('avatar') or None
+
+
+def get_user_avatar_version(user_id: int) -> str | None:
+    """Znacznik zmiany zdjęcia — doklejany do adresu ikonki, żeby po podmianie
+    przeglądarka nie pokazywała starego obrazka z cache. None = brak zdjęcia."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT avatar_updated_at FROM users WHERE id = %s AND avatar IS NOT NULL",
+            (user_id,)
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    stamp = row.get('avatar_updated_at')
+    return stamp.strftime('%Y%m%d%H%M%S') if stamp else '1'
+
+
+def set_user_avatar(user_id: int, data_uri: str | None) -> None:
+    """None kasuje zdjęcie — wtedy ikonka wraca do inicjałów."""
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET avatar=%s, avatar_updated_at=%s WHERE id = %s",
+                (data_uri, datetime.now() if data_uri else None, user_id)
             )
         db.commit()
     except Exception:

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(256) NOT NULL,
     role          ENUM('admin','owner','cashier') DEFAULT 'cashier',
     is_active     TINYINT(1) DEFAULT 1,
+    avatar        MEDIUMTEXT NULL,           -- zdjęcie użytkownika jako data URI
+    avatar_updated_at DATETIME NULL,         -- znacznik do cache-bustingu ikonki
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

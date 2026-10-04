@@ -286,6 +286,16 @@ def inject_globals():
     except Exception as _e:
         app.logger.error('inject_globals: count_ideas failed: %s', _e)
         gtd_ideas_badge = 0
+    # Znacznik zdjęcia użytkownika — pusty łańcuch znaczy „brak zdjęcia", więc
+    # szablon jedną wartością rozstrzyga i czy pokazać obrazek, i pod jakim
+    # adresem. Zapytanie jest po kluczu głównym i zwraca jedną datę.
+    avatar_version = ''
+    if session.get('user_id'):
+        try:
+            from models.user import get_user_avatar_version
+            avatar_version = get_user_avatar_version(session['user_id']) or ''
+        except Exception as _e:
+            app.logger.error('inject_globals: get_user_avatar_version failed: %s', _e)
     return {
         'pending_count':        cnt,
         'bank_pending_count':   bank_cnt,
@@ -310,6 +320,7 @@ def inject_globals():
             'id':        session.get('user_id'),
             'username':  session.get('username', ''),
             'full_name': session.get('full_name', ''),
+            'avatar_version': avatar_version,
         },
     }
 

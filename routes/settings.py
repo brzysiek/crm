@@ -21,11 +21,13 @@ def index():
 
 @bp.route('/konto', methods=['GET', 'POST'])
 def account():
-    from models.user import (change_password, get_user_by_id,
+    from models.user import (change_password, get_user_avatar, get_user_by_id,
                               get_user_by_username, update_user_profile)
 
     if request.method == 'POST':
-        if request.form.get('form') == 'profile':
+        if request.form.get('form') == 'avatar':
+            _save_avatar(session['user_id'])
+        elif request.form.get('form') == 'profile':
             username = request.form.get('username', '').strip()
             full_name = request.form.get('full_name', '').strip()
             email = request.form.get('email', '').strip()
@@ -70,7 +72,72 @@ def account():
 
     user = get_user_by_id(session['user_id'])
     return render_template('settings/account.html', active_tab='account', user=user,
+        has_avatar=bool(get_user_avatar(session['user_id'])),
         login_2fa=get_setting('login_2fa', 'on') != 'off', mail_configured=is_configured())
+
+
+# ── Zdjęcie użytkownika ──────────────────────────────────────────────────────
+# Zdjęcie trzymamy w bazie jako data URI (tak samo jak logo aplikacji), ale do
+# przeglądarki idzie osobnym adresem, a nie w treści strony: ikonka jest na
+# każdym ekranie, więc wklejanie kilkunastu kB base64 do każdego HTML-a byłoby
+# marnotrawstwem. Osobny adres można zacache'ować.
+
+_ALLOWED_AVATAR_MIMES = {'image/png', 'image/jpeg', 'image/webp', 'image/gif'}
+_MAX_AVATAR_UPLOAD_BYTES = 8_000_000
+
+
+def _save_avatar(user_id: int) -> None:
+    """Zapisuje albo kasuje zdjęcie zalogowanego użytkownika. Wejściowy plik
+    może być dowolnie duży (zdjęcie z telefonu) — do bazy trafia dopiero
+    kwadratowa miniatura JPEG, więc limit na wejściu chroni tylko pamięć
+    procesu, a nie rozmiar kolumny."""
+    import base64
+    from models.user import set_user_avatar
+    from services.images import build_avatar
+
+    if request.form.get('remove_avatar') == '1':
+        set_user_avatar(user_id, None)
+        flash('Zdjęcie zostało usunięte.', 'success')
+        return
+
+    f = request.files.get('avatar')
+    if not f or not f.filename:
+        flash('Nie wybrano pliku ze zdjęciem.', 'error')
+        return
+    if f.mimetype not in _ALLOWED_AVATAR_MIMES:
+        flash(f'Nieobsługiwany format pliku ({f.filename}). Wybierz JPG, PNG, WEBP lub GIF.', 'error')
+        return
+    content = f.read()
+    if len(content) > _MAX_AVATAR_UPLOAD_BYTES:
+        flash('Plik jest za duży, maks. 8 MB.', 'error')
+        return
+    try:
+        thumb = build_avatar(content)
+    except ValueError as e:
+        flash(str(e), 'error')
+        return
+    set_user_avatar(user_id, 'data:image/jpeg;base64,' + base64.b64encode(thumb).decode('ascii'))
+    flash('Zdjęcie zostało zapisane.', 'success')
+
+
+@bp.route('/zdjecie/<int:user_id>')
+def avatar(user_id: int):
+    import base64
+    from flask import Response
+    from models.user import get_user_avatar
+
+    data_uri = get_user_avatar(user_id) or ''
+    if not data_uri.startswith('data:image/jpeg;base64,'):
+        return '', 404
+    try:
+        img_bytes = base64.b64decode(data_uri.split(',', 1)[1])
+    except Exception:
+        return '', 404
+    resp = Response(img_bytes, mimetype='image/jpeg')
+    # Adres niesie znacznik zmiany (?v=...), więc treść pod danym adresem jest
+    # niezmienna i może leżeć w cache przeglądarki dłużej niż godzinę.
+    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    return resp
 
 
 # ── Integracje ───────────────────────────────────────────────────────────────

@@ -402,6 +402,11 @@ html.sidebar-collapsed .sidebar-user-name { display: none; }
   text-decoration: none;
 }
 .mobile-topbar-avatar:hover { text-decoration: none; color: var(--rd-lime); }
+/* Zdjęcie wypełnia kółko ikonki; obramowanie i rozmiar bierze z .sidebar-avatar
+   / .mobile-topbar-avatar, więc wersja z inicjałami i ze zdjęciem są tej samej
+   wielkości i nie przesuwają sąsiadów. */
+.sidebar-avatar-img { object-fit: cover; padding: 0; }
+.mobile-topbar-avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 
 @media (max-width: 880px) {
   .mobile-topbar { display: flex; }
@@ -4095,6 +4100,17 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
   background: var(--rd-deep-green); border-radius: 8px; padding: .4rem .6rem;
 }
 .rd-logo-preview-sq { max-width: 44px; object-fit: contain; }
+
+/* Podgląd zdjęcia użytkownika — kółko, bo dokładnie tak wygląda w ikonce menu. */
+.rd-avatar-row { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.rd-avatar-preview {
+  width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
+  background: var(--rd-bottle-green); border: 1px solid var(--rd-lime); flex-shrink: 0;
+}
+.rd-avatar-initials {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--rd-lime); font-weight: 700; font-size: 1.3rem;
+}
 
 @media (max-width: 640px) {
   .rd-settings-grid { grid-template-columns: 1fr; }
