@@ -421,7 +421,7 @@ def bulk_set_starred(company_ids: list[int], starred: bool) -> int:
 
 def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:
     label = TAG_KIND_LABELS.get(kind, kind)
-    name = normalize_tag_name(name.strip())
+    name = normalize_tag_name(name.strip(), kind)
     affected = 0
     for company_id in company_ids:
         current = get_company_tags(company_id, kind)
@@ -440,7 +440,7 @@ def bulk_add_tag(company_ids: list[int], kind: str, name: str, user_id: int | No
 
 def bulk_remove_tag(company_ids: list[int], kind: str, name: str, user_id: int | None) -> int:
     label = TAG_KIND_LABELS.get(kind, kind)
-    name = normalize_tag_name(name.strip())
+    name = normalize_tag_name(name.strip(), kind)
     affected = 0
     for company_id in company_ids:
         current = get_company_tags(company_id, kind)

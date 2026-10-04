@@ -22,16 +22,67 @@ def _normalize_word(word: str) -> str:
     return ''.join(out)
 
 
-def normalize_tag_name(name: str) -> str:
-    """Ujednolica zapis tagu do formatu Tytułowego: każde słowo z wielkiej litery
-    (np. "fundusz inwestycyjny" -> "Fundusz Inwestycyjny"). Słowa zapisane w
-    całości wielkimi literami zostają bez zmian, żeby nie niszczyć akronimów
-    (IT, BNI, CRM, M&A, B2B). Dzieli też złożenia typu "IT/Edukacja" czy
-    "e-commerce" po / i -, żeby capitalizacja działała po obu stronach separatora."""
+def _is_written_in_caps(word: str) -> bool:
+    """Czy słowo zostało napisane „z wielkiej litery" w sensie akronimu lub marki,
+    a nie zwykłego słowa na początku zdania. Rozstrzyga wielka litera na dalszej
+    pozycji (BNI, M&A, SaaS, HoReCa, MŚP, eCommerce, myTherapy) albo pojedyncza
+    wielka litera (E w „E-Commerce"). Takich słów normalizacja nie rusza."""
+    letters = [c for c in word if c.isalpha()]
+    if not letters:
+        return True
+    if any(c.isupper() for c in word[1:] if c.isalpha()):
+        return True
+    return len(letters) == 1 and letters[0].isupper()
+
+
+def _split_compound(token: str) -> list[str]:
+    """Rozbija złożenia po / i -, żeby każdy człon oceniać osobno: w „IT/Edukacja"
+    pierwszy człon jest akronimem, drugi zwykłym słowem."""
+    return re.split(r'([/-])', token)
+
+
+def sentence_case_name(name: str) -> str:
+    """Zapis zdaniowy: tylko pierwsze słowo z wielkiej litery, reszta z małej —
+    chyba że słowo zostało napisane wielkimi literami, wtedy zostaje bez zmian.
+    „fundusze Inwestycyjne" -> „Fundusze inwestycyjne", „zaprosić na bni" zostaje
+    z małym „bni", ale „Zaprosić Na BNI" -> „Zaprosić na BNI".
+
+    Po co: słownik tagów i branż rósł z trzech źródeł (formularz, wizytówki,
+    import), każde z inną konwencją, więc ta sama branża trafiała na listę po
+    dwa razy („biuro księgowe" i „Biura Rachunkowe"). Jeden zapis to jedna
+    pozycja na liście."""
+    tokens = name.split()
+    out = []
+    for i, token in enumerate(tokens):
+        parts = _split_compound(token)
+        normalized = ''.join(p if (p in ('/', '-') or _is_written_in_caps(p)) else p.lower()
+                             for p in parts)
+        # Wielka litera tylko na początku całej nazwy i tylko wtedy, gdy pierwszy
+        # człon w ogóle podlega zmianie — inaczej „eCommerce" stałoby się „ECommerce".
+        if i == 0 and parts and not _is_written_in_caps(parts[0]):
+            for j, c in enumerate(normalized):
+                if c.isalpha():
+                    normalized = normalized[:j] + c.upper() + normalized[j + 1:]
+                    break
+        out.append(normalized)
+    return ' '.join(out)
+
+
+def title_case_name(name: str) -> str:
+    """Każde słowo z wielkiej litery, akronimy bez zmian. Zapis dla źródeł —
+    tam wartością jest zwykle imię i nazwisko osoby polecającej („Ada Hurbol"),
+    więc zdaniowa normalizacja robiłaby z nazwiska małą literę."""
     def norm_compound(token: str) -> str:
-        parts = re.split(r'([/-])', token)
-        return ''.join(p if p in ('/', '-') else _normalize_word(p) for p in parts)
+        return ''.join(p if p in ('/', '-') else _normalize_word(p)
+                       for p in _split_compound(token))
     return ' '.join(norm_compound(w) for w in name.split())
+
+
+def normalize_tag_name(name: str, kind: str = 'tag') -> str:
+    """Jedno wejście dla wszystkich zapisów wartości słownikowych. Źródła trzymają
+    nazwiska, więc zostają przy zapisie tytułowym; tagi, branże i tagi email
+    (zgody marketingowe) idą zapisem zdaniowym."""
+    return title_case_name(name) if kind == 'source' else sentence_case_name(name)
 
 
 def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
@@ -110,7 +161,7 @@ def get_tags(kind: str, with_counts: bool = False) -> list[dict]:
 
 def add_tag(kind: str, name: str) -> int:
     db = get_db()
-    name = normalize_tag_name(name.strip())
+    name = normalize_tag_name(name.strip(), kind)
     try:
         with db.cursor() as cur:
             cur.execute(
@@ -171,7 +222,7 @@ def _replace_contact_tags_of_kind(contact_id: int, kind: str, tag_ids: list[int]
 def set_contact_email_tags(contact_id: int, names: list[str], user_id: int | None) -> None:
     """Nadanie/odebranie tagu email jest jednocześnie udzieleniem/wycofaniem zgody
     marketingowej na dany cel komunikacji — każda zmiana trafia do historii kontaktu."""
-    names = [normalize_tag_name(n.strip()) for n in names if n and n.strip()]
+    names = [normalize_tag_name(n.strip(), 'email') for n in names if n and n.strip()]
     current = get_contact_email_tags(contact_id)
     added = [n for n in names if n not in current]
     removed = [n for n in current if n not in names]
@@ -218,7 +269,7 @@ def get_or_create_tag_ids(kind: str, names: list[str]) -> list[int]:
     try:
         with db.cursor() as cur:
             for raw_name in names:
-                name = normalize_tag_name(raw_name.strip())
+                name = normalize_tag_name(raw_name.strip(), kind)
                 if not name:
                     continue
                 cur.execute(

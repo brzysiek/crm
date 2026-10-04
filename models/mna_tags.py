@@ -1,5 +1,8 @@
 from database import get_db
-from models.crm_tags import normalize_tag_name
+# Tagi M&A to opisowe frazy robocze („Brak Maila - Formularz") pisane od zawsze
+# zapisem tytułowym — zostają przy nim, inaczej 229 istniejących wartości
+# rozjechałoby się z tym, co dopisuje się dalej.
+from models.crm_tags import title_case_name
 
 
 def suggest_tags(q: str = '', limit: int = 20) -> list[str]:
@@ -45,7 +48,7 @@ def _get_or_create_tag_ids(names: list[str]) -> list[int]:
     ids = []
     with db.cursor() as cur:
         for raw_name in names:
-            name = normalize_tag_name(raw_name.strip())
+            name = title_case_name(raw_name.strip())
             if not name:
                 continue
             cur.execute("SELECT id, name FROM mna_tags WHERE name=%s", (name,))
