@@ -64,7 +64,7 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("""<link rel="apple-touch-icon" href="{{ url_for('branding_icon', v=logo_version) }}">""", base)
 
     def test_login_page_links_icon(self):
-        login = read('templates/login.html')
+        login = read('templates/auth/_layout.html')
         self.assertIn("url_for('branding_icon', v=logo_version)", login)
         self.assertIn('rel="icon"', login)
 

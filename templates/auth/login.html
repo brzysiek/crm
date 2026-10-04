@@ -1,0 +1,22 @@
+{% extends 'auth/_layout.html' %}
+{% block title %}Logowanie{% endblock %}
+{% block heading %}Zaloguj się{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('auth.login') }}" autocomplete="off">
+  <div class="auth-field">
+    <label for="login">Login</label>
+    <input type="text" id="login" name="login" required autofocus autocomplete="username">
+  </div>
+  <div class="auth-field">
+    <label for="password">Hasło</label>
+    <input type="password" id="password" name="password" required autocomplete="current-password">
+  </div>
+  <div class="auth-check">
+    <input type="checkbox" id="remember" name="remember" value="1">
+    <label for="remember">Pozostań zalogowany przez 2 tygodnie</label>
+  </div>
+  <button type="submit" class="btn btn-primary auth-submit">Zaloguj się</button>
+</form>
+<p class="auth-links"><a href="{{ url_for('auth.forgot_password') }}">Zapomniałeś hasła?</a></p>
+{% endblock %}

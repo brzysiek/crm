@@ -44,14 +44,7 @@ def send_vcard_email(contact: dict, to_email: str) -> None:
     """Wysyła wizytówkę kontaktu (.vcf) mailem na wskazany adres — używane po
     dodaniu/edycji kontaktu, gdy w Ustawieniach → CRM włączona jest odpowiednia
     automatyzacja, żeby móc od razu otworzyć załącznik na telefonie i zapisać kontakt."""
-    from models.settings import get_setting
-    from services.gmail_sender import GmailSender
-
-    sender_email = get_setting('gmail_sender_email', '')
-    api_token = get_setting('google_drive_api_token', '')
-    if not sender_email or not api_token:
-        raise RuntimeError('Brak konfiguracji wysyłki e-mail (Ustawienia → Email).')
-    sender_name = get_setting('gmail_sender_name', '') or None
+    from services.mailer import send_email
 
     name = f"{contact.get('first_name') or ''} {contact.get('last_name') or ''}".strip() or 'Kontakt'
     company = contact.get('company_short_name') or contact.get('company_name')
@@ -63,7 +56,7 @@ def send_vcard_email(contact: dict, to_email: str) -> None:
         body_html += f' ({html.escape(company)})'
     body_html += '.</p><p>Otwórz załącznik na telefonie, aby zapisać kontakt.</p>'
 
-    GmailSender(api_token, sender_email, sender_name).send(
+    send_email(
         to=to_email,
         subject=f'Wizytówka: {name}',
         body_html=body_html,

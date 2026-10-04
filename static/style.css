@@ -3914,3 +3914,106 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .fin-fluxa .fin-match-opt .filter-input { width: 5.5rem; padding: .15rem .3rem; font-size: .75rem; }
 .fin-fluxa .fin-bank-amount.is-out { color: var(--error-text); }
 .fin-fluxa .fin-bank-links > div + div { margin-top: .25rem; }
+
+/* ── Ekrany logowania (login, kod 2FA, reset hasła) ───────────────────────────
+   Ta sama paleta co sidebar i ekrany .rd-screen: butelkowa zieleń jako tło,
+   limonka jako jedyny akcent. Osobne klasy, bo te strony nie mają app-shella. */
+.auth-body {
+  font-family: var(--rd-font);
+  background: var(--rd-deep-green);
+  background-image: radial-gradient(circle at 20% 15%, rgba(181, 230, 25, .14), transparent 45%),
+                    radial-gradient(circle at 85% 85%, rgba(28, 75, 64, .9), transparent 50%);
+  color: var(--rd-text-body);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.auth-card {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(13, 40, 32, .35);
+  padding: 2.2rem 2.2rem 1.8rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 1.6rem; }
+.auth-logo { height: 30px; width: auto; max-width: 180px; object-fit: contain; }
+.auth-logo-badge {
+  width: 30px; height: 30px; border-radius: 8px; background: var(--rd-lime);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: var(--rd-deep-green); font-size: 15px; flex-shrink: 0;
+}
+.auth-brand-name {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--rd-text-muted);
+}
+
+.auth-title {
+  font-size: 21px; font-weight: 700; color: var(--rd-text-primary);
+  margin: 0 0 .35rem;
+}
+.auth-lead { font-size: 13px; color: var(--rd-text-muted); margin: 0 0 1.3rem; line-height: 1.55; }
+.auth-title + .auth-field, .auth-title + form { margin-top: 1.3rem; }
+
+.auth-field { margin-bottom: 1rem; }
+.auth-field label {
+  display: block; font-size: 12.5px; font-weight: 600;
+  color: var(--rd-text-primary); margin-bottom: .35rem;
+}
+.auth-field input {
+  width: 100%;
+  padding: .6rem .8rem;
+  font-family: var(--rd-font);
+  font-size: 14px;
+  color: var(--rd-text-primary);
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border-input);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color var(--speed) var(--curve);
+}
+.auth-field input:focus { border-color: var(--rd-bottle-green); }
+
+.auth-code-input {
+  font-size: 22px; font-weight: 700; letter-spacing: .3em; text-align: center;
+  text-transform: uppercase;
+}
+
+.auth-check { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.1rem; }
+.auth-check input[type="checkbox"] {
+  width: 1rem; height: 1rem; accent-color: var(--rd-bottle-green); cursor: pointer; flex-shrink: 0;
+}
+.auth-check label { font-size: 12.5px; color: var(--rd-text-muted); cursor: pointer; }
+
+.auth-card .btn { font-family: var(--rd-font); border-radius: 8px; font-weight: 600; font-size: 13px; }
+.auth-card .btn-primary {
+  background: var(--rd-lime); color: var(--rd-deep-green);
+  border-color: transparent; box-shadow: none;
+}
+.auth-card .btn-primary:hover { transform: none; filter: brightness(.97); color: var(--rd-deep-green); }
+.auth-submit { width: 100%; justify-content: center; padding: .7rem; }
+
+.auth-alert {
+  border-radius: 10px; padding: .6rem .85rem; font-size: 13px; margin-bottom: 1rem;
+  line-height: 1.45;
+}
+.auth-alert-error { background: var(--rd-red-bg); color: var(--rd-red-text); }
+.auth-alert-success { background: var(--rd-lime-tint-bg); color: var(--rd-lime-tint-text); }
+
+.auth-links { margin-top: 1rem; font-size: 12.5px; text-align: center; }
+.auth-links a { color: var(--rd-blue-link); font-weight: 500; }
+.auth-links a:hover { color: var(--rd-blue-link-hover); }
+.auth-linkbtn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--rd-font); font-size: 12.5px; font-weight: 500; color: var(--rd-blue-link);
+}
+.auth-linkbtn:hover { color: var(--rd-blue-link-hover); text-decoration: underline; }
+
+@media (max-width: 480px) {
+  .auth-card { padding: 1.6rem 1.3rem 1.4rem; border-radius: 14px; }
+}

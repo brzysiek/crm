@@ -28,6 +28,34 @@
   </form>
 </div>
 
+{# ── Logowanie dwuetapowe ──────────────────────────────────────────────────── #}
+<div class="settings-section">
+  <h3>Logowanie dwuetapowe</h3>
+  <form method="post" action="{{ url_for('settings.account') }}">
+    <input type="hidden" name="form" value="security">
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="login_2fa" value="1" {{ 'checked' if login_2fa }}>
+        Po loginie i haśle wymagaj kodu wysłanego e-mailem
+      </label>
+      <p class="text-muted small" style="margin-top:.35rem">
+        Kod ma 6 znaków, jest ważny 10 minut i działa raz. Leci na adres z sekcji „Dane konta”,
+        przez wysyłkę skonfigurowaną w Ustawienia → Email.
+        {% if not user.email %}
+        <br><strong>Konto nie ma adresu e-mail</strong> — dopóki go nie uzupełnisz, logowanie
+        zostaje przy samym haśle.
+        {% elif not mail_configured %}
+        <br><strong>Wysyłka e-mail nie jest skonfigurowana</strong> — dopóki tego nie ustawisz,
+        logowanie zostaje przy samym haśle.
+        {% endif %}
+      </p>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Zapisz ustawienia logowania</button>
+    </div>
+  </form>
+</div>
+
 {# ── Zmiana hasła ──────────────────────────────────────────────────────────── #}
 <div class="settings-section">
   <h3>Zmień hasło</h3>

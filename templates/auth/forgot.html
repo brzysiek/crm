@@ -1,0 +1,24 @@
+{% extends 'auth/_layout.html' %}
+{% block title %}Odzyskiwanie hasła{% endblock %}
+{% block heading %}Nie pamiętasz hasła?{% endblock %}
+
+{% block content %}
+{% if sent %}
+{# Ta sama odpowiedź dla istniejącego i nieistniejącego konta — inaczej formularz
+   odpowiadałby na pytanie, kto ma tu konto. #}
+<p class="auth-lead">Jeśli konto istnieje, wysłaliśmy na przypisany adres link do ustawienia
+  nowego hasła. Link jest ważny godzinę.</p>
+<p class="auth-links"><a href="{{ url_for('auth.login') }}">Wróć do logowania</a></p>
+{% else %}
+<p class="auth-lead">Podaj login albo adres e-mail. Wyślemy link do ustawienia nowego hasła,
+  ważny przez godzinę.</p>
+<form method="post" action="{{ url_for('auth.forgot_password') }}" autocomplete="off">
+  <div class="auth-field">
+    <label for="identifier">Login lub e-mail</label>
+    <input type="text" id="identifier" name="identifier" required autofocus autocomplete="username">
+  </div>
+  <button type="submit" class="btn btn-primary auth-submit">Wyślij link</button>
+</form>
+<p class="auth-links"><a href="{{ url_for('auth.login') }}">Wróć do logowania</a></p>
+{% endif %}
+{% endblock %}

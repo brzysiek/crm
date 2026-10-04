@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Logowanie{% endblock %} — {{ app_name }}</title>
+  {# Ekran logowania też ma ikonę — to on jest pierwszą stroną, na której przeglądarka
+     szuka favikony i zapamiętuje wynik na długo. #}
+  {% if logo_thumb or logo_main %}
+  <link rel="icon" href="{{ url_for('branding_icon', v=logo_version) }}">
+  <link rel="apple-touch-icon" href="{{ url_for('branding_icon', v=logo_version) }}">
+  {% endif %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {# Ten sam arkusz, co reszta aplikacji — kolory, przyciski i pola mają jedno źródło,
+     więc ekran logowania nie rozjedzie się z CRM-em przy najbliższej zmianie palety. #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-body">
+  <main class="auth-card">
+    <div class="auth-brand">
+      {% if logo_main %}
+      <img src="{{ logo_main }}" alt="{{ app_name }}" class="auth-logo">
+      {% else %}
+      <span class="auth-logo-badge">{{ (app_name or 'B')[0] }}</span>
+      {% endif %}
+      <span class="auth-brand-name">{{ app_name }}</span>
+    </div>
+
+    <h1 class="auth-title">{% block heading %}Zaloguj się{% endblock %}</h1>
+    {% block lead %}{% endblock %}
+
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="auth-alert auth-alert-{{ 'error' if category == 'error' else 'success' }}">{{ message }}</div>
+    {% endfor %}
+    {% if error %}<div class="auth-alert auth-alert-error">{{ error }}</div>{% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

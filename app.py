@@ -217,10 +217,12 @@ def index():
 def require_login():
     # Ikona i manifest muszą działać bez sesji: przeglądarka pobiera favikonę także na ekranie
     # logowania i z paska zakładek, a przekierowanie na /login zapamiętywała jako „brak ikony”.
-    open_endpoints = {'auth.login', 'auth.logout', 'static', 'email_campaigns.unsubscribe',
+    # Cały blueprint logowania jest publiczny z definicji: kod drugiego składnika i link do
+    # resetu hasła są dla tych, którzy sesji jeszcze (albo już) nie mają.
+    open_endpoints = {'static', 'email_campaigns.unsubscribe',
                       'branding_icon', 'favicon_ico', 'web_manifest'}
     ep = request.endpoint or ''
-    if ep in open_endpoints or ep.startswith('static'):
+    if ep in open_endpoints or ep.startswith('static') or ep.startswith('auth.'):
         return
     if not session.get('user_id'):
         app.logger.warning('Nieautoryzowany dostęp: %s %s', request.method, request.path)

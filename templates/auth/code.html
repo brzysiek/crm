@@ -1,0 +1,24 @@
+{% extends 'auth/_layout.html' %}
+{% block title %}Kod logowania{% endblock %}
+{% block heading %}Kod z e-maila{% endblock %}
+{% block lead %}
+<p class="auth-lead">Wysłaliśmy sześcioznakowy kod na {{ masked_email }}. Wpisz go, żeby dokończyć logowanie.</p>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('auth.login_code') }}" autocomplete="off">
+  <div class="auth-field">
+    <label for="code">Kod</label>
+    {# inputmode=latin + autocapitalize: kod jest wielkimi literami i cyframi, a na telefonie
+       domyślna klawiatura potrafiła podstawić małe litery i autokorektę. #}
+    <input type="text" id="code" name="code" required autofocus maxlength="12"
+           class="auth-code-input" inputmode="latin" autocapitalize="characters"
+           autocomplete="one-time-code" spellcheck="false">
+  </div>
+  <button type="submit" class="btn btn-primary auth-submit">Potwierdź</button>
+</form>
+<form method="post" action="{{ url_for('auth.resend_code') }}" class="auth-links">
+  <button type="submit" class="auth-linkbtn">Wyślij kod ponownie</button>
+</form>
+<p class="auth-links"><a href="{{ url_for('auth.logout') }}">Wróć do logowania</a></p>
+{% endblock %}

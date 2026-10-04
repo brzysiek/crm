@@ -34,6 +34,23 @@ def get_user_by_username(username: str) -> dict | None:
         return cur.fetchone()
 
 
+def get_user_by_login_or_email(identifier: str) -> dict | None:
+    """Odzyskiwanie hasła nie może wymagać pamiętania, czy logowało się loginem, czy mailem —
+    szukamy po obu. Mail porównujemy bez względu na wielkość liter, bo tak działa poczta."""
+    identifier = (identifier or '').strip()
+    if not identifier:
+        return None
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, username, full_name, email, role, is_active "
+            "FROM users WHERE username = %s OR LOWER(email) = LOWER(%s) "
+            "ORDER BY (username = %s) DESC LIMIT 1",
+            (identifier, identifier, identifier)
+        )
+        return cur.fetchone()
+
+
 def get_active_users() -> list[dict]:
     db = get_db()
     with db.cursor() as cur:

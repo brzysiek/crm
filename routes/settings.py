@@ -40,6 +40,10 @@ def account():
                 session['username'] = username
                 session['full_name'] = full_name
                 flash('Dane konta zostały zaktualizowane.', 'success')
+        elif request.form.get('form') == 'security':
+            from models.settings import set_setting
+            set_setting('login_2fa', 'on' if request.form.get('login_2fa') else 'off')
+            flash('Ustawienia logowania zostały zapisane.', 'success')
         else:
             new_password = request.form.get('new_password', '')
             new_password2 = request.form.get('new_password2', '')
@@ -53,8 +57,12 @@ def account():
                 flash('Hasło zostało zmienione.', 'success')
         return redirect(url_for('settings.account'))
 
+    from models.settings import get_setting
+    from services.mailer import is_configured
+
     user = get_user_by_id(session['user_id'])
-    return render_template('settings/account.html', active_tab='account', user=user)
+    return render_template('settings/account.html', active_tab='account', user=user,
+        login_2fa=get_setting('login_2fa', 'on') != 'off', mail_configured=is_configured())
 
 
 @bp.route('/general', methods=['GET', 'POST'])
