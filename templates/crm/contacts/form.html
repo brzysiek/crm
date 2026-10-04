@@ -92,14 +92,6 @@
   </div>
 
   <div class="form-group">
-    <label>Tagi</label>
-    <div class="tag-input-wrap" id="tags-wrap">
-      <input type="text" id="tags-input" class="tag-input-field" placeholder="Dodaj tag…" autocomplete="off">
-      <div id="tags-suggestions" class="tag-suggestions"></div>
-    </div>
-  </div>
-
-  <div class="form-group">
     <label>Listy</label>
     {% if all_lists %}
     <div class="chip-check-group">
@@ -151,7 +143,6 @@
 {% block scripts %}
 <script>
 initEntityPicker('company-picker', '/api/crm/companies/search');
-initTagInput('tags-wrap', 'tags-input', 'tags-suggestions', 'tag', {{ tags | tojson }});
 initTagInput('email-tags-wrap', 'email-tags-input', 'email-tags-suggestions', 'email', {{ email_tags | tojson }});
 // Klasa is-on dubluje :has(input:checked) — dzięki niej chip zmienia kolor także
 // w przeglądarkach bez :has, a serwer może wyrenderować stan początkowy.

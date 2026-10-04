@@ -65,7 +65,7 @@
         <dd>
           {% if tags %}
           <div class="detail-tags">
-            {% for t in tags %}<span class="badge badge-outline">{{ t }}</span>{% endfor %}
+            {% for t in tags %}<a href="{{ url_for('crm_companies.list_companies', tag=t) }}" class="badge badge-outline badge-btn" title="Pokaż firmy — tag: {{ t }}">{{ t }}</a>{% endfor %}
           </div>
           {% else %}—{% endif %}
         </dd>
@@ -73,7 +73,7 @@
         <dd>
           {% if industries %}
           <div class="detail-tags">
-            {% for i in industries %}<span class="badge badge-outline">{{ i }}</span>{% endfor %}
+            {% for i in industries %}<a href="{{ url_for('crm_companies.list_companies', industry=i) }}" class="badge badge-outline badge-btn" title="Pokaż firmy — branża: {{ i }}">{{ i }}</a>{% endfor %}
           </div>
           {% else %}—{% endif %}
         </dd>
@@ -91,7 +91,7 @@
               <a href="{{ url_for('crm_companies.view_company', company_id=src_company.id) }}"
                  class="badge badge-blue" title="Polecająca firma: {{ src_company.short_name or src_company.name }}">{{ s }}</a>
               {% else %}
-              <span class="badge badge-outline">{{ s }}</span>
+              <a href="{{ url_for('crm_companies.list_companies', source=s) }}" class="badge badge-outline badge-btn" title="Pokaż firmy — źródło: {{ s }}">{{ s }}</a>
               {% endif %}
             {% endfor %}
           </div>

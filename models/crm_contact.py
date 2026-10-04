@@ -2,8 +2,7 @@ from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
 from models.crm_contact_list import merge_list_memberships
-from models.crm_tags import (get_contact_email_tags, get_contact_tags, set_contact_email_tags,
-                               set_contact_tags)
+from models.crm_tags import get_contact_email_tags, set_contact_email_tags
 from services.text_utils import format_phone
 
 FIELD_LABELS = {
@@ -147,7 +146,7 @@ def search_contacts(q: str, company_id: int = None, limit: int = 20) -> list[dic
         return cur.fetchall()
 
 
-def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> int:
+def create_contact(data: dict, user_id: int | None) -> int:
     data['phone'] = format_phone(data.get('phone'))
     db = get_db()
     if not data.get('context_id') and data.get('company_id'):
@@ -177,8 +176,6 @@ def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> i
     except Exception:
         db.rollback()
         raise
-    if tags is not None:
-        set_contact_tags(contact_id, tags)
     if data.get('company_id'):
         gtd_context_model.sync_company_context_group(data['company_id'], data.get('context_id') or None)
     log_history('contact', contact_id, user_id, 'create',
@@ -186,7 +183,7 @@ def create_contact(data: dict, user_id: int | None, tags: list[str] = None) -> i
     return contact_id
 
 
-def update_contact(contact_id: int, data: dict, user_id: int | None, tags: list[str] = None) -> None:
+def update_contact(contact_id: int, data: dict, user_id: int | None) -> None:
     data['phone'] = format_phone(data.get('phone'))
     old = get_contact_by_id(contact_id)
     db = get_db()
@@ -210,8 +207,6 @@ def update_contact(contact_id: int, data: dict, user_id: int | None, tags: list[
     except Exception:
         db.rollback()
         raise
-    if tags is not None:
-        set_contact_tags(contact_id, tags)
     if data.get('company_id') and (not old or old.get('context_id') != data.get('context_id')):
         gtd_context_model.sync_company_context_group(data['company_id'], data.get('context_id') or None)
     if old:
@@ -356,8 +351,8 @@ def delete_contact(contact_id: int, user_id: int | None, archive_company: bool =
 
 # Tabele, w których pojedyncza kolumna wiąże wiersz z kontaktem 1:1 (można je po
 # prostu przepiąć z duplikatu na kontakt docelowy — w przeciwieństwie do
-# crm_contact_tags, gdzie ten sam tag może już być przypisany do obu kontaktów
-# i wymaga scalenia zamiast przepięcia, patrz merge_contacts()).
+# crm_contact_tags, gdzie ten sam tag email może już być przypisany do obu
+# kontaktów i wymaga scalenia zamiast przepięcia, patrz merge_contacts()).
 _MERGE_RELATION_TABLES = (
     ('crm_deals', 'contact_id'),
     ('crm_files', 'contact_id'),
@@ -367,23 +362,20 @@ _MERGE_RELATION_TABLES = (
 )
 
 
-def merge_contacts(primary_id: int, secondary_id: int, data: dict, user_id: int | None,
-                    tags: list[str] = None) -> None:
+def merge_contacts(primary_id: int, secondary_id: int, data: dict, user_id: int | None) -> None:
     """Scala dwa duplikaty w jeden kontakt.
 
     Dane pól (data) trafiają do kontaktu primary_id — zawsze tego o niższym ID,
     wybór wynika z UI scalania, gdzie użytkownik kopiuje pole po polu z dowolnego
     z dwóch kontaktów. Wszystkie relacje z innymi obiektami (deale, pliki, zadania,
     wydarzenia kalendarza, odbiorcy kampanii, notatki, historia) zostają przepięte
-    z secondary_id na primary_id. Tagi (zwykłe i email/zgody) są sumowane. Kontakt
-    secondary_id zostaje na końcu zarchiwizowany, nie usunięty."""
+    z secondary_id na primary_id. Tagi email (zgody marketingowe) są sumowane.
+    Kontakt secondary_id zostaje na końcu zarchiwizowany, nie usunięty."""
     primary = get_contact_by_id(primary_id)
     secondary = get_contact_by_id(secondary_id)
     if not primary or not secondary:
         raise ValueError('Jeden z kontaktów do scalenia nie istnieje.')
 
-    merged_tags = tags if tags is not None else sorted(
-        set(get_contact_tags(primary_id)) | set(get_contact_tags(secondary_id)))
     merged_email_tags = sorted(
         set(get_contact_email_tags(primary_id)) | set(get_contact_email_tags(secondary_id)))
 
@@ -402,7 +394,7 @@ def merge_contacts(primary_id: int, secondary_id: int, data: dict, user_id: int 
         db.rollback()
         raise
 
-    update_contact(primary_id, data, user_id, tags=merged_tags)
+    update_contact(primary_id, data, user_id)
     set_contact_email_tags(primary_id, merged_email_tags, user_id)
     merge_list_memberships(primary_id, secondary_id)
 

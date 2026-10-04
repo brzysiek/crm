@@ -16,7 +16,7 @@ from models.crm_contact_list import (get_all_lists, get_contact_list_ids, get_co
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
-from models.crm_tags import get_contact_email_tags, get_contact_tags, set_contact_email_tags
+from models.crm_tags import get_contact_email_tags, set_contact_email_tags
 from models.gtd_context import get_all_contexts
 from models.mna_deal import (STAGE_BADGE_CLASSES as MNA_STAGE_BADGE_CLASSES,
                              STAGE_LABELS as MNA_STAGE_LABELS, get_deals_for_crm_contact)
@@ -186,7 +186,6 @@ def merge_duplicate_view():
     return render_template('crm/contacts/merge.html',
         active_tab='contacts', primary=primary, secondary=secondary,
         all_contexts=get_all_contexts(),
-        primary_tags=get_contact_tags(primary['id']), secondary_tags=get_contact_tags(secondary['id']),
         primary_email_tags=get_contact_email_tags(primary['id']),
         secondary_email_tags=get_contact_email_tags(secondary['id']))
 
@@ -221,18 +220,17 @@ def new_contact():
     if request.method == 'POST':
         data = _parse_form(request.form)
         errors = _validate(data)
-        tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         email_tags = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
         list_ids = [int(i) for i in request.form.getlist('list_ids') if i.isdigit()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/contacts/form.html',
-                active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
+                active_tab='contacts', contact=request.form, prefill_company=None,
                 email_tags=email_tags, all_lists=get_all_lists(), contact_list_ids=list_ids,
                 action=url_for('crm_contacts.new_contact'), title='Nowy kontakt', all_contexts=get_all_contexts())
 
-        contact_id = create_contact(data, session.get('user_id'), tags=tags)
+        contact_id = create_contact(data, session.get('user_id'))
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
         set_contact_lists(contact_id, list_ids, session.get('user_id'))
         _maybe_send_vcard_email(contact_id, 'crm_vcard_email_on_create')
@@ -241,7 +239,7 @@ def new_contact():
 
     prefill_list_ids = [request.args.get('list_id', type=int)] if request.args.get('list_id', type=int) else []
     return render_template('crm/contacts/form.html',
-        active_tab='contacts', contact={'company_id': company_id} if company_id else {}, tags=[], email_tags=[],
+        active_tab='contacts', contact={'company_id': company_id} if company_id else {}, email_tags=[],
         prefill_company=prefill_company, all_lists=get_all_lists(), contact_list_ids=prefill_list_ids,
         action=url_for('crm_contacts.new_contact'), title='Nowy kontakt', all_contexts=get_all_contexts())
 
@@ -256,19 +254,18 @@ def edit_contact(contact_id):
     if request.method == 'POST':
         data = _parse_form(request.form)
         errors = _validate(data)
-        tags = [t.strip() for t in request.form.getlist('tags[]') if t.strip()]
         email_tags = [t.strip() for t in request.form.getlist('email_tags[]') if t.strip()]
         list_ids = [int(i) for i in request.form.getlist('list_ids') if i.isdigit()]
         if errors:
             for e in errors:
                 flash(e, 'error')
             return render_template('crm/contacts/form.html',
-                active_tab='contacts', contact=request.form, prefill_company=None, tags=tags,
+                active_tab='contacts', contact=request.form, prefill_company=None,
                 email_tags=email_tags, all_lists=get_all_lists(), contact_list_ids=list_ids,
                 action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
                 title='Edytuj kontakt', all_contexts=get_all_contexts())
 
-        update_contact(contact_id, data, session.get('user_id'), tags=tags)
+        update_contact(contact_id, data, session.get('user_id'))
         set_contact_email_tags(contact_id, email_tags, session.get('user_id'))
         set_contact_lists(contact_id, list_ids, session.get('user_id'))
         _maybe_send_vcard_email(contact_id, 'crm_vcard_email_on_edit')
@@ -278,7 +275,7 @@ def edit_contact(contact_id):
     prefill_company = get_company_by_id(contact['company_id']) if contact.get('company_id') else None
     return render_template('crm/contacts/form.html',
         active_tab='contacts', contact=contact, prefill_company=prefill_company,
-        tags=get_contact_tags(contact_id), email_tags=get_contact_email_tags(contact_id),
+        email_tags=get_contact_email_tags(contact_id),
         all_lists=get_all_lists(), contact_list_ids=get_contact_list_ids(contact_id),
         action=url_for('crm_contacts.edit_contact', contact_id=contact_id),
         title='Edytuj kontakt', all_contexts=get_all_contexts())

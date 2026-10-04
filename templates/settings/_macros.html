@@ -70,7 +70,12 @@
   <ul class="rd-dict-list">
     {% for item in items %}
     <li class="rd-dict-item">
-      <span class="rd-dict-value">{{ item.name }} {{ usage_count(item) }}</span>
+      <span class="rd-dict-value">
+        {%- if item.company_count %}
+        {#- Nazwa prowadzi do listy firm zawężonej do tej wartości; filtr przyjmuje nazwę, nie id. -#}
+        <a href="{{ url_for('crm_companies.list_companies', **{kind: item.name}) }}"
+           title="Pokaż firmy z tą wartością">{{ item.name }}</a>
+        {%- else %}{{ item.name }}{% endif %} {{ usage_count(item) }}</span>
       <form method="post" action="{{ url_for('settings.tag_delete', tag_id=item.id) }}"
             onsubmit="return confirm('Usunąć „{{ item.name }}”? Zostanie odpięta od firm i kontaktów, które jej używają.')">
         <input type="hidden" name="anchor" value="{{ anchor }}">

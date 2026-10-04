@@ -4,8 +4,8 @@ import difflib
 import re
 import time
 
-from models.crm_company import create_company, derive_short_name, get_company_by_domain, get_company_by_nip, \
-    search_companies
+from models.crm_company import bulk_add_tag, create_company, derive_short_name, get_company_by_domain, \
+    get_company_by_nip, search_companies
 from models.crm_contact import create_contact, search_contacts
 from models.crm_tags import set_contact_email_tags
 from models.crm_file import IMAGE_EXTENSIONS, add_file
@@ -189,8 +189,13 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
     if company:
         company_id = company['id']
         company_display_name = _company_label(company) or final_name
+        # Tagi z wizytówki opisują firmę, nie osobę — przy dopasowanej firmie
+        # dokładamy je do tego, co już ma, zamiast nadpisywać cały zestaw.
+        for name in (tags or []):
+            bulk_add_tag([company_id], 'tag', name, user_id)
     else:
-        company_id = create_company(company_data, user_id, tags=[], industries=industries, source=source or [])
+        company_id = create_company(company_data, user_id, tags=tags or [], industries=industries,
+                                     source=source or [])
         company_created = True
         company_display_name = final_short_name or final_name
 
@@ -215,7 +220,7 @@ def _process_extracted(extracted: dict, api_key: str, model: str, drive_api_toke
                 'phone': _first(ocr.get('contact_phone'), ocr.get('company_phone')) or None,
                 'context_id': context_id,
             }
-            contact_id = create_contact(contact_data, user_id, tags=tags or [])
+            contact_id = create_contact(contact_data, user_id)
             contact_created = True
             contact_display_name = hint
             if email_tags:

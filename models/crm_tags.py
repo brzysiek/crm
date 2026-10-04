@@ -135,40 +135,6 @@ def delete_tag(tag_id: int) -> None:
         raise
 
 
-def get_contact_tags(contact_id: int) -> list[str]:
-    db = get_db()
-    with db.cursor() as cur:
-        cur.execute(
-            """SELECT t.name FROM crm_tags t
-               JOIN crm_contact_tags ct ON ct.tag_id=t.id
-               WHERE ct.contact_id=%s AND t.kind='tag' ORDER BY t.name""",
-            (contact_id,)
-        )
-        return [r['name'] for r in cur.fetchall()]
-
-
-def set_contact_tags(contact_id: int, names: list[str]) -> None:
-    tag_ids = get_or_create_tag_ids('tag', names)
-    db = get_db()
-    try:
-        with db.cursor() as cur:
-            cur.execute(
-                """DELETE ct FROM crm_contact_tags ct
-                   JOIN crm_tags t ON t.id = ct.tag_id
-                   WHERE ct.contact_id=%s AND t.kind='tag'""",
-                (contact_id,)
-            )
-            for tag_id in tag_ids:
-                cur.execute(
-                    "INSERT IGNORE INTO crm_contact_tags (contact_id, tag_id) VALUES (%s, %s)",
-                    (contact_id, tag_id)
-                )
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-
-
 def get_contact_email_tags(contact_id: int) -> list[str]:
     db = get_db()
     with db.cursor() as cur:
