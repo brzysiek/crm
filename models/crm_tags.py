@@ -90,11 +90,20 @@ def suggest_sources(q: str = '', limit: int = 20) -> list[dict]:
     return results[:limit]
 
 
-def get_tags(kind: str) -> list[dict]:
+def get_tags(kind: str, with_counts: bool = False) -> list[dict]:
+    """with_counts dokłada company_count i contact_count — ile firm i kontaktów
+    ma daną wartość przypiętą. Podzapytania zamiast JOIN-ów, bo dwa złączenia
+    do tabel wiążących mnożyłyby wiersze i liczby wychodziłyby zawyżone."""
     db = get_db()
+    cols = "id, name"
+    if with_counts:
+        cols += (", (SELECT COUNT(*) FROM crm_company_tags ct WHERE ct.tag_id = crm_tags.id)"
+                 " AS company_count"
+                 ", (SELECT COUNT(*) FROM crm_contact_tags kt WHERE kt.tag_id = crm_tags.id)"
+                 " AS contact_count")
     with db.cursor() as cur:
         cur.execute(
-            "SELECT id, name FROM crm_tags WHERE kind=%s ORDER BY name", (kind,)
+            f"SELECT {cols} FROM crm_tags WHERE kind=%s ORDER BY name", (kind,)
         )
         return cur.fetchall()
 

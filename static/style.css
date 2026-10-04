@@ -4077,6 +4077,8 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
   flex: 1; min-width: 0;
 }
 .rd-dict-value small { color: var(--rd-text-muted); font-size: 12px; }
+/* Licznik użyć przy tagu/branży/źródle — ma nie łamać się w środku frazy. */
+.rd-dict-count { white-space: nowrap; }
 .rd-dict-add { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
 .rd-dict-add .filter-input { flex: 1; min-width: 120px; }
 

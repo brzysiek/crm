@@ -180,9 +180,9 @@ def dictionaries():
     from models.gtd_context import get_all_contexts
     return render_template('settings/dictionaries.html',
         active_tab='dictionaries',
-        tags=get_tags('tag'),
-        industries=get_tags('industry'),
-        sources=get_tags('source'),
+        tags=get_tags('tag', with_counts=True),
+        industries=get_tags('industry', with_counts=True),
+        sources=get_tags('source', with_counts=True),
         expense_categories=get_dict_items('expense_category'),
         income_categories=get_dict_items('income_category'),
         vat_rates=get_dict_items('vat_rate'),

@@ -11,6 +11,25 @@
 </div>
 {% endmacro %}
 
+{# Odmiana rzeczownika po liczbie: 1 firma / 2 firmy / 5 firm. #}
+{%- macro _plural(n, one, few, many) -%}
+{{ one if n == 1 else (few if (n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14]) else many) }}
+{%- endmacro -%}
+
+{# Ile razy wartość jest w użyciu. Branże i źródła wiszą wyłącznie na firmach,
+   tagi na jednych i drugich — dlatego pokazujemy tylko te człony, które są
+   niezerowe, a „(0)" oznacza pozycję do skasowania. #}
+{%- macro usage_count(item) -%}
+{%- set c = item.company_count or 0 -%}
+{%- set k = item.contact_count or 0 -%}
+<small class="rd-dict-count">(
+{%- if c %}{{ c }} {{ _plural(c, 'firma', 'firmy', 'firm') }}{% endif -%}
+{%- if c and k %} · {% endif -%}
+{%- if k %}{{ k }} {{ _plural(k, 'kontakt', 'kontakty', 'kontaktów') }}{% endif -%}
+{%- if not c and not k %}0{% endif -%}
+)</small>
+{%- endmacro -%}
+
 {# Lista pozycji słownika + dopisywanie w jednej linii. `anchor` wraca w POST, żeby po
    zapisie przeglądarka wróciła do tej samej karty, a nie na górę długiej strony. #}
 {% macro dict_card(title, anchor, dict_type, items, placeholder, label_placeholder=None, hint=None) %}
@@ -51,7 +70,7 @@
   <ul class="rd-dict-list">
     {% for item in items %}
     <li class="rd-dict-item">
-      <span class="rd-dict-value">{{ item.name }}</span>
+      <span class="rd-dict-value">{{ item.name }} {{ usage_count(item) }}</span>
       <form method="post" action="{{ url_for('settings.tag_delete', tag_id=item.id) }}"
             onsubmit="return confirm('Usunąć „{{ item.name }}”? Zostanie odpięta od firm i kontaktów, które jej używają.')">
         <input type="hidden" name="anchor" value="{{ anchor }}">
