@@ -42,12 +42,29 @@ function initSidebarMoreToggle() {
 document.addEventListener('DOMContentLoaded', initSidebarMoreToggle);
 
 /* ── CRM: domyślnie zwinięte paski filtrów na urządzeniach mobilnych ──────────── */
+/* Ile filtrów jest włączonych — po zwinięciu paska nic innego tego nie zdradza,
+   a lista skrócona z 198 do 12 pozycji bez widocznej przyczyny wygląda na błąd. */
+function activeFilterCount(bar) {
+  let n = 0;
+  bar.querySelectorAll('input[type=text]:not(.fmulti-search), input[type=search]')
+     .forEach(el => { if (el.value.trim()) { n++; } });
+  bar.querySelectorAll('select').forEach(el => { if (el.value) { n++; } });
+  bar.querySelectorAll('.fmulti').forEach(el => {
+    if (el.querySelector('input[type=hidden]')) { n++; }
+  });
+  const boxes = bar.querySelectorAll('.col-toggle-menu input[type=checkbox]');
+  if (boxes.length && Array.from(boxes).some(b => !b.checked)) { n++; }
+  return n;
+}
+
 function initFilterBarCollapse() {
   document.querySelectorAll('.filter-bar:not([data-no-collapse])').forEach(bar => {
+    const count = activeFilterCount(bar);
+    const label = '🔍 Filtry' + (count ? ' (' + count + ')' : '');
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'filter-bar-toggle';
-    toggle.textContent = '🔍 Filtry';
+    toggle.textContent = label;
     toggle.setAttribute('aria-expanded', 'false');
     bar.classList.add('filter-bar-collapsible');
     bar.parentNode.insertBefore(toggle, bar);
@@ -55,7 +72,7 @@ function initFilterBarCollapse() {
     toggle.addEventListener('click', () => {
       const open = bar.classList.toggle('open');
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      toggle.textContent = open ? '🔍 Ukryj filtry' : '🔍 Filtry';
+      toggle.textContent = open ? '🔍 Ukryj filtry' : label;
     });
   });
 }
@@ -2113,3 +2130,159 @@ document.addEventListener('keydown', function (e) {
     toggleDictRename(open.querySelector('.rd-dict-rename .action-btn'), false);
   }
 });
+
+/* ── Filtr wielowartościowy (.fmulti) ─────────────────────────────────────────
+   Jedna wartość na wymiar to za mało: „branża: produkcja albo logistyka, ale nie
+   klient" to jedno pytanie, nie trzy przebiegi po liście. Wartości dociągamy
+   z API przy pierwszym otwarciu, razem z liczbą trafień — bez licznika wybiera
+   się wartości, które nic nie zwracają, bo połowa branż wisi na jednej firmie.
+   Zamknięcie menu po zmianie wysyła formularz: inaczej zaznaczenie bez kliknięcia
+   „Filtruj" wyglądałoby jak zepsuty filtr. */
+function initFilterMulti() {
+  document.querySelectorAll('.fmulti').forEach(initOneFilterMulti);
+}
+
+function initOneFilterMulti(root) {
+  const name = root.dataset.name;
+  const form = root.closest('form');
+  const toggle = root.querySelector('.fmulti-toggle');
+  const menu = root.querySelector('.fmulti-menu');
+  const search = root.querySelector('.fmulti-search');
+  const list = root.querySelector('.fmulti-list');
+  const canExclude = root.dataset.exclude === '1';
+  const hiddenValues = sel => Array.from(root.querySelectorAll(sel)).map(el => el.value);
+  let picked = new Set(hiddenValues(`input[name="${CSS.escape(name)}"]`));
+  let excluded = new Set(hiddenValues(`input[name="${CSS.escape(name)}_not"]`));
+  let options = null;
+  let dirty = false;
+
+  if (root.dataset.options) {
+    try { options = JSON.parse(root.dataset.options); } catch (_) { options = []; }
+  }
+
+  function labelFor(value) {
+    const opt = (options || []).find(o => (o.value || o.name) === value);
+    return (opt && (opt.label || opt.name)) || value;
+  }
+
+  function renderToggle() {
+    const total = picked.size + excluded.size;
+    let text = root.dataset.label;
+    if (total === 1) {
+      const only = picked.size ? [...picked][0] : '− ' + [...excluded][0];
+      text += ': ' + (picked.size ? labelFor(only) : only);
+    } else if (total > 1) {
+      text += ': ' + total;
+    }
+    toggle.textContent = text + ' ▾';
+    toggle.classList.toggle('is-active', total > 0);
+  }
+
+  function syncHidden() {
+    root.querySelectorAll('input[type=hidden]').forEach(el => el.remove());
+    const add = (field, value) => {
+      const el = document.createElement('input');
+      el.type = 'hidden';
+      el.name = field;
+      el.value = value;
+      root.appendChild(el);
+    };
+    picked.forEach(v => add(name, v));
+    excluded.forEach(v => add(name + '_not', v));
+    renderToggle();
+  }
+
+  function renderList() {
+    const q = (search.value || '').trim().toLowerCase();
+    const chosen = o => picked.has(o.value) || excluded.has(o.value);
+    const visible = (options || [])
+      .filter(o => !q || o.label.toLowerCase().includes(q))
+      .sort((a, b) => (chosen(b) - chosen(a)) || 0);
+    if (!visible.length) {
+      list.innerHTML = '<p class="fmulti-empty">Brak pasujących wartości.</p>';
+      return;
+    }
+    list.innerHTML = '';
+    visible.slice(0, 300).forEach(o => {
+      const row = document.createElement('div');
+      row.className = 'fmulti-item' + (excluded.has(o.value) ? ' is-excluded' : '');
+      const box = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = picked.has(o.value);
+      cb.addEventListener('change', () => {
+        if (cb.checked) { picked.add(o.value); excluded.delete(o.value); }
+        else { picked.delete(o.value); }
+        dirty = true;
+        syncHidden();
+        renderList();
+      });
+      box.appendChild(cb);
+      box.appendChild(document.createTextNode(' ' + o.label));
+      row.appendChild(box);
+      if (o.count !== undefined && o.count !== null) {
+        const cnt = document.createElement('span');
+        cnt.className = 'fmulti-count';
+        cnt.textContent = o.count;
+        row.appendChild(cnt);
+      }
+      if (canExclude) {
+        const minus = document.createElement('button');
+        minus.type = 'button';
+        minus.className = 'fmulti-exclude';
+        minus.title = excluded.has(o.value) ? 'Przestań wykluczać' : 'Wyklucz tę wartość';
+        minus.textContent = '−';
+        minus.addEventListener('click', () => {
+          if (excluded.has(o.value)) { excluded.delete(o.value); }
+          else { excluded.add(o.value); picked.delete(o.value); }
+          dirty = true;
+          syncHidden();
+          renderList();
+        });
+        row.appendChild(minus);
+      }
+      list.appendChild(row);
+    });
+  }
+
+  async function loadOptions() {
+    if (options) { return; }
+    list.innerHTML = '<p class="fmulti-empty">Wczytuję…</p>';
+    const url = (window.API_BASE || '') + '/api/crm/filter-options?kind=' +
+      encodeURIComponent(root.dataset.kind) + '&entity=' + encodeURIComponent(root.dataset.entity || 'company');
+    try {
+      const resp = await fetch(url);
+      options = (await resp.json()).map(o => ({ value: o.name, label: o.name, count: o.count }));
+    } catch (_) {
+      options = [];
+      list.innerHTML = '<p class="fmulti-empty">Nie udało się wczytać wartości.</p>';
+      return;
+    }
+    renderList();
+  }
+
+  function close() {
+    if (!root.classList.contains('open')) { return; }
+    root.classList.remove('open');
+    if (dirty && form) { form.submit(); }
+  }
+
+  toggle.addEventListener('click', () => {
+    const wasOpen = root.classList.contains('open');
+    document.querySelectorAll('.fmulti.open').forEach(el => el !== root && el.classList.remove('open'));
+    if (wasOpen) { close(); return; }
+    root.classList.add('open');
+    if (options) { renderList(); } else { loadOptions(); }
+    search.focus();
+  });
+  search.addEventListener('input', renderList);
+  document.addEventListener('click', e => { if (!root.contains(e.target)) { close(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { close(); } });
+
+  // Normalizacja wartości podanych w szablonie (relacje: wartość ≠ etykieta).
+  if (options) {
+    options = options.map(o => (typeof o === 'string' ? { value: o, label: o } : o));
+  }
+  renderToggle();
+}
+document.addEventListener('DOMContentLoaded', initFilterMulti);

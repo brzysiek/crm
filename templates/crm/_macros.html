@@ -118,3 +118,25 @@
     </div>
   </div>
 {% endmacro %}
+
+{# Filtr wielowartościowy: wybór kilku wartości naraz (OR) i wykluczanie (AND NOT).
+   Listę wartości razem z licznikami widżet dociąga z /api/crm/filter-options przy
+   pierwszym otwarciu — branż jest ponad czterysta, więc wtłaczanie ich w każdą
+   stronę listy byłoby marnotrawstwem. `options` podaje się tylko tam, gdzie słownik
+   jest stały i nie ma go w bazie (relacje). #}
+{% macro filter_multi(name, label, filters, kind=none, entity='company', options=none, exclude=true) %}
+  {%- set picked = filters.get(name) or [] -%}
+  {%- set excluded = filters.get(name ~ '_not') or [] -%}
+  <div class="fmulti" data-name="{{ name }}" data-label="{{ label }}"
+       {% if kind %}data-kind="{{ kind }}" data-entity="{{ entity }}"{% endif %}
+       {% if options is not none %}data-options='{{ options|tojson }}'{% endif %}
+       {% if exclude %}data-exclude="1"{% endif %}>
+    <button type="button" class="fmulti-toggle">{{ label }} ▾</button>
+    <div class="fmulti-menu">
+      <input type="text" class="fmulti-search" placeholder="Szukaj…" autocomplete="off">
+      <div class="fmulti-list"></div>
+    </div>
+    {% for v in picked %}<input type="hidden" name="{{ name }}" value="{{ v }}">{% endfor %}
+    {% for v in excluded %}<input type="hidden" name="{{ name }}_not" value="{{ v }}">{% endfor %}
+  </div>
+{% endmacro %}

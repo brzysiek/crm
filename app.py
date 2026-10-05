@@ -1976,6 +1976,25 @@ def api_crm_suggest():
     return jsonify([])
 
 
+@app.route('/api/crm/filter-options')
+def api_crm_filter_options():
+    """Wartości do filtrów razem z liczbą trafień. Listy bywają długie (ponad
+    czterysta branż), więc widżet dociąga je dopiero przy otwarciu, zamiast
+    wtłaczać do każdej strony listy."""
+    kind = request.args.get('kind', '')
+    entity = 'contact' if request.args.get('entity') == 'contact' else 'company'
+    if kind == 'city':
+        from models.crm_company import get_company_cities
+        return jsonify(get_company_cities(entity))
+    if kind == 'email':
+        from models.crm_tags import get_email_tag_filter_options
+        return jsonify(get_email_tag_filter_options())
+    if kind in ('tag', 'industry', 'source'):
+        from models.crm_tags import get_filter_options
+        return jsonify(get_filter_options(kind, entity))
+    return jsonify([])
+
+
 @app.route('/api/crm/companies/bulk', methods=['POST'])
 def api_crm_companies_bulk():
     from models.crm_company import bulk_add_tag, bulk_remove_tag, bulk_set_description

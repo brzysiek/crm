@@ -18,7 +18,8 @@ def _contacts_where(search: str = None, company_id: int = None,
                      context_ids: list[int] | None = None,
                      list_id: int | None = None,
                      relation_type=None, tag=None, industry=None, source=None,
-                     city=None, has_email: str = None, email_tag=None) -> tuple[str, list]:
+                     city=None, has_email: str = None, email_tag=None,
+                     tag_not=None, industry_not=None, source_not=None) -> tuple[str, list]:
     """Filtry kontaktu dzielą się na dwie grupy: własne (mail, zgoda, lista,
     kontekst) i odziedziczone po firmie (relacja, branża, tag, źródło, miasto).
     Te drugie istnieją, bo pytania zadaje się o ludzi — „kto siedzi w private
@@ -37,11 +38,17 @@ def _contacts_where(search: str = None, company_id: int = None,
         params.extend([like, like, like, like, like, like])
 
     # Odziedziczone po firmie.
-    for kind, value in (('tag', tag), ('industry', industry), ('source', source)):
+    for kind, value, exclude in (('tag', tag, tag_not), ('industry', industry, industry_not),
+                                 ('source', source, source_not)):
         names = as_filter_list(value)
         if names:
             sql, p = company_has_tag_sql('ct.company_id', kind, names)
             where += f" AND {sql}"
+            params.extend(p)
+        excluded = as_filter_list(exclude)
+        if excluded:
+            sql, p = company_has_tag_sql('ct.company_id', kind, excluded)
+            where += f" AND NOT {sql}"
             params.extend(p)
     relations = as_filter_list(relation_type)
     if relations:

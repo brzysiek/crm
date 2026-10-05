@@ -110,6 +110,45 @@ def contact_has_email_tag_sql(contact_col: str, names: list[str]) -> tuple[str, 
     return sql, list(names)
 
 
+def get_filter_options(kind: str, for_entity: str = 'company') -> list[dict]:
+    """Wartości do wyboru w filtrze razem z liczbą rekordów, które trafią.
+
+    Liczba jest tu po to, żeby nie wybierać wartości, która nic nie zwróci —
+    przy ~160 branżach połowa wisi na jednej firmie. Liczymy to, co filtr
+    naprawdę pokaże: na liście firm firmy, na liście kontaktów ludzi z tych
+    firm. Pozycje bez ani jednego trafienia zostają w słowniku, ale nie
+    zaśmiecają filtra."""
+    db = get_db()
+    if for_entity == 'contact':
+        sql = """SELECT t.name AS name, COUNT(DISTINCT ct.id) AS count
+                 FROM crm_tags t
+                 JOIN crm_company_tags cct ON cct.tag_id = t.id
+                 JOIN crm_companies co ON co.id = cct.company_id AND co.archived_at IS NULL
+                 JOIN crm_contacts ct ON ct.company_id = co.id AND ct.archived_at IS NULL
+                 WHERE t.kind = %s GROUP BY t.id HAVING count > 0 ORDER BY t.name"""
+    else:
+        sql = """SELECT t.name AS name, COUNT(DISTINCT co.id) AS count
+                 FROM crm_tags t
+                 JOIN crm_company_tags cct ON cct.tag_id = t.id
+                 JOIN crm_companies co ON co.id = cct.company_id AND co.archived_at IS NULL
+                 WHERE t.kind = %s GROUP BY t.id HAVING count > 0 ORDER BY t.name"""
+    with db.cursor() as cur:
+        cur.execute(sql, (kind,))
+        return cur.fetchall()
+
+
+def get_email_tag_filter_options() -> list[dict]:
+    """Zgody marketingowe wiszą wprost przy kontakcie, nie przy firmie."""
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("""SELECT t.name AS name, COUNT(DISTINCT ct.id) AS count
+                       FROM crm_tags t
+                       JOIN crm_contact_tags kt ON kt.tag_id = t.id
+                       JOIN crm_contacts ct ON ct.id = kt.contact_id AND ct.archived_at IS NULL
+                       WHERE t.kind = 'email' GROUP BY t.id HAVING count > 0 ORDER BY t.name""")
+        return cur.fetchall()
+
+
 def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
     """kind: 'tag' lub 'industry' — podpowiedzi istniejących nazw do tag-inputa."""
     db = get_db()

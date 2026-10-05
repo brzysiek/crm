@@ -49,7 +49,8 @@ def derive_short_name(name: str) -> str:
 def _companies_filters(search: str = None, relation_type=None,
                         tag=None, industry=None, source=None,
                         context_ids: list[int] | None = None,
-                        city=None) -> tuple[list, list, list]:
+                        city=None, tag_not=None, industry_not=None,
+                        source_not=None) -> tuple[list, list, list]:
     """Zwraca (joins, where, params). Joins zostaje w sygnaturze, bo wołający
     sklejają z niego zapytanie — dziś jest pusty, warunki po wartościach
     słownikowych idą przez EXISTS."""
@@ -57,11 +58,19 @@ def _companies_filters(search: str = None, relation_type=None,
     joins = []
     where = ["c.archived_at IS NULL"]
 
-    for kind, value in (('tag', tag), ('industry', industry), ('source', source)):
+    for kind, value, exclude in (('tag', tag, tag_not), ('industry', industry, industry_not),
+                                 ('source', source, source_not)):
         names = as_filter_list(value)
         if names:
             sql, p = company_has_tag_sql('c.id', kind, names)
             where.append(sql)
+            params.extend(p)
+        # Wykluczenie to osobny warunek, nie brak zaznaczenia: „produkcja, ale nie
+        # klient” da się zadać tylko wtedy, gdy minus jest czymś innym niż plus.
+        excluded = as_filter_list(exclude)
+        if excluded:
+            sql, p = company_has_tag_sql('c.id', kind, excluded)
+            where.append('NOT ' + sql)
             params.extend(p)
     relations = as_filter_list(relation_type)
     if relations:
@@ -93,22 +102,27 @@ def _companies_filters(search: str = None, relation_type=None,
     return joins, where, params
 
 
-def get_company_cities() -> list[str]:
-    """Miasta, które realnie są w bazie — słownik filtra budujemy z danych,
-    bo miasto to wolne pole, a nie pozycja ze słownika."""
+def get_company_cities(for_entity: str = 'company') -> list[dict]:
+    """Miasta razem z liczbą trafień — słownik filtra budujemy z danych, bo
+    miasto to wolne pole, a nie pozycja ze słownika."""
     db = get_db()
+    if for_entity == 'contact':
+        sql = """SELECT c.city AS name, COUNT(*) AS count
+                 FROM crm_contacts ct JOIN crm_companies c ON c.id = ct.company_id
+                 WHERE ct.archived_at IS NULL AND c.archived_at IS NULL
+                   AND c.city IS NOT NULL AND c.city <> ''
+                 GROUP BY c.city ORDER BY c.city"""
+    else:
+        sql = """SELECT city AS name, COUNT(*) AS count FROM crm_companies
+                 WHERE archived_at IS NULL AND city IS NOT NULL AND city <> ''
+                 GROUP BY city ORDER BY city"""
     with db.cursor() as cur:
-        cur.execute("""SELECT city FROM crm_companies
-                       WHERE archived_at IS NULL AND city IS NOT NULL AND city <> ''
-                       GROUP BY city ORDER BY COUNT(*) DESC, city""")
-        return [r['city'] for r in cur.fetchall()]
+        cur.execute(sql)
+        return cur.fetchall()
 
 
-def count_companies(search: str = None, relation_type=None,
-                     tag=None, industry=None, source=None,
-                     context_ids: list[int] | None = None, city=None) -> int:
-    joins, where, params = _companies_filters(search, relation_type, tag, industry, source,
-                                               context_ids, city)
+def count_companies(search: str = None, context_ids: list[int] | None = None, **filters) -> int:
+    joins, where, params = _companies_filters(search, context_ids=context_ids, **filters)
     db = get_db()
     sql = (f"SELECT COUNT(*) AS cnt FROM crm_companies c "
            f"{' '.join(joins)} WHERE {' AND '.join(where)}")
@@ -118,10 +132,8 @@ def count_companies(search: str = None, relation_type=None,
 
 
 def get_all_companies(sort: str = 'name', direction: str = 'asc',
-                       search: str = None, relation_type=None,
-                       tag=None, industry=None, source=None,
-                       context_ids: list[int] | None = None, city=None,
-                       limit: int | None = None, offset: int = 0) -> list[dict]:
+                       search: str = None, context_ids: list[int] | None = None,
+                       limit: int | None = None, offset: int = 0, **filters) -> list[dict]:
     allowed_sort = {
         'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
         'nip', 'created_at',
@@ -132,8 +144,7 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
     order_col = f'c.{sort}'
 
     db = get_db()
-    joins, where, params = _companies_filters(search, relation_type, tag, industry, source,
-                                               context_ids, city)
+    joins, where, params = _companies_filters(search, context_ids=context_ids, **filters)
 
     sql = f"""SELECT c.*,
         gc.name AS context_name, gc.badge_color AS context_badge_color, gc.text_color AS context_text_color,

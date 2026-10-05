@@ -23,16 +23,13 @@
   <input type="text" id="companies-search" name="search" placeholder="Szukaj nazwy, email, NIP, miasta…"
          value="{{ filters.search }}" class="filter-input" autocomplete="off">
 
-  <select name="relation_type" class="filter-select">
-    <option value="">Wszystkie relacje</option>
-    {% for val, label in relation_labels.items() %}
-      <option value="{{ val }}" {{ 'selected' if filters.relation_type == val }}>{{ label }}</option>
-    {% endfor %}
-  </select>
-
-  <input type="text" name="tag" placeholder="Tag" value="{{ filters.tag }}" class="filter-input" style="min-width:100px">
-  <input type="text" name="industry" placeholder="Branża" value="{{ filters.industry }}" class="filter-input" style="min-width:100px">
-  <input type="text" name="source" placeholder="Źródło" value="{{ filters.source }}" class="filter-input" style="min-width:100px">
+  {# Każdy wymiar przyjmuje wiele wartości i wykluczenia — licznik przy wartości
+     mówi, ile firm wróci, zanim się ją kliknie. #}
+  {{ m.filter_multi('relation_type', 'Relacja', filters, options=relation_options, exclude=false) }}
+  {{ m.filter_multi('tag', 'Tag', filters, kind='tag') }}
+  {{ m.filter_multi('industry', 'Branża', filters, kind='industry') }}
+  {{ m.filter_multi('source', 'Źródło', filters, kind='source') }}
+  {{ m.filter_multi('city', 'Miasto', filters, kind='city', exclude=false) }}
 
   <input type="hidden" name="context_filter" value="1">
   <div class="col-toggle" id="companies-context-filter">

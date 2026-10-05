@@ -8,7 +8,7 @@ import models.gcal_event as gcal_event_model
 import models.task as task_model
 from models.crm_company import (RELATION_LABELS, get_companies_referred_by_company,
                                   get_companies_referred_by_contact,
-                                  get_company_by_id, get_company_cities, get_company_tags)
+                                  get_company_by_id, get_company_tags)
 from models.crm_contact import (count_contacts, create_contact, delete_contact, get_all_contacts,
                                   get_contact_by_id, merge_contacts, set_starred, update_contact)
 from models.crm_contact_list import (get_all_lists, get_contact_list_ids, get_contact_lists,
@@ -16,7 +16,7 @@ from models.crm_contact_list import (get_all_lists, get_contact_list_ids, get_co
 from models.crm_file import get_files_for_company
 from models.crm_notes import (HISTORY_BADGE_LABELS, NOTE_TYPE_LABELS, add_note, delete_note,
                                 get_history_multi, get_notes_multi)
-from models.crm_tags import get_contact_email_tags, set_contact_email_tags, suggest_tags
+from models.crm_tags import get_contact_email_tags, set_contact_email_tags
 from models.gtd_context import get_all_contexts
 from models.mna_deal import (STAGE_BADGE_CLASSES as MNA_STAGE_BADGE_CLASSES,
                              STAGE_LABELS as MNA_STAGE_LABELS, get_deals_for_crm_contact)
@@ -123,6 +123,11 @@ def list_contacts():
     return _render_contacts(None)
 
 
+RELATION_OPTIONS = [{'value': v, 'label': l} for v, l in RELATION_LABELS.items()]
+CONTACT_FILTER_KEYS = ('relation_type', 'tag', 'industry', 'source', 'city', 'email_tag',
+                       'tag_not', 'industry_not', 'source_not')
+
+
 def _render_contacts(contact_list):
     list_id = contact_list['id'] if contact_list else None
     endpoint = 'crm_contacts.list_view' if contact_list else 'crm_contacts.list_contacts'
@@ -132,7 +137,7 @@ def _render_contacts(contact_list):
     search = request.args.get('search', '')
     # Wartości słownikowe przychodzą listą (?industry=A&industry=B = „A albo B”),
     # pojedynczy parametr ze starych linków trafia tu jako lista jednoelementowa.
-    multi = {k: request.args.getlist(k) for k in ('relation_type', 'tag', 'industry', 'source', 'city', 'email_tag')}
+    multi = {k: request.args.getlist(k) for k in CONTACT_FILTER_KEYS}
     has_email = request.args.get('has_email', '')
     if 'context_filter' in request.args:
         context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
@@ -164,13 +169,11 @@ def _render_contacts(contact_list):
         active_tab='contacts', contacts=contacts,
         sort=sort, direction=direction,
         filters=dict(multi, search=search, has_email=has_email),
-        all_industries=suggest_tags('industry'), all_sources=suggest_tags('source'),
-        all_email_tags=suggest_tags('email'), all_cities=get_company_cities(),
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
         all_lists=get_all_lists(), contact_list=contact_list,
         endpoint=endpoint, endpoint_args=endpoint_args,
         page=page, page_size=page_size, total=total, total_pages=total_pages,
-        relation_labels=RELATION_LABELS,
+        relation_labels=RELATION_LABELS, relation_options=RELATION_OPTIONS,
     )
 
 

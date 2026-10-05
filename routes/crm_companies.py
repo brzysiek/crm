@@ -54,15 +54,20 @@ def _validate(data):
     return errors
 
 
+RELATION_OPTIONS = [{'value': v, 'label': l} for v, l in RELATION_LABELS.items()]
+COMPANY_FILTER_KEYS = ('relation_type', 'tag', 'industry', 'source', 'city',
+                       'tag_not', 'industry_not', 'source_not')
+
+
 @bp.route('/')
 def list_companies():
     sort = request.args.get('sort', 'created_at')
     direction = request.args.get('dir', 'desc')
     search = request.args.get('search', '')
-    relation_type = request.args.get('relation_type', '')
-    tag = request.args.get('tag', '')
-    industry = request.args.get('industry', '')
-    source = request.args.get('source', '')
+    # Każdy wymiar przyjmuje wiele wartości (OR) i wiele wykluczeń (AND NOT):
+    # „branża: produkcja albo logistyka, ale nie klient". Stare linki z jednym
+    # `?tag=X` trafiają tu jako lista jednoelementowa i działają jak dawniej.
+    multi = {k: request.args.getlist(k) for k in COMPANY_FILTER_KEYS}
     if 'context_filter' in request.args:
         context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
     else:
@@ -78,20 +83,15 @@ def list_companies():
     limit = None if page_size == 'all' else int(page_size)
     offset = (page - 1) * limit if limit else 0
 
-    total = count_companies(
-        search=search or None, relation_type=relation_type or None, tag=tag or None,
-        industry=industry or None, source=source or None, context_ids=context_ids,
-    )
-    companies = get_all_companies(
-        sort=sort, direction=direction, search=search or None,
-        relation_type=relation_type or None, tag=tag or None, industry=industry or None,
-        source=source or None, context_ids=context_ids, limit=limit, offset=offset,
-    )
+    total = count_companies(search=search or None, context_ids=context_ids, **multi)
+    companies = get_all_companies(sort=sort, direction=direction, search=search or None,
+                                   context_ids=context_ids, limit=limit, offset=offset, **multi)
     total_pages = 1 if not limit else max(1, -(-total // limit))
     return render_template('crm/companies/list.html',
         active_tab='companies', companies=companies, relation_labels=RELATION_LABELS,
         sort=sort, direction=direction,
-        filters={'search': search, 'relation_type': relation_type, 'tag': tag, 'industry': industry, 'source': source},
+        filters=dict(multi, search=search),
+        relation_options=RELATION_OPTIONS,
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
         page=page, page_size=page_size, total=total, total_pages=total_pages,
     )
