@@ -3,7 +3,8 @@ import re
 from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
-from models.crm_tags import get_or_create_tag_ids, normalize_tag_name
+from models.crm_tags import (as_filter_list, company_has_tag_sql,
+                             get_or_create_tag_ids, normalize_tag_name)
 from services.company_profile import get_favicon_url
 from services.text_utils import format_phone
 
@@ -45,31 +46,33 @@ def derive_short_name(name: str) -> str:
     return short or name.strip()
 
 
-def _companies_filters(search: str = None, relation_type: str = None,
-                        tag: str = None, industry: str = None, source: str = None,
-                        context_ids: list[int] | None = None) -> tuple[list, list, list]:
+def _companies_filters(search: str = None, relation_type=None,
+                        tag=None, industry=None, source=None,
+                        context_ids: list[int] | None = None,
+                        city=None) -> tuple[list, list, list]:
+    """Zwraca (joins, where, params). Joins zostaje w sygnaturze, bo wołający
+    sklejają z niego zapytanie — dziś jest pusty, warunki po wartościach
+    słownikowych idą przez EXISTS."""
     params = []
     joins = []
     where = ["c.archived_at IS NULL"]
 
-    if tag:
-        joins.append("JOIN crm_company_tags ct ON ct.company_id=c.id "
-                     "JOIN crm_tags t ON t.id=ct.tag_id AND t.kind='tag'")
-        where.append("t.name = %s")
-        params.append(tag)
-    if industry:
-        joins.append("JOIN crm_company_tags ci ON ci.company_id=c.id "
-                     "JOIN crm_tags i ON i.id=ci.tag_id AND i.kind='industry'")
-        where.append("i.name = %s")
-        params.append(industry)
-    if source:
-        joins.append("JOIN crm_company_tags cs ON cs.company_id=c.id "
-                     "JOIN crm_tags s ON s.id=cs.tag_id AND s.kind='source'")
-        where.append("s.name = %s")
-        params.append(source)
-    if relation_type:
-        where.append("c.relation_type = %s")
-        params.append(relation_type)
+    for kind, value in (('tag', tag), ('industry', industry), ('source', source)):
+        names = as_filter_list(value)
+        if names:
+            sql, p = company_has_tag_sql('c.id', kind, names)
+            where.append(sql)
+            params.extend(p)
+    relations = as_filter_list(relation_type)
+    if relations:
+        placeholders = ','.join(['%s'] * len(relations))
+        where.append(f"c.relation_type IN ({placeholders})")
+        params.extend(relations)
+    cities = as_filter_list(city)
+    if cities:
+        placeholders = ','.join(['%s'] * len(cities))
+        where.append(f"c.city IN ({placeholders})")
+        params.extend(cities)
     if search:
         where.append("(c.name LIKE %s OR c.short_name LIKE %s OR c.email LIKE %s "
                       "OR c.nip LIKE %s OR c.city LIKE %s)")
@@ -90,12 +93,24 @@ def _companies_filters(search: str = None, relation_type: str = None,
     return joins, where, params
 
 
-def count_companies(search: str = None, relation_type: str = None,
-                     tag: str = None, industry: str = None, source: str = None,
-                     context_ids: list[int] | None = None) -> int:
-    joins, where, params = _companies_filters(search, relation_type, tag, industry, source, context_ids)
+def get_company_cities() -> list[str]:
+    """Miasta, które realnie są w bazie — słownik filtra budujemy z danych,
+    bo miasto to wolne pole, a nie pozycja ze słownika."""
     db = get_db()
-    sql = (f"SELECT COUNT(DISTINCT c.id) AS cnt FROM crm_companies c "
+    with db.cursor() as cur:
+        cur.execute("""SELECT city FROM crm_companies
+                       WHERE archived_at IS NULL AND city IS NOT NULL AND city <> ''
+                       GROUP BY city ORDER BY COUNT(*) DESC, city""")
+        return [r['city'] for r in cur.fetchall()]
+
+
+def count_companies(search: str = None, relation_type=None,
+                     tag=None, industry=None, source=None,
+                     context_ids: list[int] | None = None, city=None) -> int:
+    joins, where, params = _companies_filters(search, relation_type, tag, industry, source,
+                                               context_ids, city)
+    db = get_db()
+    sql = (f"SELECT COUNT(*) AS cnt FROM crm_companies c "
            f"{' '.join(joins)} WHERE {' AND '.join(where)}")
     with db.cursor() as cur:
         cur.execute(sql, params)
@@ -103,9 +118,9 @@ def count_companies(search: str = None, relation_type: str = None,
 
 
 def get_all_companies(sort: str = 'name', direction: str = 'asc',
-                       search: str = None, relation_type: str = None,
-                       tag: str = None, industry: str = None, source: str = None,
-                       context_ids: list[int] | None = None,
+                       search: str = None, relation_type=None,
+                       tag=None, industry=None, source=None,
+                       context_ids: list[int] | None = None, city=None,
                        limit: int | None = None, offset: int = 0) -> list[dict]:
     allowed_sort = {
         'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
@@ -117,9 +132,10 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
     order_col = f'c.{sort}'
 
     db = get_db()
-    joins, where, params = _companies_filters(search, relation_type, tag, industry, source, context_ids)
+    joins, where, params = _companies_filters(search, relation_type, tag, industry, source,
+                                               context_ids, city)
 
-    sql = f"""SELECT DISTINCT c.*,
+    sql = f"""SELECT c.*,
         gc.name AS context_name, gc.badge_color AS context_badge_color, gc.text_color AS context_text_color,
         (SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ', ')
            FROM crm_company_tags ct JOIN crm_tags t ON t.id=ct.tag_id

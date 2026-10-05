@@ -2,7 +2,9 @@ from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
 from models.crm_contact_list import merge_list_memberships
-from models.crm_tags import get_contact_email_tags, set_contact_email_tags
+from models.crm_tags import (as_filter_list, company_has_tag_sql,
+                             contact_has_email_tag_sql, get_contact_email_tags,
+                             set_contact_email_tags)
 from services.text_utils import format_phone
 
 FIELD_LABELS = {
@@ -14,7 +16,15 @@ FIELD_LABELS = {
 
 def _contacts_where(search: str = None, company_id: int = None,
                      context_ids: list[int] | None = None,
-                     list_id: int | None = None) -> tuple[str, list]:
+                     list_id: int | None = None,
+                     relation_type=None, tag=None, industry=None, source=None,
+                     city=None, has_email: str = None, email_tag=None) -> tuple[str, list]:
+    """Filtry kontaktu dzielą się na dwie grupy: własne (mail, zgoda, lista,
+    kontekst) i odziedziczone po firmie (relacja, branża, tag, źródło, miasto).
+    Te drugie istnieją, bo pytania zadaje się o ludzi — „kto siedzi w private
+    equity" — a atrybut wisi przy firmie. 228 z 229 kontaktów ma firmę, więc
+    dziedziczenie pokrywa praktycznie całą bazę.
+    """
     where = "WHERE ct.archived_at IS NULL"
     params = []
     if company_id:
@@ -22,9 +32,39 @@ def _contacts_where(search: str = None, company_id: int = None,
         params.append(company_id)
     if search:
         where += (" AND (ct.first_name LIKE %s OR ct.last_name LIKE %s OR ct.email LIKE %s "
-                  "OR ct.phone LIKE %s OR co.name LIKE %s)")
+                  "OR ct.phone LIKE %s OR ct.position LIKE %s OR co.name LIKE %s)")
         like = f"%{search}%"
-        params.extend([like, like, like, like, like])
+        params.extend([like, like, like, like, like, like])
+
+    # Odziedziczone po firmie.
+    for kind, value in (('tag', tag), ('industry', industry), ('source', source)):
+        names = as_filter_list(value)
+        if names:
+            sql, p = company_has_tag_sql('ct.company_id', kind, names)
+            where += f" AND {sql}"
+            params.extend(p)
+    relations = as_filter_list(relation_type)
+    if relations:
+        placeholders = ','.join(['%s'] * len(relations))
+        where += f" AND co.relation_type IN ({placeholders})"
+        params.extend(relations)
+    cities = as_filter_list(city)
+    if cities:
+        placeholders = ','.join(['%s'] * len(cities))
+        where += f" AND co.city IN ({placeholders})"
+        params.extend(cities)
+
+    # Własne.
+    if has_email == 'yes':
+        where += " AND ct.email IS NOT NULL AND ct.email <> ''"
+    elif has_email == 'no':
+        where += " AND (ct.email IS NULL OR ct.email = '')"
+    consents = as_filter_list(email_tag)
+    if consents:
+        sql, p = contact_has_email_tag_sql('ct.id', consents)
+        where += f" AND {sql}"
+        params.extend(p)
+
     if context_ids is not None:
         # Sentinel 0 oznacza koszyk „Brak kontekstu” (ct.context_id IS NULL).
         real_ids = [c for c in context_ids if c]
@@ -45,8 +85,8 @@ def _contacts_where(search: str = None, company_id: int = None,
 
 def count_contacts(search: str = None, company_id: int = None,
                     context_ids: list[int] | None = None,
-                    list_id: int | None = None) -> int:
-    where, params = _contacts_where(search, company_id, context_ids, list_id)
+                    list_id: int | None = None, **filters) -> int:
+    where, params = _contacts_where(search, company_id, context_ids, list_id, **filters)
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
@@ -61,7 +101,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
                       search: str = None, company_id: int = None,
                       context_ids: list[int] | None = None,
                       list_id: int | None = None,
-                      limit: int | None = None, offset: int = 0) -> list[dict]:
+                      limit: int | None = None, offset: int = 0, **filters) -> list[dict]:
     allowed_sort = {'first_name', 'last_name', 'position', 'email', 'phone', 'created_at', 'company_name'}
     if sort not in allowed_sort:
         sort = 'last_name'
@@ -84,7 +124,7 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
            "LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id ")
-    where, params = _contacts_where(search, company_id, context_ids, list_id)
+    where, params = _contacts_where(search, company_id, context_ids, list_id, **filters)
     sql += where
     sql += f" ORDER BY ct.is_starred DESC, {sort_col} {direction}, ct.id DESC"
     if limit is not None:

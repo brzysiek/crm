@@ -26,8 +26,55 @@
 {% endif %}
 
 <form class="filter-bar" method="get" action="{{ url_for(endpoint, **endpoint_args) }}">
-  <input type="text" id="contacts-search" name="search" placeholder="Szukaj imienia, email, firmy…"
+  <input type="text" id="contacts-search" name="search" placeholder="Szukaj imienia, email, stanowiska, firmy…"
          value="{{ filters.search }}" class="filter-input" autocomplete="off">
+
+  {# Filtry odziedziczone po firmie — pytania zadaje się o ludzi („kto siedzi
+     w private equity”), a atrybut wisi przy firmie kontaktu. #}
+  <select name="relation_type" class="filter-select">
+    <option value="">Wszystkie relacje</option>
+    {% for val, label in relation_labels.items() %}
+      <option value="{{ val }}" {{ 'selected' if val in filters.relation_type }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="industry" class="filter-select">
+    <option value="">Wszystkie branże</option>
+    {% for name in all_industries %}
+      <option value="{{ name }}" {{ 'selected' if name in filters.industry }}>{{ name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="source" class="filter-select">
+    <option value="">Wszystkie źródła</option>
+    {% for name in all_sources %}
+      <option value="{{ name }}" {{ 'selected' if name in filters.source }}>{{ name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="city" class="filter-select">
+    <option value="">Wszystkie miasta</option>
+    {% for name in all_cities %}
+      <option value="{{ name }}" {{ 'selected' if name in filters.city }}>{{ name }}</option>
+    {% endfor %}
+  </select>
+
+  {# Własne filtry kontaktu: adres i zgoda marketingowa — jedno i drugie
+     sprawdza się przed wysyłką kampanii. #}
+  <select name="has_email" class="filter-select">
+    <option value="">Mail: wszyscy</option>
+    <option value="yes" {{ 'selected' if filters.has_email == 'yes' }}>Z mailem</option>
+    <option value="no" {{ 'selected' if filters.has_email == 'no' }}>Bez maila</option>
+  </select>
+
+  {% if all_email_tags %}
+  <select name="email_tag" class="filter-select">
+    <option value="">Każda zgoda</option>
+    {% for name in all_email_tags %}
+      <option value="{{ name }}" {{ 'selected' if name in filters.email_tag }}>Zgoda: {{ name }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
 
   <input type="hidden" name="context_filter" value="1">
   <div class="col-toggle" id="contacts-context-filter">

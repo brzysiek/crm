@@ -74,6 +74,42 @@ def normalize_tag_name(name: str, kind: str = 'tag') -> str:
     return title_case_name(name) if kind == 'source' else capitalize_first(name)
 
 
+def as_filter_list(value) -> list[str]:
+    """Filtry przyjmują i jedną wartość, i listę — stare linki z `?tag=X` mają
+    działać dalej, a nowe `?tag=X&tag=Y` znaczyć „X albo Y"."""
+    if value is None or value == '':
+        return []
+    if isinstance(value, str):
+        return [value]
+    return [v for v in value if v not in (None, '')]
+
+
+def company_has_tag_sql(company_col: str, kind: str, names: list[str]) -> tuple[str, list]:
+    """Warunek „firma ma którąś z tych wartości" jako EXISTS, nie JOIN.
+
+    JOIN mnożyłby wiersze przy firmie z kilkoma pasującymi wartościami i wymuszał
+    DISTINCT, a przy dwóch filtrach naraz (branża ORAZ tag) robiłby z tego iloczyn.
+    Kilka nazw w jednym filtrze znaczy „którakolwiek z nich" — pytanie „private
+    equity albo venture capital albo family office" jest jednym pytaniem, nie trzema.
+    """
+    placeholders = ','.join(['%s'] * len(names))
+    sql = (f"EXISTS (SELECT 1 FROM crm_company_tags _ct"
+           f" JOIN crm_tags _t ON _t.id = _ct.tag_id"
+           f" WHERE _ct.company_id = {company_col} AND _t.kind = %s"
+           f" AND _t.name IN ({placeholders}))")
+    return sql, [kind] + list(names)
+
+
+def contact_has_email_tag_sql(contact_col: str, names: list[str]) -> tuple[str, list]:
+    """To samo dla tagów email (zgód marketingowych), które wiszą przy kontakcie."""
+    placeholders = ','.join(['%s'] * len(names))
+    sql = (f"EXISTS (SELECT 1 FROM crm_contact_tags _kt"
+           f" JOIN crm_tags _et ON _et.id = _kt.tag_id"
+           f" WHERE _kt.contact_id = {contact_col} AND _et.kind = 'email'"
+           f" AND _et.name IN ({placeholders}))")
+    return sql, list(names)
+
+
 def suggest_tags(kind: str, q: str = '', limit: int = 20) -> list[str]:
     """kind: 'tag' lub 'industry' — podpowiedzi istniejących nazw do tag-inputa."""
     db = get_db()
