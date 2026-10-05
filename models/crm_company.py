@@ -3,6 +3,7 @@ import re
 from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
+from models.crm_activity import company_last_contact_sql, stale_days
 from models.crm_tags import (as_filter_list, company_has_tag_sql,
                              get_or_create_tag_ids, normalize_tag_name)
 from services.company_profile import get_favicon_url
@@ -50,7 +51,7 @@ def _companies_filters(search: str = None, relation_type=None,
                         tag=None, industry=None, source=None,
                         context_ids: list[int] | None = None,
                         city=None, tag_not=None, industry_not=None,
-                        source_not=None) -> tuple[list, list, list]:
+                        source_not=None, stale=None) -> tuple[list, list, list]:
     """Zwraca (joins, where, params). Joins zostaje w sygnaturze, bo wołający
     sklejają z niego zapytanie — dziś jest pusty, warunki po wartościach
     słownikowych idą przez EXISTS."""
@@ -82,6 +83,10 @@ def _companies_filters(search: str = None, relation_type=None,
         placeholders = ','.join(['%s'] * len(cities))
         where.append(f"c.city IN ({placeholders})")
         params.extend(cities)
+    days = stale_days(stale)
+    if days:
+        # Dni są z zamkniętej listy (30/90/180), więc wchodzą wprost do SQL-a.
+        where.append(f"{company_last_contact_sql('c.id')} < NOW() - INTERVAL {days} DAY")
     if search:
         where.append("(c.name LIKE %s OR c.short_name LIKE %s OR c.email LIKE %s "
                       "OR c.nip LIKE %s OR c.city LIKE %s)")
@@ -136,12 +141,13 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
                        limit: int | None = None, offset: int = 0, **filters) -> list[dict]:
     allowed_sort = {
         'name', 'short_name', 'relation_type', 'city', 'email', 'phone',
-        'nip', 'created_at',
+        'nip', 'created_at', 'last_contact',
     }
     if sort not in allowed_sort:
         sort = 'name'
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
-    order_col = f'c.{sort}'
+    # last_contact to alias wyliczanej kolumny, a nie pole tabeli.
+    order_col = sort if sort == 'last_contact' else f'c.{sort}'
 
     db = get_db()
     joins, where, params = _companies_filters(search, context_ids=context_ids, **filters)
@@ -162,7 +168,8 @@ def get_all_companies(sort: str = 'name', direction: str = 'asc',
         (SELECT CONCAT(ct2.first_name, ' ', ct2.last_name) FROM crm_contacts ct2
            WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL ORDER BY ct2.id ASC LIMIT 1) AS primary_contact_name,
         (SELECT COUNT(*) FROM crm_contacts ct2
-           WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL) AS contacts_count
+           WHERE ct2.company_id=c.id AND ct2.archived_at IS NULL) AS contacts_count,
+        {company_last_contact_sql('c.id')} AS last_contact
         FROM crm_companies c
         LEFT JOIN gtd_contexts gc ON gc.id = c.context_id
         {' '.join(joins)} WHERE {' AND '.join(where)}"""

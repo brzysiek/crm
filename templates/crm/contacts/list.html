@@ -12,7 +12,7 @@
   <div class="header-actions">
     {{ m.col_toggle('contacts-col-btn', 'contacts-col-menu', [
       ('position', 'Stanowisko'), ('company_name', 'Firma'), ('email', 'Email'), ('phone', 'Telefon'),
-      ('context_id', 'Kontekst'), ('contact_lists', 'Listy'),
+      ('last_contact', 'Ostatni kontakt'), ('context_id', 'Kontekst'), ('contact_lists', 'Listy'),
       ('company_tags', 'Tagi (z firmy)'), ('company_industries', 'Branże (z firmy)'),
     ]) }}
     {% include 'crm/_scan_card_modal.html' %}
@@ -47,6 +47,16 @@
   </select>
 
   {{ m.filter_multi('email_tag', 'Zgoda', filters, kind='email', entity='contact', exclude=false) }}
+
+  {# Przy osobie liczą się jej własne ślady: notatka przy niej, zrobione zadanie
+     i wysłana do niej kampania. Notatka przy firmie nie jest kontaktem z każdym
+     jej pracownikiem — inaczej cała lista wyglądałaby na obdzwonioną. #}
+  <select name="stale" class="filter-select">
+    <option value="">Kontakt: dowolny</option>
+    {% for days in [30, 90, 180] %}
+      <option value="{{ days }}" {{ 'selected' if filters.stale == days|string }}>Bez kontaktu od {{ days }} dni</option>
+    {% endfor %}
+  </select>
 
   <input type="hidden" name="context_filter" value="1">
   <div class="col-toggle" id="contacts-context-filter">
@@ -124,6 +134,7 @@
         {{ m.sort_th('Firma', 'company_name', sort, direction, endpoint, 'company_name', endpoint_args) }}
         {{ m.sort_th('Email', 'email', sort, direction, endpoint, 'email', endpoint_args) }}
         {{ m.sort_th('Telefon', 'phone', sort, direction, endpoint, 'phone', endpoint_args) }}
+        {{ m.sort_th('Ostatni kontakt', 'last_contact', sort, direction, endpoint, 'last_contact', endpoint_args) }}
         <th data-col="context_id">Kontekst</th>
         <th data-col="contact_lists">Listy</th>
         <th data-col="company_tags" title="Tagi przypisane do firmy kontaktu">Tagi <span class="text-muted">(firma)</span></th>
@@ -161,6 +172,7 @@
         </td>
         <td data-col="email">{{ c.email or '—' }}</td>
         <td data-col="phone">{{ c.phone|phone_link }}</td>
+        <td data-col="last_contact" class="text-muted">{{ c.last_contact|since }}</td>
         <td data-col="context_id">{{ m.context_badge(c) }}</td>
         <td data-col="contact_lists">
           {% if c.lists %}

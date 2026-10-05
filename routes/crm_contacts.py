@@ -139,6 +139,7 @@ def _render_contacts(contact_list):
     # pojedynczy parametr ze starych linków trafia tu jako lista jednoelementowa.
     multi = {k: request.args.getlist(k) for k in CONTACT_FILTER_KEYS}
     has_email = request.args.get('has_email', '')
+    stale = request.args.get('stale', '')
     if 'context_filter' in request.args:
         context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
     else:
@@ -154,7 +155,7 @@ def _render_contacts(contact_list):
     limit = None if page_size == 'all' else int(page_size)
     offset = (page - 1) * limit if limit else 0
 
-    criteria = dict(multi, has_email=has_email or None)
+    criteria = dict(multi, has_email=has_email or None, stale=stale or None)
     total = count_contacts(search=search or None, context_ids=context_ids, list_id=list_id,
                             **criteria)
     contacts = get_all_contacts(sort=sort, direction=direction, search=search or None,
@@ -168,7 +169,7 @@ def _render_contacts(contact_list):
     return render_template('crm/contacts/list.html',
         active_tab='contacts', contacts=contacts,
         sort=sort, direction=direction,
-        filters=dict(multi, search=search, has_email=has_email),
+        filters=dict(multi, search=search, has_email=has_email, stale=stale),
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
         all_lists=get_all_lists(), contact_list=contact_list,
         endpoint=endpoint, endpoint_args=endpoint_args,

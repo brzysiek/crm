@@ -68,6 +68,8 @@ def list_companies():
     # „branża: produkcja albo logistyka, ale nie klient". Stare linki z jednym
     # `?tag=X` trafiają tu jako lista jednoelementowa i działają jak dawniej.
     multi = {k: request.args.getlist(k) for k in COMPANY_FILTER_KEYS}
+    # „Bez kontaktu od X dni" ma jeden próg, nie listę — stąd osobno.
+    stale = request.args.get('stale', '')
     if 'context_filter' in request.args:
         context_ids = [int(x) for x in request.args.getlist('context') if x.isdigit()]
     else:
@@ -83,14 +85,15 @@ def list_companies():
     limit = None if page_size == 'all' else int(page_size)
     offset = (page - 1) * limit if limit else 0
 
-    total = count_companies(search=search or None, context_ids=context_ids, **multi)
+    criteria = dict(multi, stale=stale or None)
+    total = count_companies(search=search or None, context_ids=context_ids, **criteria)
     companies = get_all_companies(sort=sort, direction=direction, search=search or None,
-                                   context_ids=context_ids, limit=limit, offset=offset, **multi)
+                                   context_ids=context_ids, limit=limit, offset=offset, **criteria)
     total_pages = 1 if not limit else max(1, -(-total // limit))
     return render_template('crm/companies/list.html',
         active_tab='companies', companies=companies, relation_labels=RELATION_LABELS,
         sort=sort, direction=direction,
-        filters=dict(multi, search=search),
+        filters=dict(multi, search=search, stale=stale),
         relation_options=RELATION_OPTIONS,
         all_contexts=get_all_contexts(), selected_context_ids=context_ids,
         page=page, page_size=page_size, total=total, total_pages=total_pages,

@@ -2,6 +2,7 @@ from database import get_db
 import models.gtd_context as gtd_context_model
 from models.crm_notes import log_history, build_diff_summary
 from models.crm_contact_list import merge_list_memberships
+from models.crm_activity import contact_last_contact_sql, stale_days
 from models.crm_tags import (as_filter_list, company_has_tag_sql,
                              contact_has_email_tag_sql, get_contact_email_tags,
                              set_contact_email_tags)
@@ -19,7 +20,8 @@ def _contacts_where(search: str = None, company_id: int = None,
                      list_id: int | None = None,
                      relation_type=None, tag=None, industry=None, source=None,
                      city=None, has_email: str = None, email_tag=None,
-                     tag_not=None, industry_not=None, source_not=None) -> tuple[str, list]:
+                     tag_not=None, industry_not=None, source_not=None,
+                     stale=None) -> tuple[str, list]:
     """Filtry kontaktu dzielą się na dwie grupy: własne (mail, zgoda, lista,
     kontekst) i odziedziczone po firmie (relacja, branża, tag, źródło, miasto).
     Te drugie istnieją, bo pytania zadaje się o ludzi — „kto siedzi w private
@@ -66,6 +68,10 @@ def _contacts_where(search: str = None, company_id: int = None,
         where += " AND ct.email IS NOT NULL AND ct.email <> ''"
     elif has_email == 'no':
         where += " AND (ct.email IS NULL OR ct.email = '')"
+    days = stale_days(stale)
+    if days:
+        # Progi są z zamkniętej listy (30/90/180), więc wchodzą wprost do SQL-a.
+        where += f" AND {contact_last_contact_sql('ct.id')} < NOW() - INTERVAL {days} DAY"
     consents = as_filter_list(email_tag)
     if consents:
         sql, p = contact_has_email_tag_sql('ct.id', consents)
@@ -109,10 +115,12 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
                       context_ids: list[int] | None = None,
                       list_id: int | None = None,
                       limit: int | None = None, offset: int = 0, **filters) -> list[dict]:
-    allowed_sort = {'first_name', 'last_name', 'position', 'email', 'phone', 'created_at', 'company_name'}
+    allowed_sort = {'first_name', 'last_name', 'position', 'email', 'phone', 'created_at',
+                    'company_name', 'last_contact'}
     if sort not in allowed_sort:
         sort = 'last_name'
-    sort_col = 'co.name' if sort == 'company_name' else f'ct.{sort}'
+    # last_contact to alias wyliczanej kolumny, a nie pole tabeli.
+    sort_col = {'company_name': 'co.name', 'last_contact': 'last_contact'}.get(sort, f'ct.{sort}')
     direction = 'DESC' if str(direction).lower() == 'desc' else 'ASC'
 
     db = get_db()
@@ -128,7 +136,8 @@ def get_all_contacts(sort: str = 'last_name', direction: str = 'asc',
            "(SELECT f.id FROM crm_files f WHERE f.contact_id=ct.id AND f.category='business_card' "
            "   ORDER BY f.id DESC LIMIT 1) AS business_card_file_id, "
            "(SELECT f.mime_type FROM crm_files f WHERE f.contact_id=ct.id AND f.category='business_card' "
-           "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type "
+           "   ORDER BY f.id DESC LIMIT 1) AS business_card_mime_type, "
+           f"{contact_last_contact_sql('ct.id')} AS last_contact "
            "FROM crm_contacts ct LEFT JOIN crm_companies co ON co.id = ct.company_id "
            "LEFT JOIN gtd_contexts gc ON gc.id = ct.context_id ")
     where, params = _contacts_where(search, company_id, context_ids, list_id, **filters)

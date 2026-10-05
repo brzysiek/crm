@@ -11,7 +11,8 @@
     {{ m.col_toggle('companies-col-btn', 'companies-col-menu', [
       ('short_name', 'Nazwa skrócona'), ('relation_type', 'Relacja'), ('city', 'Miasto'),
       ('email', 'Email'), ('phone', 'Telefon'), ('nip', 'NIP'), ('source', 'Źródło'),
-      ('primary_contact', 'Kontakt'), ('context_id', 'Kontekst'), ('tags', 'Tagi'), ('industries', 'Branże'),
+      ('primary_contact', 'Kontakt'), ('last_contact', 'Ostatni kontakt'),
+      ('context_id', 'Kontekst'), ('tags', 'Tagi'), ('industries', 'Branże'),
       ('short_description', 'Krótki opis'), ('description', 'Opis'),
     ]) }}
     {% include 'crm/_scan_card_modal.html' %}
@@ -30,6 +31,16 @@
   {{ m.filter_multi('industry', 'Branża', filters, kind='industry') }}
   {{ m.filter_multi('source', 'Źródło', filters, kind='source') }}
   {{ m.filter_multi('city', 'Miasto', filters, kind='city', exclude=false) }}
+
+  {# Zaniedbane relacje same się nie zgłoszą — ten filtr jest po to, żeby lista
+     pokazała firmy, o których się zapomniało. „Kontakt" to notatka, zrobione
+     zadanie albo wysłana kampania; edycje rekordu się nie liczą. #}
+  <select name="stale" class="filter-select">
+    <option value="">Kontakt: dowolny</option>
+    {% for days in [30, 90, 180] %}
+      <option value="{{ days }}" {{ 'selected' if filters.stale == days|string }}>Bez kontaktu od {{ days }} dni</option>
+    {% endfor %}
+  </select>
 
   <input type="hidden" name="context_filter" value="1">
   <div class="col-toggle" id="companies-context-filter">
@@ -116,6 +127,7 @@
         {{ m.sort_th('NIP', 'nip', sort, direction, 'crm_companies.list_companies', 'nip') }}
         <th data-col="source">Źródło</th>
         <th data-col="primary_contact">Kontakt</th>
+        {{ m.sort_th('Ostatni kontakt', 'last_contact', sort, direction, 'crm_companies.list_companies', 'last_contact') }}
         <th data-col="context_id">Kontekst</th>
         <th data-col="tags">Tagi</th>
         <th data-col="industries">Branże</th>
@@ -163,6 +175,7 @@
             <a href="{{ url_for('crm_contacts.view_contact', contact_id=c.primary_contact_id) }}">{{ c.primary_contact_name }}</a>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
+        <td data-col="last_contact" class="text-muted">{{ c.last_contact|since }}</td>
         <td data-col="context_id">{{ m.context_badge(c) }}</td>
         <td data-col="tags">
           {% if c.tags_list %}

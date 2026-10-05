@@ -99,6 +99,31 @@ def ddmmyyyy(value):
         return str(value)
 
 
+@app.template_filter('since')
+def since(value):
+    """Kolumnę „ostatni kontakt" czyta się w dniach, nie w datach — „134 dni temu"
+    odpowiada na pytanie od razu, data kazałaby liczyć w głowie. Data zerowa
+    z wyrażenia SQL znaczy „nigdy"."""
+    from datetime import date, datetime
+    if value is None:
+        return 'nigdy'
+    if isinstance(value, datetime):
+        value = value.date()
+    elif not isinstance(value, date):
+        try:
+            value = datetime.strptime(str(value)[:10], '%Y-%m-%d').date()
+        except Exception:
+            return str(value)
+    if value.year <= 1000:
+        return 'nigdy'
+    days = (date.today() - value).days
+    if days <= 0:
+        return 'dziś'
+    if days == 1:
+        return 'wczoraj'
+    return f'{days} dni temu'
+
+
 @app.template_filter('hhmm')
 def hhmm_format(value):
     """Formatuje TIME z MySQL (pymysql zwraca timedelta) albo time/str jako 'HH:MM'."""
