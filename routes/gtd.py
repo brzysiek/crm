@@ -532,6 +532,32 @@ def task_detail(task_id):
 _CTX_FILTER_RE = re.compile(r'^cf(\d+)_(q|deal|company|project)$')
 
 
+@bp.route('/gtd/tablica')
+def board():
+    """Tablica kanban ze wszystkimi projektami i zadaniami ze wszystkich kontekstów."""
+    context_ids = [int(x) for x in request.args.getlist('ctx') if x.isdigit()]
+    search = (request.args.get('q') or '').strip() or None
+    show_all_done = request.args.get('all_done') == '1'
+    only_ready = request.args.get('ready') == '1'
+    only_blocked = request.args.get('blocked') == '1'
+    data = task_model.get_board(context_ids, search, show_all_done, only_ready, only_blocked)
+    return render_template(
+        'gtd/board.html', active_tab='tablica',
+        columns=data['columns'],
+        wip_limit=data['wip_limit'],
+        done_since=data['done_since'],
+        ready_count=data['ready_count'],
+        blocked_count=data['blocked_count'],
+        all_contexts=gtd_context_model.get_all_contexts(),
+        selected_context_ids=context_ids,
+        search_query=search or '',
+        show_all_done=show_all_done,
+        only_ready=only_ready,
+        only_blocked=only_blocked,
+        today=date.today(),
+    )
+
+
 @bp.route('/gtd/wg-kontekstu')
 def context_board():
     contexts_param = (request.args.get('contexts') or '').strip()
@@ -583,7 +609,12 @@ def api_quick_add():
     title = (data.get('text') or '').strip()
     if not title:
         return jsonify({'status': 'error', 'message': 'Brak treści zadania.'})
-    task_id = task_model.create_task(title, session.get('user_id'), status='ideas')
+    # Domyślnie pomysł — ale „+” w nagłówku kolumny na tablicy dorzuca kartę
+    # wprost do tej kolumny, w której stoisz.
+    status = data.get('status')
+    if status not in task_model.VALID_STATUSES or status == 'done':
+        status = 'ideas'
+    task_id = task_model.create_task(title, session.get('user_id'), status=status)
     return jsonify({'status': 'ok', 'task': task_model.get_task(task_id)})
 
 

@@ -6,11 +6,12 @@ import models.crm_deal as crm_deal_model
 import models.crm_mna_offer as crm_mna_offer_model
 import models.mna_deal as mna_deal_model
 
-VALID_STATUSES = ('ideas', 'next', 'waiting', 'someday', 'done')
+VALID_STATUSES = ('ideas', 'next', 'doing', 'waiting', 'someday', 'done')
 
 STATUS_LABELS = {
     'ideas': 'Pomysły',
     'next': 'Next actions',
+    'doing': 'W trakcie',
     'waiting': 'Czeka na',
     'someday': 'Kiedyś/może',
     'done': 'Zrobione',
@@ -34,7 +35,27 @@ _LIST_JOINS = """FROM tasks t
                  LEFT JOIN mna_deals cmd ON cmd.id = t.crm_mna_deal_id
                  LEFT JOIN gtd_contexts gc ON gc.id = t.context_id"""
 
-_STATUS_SORT_SQL = "CASE WHEN {col}='done' THEN 2 WHEN {col}='waiting' THEN 1 ELSE 0 END"
+# „W trakcie” przed resztą: na liście podzadań projektu najpierw ma być widać to,
+# co już ruszyło.
+_STATUS_SORT_SQL = ("CASE WHEN {col}='done' THEN 2 WHEN {col}='waiting' THEN 1 "
+                    "WHEN {col}='doing' THEN -1 ELSE 0 END")
+
+
+def started_at_sql(status: str) -> str:
+    """Fragment UPDATE-a pilnujący daty rozpoczęcia pracy.
+
+    Zegar rusza przy wejściu w `doing` i — co ważne — nie jest zerowany przy
+    przejściu w `waiting` ani `done`: zablokowane zadanie wciąż jest zaczęte, a
+    przy zamkniętym różnica między `started_at` a `completed_at` to czas
+    realizacji. Zeruje go dopiero odłożenie z powrotem do TODO, pomysłów albo
+    „kiedyś” — bo wtedy praca naprawdę się nie zaczęła.
+    COALESCE, żeby powtórne ustawienie `doing` nie przesuwało pierwotnej daty.
+    """
+    if status == 'doing':
+        return ", started_at=COALESCE(started_at, NOW())"
+    if status in ('waiting', 'done'):
+        return ""
+    return ", started_at=NULL"
 
 
 def _valid_user_id(user_id: int | None) -> int | None:
@@ -178,6 +199,7 @@ def update_task(task_id: int, data: dict) -> None:
     if 'status' in fields:
         completed_sql = (", completed_at=COALESCE(completed_at, NOW())"
                          if fields['status'] == 'done' else ", completed_at=NULL")
+        completed_sql += started_at_sql(fields['status'])
     db = get_db()
     try:
         with db.cursor() as cur:
@@ -315,21 +337,23 @@ def set_status(task_id: int, status: str) -> bool:
     db = get_db()
     try:
         with db.cursor() as cur:
+            started = started_at_sql(status)
             if status == 'done':
                 cur.execute(
-                    "UPDATE tasks SET status=%s, completed_at=COALESCE(completed_at, NOW()) WHERE id=%s",
+                    f"UPDATE tasks SET status=%s, completed_at=COALESCE(completed_at, NOW()){started} "
+                    f"WHERE id=%s",
                     (status, task_id)
                 )
             elif status == 'someday':
                 cur.execute(
-                    """UPDATE tasks SET status=%s, completed_at=NULL, scheduled_date=NULL,
+                    f"""UPDATE tasks SET status=%s, completed_at=NULL{started}, scheduled_date=NULL,
                        scheduled_time=NULL, scheduled_duration_min=NULL, planned_week=NULL,
                        planned_month=NULL, gcal_event_id=NULL WHERE id=%s""",
                     (status, task_id)
                 )
             else:
                 cur.execute(
-                    "UPDATE tasks SET status=%s, completed_at=NULL WHERE id=%s",
+                    f"UPDATE tasks SET status=%s, completed_at=NULL{started} WHERE id=%s",
                     (status, task_id)
                 )
         db.commit()
@@ -609,7 +633,9 @@ def get_next_actions(project_id: int | None = None, deal_id: int | None = None,
                       search: str | None = None,
                       include_done: bool = False, context_ids: list[int] | None = None) -> list[dict]:
     db = get_db()
-    statuses = ('next', 'done') if include_done else ('next',)
+    # `doing` to wciąż next action — zadanie, które ruszyło, nie może wypadać
+    # z listy „Wszystkie zadania” tylko dlatego, że przestawiono je na tablicy.
+    statuses = ('next', 'doing', 'done') if include_done else ('next', 'doing')
     placeholders = ','.join(['%s'] * len(statuses))
     sql = (f"SELECT {_LIST_FIELDS} {_LIST_JOINS} "
            f"WHERE t.status IN ({placeholders}) AND t.is_project=0 AND t.deleted_at IS NULL")
@@ -674,7 +700,8 @@ def find_tasks(search: str | None = None, company_id: int | None = None,
         if not include_done:
             sql += " AND t.status != 'done'"
     else:
-        sql += " AND t.status IN ('next', 'done')" if include_done else " AND t.status='next'"
+        sql += (" AND t.status IN ('next', 'doing', 'done')" if include_done
+                else " AND t.status IN ('next', 'doing')")
     for col, val in (('crm_company_id', company_id), ('crm_contact_id', contact_id),
                      ('crm_deal_id', deal_id), ('context_id', context_id),
                      ('planned_week', planned_week), ('planned_month', planned_month)):
@@ -706,14 +733,14 @@ def get_next_action_filter_options() -> dict:
         cur.execute(
             "SELECT DISTINCT cd.id, cd.name FROM tasks t "
             "JOIN crm_deals cd ON cd.id = t.crm_deal_id "
-            "WHERE t.is_project=0 AND t.deleted_at IS NULL AND t.status IN ('next', 'done') "
+            "WHERE t.is_project=0 AND t.deleted_at IS NULL AND t.status IN ('next', 'doing', 'done') "
             "ORDER BY cd.name"
         )
         deals = cur.fetchall()
         cur.execute(
             "SELECT DISTINCT cco.id, cco.name, cco.short_name FROM tasks t "
             "JOIN crm_companies cco ON cco.id = t.crm_company_id "
-            "WHERE t.is_project=0 AND t.deleted_at IS NULL AND t.status IN ('next', 'done') "
+            "WHERE t.is_project=0 AND t.deleted_at IS NULL AND t.status IN ('next', 'doing', 'done') "
             "ORDER BY cco.name"
         )
         companies = cur.fetchall()
@@ -968,6 +995,188 @@ def _build_context_group(ctx: dict | None, projects: list[dict], tasks: list[dic
         'filter_mna_deals': filter_mna_deals,
         'filter_companies': filter_companies,
         'filter': {'q': cfilter.get('q', ''), 'project': c_project_id, 'deal': c_deal_id, 'company': c_company_id},
+    }
+
+
+# ── Tablica kanban ────────────────────────────────────────────────────────────
+
+# (klucz statusu, nagłówek, czy kolumna jest wąska)
+# Wąskie są dwa parkingi: pomysły i „kiedyś”. Mają po kilka pozycji i nic się z
+# nimi nie robi na co dzień, a sześć równych kolumn nie mieści się na laptopie.
+BOARD_COLUMNS = (
+    ('ideas',   'Pomysły',     True),
+    ('next',    'TODO',        False),
+    ('doing',   'W trakcie',   False),
+    ('waiting', 'Zablokowane', False),
+    ('done',    'Zrobione',    False),
+    ('someday', 'Kiedyś',      True),
+)
+
+# Powyżej tylu kart kolumna „W trakcie” zapala ostrzeżenie. Nie blokuje niczego —
+# ma tylko powiedzieć na głos to, co widać po liczbie otwartych projektów.
+BOARD_WIP_LIMIT = 5
+
+# Statusy, których projekt nie dziedziczy po zadaniach: to są świadome decyzje
+# („odkładam cały projekt”), a nie wypadkowa tego, co akurat w nim wisi.
+_BOARD_PINNED_STATUSES = ('done', 'someday', 'ideas')
+
+
+def board_done_since(today: date) -> date:
+    """Początek okna kolumny „Zrobione”: poniedziałek ubiegłego tygodnia."""
+    return today - timedelta(days=today.weekday() + 7)
+
+
+def project_board_column(project: dict) -> str:
+    """Kolumna projektu wynika z jego zadań, nie z jego własnego statusu.
+
+    Pierwszeństwo jest celowo odwrotne do intuicji „jedno zablokowane zadanie
+    blokuje projekt”: na produkcji taka reguła zabrałaby dwa największe żywe
+    projekty (14 i 13 otwartych zadań, w tym po kilka czekających) z TODO i
+    położyła je na parkingu. Zablokowany znaczy tu „nie ma w nim nic, co mógłbym
+    teraz ruszyć” — i tylko wtedy kolumna cokolwiek znaczy.
+    Projekt bez otwartych zadań nie ma czego dziedziczyć i zostaje przy swoim.
+    """
+    if project['status'] in _BOARD_PINNED_STATUSES:
+        return project['status']
+    counts = project['counts']
+    for status in ('doing', 'next', 'waiting'):
+        if counts[status]:
+            return status
+    return project['status']
+
+
+def _board_sort_key(card: dict) -> tuple:
+    """Gwiazdka dnia, potem ważne, potem przeterminowane, potem reszta po dacie."""
+    due = card.get('due_date')
+    return (
+        0 if card.get('is_today_priority') else 1,
+        0 if card.get('is_important') else 1,
+        due or date(9999, 12, 31),
+        card.get('scheduled_date') or date(9999, 12, 31),
+        -(card['id']),
+    )
+
+
+def _board_done_sort_key(card: dict) -> tuple:
+    when = card.get('completed_at') or card.get('updated_at')
+    return (-(when.timestamp() if when else 0), -(card['id']))
+
+
+def get_board(context_ids: list[int] | None = None, search: str | None = None,
+              show_all_done: bool = False, only_ready: bool = False,
+              only_blocked: bool = False, today: date | None = None) -> dict:
+    """Dane tablicy kanban: sześć kolumn kart, po jednej karcie na projekt
+    i na zadanie bez projektu.
+
+    Podzadania nie mają własnych kart — 215 podzadań zamieniłoby tablicę w listę
+    nie do czytania. Widać je dopiero po rozwinięciu projektu i domyślnie tylko
+    te otwarte. Jedyny wyjątek to kolumna „Zrobione”: tam zamknięte podzadanie
+    dostaje kartę z okruszkiem rodzica, bo inaczej zniknęłoby z tablicy
+    całkowicie i tydzień wyglądałby na chudszy, niż był (23 z 72 zamkniętych
+    pozycji w dwutygodniowym oknie to podzadania).
+
+    Cała tabela to dziś ~520 wierszy, więc idzie jednym zapytaniem i jest
+    składana w Pythonie — osobne zapytania na kolumny i liczniki kosztowałyby
+    więcej niż wczytanie wszystkiego naraz.
+    """
+    today = today or date.today()
+    ctx_ids = [int(c) for c in (context_ids or [])]
+    needle = (search or '').strip().lower() or None
+    done_since = board_done_since(today)
+
+    with get_db().cursor() as cur:
+        cur.execute(f"SELECT {_LIST_FIELDS} {_LIST_JOINS} WHERE t.deleted_at IS NULL")
+        rows = cur.fetchall()
+
+    projects = {r['id']: r for r in rows if r['is_project']}
+    for proj in projects.values():
+        proj['kind'] = 'project'
+        proj['subtasks'] = []
+        proj['done_subtasks'] = []
+        proj['counts'] = {s: 0 for s in VALID_STATUSES}
+
+    loose, done_cards = [], []
+
+    def in_done_window(row: dict) -> bool:
+        when = row['completed_at'] or row['updated_at']
+        return show_all_done or (when is not None and when.date() >= done_since)
+
+    for row in rows:
+        if row['is_project']:
+            if row['status'] == 'done' and in_done_window(row):
+                done_cards.append(row)
+            continue
+        row['kind'] = 'task'
+        parent = projects.get(row['parent_id']) if row['parent_id'] else None
+        if parent is not None:
+            parent['counts'][row['status']] += 1
+            (parent['done_subtasks'] if row['status'] == 'done' else parent['subtasks']).append(row)
+        if row['status'] == 'done':
+            if in_done_window(row):
+                done_cards.append(row)
+        elif parent is None:
+            loose.append(row)
+
+    for proj in projects.values():
+        proj['subtasks'].sort(key=_board_sort_key)
+        proj['done_subtasks'].sort(key=_board_done_sort_key)
+        proj['open_count'] = len(proj['subtasks'])
+        proj['subtask_done'] = len(proj['done_subtasks'])
+        proj['subtask_total'] = proj['open_count'] + proj['subtask_done']
+        # „Gotowy do zamknięcia” to projekt, w którym wszystko jest zrobione —
+        # a nie taki, w którym nigdy nic nie było.
+        proj['ready_to_close'] = proj['open_count'] == 0 and proj['subtask_total'] > 0
+        proj['board_column'] = project_board_column(proj)
+        if proj['board_column'] == 'doing':
+            starts = [s['started_at'] for s in proj['subtasks']
+                      if s['status'] == 'doing' and s['started_at']]
+            # „Ciągnie się od 19 dni” liczy się od pierwszego ruszonego zadania,
+            # a nie od chwili, w której karta wskoczyła do kolumny.
+            if proj['started_at']:
+                starts.append(proj['started_at'])
+            if starts:
+                proj['started_at'] = min(starts)
+
+    def matches(card: dict) -> bool:
+        pool = [card] + card.get('subtasks', [])
+        if ctx_ids and not any((row['context_id'] or 0) in ctx_ids for row in pool):
+            return False
+        if needle and not any(needle in (row['title'] or '').lower() for row in pool):
+            return False
+        return True
+
+    cards = [p for p in projects.values() if p['status'] != 'done']
+    for task in loose:
+        task['board_column'] = task['status']
+    cards.extend(loose)
+    cards = [c for c in cards if matches(c)]
+    if only_ready:
+        cards = [c for c in cards if c.get('ready_to_close')]
+    if only_blocked:
+        cards = [c for c in cards if c.get('counts', {}).get('waiting')]
+
+    by_column = {key: [] for key, _, _ in BOARD_COLUMNS}
+    for card in cards:
+        by_column[card['board_column']].append(card)
+    for key in by_column:
+        by_column[key].sort(key=_board_sort_key)
+
+    if not (only_ready or only_blocked):
+        for row in done_cards:
+            row['board_column'] = 'done'
+            if matches(row):
+                by_column['done'].append(row)
+        by_column['done'].sort(key=_board_done_sort_key)
+
+    columns = [{'key': key, 'label': label, 'narrow': narrow,
+                'cards': by_column[key], 'count': len(by_column[key])}
+               for key, label, narrow in BOARD_COLUMNS]
+    return {
+        'columns': columns,
+        'wip_limit': BOARD_WIP_LIMIT,
+        'done_since': done_since,
+        'ready_count': sum(1 for c in cards if c.get('ready_to_close')),
+        'blocked_count': sum(1 for c in cards if c.get('counts', {}).get('waiting')),
     }
 
 

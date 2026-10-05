@@ -1120,3 +1120,166 @@ if (document.getElementById('gtdBulkAssignContactPicker')) {
   initEntityPicker('gtdBulkAssignCompanyPicker', '/api/crm/companies/search');
   initEntityPicker('gtdBulkAssignDealPicker', '/api/crm/deals/search');
 }
+
+/* ── Tablica kanban ────────────────────────────────────────────────────────────
+ * Kolumna projektu wynika z jego zadań (patrz models/task.project_board_column),
+ * więc projekt z otwartymi zadaniami ma draggable="false" — przeciągnięcie go
+ * ręcznie byłoby cofnięte przez serwer w następnej sekundzie. Przestawia się go,
+ * zmieniając status zadania w rozwiniętej karcie.
+ * Zadania przestawiamy optymistycznie (karta przeskakuje od razu, jak na tablicy
+ * deali), projekty przez przeładowanie — bo zamknięcie projektu może pociągnąć
+ * podzadania i przeliczyć pół tablicy.
+ */
+const GTD_BOARD_OPEN_KEY = 'gtdBoardOpenCards';
+
+function gtdBoardOpenSet() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(GTD_BOARD_OPEN_KEY) || '[]'));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function gtdBoardSaveOpen(set) {
+  try {
+    localStorage.setItem(GTD_BOARD_OPEN_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) { /* prywatne okno — trudno, stan rozwinięcia nie jest krytyczny */ }
+}
+
+function gtdBoardToggleCard(btn) {
+  const card = btn.closest('.gtd-card');
+  const open = card.classList.toggle('is-open');
+  btn.textContent = open ? '▾' : '▸';
+  const set = gtdBoardOpenSet();
+  if (open) set.add(card.dataset.taskId); else set.delete(card.dataset.taskId);
+  gtdBoardSaveOpen(set);
+}
+
+function gtdBoardSetStatus(taskId, status) {
+  fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
+function gtdBoardQuickAdd(event, status) {
+  event.preventDefault();
+  const input = event.target.querySelector('input');
+  const text = input.value.trim();
+  if (!text) return false;
+  fetch(window.API_BASE + '/api/gtd/quick_add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, status }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+  return false;
+}
+
+function gtdBoardToggleAllDone(checked) {
+  const url = new URL(window.location.href);
+  if (checked) url.searchParams.set('all_done', '1'); else url.searchParams.delete('all_done');
+  window.location.href = url.toString();
+}
+
+function gtdBoardColumnRefresh(column) {
+  const body = column.querySelector('.kanban-column-body');
+  const cards = body.querySelectorAll('.gtd-card');
+  const counter = column.querySelector('[data-count]');
+  if (counter) counter.textContent = cards.length;
+  const empty = body.querySelector('.kanban-empty');
+  if (cards.length && empty) empty.remove();
+  if (!cards.length && !empty) {
+    const p = document.createElement('p');
+    p.className = 'text-muted small kanban-empty';
+    p.style.padding = '.4rem .2rem';
+    p.textContent = 'Pusto.';
+    body.appendChild(p);
+  }
+}
+
+function initGtdBoard() {
+  const board = document.getElementById('gtdBoard');
+  if (!board) return;
+  initDropdownToggle('gtdBoardCtxBtn', 'gtdBoardCtxMenu');
+
+  const open = gtdBoardOpenSet();
+  board.querySelectorAll('.gtd-card-project').forEach(card => {
+    if (open.has(card.dataset.taskId)) {
+      card.classList.add('is-open');
+      const caret = card.querySelector('.gtd-card-caret');
+      if (caret) caret.textContent = '▾';
+    }
+  });
+
+  let dragged = null;
+  board.querySelectorAll('.gtd-card[draggable="true"]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragged = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.taskId);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+      board.querySelectorAll('.kanban-column-body.drag-over')
+           .forEach(b => b.classList.remove('drag-over'));
+    });
+  });
+
+  board.querySelectorAll('.kanban-column-body').forEach(body => {
+    body.addEventListener('dragover', e => {
+      if (!dragged) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      body.classList.add('drag-over');
+    });
+    body.addEventListener('dragleave', e => {
+      if (!body.contains(e.relatedTarget)) body.classList.remove('drag-over');
+    });
+    body.addEventListener('drop', e => {
+      e.preventDefault();
+      body.classList.remove('drag-over');
+      if (!dragged) return;
+      const card = dragged;
+      const from = card.closest('.gtd-board-col');
+      const to = body.closest('.gtd-board-col');
+      if (from === to) return;
+      const status = to.dataset.status;
+      const taskId = card.dataset.taskId;
+
+      if (card.dataset.kind === 'project') {
+        if (status === 'done') { gtdCloseProject(taskId); return; }
+        gtdBoardSetStatus(taskId, status);
+        return;
+      }
+      // „Kiedyś” kasuje zaplanowanie dnia, tygodnia i miesiąca — przeciągnięcie
+      // myszką wygląda niewinniej, niż jest, więc pytamy wprost.
+      if (status === 'someday' &&
+          !confirm('Odłożenie na „Kiedyś” usuwa zaplanowanie na dzień, tydzień i miesiąc. Odłożyć?')) {
+        return;
+      }
+      fetch(window.API_BASE + '/api/gtd/tasks/' + taskId + '/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status !== 'ok') { alert(data.message || 'Błąd.'); return; }
+          body.appendChild(card);
+          card.dataset.status = status;
+          gtdBoardColumnRefresh(from);
+          gtdBoardColumnRefresh(to);
+        })
+        .catch(() => alert('Błąd sieci.'));
+    });
+  });
+}

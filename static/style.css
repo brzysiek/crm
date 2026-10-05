@@ -826,6 +826,7 @@ input[type="file"]:hover::-webkit-file-upload-button {
 .badge-amber   { background: var(--warning-bg); color: var(--warning-text); }
 .badge-red     { background: var(--error-bg); color: var(--error-text); }
 .badge-waiting { background: #BE7165; color: #fff; }
+.badge-doing { background: #4A7B8C; color: #fff; }
 .badge-lime    { background: var(--success-bg); color: var(--success-text); }
 .badge-purple  { background: #f3e8ff; color: #7e22ce; }
 .badge-orange  { background: #ffedd5; color: #c2410c; }
@@ -2470,6 +2471,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .data-table tr.gtd-row-done td { background: var(--success-bg); }
 .data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, .5); }
 .data-table tr.gtd-row-waiting td { background: var(--rd-amber-bg); }
+.data-table tr.gtd-row-doing td { background: #edf3f6; }
 
 .data-table tr.prob-5 td   { background: #f6cfcb; }
 .data-table tr.prob-20 td  { background: #f6dccb; }
@@ -3451,6 +3453,7 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .rd-screen .data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, .3); }
 .rd-screen .data-table tr.gtd-row-todo td { background: #fff; }
 .rd-screen .data-table tr.gtd-row-waiting td { background: var(--rd-amber-bg); }
+.data-table tr.gtd-row-doing td { background: #edf3f6; }
 .rd-screen .data-table tr.gtd-row-done td { background: var(--rd-lime-tint-bg); }
 .rd-screen .data-table tr.gtd-row-done { opacity: .55; }
 
@@ -4198,4 +4201,116 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
   .rd-settings-grid { grid-template-columns: 1fr; }
   .rd-settings-body { padding: .9rem 1rem 1rem; }
   .rd-inline-add .filter-input { min-width: 0; flex: 1 1 140px; max-width: none !important; }
+}
+
+/* ── GTD: tablica kanban ──────────────────────────────────────────────────────
+ * Sześć kolumn nie mieści się na laptopie, więc tablica przewija się w poziomie
+ * zamiast zawijać (zawinięta kolumna „Kiedyś” pod „TODO” przestaje być kolumną).
+ * Pomysły i Kiedyś są wąskie — to parkingi, nie etapy pracy. */
+.gtd-board {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: .5rem;
+  align-items: stretch;
+}
+.gtd-board-col {
+  flex: 0 0 265px;
+  max-width: none;
+  align-self: stretch;
+}
+.gtd-board-col.is-narrow { flex-basis: 165px; }
+.gtd-board-col .kanban-column-body { max-height: calc(100vh - 230px); overflow-y: auto; }
+
+.gtd-board-wip {
+  font-size: .72rem;
+  font-weight: 600;
+  color: #8a5a00;
+  background: #fdf1d6;
+  border-radius: var(--radius-sm);
+  padding: .15rem .35rem;
+}
+.gtd-board-add input {
+  width: 100%;
+  font-size: .75rem;
+  padding: .2rem .35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+.gtd-board-done-toggle { font-size: .72rem; color: var(--text-muted); display: flex; align-items: center; gap: .3rem; }
+.gtd-board-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .78rem;
+  padding: .25rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.gtd-board-chip.is-on { border-color: var(--primary); color: var(--text-primary); font-weight: 600; }
+
+.gtd-card { cursor: default; }
+.gtd-card:hover { transform: none; }
+.gtd-card-head { display: flex; align-items: baseline; gap: .25rem; }
+.gtd-card-caret {
+  background: none;
+  border: 0;
+  padding: 0 .1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: .75rem;
+  line-height: 1;
+}
+.gtd-card-title { font-weight: 600; font-size: .82rem; flex: 1; }
+.gtd-card-flag { font-size: .72rem; }
+.gtd-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; margin-top: .25rem; }
+.gtd-card-ctx { font-size: .66rem; font-weight: 700; padding: .05rem .3rem; border-radius: var(--radius-sm); }
+.gtd-card-crumb { font-size: .68rem; color: var(--text-muted); text-decoration: none; }
+.gtd-card-crumb:hover { text-decoration: underline; }
+.gtd-card-due { font-size: .68rem; color: var(--text-muted); }
+.gtd-card-due.is-overdue { color: #b3261e; font-weight: 700; }
+
+.gtd-card-progress { height: 3px; background: var(--border); border-radius: 2px; margin-top: .35rem; overflow: hidden; }
+.gtd-card-progress span { display: block; height: 100%; background: var(--primary); }
+.gtd-card-counts { display: flex; gap: .4rem; font-size: .68rem; color: var(--text-muted); margin-top: .2rem; }
+.gtd-card-counts .is-doing { color: #4A7B8C; font-weight: 600; }
+.gtd-card-counts .is-waiting { color: #BE7165; font-weight: 600; }
+.gtd-card-ready { color: #2e7d32; font-weight: 700; }
+.gtd-card-age { font-size: .68rem; color: var(--text-muted); margin-top: .2rem; }
+.gtd-card-age.is-aging { color: #8a5a00; }
+.gtd-card-age.is-stale { color: #b3261e; font-weight: 600; }
+
+.gtd-card-subs { display: none; margin-top: .4rem; border-top: 1px solid var(--border); padding-top: .35rem; }
+.gtd-card.is-open .gtd-card-subs { display: block; }
+.gtd-sub { display: flex; align-items: baseline; gap: .25rem; padding: .12rem 0; font-size: .75rem; }
+.gtd-sub-title { color: var(--text-primary); text-decoration: none; flex: 1; }
+.gtd-sub-title:hover { text-decoration: underline; }
+.gtd-sub.is-done .gtd-sub-title { text-decoration: line-through; color: var(--text-muted); }
+.gtd-sub-chips { display: inline-flex; gap: .1rem; }
+.gtd-chip {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: .68rem;
+  line-height: 1;
+  padding: .1rem .2rem;
+}
+.gtd-chip:hover { border-color: var(--border); color: var(--text-primary); }
+.gtd-chip.is-on { color: var(--primary); font-weight: 700; }
+.gtd-chip-done:hover { color: #2e7d32; }
+.gtd-subs-done { display: none; }
+.gtd-card-subs.show-done .gtd-subs-done { display: block; }
+.gtd-subs-more {
+  background: none;
+  border: 0;
+  padding: .15rem 0 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: .68rem;
+  text-decoration: underline;
 }

@@ -1,5 +1,15 @@
 {% from '_icons.html' import icon %}
-{% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else ('gtd-row-waiting' if t.status == 'waiting' else 'gtd-row-todo')) }}{% endmacro %}
+{% macro row_class(t, overdue=false) %}{{ 'gtd-row-done' if t.status == 'done' else ('gtd-row-overdue' if overdue else ('gtd-row-waiting' if t.status == 'waiting' else ('gtd-row-doing' if t.status == 'doing' else 'gtd-row-todo'))) }}{% endmacro %}
+
+{# Jedna plakietka statusu dla wszystkich widoków GTD. Była zduplikowana w dwóch
+   miejscach i przy dokładaniu „w trakcie” druga kopia zostałaby trójstanowa —
+   zadanie, które ruszyło, wyglądałoby w połowie widoków jak zwykłe TODO. #}
+{% macro status_badge(t) %}
+{%- set cls = {'done': 'badge-green', 'waiting': 'badge-waiting', 'doing': 'badge-doing'}.get(t.status, 'badge-red') -%}
+{%- set label = {'done': 'DONE', 'waiting': 'WAITING', 'doing': 'W TRAKCIE'}.get(t.status, 'TODO') -%}
+<span class="gtd-status-badge badge {{ cls }}"
+      onclick="{% if t.status == 'waiting' %}gtdUnwait({{ t.id }}){% else %}gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}'){% endif %}">{{ label }}</span>
+{% endmacro %}
 
 {% macro context_picker(t) %}
 <span class="term-cell gtd-context-cell" style="margin-left:.4rem">
@@ -168,8 +178,7 @@
 
 {% macro task_cells(t, today=none, week_start=none, day_actions=false, inline_actions=true) %}
   <td class="col-checkbox">
-    <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-waiting' if t.status == 'waiting' else 'badge-red') }}"
-          onclick="{% if t.status == 'waiting' %}gtdUnwait({{ t.id }}){% else %}gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}'){% endif %}">{{ 'DONE' if t.status == 'done' else ('WAITING' if t.status == 'waiting' else 'TODO') }}</span>
+    {{ status_badge(t) }}
   </td>
   <td>
     <div style="font-weight:600">
@@ -300,8 +309,7 @@
     <div class="gtd-timeline-card {{ row_class(t) }}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div>
-          <span class="gtd-status-badge badge {{ 'badge-green' if t.status == 'done' else ('badge-waiting' if t.status == 'waiting' else 'badge-red') }}"
-                onclick="{% if t.status == 'waiting' %}gtdUnwait({{ t.id }}){% else %}gtdToggleDone({{ t.id }}, {{ 'false' if t.status == 'done' else 'true' }}, '{{ 'next' if t.status == 'done' else t.status }}'){% endif %}">{{ 'DONE' if t.status == 'done' else ('WAITING' if t.status == 'waiting' else 'TODO') }}</span>
+          {{ status_badge(t) }}
           <strong style="margin-left:.4rem"><a href="{{ url_for('gtd.project_detail', project_id=t.id) if t.is_project else url_for('gtd.task_detail', task_id=t.id) }}">{{ t.title }}</a></strong>
           {{ context_picker(t) }}
           {% if t.crm_contact_id %}<a href="{{ url_for('crm_contacts.view_contact', contact_id=t.crm_contact_id) }}" class="badge badge-blue" style="margin-left:.4rem">{{ icon('user', 12) }} {{ t.crm_contact_first_name }} {{ t.crm_contact_last_name }}</a>{% endif %}

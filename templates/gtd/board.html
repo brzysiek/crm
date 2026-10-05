@@ -1,0 +1,201 @@
+{% extends 'gtd/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Tablica — GTD{% endblock %}
+
+{%- macro age(dt, today) -%}
+  {%- set d = (today - dt.date()).days -%}
+  {{- 'dziś' if d == 0 else ('wczoraj' if d == 1 else d ~ ' dni') -}}
+{%- endmacro -%}
+
+{%- macro age_class(dt, today) -%}
+  {%- set d = (today - dt.date()).days -%}
+  {{- 'is-stale' if d > 21 else ('is-aging' if d > 7 else '') -}}
+{%- endmacro -%}
+
+{%- macro ctx_badge(t) -%}
+  {%- if t.context_name -%}
+  <span class="gtd-card-ctx" style="background:{{ t.context_badge_color or '#eee' }};color:{{ t.context_text_color or '#333' }}">{{ t.context_name }}</span>
+  {%- endif -%}
+{%- endmacro -%}
+
+{% macro subtask_row(s) %}
+<div class="gtd-sub {{ 'is-done' if s.status == 'done' }}">
+  {% if s.status != 'done' %}
+  <span class="gtd-sub-chips">
+    <button type="button" class="gtd-chip {{ 'is-on' if s.status == 'next' }}" title="Do zrobienia"
+            onclick="gtdBoardSetStatus({{ s.id }}, 'next')">○</button>
+    <button type="button" class="gtd-chip {{ 'is-on' if s.status == 'doing' }}" title="W trakcie"
+            onclick="gtdBoardSetStatus({{ s.id }}, 'doing')">▶</button>
+    <button type="button" class="gtd-chip {{ 'is-on' if s.status == 'waiting' }}" title="Zablokowane"
+            onclick="gtdBoardSetStatus({{ s.id }}, 'waiting')">⏸</button>
+    <button type="button" class="gtd-chip gtd-chip-done" title="Zrobione"
+            onclick="gtdBoardSetStatus({{ s.id }}, 'done')">✓</button>
+  </span>
+  {% endif %}
+  <a class="gtd-sub-title" href="{{ url_for('gtd.task_detail', task_id=s.id) }}">{{ s.title }}</a>
+  {{ ctx_badge(s) }}
+</div>
+{% endmacro %}
+
+{% block gtd_content %}
+<div class="rd-screen rd-zadania">
+
+<div class="page-header">
+  <h1>Tablica</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('gtd.context_board') }}" class="btn btn-outline">{{ icon('grid', 14) }} Wg kontekstu</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" id="gtdBoardFilters" data-no-collapse style="gap:.5rem;flex-wrap:wrap">
+  <input type="text" name="q" class="filter-input" style="flex:1;min-width:180px"
+         placeholder="Szukaj po nazwie…" autocomplete="off" value="{{ search_query }}">
+
+  <div class="col-toggle">
+    <button type="button" id="gtdBoardCtxBtn" class="btn btn-outline btn-sm">
+      Konteksty{{ ' (' ~ selected_context_ids|length ~ ')' if selected_context_ids }} {{ icon('chevron-down', 12) }}
+    </button>
+    <div class="col-toggle-menu" id="gtdBoardCtxMenu">
+      {% for ctx in all_contexts %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="ctx" value="{{ ctx.id }}"
+                      {{ 'checked' if ctx.id in selected_context_ids }} onchange="this.form.submit()"> {{ ctx.name }}</label>
+      </div>
+      {% endfor %}
+      <div class="col-toggle-item">
+        <label><input type="checkbox" name="ctx" value="0"
+                      {{ 'checked' if 0 in selected_context_ids }} onchange="this.form.submit()"> Brak kontekstu</label>
+      </div>
+    </div>
+  </div>
+
+  <label class="gtd-board-chip {{ 'is-on' if only_ready }}">
+    <input type="checkbox" name="ready" value="1" {{ 'checked' if only_ready }} onchange="this.form.submit()">
+    ✓ do zamknięcia ({{ ready_count }})
+  </label>
+  <label class="gtd-board-chip {{ 'is-on' if only_blocked }}">
+    <input type="checkbox" name="blocked" value="1" {{ 'checked' if only_blocked }} onchange="this.form.submit()">
+    ⏸ z zablokowanymi ({{ blocked_count }})
+  </label>
+
+  <button type="submit" class="btn btn-outline btn-sm">Filtruj</button>
+  {% if search_query or selected_context_ids or only_ready or only_blocked or show_all_done %}
+  <a href="{{ url_for('gtd.board') }}" class="btn btn-ghost btn-sm">Wyczyść</a>
+  {% endif %}
+  {% if show_all_done %}<input type="hidden" name="all_done" value="1">{% endif %}
+</form>
+
+<div class="kanban-board gtd-board" id="gtdBoard">
+  {% for col in columns %}
+  <div class="kanban-column gtd-board-col {{ 'is-narrow' if col.narrow }}" data-status="{{ col.key }}">
+    <div class="kanban-column-header">
+      <div class="kanban-column-header-top">
+        <span class="kanban-column-name">{{ col.label }}</span>
+        <span class="kanban-column-total" data-count>{{ col.count }}</span>
+      </div>
+      {% if col.key == 'doing' and col.count > wip_limit %}
+      <div class="gtd-board-wip">Za dużo naraz — {{ col.count }} rzeczy w trakcie</div>
+      {% endif %}
+      {% if col.key == 'done' %}
+      <label class="gtd-board-done-toggle">
+        <input type="checkbox" {{ 'checked' if show_all_done }}
+               onchange="gtdBoardToggleAllDone(this.checked)">
+        {{ 'wszystkie' if show_all_done else 'od ' ~ done_since.strftime('%d.%m') }}
+      </label>
+      {% else %}
+      <form class="gtd-board-add" onsubmit="return gtdBoardQuickAdd(event, '{{ col.key }}')">
+        <input type="text" placeholder="+ dodaj…" autocomplete="off">
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="kanban-column-body">
+      {% for c in col.cards %}
+      <div class="kanban-card gtd-card {{ 'gtd-card-project' if c.kind == 'project' }}"
+           data-task-id="{{ c.id }}" data-kind="{{ c.kind }}" data-status="{{ c.status }}"
+           draggable="{{ 'false' if c.kind == 'project' and c.open_count else 'true' }}">
+
+        <div class="gtd-card-head">
+          {% if c.kind == 'project' %}
+          <button type="button" class="gtd-card-caret" onclick="gtdBoardToggleCard(this)"
+                  aria-label="Rozwiń">▸</button>
+          {% endif %}
+          <a class="gtd-card-title"
+             href="{{ url_for('gtd.project_detail', project_id=c.id) if c.is_project else url_for('gtd.task_detail', task_id=c.id) }}">{{ c.title }}</a>
+          {% if c.is_today_priority %}<span class="gtd-card-flag" title="Gwiazdka dnia">★</span>{% endif %}
+          {% if c.is_important %}<span class="gtd-card-flag" title="Ważne">❗</span>{% endif %}
+        </div>
+
+        <div class="gtd-card-meta">
+          {{ ctx_badge(c) }}
+          {% if c.kind == 'task' and c.project_title %}
+          <a class="gtd-card-crumb" href="{{ url_for('gtd.project_detail', project_id=c.parent_id) }}">{{ c.project_title }}</a>
+          {% endif %}
+          {% if c.crm_company_id %}
+          <a class="gtd-card-crumb" href="{{ url_for('crm_companies.view_company', company_id=c.crm_company_id) }}">{{ c.crm_company_short_name or c.crm_company_name }}</a>
+          {% endif %}
+          {% if c.due_date and col.key != 'done' %}
+          <span class="gtd-card-due {{ 'is-overdue' if c.due_date < today }}">{{ c.due_date.strftime('%d.%m') }}</span>
+          {% endif %}
+        </div>
+
+        {% if c.kind == 'project' %}
+        <div class="gtd-card-progress" title="{{ c.subtask_done }} z {{ c.subtask_total }} zrobione">
+          <span style="width:{{ (100 * c.subtask_done / c.subtask_total)|round|int if c.subtask_total else 0 }}%"></span>
+        </div>
+        <div class="gtd-card-counts">
+          {% if c.ready_to_close %}
+          <span class="gtd-card-ready">✓ do zamknięcia</span>
+          {% else %}
+          <span>{{ c.subtask_done }}/{{ c.subtask_total }}</span>
+          {% if c.counts.doing %}<span class="is-doing">▶ {{ c.counts.doing }}</span>{% endif %}
+          {% if c.counts.waiting %}<span class="is-waiting">⏸ {{ c.counts.waiting }}</span>{% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if c.started_at and col.key in ('doing', 'waiting') %}
+        <div class="gtd-card-age {{ age_class(c.started_at, today) }}">w trakcie od {{ age(c.started_at, today) }}</div>
+        {% endif %}
+        {% if col.key == 'done' and c.completed_at %}
+        <div class="gtd-card-age">{{ age(c.completed_at, today) }}</div>
+        {% endif %}
+
+        {% if c.kind == 'project' %}
+        <div class="gtd-card-subs">
+          {% for s in c.subtasks %}{{ subtask_row(s) }}{% endfor %}
+          {% if not c.subtasks %}
+          <p class="text-muted small" style="margin:.2rem 0">Brak otwartych zadań.</p>
+          {% endif %}
+          {% if c.ready_to_close %}
+          <button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:.3rem"
+                  onclick="gtdCloseProject({{ c.id }})">Zamknij projekt</button>
+          {% endif %}
+          {% if c.done_subtasks %}
+          <button type="button" class="gtd-subs-more" onclick="this.closest('.gtd-card-subs').classList.add('show-done'); this.remove()">
+            pokaż zrobione ({{ c.done_subtasks|length }})
+          </button>
+          <div class="gtd-subs-done">
+            {% for s in c.done_subtasks %}{{ subtask_row(s) }}{% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% if not col.cards %}
+      <p class="text-muted small kanban-empty" style="padding:.4rem .2rem">Pusto.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>initGtdBoard();</script>
+{% endblock %}
