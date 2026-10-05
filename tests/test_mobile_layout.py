@@ -72,5 +72,31 @@ class MnaListsHaveCardsTest(unittest.TestCase):
             self.assertLess(tpl.index('rd-card-list'), tpl.rindex('{% else %}'), rel)
 
 
+class MobileLiveSearchTest(unittest.TestCase):
+    """Szukanie w trakcie pisania musi ruszać karty, nie tylko wiersze tabeli.
+
+    Na telefonie tabela jest schowana, a lista renderuje się jako `.rd-card-list`.
+    Filtrowanie samych `<tr>` nie zmieniało tam niczego i wyglądało, jakby
+    wyszukiwarka działała dopiero po Enterze — czyli po pełnym przeładowaniu
+    strony przez serwer.
+    """
+
+    def test_live_search_touches_cards(self):
+        js = read('static/app.js')
+        body = js[js.index('function initLiveTableSearch'):js.index('function initColumnToggle')]
+        self.assertIn('.rd-card-list', body)
+
+    def test_card_and_row_share_the_same_handle(self):
+        """Kartę z wierszem łączy `.row-star[data-id]` — bez niego po stronie kart
+        albo wierszy skojarzenie cicho przestaje działać."""
+        for rel in ('templates/crm/contacts/list.html', 'templates/crm/companies/list.html'):
+            tpl = read(rel)
+            cards = tpl[tpl.index('rd-card-list'):]
+            rows = tpl[tpl.index('<tbody>'):tpl.index('rd-card-list')]
+            for part, where in ((rows, 'wiersze'), (cards, 'karty')):
+                self.assertIn('class="star-toggle row-star', part, f'{rel}: {where}')
+                self.assertIn('data-id="{{ c.id }}"', part, f'{rel}: {where}')
+
+
 if __name__ == '__main__':
     unittest.main()

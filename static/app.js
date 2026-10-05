@@ -1350,6 +1350,21 @@ function initLiveTableSearch(inputId, tableId, countSuffix) {
   const countEl = document.querySelector('.table-count');
   const rows = Array.from(tbody.querySelectorAll('tr'));
 
+  /* Na telefonie tabela jest schowana, a ta sama lista renderuje się jako karty
+     (.rd-card-list). Filtrowanie samych <tr> nie dawało tam nic widocznego i
+     wyglądało, jakby szukanie ruszało dopiero po Enterze — czyli po przeładowaniu
+     strony przez serwer. Karta pokazuje mniej niż wiersz (bez NIP-u, maila,
+     stanowiska), więc o jej ukryciu decyduje dopasowanie wiersza, a nie własny
+     tekst: inaczej to samo zapytanie dawałoby na telefonie mniej wyników. */
+  const cardsById = new Map();
+  document.querySelectorAll('.rd-card-list .rd-card .row-star[data-id]').forEach(el => {
+    cardsById.set(el.dataset.id, el.closest('.rd-card'));
+  });
+  const cardOf = rows.map(row => {
+    const el = row.querySelector('.row-star[data-id]');
+    return el ? cardsById.get(el.dataset.id) : null;
+  });
+
   const emptyMsg = document.createElement('div');
   emptyMsg.className = 'empty-state';
   emptyMsg.style.display = 'none';
@@ -1359,9 +1374,10 @@ function initLiveTableSearch(inputId, tableId, countSuffix) {
   function apply() {
     const q = input.value.trim().toLocaleLowerCase();
     let visible = 0;
-    rows.forEach(row => {
+    rows.forEach((row, i) => {
       const match = !q || row.textContent.toLocaleLowerCase().includes(q);
       row.style.display = match ? '' : 'none';
+      if (cardOf[i]) cardOf[i].style.display = match ? '' : 'none';
       if (match) visible++;
     });
     if (countEl) countEl.textContent = visible + ' ' + countSuffix;
