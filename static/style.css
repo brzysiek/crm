@@ -2485,6 +2485,7 @@ code    { background: var(--surface-secondary); padding: 2px 6px; border-radius:
 .gtd-timeline-card.gtd-row-done { background: var(--success-bg); }
 .gtd-timeline-card.gtd-row-overdue { background: rgba(168, 66, 50, .5); }
 .gtd-timeline-card.gtd-row-waiting { background: var(--rd-amber-bg); }
+.gtd-timeline-card.gtd-row-doing { background: #edf3f6; }
 
 .gtd-timeline-card.gtd-gcal-card {
   border-left-color: var(--info);
@@ -3448,21 +3449,27 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .rd-screen .gtd-priority-panel .table-wrapper { background: transparent; border: none; border-radius: 0; }
 
 /* Kolory wierszy wg stanu zadania: zaległe = czerwone 30%, zwykłe todo = białe tło,
-   priorytetowe todo = czerwone pełne (białe litery), priorytetowe done = #1C4B40
+   priorytetowe todo i w trakcie = czerwone pełne (białe litery), priorytetowe done = #1C4B40
    (białe litery), zwykłe done = lime i blade */
 .rd-screen .data-table tr.gtd-row-overdue td { background: rgba(168, 66, 50, .3); }
 .rd-screen .data-table tr.gtd-row-todo td { background: #fff; }
 .rd-screen .data-table tr.gtd-row-waiting td { background: var(--rd-amber-bg); }
-.data-table tr.gtd-row-doing td { background: #edf3f6; }
+.rd-screen .data-table tr.gtd-row-doing td { background: #edf3f6; }
 .rd-screen .data-table tr.gtd-row-done td { background: var(--rd-lime-tint-bg); }
 .rd-screen .data-table tr.gtd-row-done { opacity: .55; }
 
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td { background: rgba(168, 66, 50); color: #fff; }
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .text-muted { color: rgba(255,255,255,.65); }
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn { color: rgba(255,255,255,.85); }
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost { color: rgba(255,255,255,.75); }
-.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td,
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing td { background: rgba(168, 66, 50); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .text-muted,
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing .text-muted { color: rgba(255,255,255,.65); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn,
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing .action-btn { color: rgba(255,255,255,.85); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .action-btn:hover,
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing .action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost,
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing .btn-ghost { color: rgba(255,255,255,.75); }
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo .btn-ghost:hover,
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-done td { background: #1C4B40; color: #fff; }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .text-muted { color: rgba(255,255,255,.65); }
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-done .action-btn { color: rgba(255,255,255,.85); }
@@ -3473,6 +3480,7 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 /* Tytuł zadania (link bez klasy) na kolorowym tle priorytetów — domyślny
    niebieski kolor linku jest nieczytelny na czerwonym/zielonym tle. */
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-todo td a:not(.badge),
+.rd-screen .gtd-priority-panel .data-table tr.gtd-row-doing td a:not(.badge),
 .rd-screen .gtd-priority-panel .data-table tr.gtd-row-done td a:not(.badge) { color: #fff; }
 
 /* Mobile: kolor stanu na całą kartę (tr), nie tylko na komórki — inaczej
@@ -3482,13 +3490,17 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
   .rd-zadania .data-table tr.gtd-row-overdue td,
   .rd-zadania .data-table tr.gtd-row-todo td,
   .rd-zadania .data-table tr.gtd-row-waiting td,
+  .rd-zadania .data-table tr.gtd-row-doing td,
   .rd-zadania .data-table tr.gtd-row-done td,
-  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo td { background: transparent; }
+  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo td,
+  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-doing td { background: transparent; }
   .rd-zadania .data-table tr.gtd-row-overdue { background: rgba(168, 66, 50, .3); border-color: rgba(168, 66, 50, .3); }
   .rd-zadania .data-table tr.gtd-row-todo { background: #fff; border-color: var(--rd-border); }
   .rd-zadania .data-table tr.gtd-row-waiting { background: var(--rd-amber-bg); border-color: var(--rd-amber-bg); }
+  .rd-zadania .data-table tr.gtd-row-doing { background: #edf3f6; border-color: #edf3f6; }
   .rd-zadania .data-table tr.gtd-row-done { background: var(--rd-lime-tint-bg); }
-  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo { background: rgba(168, 66, 50); border-color: rgba(168, 66, 50); }
+  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-todo,
+  .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-doing { background: rgba(168, 66, 50); border-color: rgba(168, 66, 50); }
   .rd-zadania .gtd-priority-panel .data-table tr.gtd-row-done { background: #1C4B40; border-color: #1C4B40; }
 }
 
@@ -3508,6 +3520,7 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .rd-screen .gtd-timeline-card.gtd-row-overdue .btn-ghost { color: rgba(255,255,255,.75); }
 .rd-screen .gtd-timeline-card.gtd-row-overdue .btn-ghost:hover { background: rgba(255,255,255,.15); color: #fff; }
 .rd-screen .gtd-timeline-card.gtd-row-waiting { border-left-color: var(--rd-amber-solid); background: var(--rd-amber-bg); }
+.rd-screen .gtd-timeline-card.gtd-row-doing { border-left-color: #4A7B8C; background: #edf3f6; }
 .rd-screen .gtd-timeline-card.gtd-row-done { border-left-color: var(--rd-border); background: var(--rd-lime-tint-bg); opacity: .55; }
 .rd-screen .gtd-timeline-card.gtd-gcal-card { background: rgba(168, 66, 50, .1); }
 .rd-screen .gtd-timeline-card.gtd-gcal-card.gtd-row-done { border-left-color: var(--rd-border); background: #E7F6C9; opacity: .65; }

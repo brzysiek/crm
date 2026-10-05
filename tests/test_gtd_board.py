@@ -189,6 +189,20 @@ class StatusStaysVisibleTest(unittest.TestCase):
         for fn in (task_model.get_next_actions, task_model.find_tasks):
             self.assertIn("'doing'", inspect.getsource(fn), fn.__name__)
 
+    def test_gwiazdka_na_ruszonym_zadaniu_nadal_jest_bordowa(self):
+        """Panel priorytetów koloruje wiersz po klasie statusu, a „w trakcie”
+        dołożyło czwartą — bez pary do każdej reguły `todo` oznaczone zadanie,
+        które ruszyło, traciło bordowe tło i wyglądało jak nieoznaczone."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               'static', 'style.css'), encoding='utf-8') as f:
+            css = f.read()
+        todo = [l.strip().rstrip(',') for l in css.splitlines()
+                if 'gtd-priority-panel' in l and 'gtd-row-todo' in l]
+        self.assertTrue(todo)
+        for selector in todo:
+            twin = selector.replace('gtd-row-todo', 'gtd-row-doing').split('{')[0].strip()
+            self.assertIn(twin, css, selector)
+
     def test_plakietka_statusu_zna_czwarty_stan(self):
         with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                'templates', 'gtd', '_macros.html'), encoding='utf-8') as f:
