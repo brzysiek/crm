@@ -221,6 +221,20 @@ function gtdDeleteTask(taskId) {
     .catch(() => alert('Błąd sieci.'));
 }
 
+function gtdBulkDelete(ids) {
+  if (!ids || !ids.length) { alert('Zaznacz co najmniej jedną pozycję.'); return; }
+  const what = ids.length === 1 ? 'zaznaczone zadanie' : 'zaznaczone zadania (' + ids.length + ')';
+  if (!confirm('Zarchiwizować ' + what + '? Trafią do Archiwum, skąd można je przywrócić.')) return;
+  fetch(window.API_BASE + '/api/gtd/tasks/bulk-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+    .then(r => r.json())
+    .then(data => { if (data.status === 'ok') location.reload(); else alert(data.message || 'Błąd.'); })
+    .catch(() => alert('Błąd sieci.'));
+}
+
 function gtdSaveNotes(taskId, textareaId, btnId) {
   const textarea = document.getElementById(textareaId);
   const btn = document.getElementById(btnId);

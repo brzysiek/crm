@@ -46,5 +46,28 @@ class NextActionsFilterArgs(unittest.TestCase):
         events.assert_not_called()
 
 
+class BulkDelete(unittest.TestCase):
+    """Zbiorcze usuwanie ma być tym samym miękkim usunięciem co pojedyncze — do Archiwum."""
+
+    def _post(self, payload):
+        client = app.test_client()
+        with client.session_transaction() as s:
+            s['user_id'] = 1
+        with mock.patch.object(gtd_routes.task_model, 'delete_task') as delete:
+            resp = client.post('/api/gtd/tasks/bulk-delete', json=payload)
+        return resp, delete
+
+    def test_each_selected_task_is_soft_deleted(self):
+        resp, delete = self._post({'ids': [4, 9]})
+        self.assertEqual(resp.get_json(), {'status': 'ok', 'deleted': 2})
+        self.assertEqual([c.args for c in delete.call_args_list], [(4,), (9,)])
+
+    def test_empty_or_malformed_selection_deletes_nothing(self):
+        for payload in ({}, {'ids': []}, {'ids': ['x', None, True]}):
+            resp, delete = self._post(payload)
+            self.assertEqual(resp.status_code, 400)
+            delete.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()

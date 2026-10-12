@@ -723,6 +723,18 @@ def api_bulk_assign_tasks():
     return jsonify({'status': 'ok'})
 
 
+@bp.route('/api/gtd/tasks/bulk-delete', methods=['POST'])
+def api_bulk_delete_tasks():
+    """Zbiorcze miękkie usunięcie — tak jak pojedyncze, zadania trafiają do Archiwum."""
+    data = request.get_json(silent=True) or {}
+    ids = [i for i in (data.get('ids') or []) if isinstance(i, int) and not isinstance(i, bool)]
+    if not ids:
+        return jsonify({'status': 'error', 'message': 'Brak zaznaczonych pozycji.'}), 400
+    for task_id in ids:
+        task_model.delete_task(task_id)
+    return jsonify({'status': 'ok', 'deleted': len(ids)})
+
+
 @bp.route('/api/gtd/tasks/<int:task_id>', methods=['DELETE'])
 def api_delete_task(task_id):
     task_model.delete_task(task_id)
