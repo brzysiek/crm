@@ -1389,6 +1389,41 @@ function initLiveTableSearch(inputId, tableId, countSuffix) {
   input.addEventListener('input', apply);
 }
 
+/* ── Listy z trybem zaznaczania: przycisk „Zaznacz wszystkie” ───────────────────
+ * Wspólny dla list z przyciskiem „Zaznacz” (kontakty, firmy, zadania, projekty).
+ * Zaznacza tylko wiersze widoczne na tej stronie — te ukryte przez szukanie
+ * w trakcie pisania zostają nietknięte, żeby akcja zbiorcza nie objęła czegoś,
+ * czego nie widać. Gdy wszystkie widoczne są już zaznaczone, ten sam przycisk
+ * je odznacza. Strona musi mieć własne updateBulkBar().
+ */
+function bulkVisibleRowCheckboxes() {
+  return [...document.querySelectorAll('.row-checkbox')].filter(el => {
+    const row = el.closest('tr');
+    return !row || row.style.display !== 'none';
+  });
+}
+
+function bulkSelectAllVisible() {
+  const boxes = bulkVisibleRowCheckboxes();
+  const allChecked = boxes.length > 0 && boxes.every(el => el.checked);
+  boxes.forEach(el => { el.checked = !allChecked; });
+  if (typeof updateBulkBar === 'function') updateBulkBar();
+  bulkSyncSelectAll();
+}
+
+/* `show` podaje tryb zaznaczania przy jego przełączeniu; bez niego odświeżamy sam napis. */
+function bulkSyncSelectAll(show) {
+  const btn = document.getElementById('btnSelectAll');
+  if (!btn) return;
+  if (show !== undefined) btn.style.display = show ? '' : 'none';
+  const boxes = bulkVisibleRowCheckboxes();
+  btn.textContent = boxes.length > 0 && boxes.every(el => el.checked) ? 'Odznacz wszystkie' : 'Zaznacz wszystkie';
+}
+
+document.addEventListener('change', e => {
+  if (e.target.matches && e.target.matches('.row-checkbox, .select-all-checkbox')) bulkSyncSelectAll();
+});
+
 /* ── CRM: widoczność kolumn listy (zapamiętana w localStorage + per użytkownik) ──
  * Checkboxy w menu muszą mieć data-col="<nazwa>" odpowiadającą atrybutom
  * data-col="<nazwa>" na <th>/<td> w tabeli. `defaultHidden` to kolumny domyślnie

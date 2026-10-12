@@ -90,6 +90,7 @@
 <div class="bulk-select-bar">
   <div class="bulk-select-bar-left">
     <button type="button" class="btn btn-outline btn-sm" id="btnToggleSelect" onclick="toggleSelectionMode()">Zaznacz</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btnSelectAll" onclick="bulkSelectAllVisible()" style="display:none">Zaznacz wszystkie</button>
     <div class="bulk-actions" id="bulkActions" style="display:none">
       <span class="bulk-count" id="bulkCount">0 zaznaczonych</span>
       <button type="button" class="btn btn-outline btn-sm" id="btnBulkStar">{{ icon('star', 14) }} Oznacz</button>
@@ -319,6 +320,7 @@ function toggleSelectionMode() {
   const btn = document.getElementById('btnToggleSelect');
   if (btn) btn.textContent = selectionMode ? 'Anuluj zaznaczanie' : 'Zaznacz';
   updateBulkBar();
+  bulkSyncSelectAll(selectionMode);
 }
 
 async function toggleRowStar(btn) {
