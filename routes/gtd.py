@@ -445,10 +445,16 @@ def next_actions():
     contexts_param = (request.args.get('contexts') or '').strip()
     context_ids = [int(x) for x in contexts_param.split(',') if x.strip().isdigit()] if contexts_param else None
     filter_options = task_model.get_next_action_filter_options()
-    past_events = _enrich_cached_events(gcal_event_model.get_cached_past_events(context_ids))
+    # Wydarzenie z kalendarza nie ma powiązania z dealem, więc przy filtrze deala żadne nie pasuje.
+    past_events = [] if deal_id else _enrich_cached_events(gcal_event_model.get_cached_past_events(
+        context_ids, project_id=project_id, company_id=company_id, search=search))
     # Zamknięte zadania nie należą do listy nadchodzących — idą na oś czasu razem z minionymi
     # wydarzeniami z kalendarza, gdzie porządkuje je data zamknięcia.
-    tasks = task_model.get_next_actions(project_id, deal_id, company_id, search, include_done, context_ids)
+    # Argumenty po nazwie: przekazywane pozycyjnie rozjechały się po dodaniu contact_id
+    # (fraza trafiała jako kontakt, a konteksty jako „pokaż zakończone”).
+    tasks = task_model.get_next_actions(
+        project_id=project_id, deal_id=deal_id, company_id=company_id,
+        search=search, include_done=include_done, context_ids=context_ids)
     done_tasks = [t for t in tasks if t['status'] == 'done']
     return render_template(
         'gtd/next_actions.html', active_tab='next',

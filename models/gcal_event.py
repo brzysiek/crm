@@ -69,7 +69,8 @@ def parse_and_cache(raw_event: dict) -> dict | None:
 
 
 def get_cached_past_events(context_ids: list[int] | None = None, project_id: int | None = None,
-                            limit: int = 200) -> list[dict]:
+                            limit: int = 200, company_id: int | None = None,
+                            search: str | None = None) -> list[dict]:
     """Przeszłe wydarzenia z kalendarza, których tytuł mamy już zapisany
     lokalnie (patrz cache_snapshot) — pozwala pokazać je na listach GTD
     (Wszystkie zadania, Wg kontekstu) bez odpytywania Google Calendar."""
@@ -88,6 +89,12 @@ def get_cached_past_events(context_ids: list[int] | None = None, project_id: int
     if project_id:
         sql += " AND project_id=%s"
         params.append(project_id)
+    if company_id:
+        sql += " AND crm_company_id=%s"
+        params.append(company_id)
+    if search:
+        sql += " AND title LIKE %s"
+        params.append(f"%{search}%")
     sql += " ORDER BY event_date DESC, event_time DESC LIMIT %s"
     params.append(limit)
     with db.cursor() as cur:
