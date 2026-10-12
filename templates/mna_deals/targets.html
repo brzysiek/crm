@@ -81,6 +81,10 @@
 <form method="post" action="{{ url_for('mna_deals.bulk_targets_view', deal_id=deal.id) }}" id="bulk-form">
 <input type="hidden" name="back" value="{{ request.full_path }}">
 
+<div style="margin-bottom:.5rem">
+  <button type="button" class="btn btn-outline btn-sm" id="btn-check-all">Zaznacz wszystkie</button>
+</div>
+
 <div class="bulk-bar" id="bulk-bar" hidden>
   <span><strong id="bulk-count">0</strong> zazn.</span>
   <button type="submit" name="action" value="move_{{ other_list }}" class="btn btn-outline btn-sm">
@@ -261,6 +265,7 @@ function targetSelectOnly(button) {
 
 (function () {
   const checkAll = document.getElementById('check-all');
+  const checkAllBtn = document.getElementById('btn-check-all');
   const bar = document.getElementById('bulk-bar');
   const counter = document.getElementById('bulk-count');
   const boxes = () => Array.from(document.querySelectorAll('.row-check'));
@@ -269,7 +274,18 @@ function targetSelectOnly(button) {
     const n = boxes().filter(c => c.checked).length;
     counter.textContent = n;
     bar.hidden = n === 0;
-    if (checkAll) checkAll.checked = n > 0 && n === boxes().length;
+    const all = n > 0 && n === boxes().length;
+    if (checkAll) checkAll.checked = all;
+    if (checkAllBtn) checkAllBtn.textContent = all ? 'Odznacz wszystkie' : 'Zaznacz wszystkie';
+  }
+
+  /* Ten sam skutek co checkbox w nagłówku tabeli, tylko podpisany — sam checkbox łatwo przeoczyć. */
+  if (checkAllBtn) {
+    checkAllBtn.addEventListener('click', () => {
+      const all = boxes().length > 0 && boxes().every(c => c.checked);
+      boxes().forEach(c => { c.checked = !all; });
+      refresh();
+    });
   }
 
   if (checkAll) {
