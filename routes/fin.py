@@ -721,7 +721,12 @@ def settlements_view():
     if view not in SETTLEMENT_VIEWS:
         view = 'open'
     first_statement = fin_bank_store.first_booked_date()
+    # Jedna lista: konkretna kategoria albo „bez kategorii”.
+    category = request.args.get('category', '')
     filters = {
+        'category': category if category == 'none' or category.isdigit() else '',
+        'category_id': int(category) if category.isdigit() else None,
+        'uncategorized': category == 'none',
         'kind': request.args.get('kind', ''),
         'payment': request.args.get('payment', ''),
         'source': request.args.get('source', ''),

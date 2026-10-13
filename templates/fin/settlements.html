@@ -34,6 +34,13 @@
       <option value="cost" {{ 'selected' if filters.kind == 'cost' }}>tylko koszty</option>
       <option value="income" {{ 'selected' if filters.kind == 'income' }}>tylko przychody</option>
     </select>
+    <select name="category" class="filter-select" onchange="this.form.submit()">
+      <option value="">wszystkie kategorie</option>
+      <option value="none" {{ 'selected' if filters.category == 'none' }}>bez kategorii</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {{ 'selected' if filters.category_id == c.id }}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
     <select name="payment" class="filter-select" onchange="this.form.submit()">
       <option value="">opłacone i nieopłacone</option>
       <option value="paid" {{ 'selected' if filters.payment == 'paid' }}>opłacone</option>
