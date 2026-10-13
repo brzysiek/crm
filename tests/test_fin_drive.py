@@ -139,6 +139,14 @@ class AcceptTest(unittest.TestCase):
         self.upsert.assert_not_called()
         self.status.assert_not_called()
 
+    def test_bulk_accept_takes_queue_values_and_skips_broken_reads(self):
+        # 7 jest poprawny, 8 nie ma kwoty — zostaje w kolejce, reszta przechodzi.
+        self.get.side_effect = lambda i: queue_row() if i == 7 else queue_row(price_gross=Decimal('0'))
+        out = fin_drive.accept_many([7, 8], actor='user:1')
+        self.assertEqual(out['accepted'], 1)
+        self.assertEqual(len(out['errors']), 1)
+        self.assertEqual(self.upsert.call_count, 1)
+
     def test_accepted_file_is_not_accepted_twice(self):
         self.get.return_value = queue_row(status='accepted')
         with self.assertRaises(FinDriveError):

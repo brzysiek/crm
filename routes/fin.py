@@ -917,6 +917,26 @@ def drive_ocr():
         return jsonify({'error': str(e)})
 
 
+@bp.route('/dysk/zatwierdz', methods=['POST'])
+def drive_accept_many():
+    """Hurtowe zatwierdzenie odczytów — w takim kształcie, w jakim są w kolejce."""
+    status = request.form.get('status', 'pending')
+    ids = [int(v) for v in request.form.getlist('queue_id') if v.isdigit()]
+    if not ids:
+        flash('Nie zaznaczono żadnego odczytu.', 'error')
+        return redirect(url_for('fin.drive_view', status=status))
+    out = fin_drive.accept_many(ids, actor=_actor())
+    if out['accepted']:
+        message = f"Dodano do finansów: {out['accepted']}."
+        if out['uncategorized']:
+            message += f" Bez kategorii: {out['uncategorized']}."
+        flash(message, 'success')
+    if out['errors']:
+        flash(f"Nie zatwierdzono {len(out['errors'])} — popraw je ręcznie: "
+              + '; '.join(out['errors'][:5]) + ('…' if len(out['errors']) > 5 else ''), 'error')
+    return redirect(url_for('fin.drive_view', status=status))
+
+
 @bp.route('/dysk/<int:queue_id>/zatwierdz', methods=['POST'])
 def drive_accept(queue_id: int):
     try:

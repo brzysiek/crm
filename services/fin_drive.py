@@ -317,6 +317,32 @@ def accept(queue_id: int, form: dict, actor: str = '') -> dict:
             'gross_pln': doc['gross_pln'], 'categorized': categorized}
 
 
+QUEUE_FORM_FIELDS = ('is_income', 'kind', 'number', 'counterparty_name', 'counterparty_tax_no',
+                     'issue_date', 'payment_to', 'price_net', 'price_tax', 'price_gross', 'currency')
+
+
+def accept_many(queue_ids: list[int], actor: str = '') -> dict:
+    """Zatwierdza wiele odczytów tak, jak stoją w kolejce — bez poprawek.
+    Odczyt, który nie przechodzi walidacji (brak daty, kwoty się nie sumują),
+    zostaje w kolejce do ręcznej poprawki i nie zatrzymuje reszty."""
+    out = {'accepted': 0, 'uncategorized': 0, 'errors': []}
+    for queue_id in queue_ids:
+        row = fin_drive.get(queue_id)
+        try:
+            if not row:
+                raise FinDriveError(f'Nie znam pozycji {queue_id} w kolejce.')
+            form = {k: '' if row.get(k) is None else str(row[k]) for k in QUEUE_FORM_FIELDS}
+            result = accept(queue_id, form, actor=actor)
+        except FinDriveError as e:
+            name = (row or {}).get('number') or (row or {}).get('file_name') or queue_id
+            out['errors'].append(f'{name}: {e}')
+            continue
+        out['accepted'] += 1
+        if not result['categorized']:
+            out['uncategorized'] += 1
+    return out
+
+
 def reject(queue_id: int, actor: str = '') -> None:
     row = fin_drive.get(queue_id)
     if not row:

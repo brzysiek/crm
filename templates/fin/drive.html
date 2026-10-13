@@ -36,7 +36,7 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th class="col-checkbox"></th>
+          <th class="col-checkbox"><input type="checkbox" id="driveCheckAll" title="Zaznacz wszystkie"></th>
           <th>Plik</th>
           <th>Zmieniony</th>
           <th>Stan</th>
@@ -69,10 +69,24 @@
   {% set drive_table = true %}
   {% include 'fin/_documents_table.html' %}
   {% else %}
+  {# Hurtowe zatwierdzenie: formularz stoi przed tabelą, pola wyboru wskazują
+     na niego atrybutem `form` — wiersze mają własne formularze poprawek. #}
+  {% if rows %}
+  <form method="post" action="{{ url_for('fin.drive_accept_many') }}" id="queue-bulk" class="fin-bulk-bar">
+    <input type="hidden" name="status" value="{{ status }}">
+    <label class="filter-check">
+      <input type="checkbox" id="queueCheckAll"> zaznacz wszystkie
+    </label>
+    <span class="text-muted small" id="queueCheckCount"></span>
+    <button type="submit" class="btn btn-primary btn-sm" id="queueBulkSubmit" disabled
+            title="Zatwierdza odczyty tak, jak są — bez poprawek. Te, których nie da się zatwierdzić, zostaną w kolejce.">Zatwierdź zaznaczone</button>
+  </form>
+  {% endif %}
   <div class="table-wrapper">
     <table class="data-table">
       <thead>
         <tr>
+          <th class="col-checkbox"></th>
           <th>Wystawiona</th>
           <th>Numer</th>
           <th>Kontrahent</th>
@@ -88,6 +102,9 @@
       <tbody>
         {% for r in rows %}
         <tr>
+          <td class="col-checkbox">
+            <input type="checkbox" name="queue_id" value="{{ r.id }}" class="queue-check" form="queue-bulk">
+          </td>
           <td class="nowrap">{{ r.issue_date|ddmmyyyy or '—' }}</td>
           <td class="nowrap">
             {{ r.number or '—' }}
@@ -124,7 +141,7 @@
         {# Formularz poprawek siedzi w wierszu pod spodem: „Zatwierdź” wysyła go
            także zwinięty, z wartościami z odczytu. #}
         <tr id="driveEdit{{ r.id }}" class="fin-drive-edit" hidden>
-          <td colspan="10">
+          <td colspan="11">
             <form method="post" action="{{ url_for('fin.drive_accept', queue_id=r.id, status=status) }}"
                   id="driveForm{{ r.id }}">
               <div class="fin-drive-grid">
@@ -185,7 +202,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="10" class="text-muted">
+        <tr><td colspan="11" class="text-muted">
           {% if status == 'pending' %}Kolejka jest pusta — odczytaj pliki z Dysku powyżej.
           {% else %}Nic tu nie ma.{% endif %}
         </td></tr>
@@ -200,6 +217,25 @@
       row.hidden = !row.hidden;
     });
   });
+  (function () {
+    var all = document.getElementById('queueCheckAll');
+    if (!all) return;
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.queue-check'));
+    var count = document.getElementById('queueCheckCount');
+    var submit = document.getElementById('queueBulkSubmit');
+    function sync() {
+      var n = boxes.filter(function (b) { return b.checked; }).length;
+      count.textContent = n ? 'zaznaczono ' + n + ' z ' + boxes.length : '';
+      submit.disabled = !n;
+      all.checked = n > 0 && n === boxes.length;
+    }
+    all.addEventListener('change', function () {
+      boxes.forEach(function (b) { b.checked = all.checked; });
+      sync();
+    });
+    boxes.forEach(function (b) { b.addEventListener('change', sync); });
+    sync();
+  })();
   </script>
   {% endif %}
 </section>
@@ -219,6 +255,7 @@
   var elCrumbs = document.getElementById('driveCrumbs');
   var elRun = document.getElementById('driveRun');
   var elProgress = document.getElementById('driveProgress');
+  var elCheckAll = document.getElementById('driveCheckAll');
 
   function el(tag, text, cls) {
     var node = document.createElement(tag);
@@ -256,6 +293,9 @@
 
   function syncRun() {
     var n = elFiles.querySelectorAll('.drive-check:checked').length;
+    var selectable = elFiles.querySelectorAll('.drive-check:not(:disabled)').length;
+    elCheckAll.checked = n > 0 && n === selectable;
+    elCheckAll.disabled = busy || !selectable;
     elRun.disabled = busy || !n;
     elRun.textContent = n ? 'Odczytaj zaznaczone (' + n + ')' : 'Odczytaj zaznaczone';
   }
@@ -316,6 +356,14 @@
       })
       .catch(function () { files = []; message('Nie udało się wczytać listy plików.'); });
   }
+
+  /* Zatwierdzonych nie czytamy drugi raz — ich pola są wyłączone i zostają puste. */
+  elCheckAll.addEventListener('change', function () {
+    elFiles.querySelectorAll('.drive-check:not(:disabled)').forEach(function (box) {
+      box.checked = elCheckAll.checked;
+    });
+    syncRun();
+  });
 
   document.getElementById('driveSelectNew').addEventListener('click', function () {
     elFiles.querySelectorAll('tr').forEach(function (row) {
