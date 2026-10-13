@@ -279,6 +279,9 @@ def create_document(is_income: bool, *, counterparty: dict, positions: list[dict
     return _created_response(raw, send_to_ksef, is_income)
 
 
+LOCAL_FX_TOLERANCE = Decimal('0.08')
+
+
 def _is_local(doc: dict) -> bool:
     """Dokument spoza Fakturowni (np. z Dysku) — nie ma go gdzie tam zapisywać."""
     return (doc.get('source') or 'fakturownia') != 'fakturownia'
@@ -299,11 +302,16 @@ def _mark_paid_local(doc: dict, amount, paid_date, actor: str) -> dict:
     paid = _money(amount, 'amount') if amount not in (None, '') else gross
     if paid < 0:
         raise FinWriteError('Kwota zapłaty nie może być ujemna.')
+    # Faktura walutowa: bank liczy po swoim kursie, dokument po NBP, więc kilka
+    # procent w jedną lub drugą stronę to pełna zapłata, nie nadpłata ani rata.
+    foreign = (doc.get('currency') or 'PLN') != 'PLN'
+    settled = foreign and gross > 0 and abs(paid - gross) / gross <= LOCAL_FX_TOLERANCE
     warning = None
-    if paid > gross:
+    if paid > gross and not settled:
         warning = (f'Kwota {paid} przekracza brutto dokumentu ({gross}) — zapisuję ją '
                    'tak, jak podałeś, ale sprawdź, czy to nie pomyłka.')
-    status = 'paid' if paid >= gross and gross > 0 else ('partial' if paid > 0 else 'issued')
+    status = ('paid' if settled or (paid >= gross and gross > 0)
+              else 'partial' if paid > 0 else 'issued')
     when = _day(paid_date or date.today(), 'paid_date') if paid > 0 else None
     fin_document.set_local_payment(fakturownia_id, paid, when, status)
     fin_audit.log('mark_paid_local', actor=actor, fakturownia_id=fakturownia_id,
@@ -316,7 +324,7 @@ def _mark_paid_local(doc: dict, amount, paid_date, actor: str) -> dict:
         'price_gross': gross,
         'paid_amount': paid,
         'paid_date': when,
-        'amount_left': gross - paid,
+        'amount_left': Decimal('0') if settled else gross - paid,
         'warning': warning,
         'mirror': None,
         'local': True,

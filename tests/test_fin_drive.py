@@ -255,5 +255,59 @@ class UnlinkTest(unittest.TestCase):
         self.assertFalse(out['payment_reverted'])
 
 
+class ForeignCurrencyMatchTest(unittest.TestCase):
+    """Faktura w EUR zapłacona kartą: bank liczy po swoim kursie, dokument po NBP."""
+
+    TXN = {'id': 327, 'booked_date': date(2026, 9, 17), 'amount': Decimal('-342.98'),
+           'title': 'ANTHROPIC* CLAUDE SUB SAN FRANCISCO US',
+           'counterparty_name': 'ANTHROPIC* CLAUDE SUB SAN FRANCISCO US'}
+    DOC = {'fakturownia_id': store.DRIVE_ID_BASE + 4, 'number': 'CXHRDSAO-0010', 'is_income': 0,
+           'issue_date': date(2026, 9, 17), 'payment_to': None, 'status': 'issued',
+           'gross_pln': Decimal('327.24'), 'paid_amount': Decimal('0'), 'currency': 'EUR',
+           'source': 'gdrive', 'counterparty_name': 'Anthropic, PBC', 'counterparty_tax_no_norm': ''}
+
+    def test_bank_rate_difference_still_counts_as_the_same_amount(self):
+        out = fin_bank.score_match(self.TXN, self.DOC)
+        self.assertIn('kwota zgodna z EUR po kursie banku', out['reasons'])
+        self.assertNotIn('przelew większy niż dokument', out['reasons'])
+        self.assertGreaterEqual(out['score'], 25)
+        self.assertEqual(out['source'], 'gdrive')
+
+    def test_pln_document_gets_no_such_allowance(self):
+        out = fin_bank.score_match(self.TXN, {**self.DOC, 'currency': 'PLN'})
+        self.assertIn('przelew większy niż dokument', out['reasons'])
+
+    def test_far_off_amount_is_not_explained_by_the_rate(self):
+        out = fin_bank.score_match({**self.TXN, 'amount': Decimal('-82.00')}, self.DOC)
+        self.assertNotIn('kwota zgodna z EUR po kursie banku', out['reasons'])
+
+    def test_payment_within_the_rate_margin_settles_the_document(self):
+        self.addCleanup(mock.patch.stopall)
+        mock.patch.object(fin_invoice, 'get_db').start()
+        mock.patch.object(fin_invoice.fin_audit, 'log').start()
+        mock.patch.object(fin_invoice.fin_document, 'set_local_payment').start()
+        mock.patch.object(fin_invoice.fin_document, 'get_document',
+                          return_value={**DRIVE_DOC, 'currency': 'EUR', 'gross_pln': Decimal('327.24')}).start()
+        for amount in ('342.98', '320.00'):
+            out = fin_invoice.mark_paid(DRIVE_DOC['fakturownia_id'], amount=amount, paid_date='2026-09-17')
+            self.assertEqual(out['status'], 'paid')
+            self.assertIsNone(out['warning'])
+            self.assertEqual(out['amount_left'], Decimal('0'))
+
+
+class SuggestForRowsTest(unittest.TestCase):
+    def test_one_query_serves_the_whole_statement(self):
+        docs = [dict(ForeignCurrencyMatchTest.DOC)]
+        old = {**ForeignCurrencyMatchTest.TXN, 'id': 1, 'booked_date': date(2025, 1, 5), 'link_count': 0}
+        hit = {**ForeignCurrencyMatchTest.TXN, 'link_count': 0}
+        with mock.patch.object(fin_bank, '_documents_between', return_value=docs) as fetch, \
+                mock.patch.object(fin_bank.fin_bank, 'links_for_transaction') as links:
+            out = fin_bank.suggest_for_rows([hit, old])
+        fetch.assert_called_once()
+        links.assert_not_called()
+        self.assertEqual(list(out), [327])
+        self.assertEqual(out[327][0]['number'], 'CXHRDSAO-0010')
+
+
 if __name__ == '__main__':
     unittest.main()

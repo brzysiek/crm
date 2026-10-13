@@ -128,7 +128,7 @@
             <input type="hidden" name="fakturownia_id" value="{{ match.fakturownia_id }}">
             <input type="hidden" name="back" value="{{ request.full_path }}">
             <a href="{{ url_for('fin.document', fakturownia_id=match.fakturownia_id) }}">{{ match.number }}</a>
-            <span class="text-muted small">{{ match.counterparty_name }} · {{ money(match.amount_left) }} do zapłaty</span>
+            <span class="text-muted small">{% if match.source == 'gdrive' %}<span class="badge badge-outline">Dysk</span> {% endif %}{{ match.counterparty_name }} · {{ money(match.amount_left) }} do zapłaty</span>
             <button type="submit" class="btn btn-outline btn-sm">Powiąż</button>
             <div class="fin-match-why">
               <span class="badge badge-gray">{{ match.score }}</span>
@@ -148,6 +148,14 @@
 
           {% if not links.get(txn.id) and not suggestions.get(txn.id) and txn.status == 'pending' %}
           <span class="text-muted small">brak podpowiedzi</span>
+          {% endif %}
+          {% if txn.status in ('pending', 'partial') %}
+          <div>
+            <button type="button" class="btn btn-outline btn-sm fin-pick-toggle"
+                    data-matches-url="{{ url_for('fin.bank_matches', txn_id=txn.id) }}"
+                    data-link-url="{{ url_for('fin.bank_link', txn_id=txn.id) }}">Wskaż dokument</button>
+            <div class="fin-pick" hidden></div>
+          </div>
           {% endif %}
         </td>
         <td class="text-right nowrap">
@@ -180,4 +188,95 @@
   {% endif %}
 </p>
 {% endif %}
+<script>
+/* „Wskaż dokument”: ręczne powiązanie, gdy podpowiedź nie trafiła — np. faktura
+   walutowa zapłacona kartą albo przelew zbiorczy. Lista ładuje się dopiero po
+   kliknięciu, żeby nie liczyć kandydatów dla całego wyciągu. */
+(function () {
+  var back = {{ request.full_path|tojson }};
+
+  function el(tag, text, cls) {
+    var node = document.createElement(tag);
+    if (text != null) node.textContent = text;
+    if (cls) node.className = cls;
+    return node;
+  }
+  function hidden(name, value) {
+    var input = el('input');
+    input.type = 'hidden'; input.name = name; input.value = value;
+    return input;
+  }
+  function money(value) { return Number(value).toFixed(2); }
+
+  function render(panel, list, matches) {
+    list.innerHTML = '';
+    if (!matches.length) {
+      list.appendChild(el('div', 'Nic nie znalazłem — spróbuj innej frazy.', 'text-muted small'));
+      return;
+    }
+    matches.forEach(function (m) {
+      var form = el('form', null, 'fin-match-row');
+      form.method = 'post';
+      form.action = panel.dataset.linkUrl;
+      form.appendChild(hidden('fakturownia_id', m.fakturownia_id));
+      form.appendChild(hidden('back', back));
+      var link = el('a', m.number || 'bez numeru');
+      link.href = m.url;
+      form.appendChild(link);
+      var left = Number(m.amount_left);
+      var info = el('span', null, 'text-muted small');
+      if (m.source === 'gdrive') {
+        info.appendChild(el('span', 'Dysk', 'badge badge-outline'));
+        info.appendChild(document.createTextNode(' '));
+      }
+      info.appendChild(document.createTextNode((m.counterparty_name || '—') + ' · ' +
+        (m.issue_date || '') + ' · ' + (left > 0 ? money(left) + ' do zapłaty' : m.status_label) +
+        (m.currency !== 'PLN' ? ' (' + m.currency + ')' : '')));
+      form.appendChild(info);
+      var btn = el('button', 'Powiąż', 'btn btn-outline btn-sm');
+      btn.type = 'submit';
+      form.appendChild(btn);
+      if (m.reasons.length) form.appendChild(el('div', m.reasons.join(' · '), 'fin-match-why'));
+      list.appendChild(form);
+    });
+  }
+
+  function load(panel, list, query) {
+    list.innerHTML = '';
+    list.appendChild(el('div', 'Szukam…', 'text-muted small'));
+    fetch(panel.dataset.matchesUrl + '?q=' + encodeURIComponent(query))
+      .then(function (r) { return r.json(); })
+      .then(function (data) { render(panel, list, data.matches || []); })
+      .catch(function () {
+        list.innerHTML = '';
+        list.appendChild(el('div', 'Nie udało się wczytać dokumentów.', 'text-muted small'));
+      });
+  }
+
+  document.querySelectorAll('.fin-pick-toggle').forEach(function (toggle) {
+    toggle.addEventListener('click', function () {
+      var panel = toggle.nextElementSibling;
+      panel.hidden = !panel.hidden;
+      if (panel.hidden || panel.dataset.ready) return;
+      panel.dataset.ready = '1';
+      panel.dataset.matchesUrl = toggle.dataset.matchesUrl;
+      panel.dataset.linkUrl = toggle.dataset.linkUrl;
+      var input = el('input', null, 'filter-input');
+      input.type = 'search';
+      input.placeholder = 'Numer, kontrahent, NIP…';
+      var list = el('div');
+      var timer;
+      input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () { load(panel, list, input.value.trim()); }, 300);
+      });
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+      panel.appendChild(input);
+      panel.appendChild(list);
+      load(panel, list, '');
+      input.focus();
+    });
+  });
+})();
+</script>
 {% endblock %}

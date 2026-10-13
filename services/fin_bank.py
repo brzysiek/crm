@@ -26,6 +26,9 @@ from database import get_db
 from models.fin_document import FINANCIAL_CLAUSE, NON_FINANCIAL_KINDS
 
 AMOUNT_TOLERANCE = Decimal('0.02')     # grosz w jedną i drugą stronę
+# Zapłata kartą za fakturę w walucie obcej: bank przelicza po własnym kursie
+# z marżą, dokument po średnim NBP — kilka procent różnicy to ta sama kwota.
+FX_TOLERANCE = Decimal('0.08')
 DATE_WINDOW = 45                       # dni wokół terminu/wystawienia, w których szukamy
 
 BANK_LABELS = {'alior': 'Alior Bank', 'mbank': 'mBank', 'unicredit': 'UniCredit'}
@@ -252,25 +255,48 @@ def import_csv(content_bytes: bytes, bank: str = '') -> dict:
 
 # ── dopasowywanie ────────────────────────────────────────────────────────────
 
+CANDIDATE_COLUMNS = """d.fakturownia_id, d.number, d.kind, d.is_income, d.issue_date,
+                       d.payment_to, d.paid_date, d.status, d.gross_pln, d.paid_amount,
+                       d.currency, d.source,
+                       d.counterparty_name, d.counterparty_tax_no_norm, d.description"""
+
+
+def _booked(txn: dict):
+    booked = txn['booked_date']
+    if isinstance(booked, str):
+        booked = datetime.strptime(booked[:10], '%Y-%m-%d').date()
+    return booked
+
+
+def _window(booked) -> tuple:
+    return booked - timedelta(days=DATE_WINDOW * 4), booked + timedelta(days=DATE_WINDOW)
+
+
+def _documents_between(date_from, date_to, is_income=None) -> list[dict]:
+    side, params = '', [NON_FINANCIAL_KINDS, date_from, date_to]
+    if is_income is not None:
+        side = 'AND d.is_income = %s'
+        params.append(is_income)
+    with get_db().cursor() as cur:
+        cur.execute(f"""SELECT {CANDIDATE_COLUMNS}
+                        FROM fin_documents d
+                        WHERE {FINANCIAL_CLAUSE} AND d.issue_date BETWEEN %s AND %s {side}
+                        ORDER BY d.issue_date DESC""", params)
+        return [dict(r) for r in cur.fetchall()]
+
+
 def _candidates(txn: dict) -> list[dict]:
     """Dokumenty po właściwej stronie i w rozsądnym oknie czasu. Węższego sita
     nie stawiamy w SQL-u — scoring i tak przejrzy każdego kandydata."""
     is_income = 1 if Decimal(str(txn['amount'])) > 0 else 0
-    booked = txn['booked_date']
-    if isinstance(booked, str):
-        booked = datetime.strptime(booked[:10], '%Y-%m-%d').date()
-    with get_db().cursor() as cur:
-        cur.execute(f"""SELECT d.fakturownia_id, d.number, d.kind, d.is_income, d.issue_date,
-                               d.payment_to, d.paid_date, d.status, d.gross_pln, d.paid_amount,
-                               d.counterparty_name, d.counterparty_tax_no_norm, d.description
-                        FROM fin_documents d
-                        WHERE d.is_income = %s AND {FINANCIAL_CLAUSE}
-                          AND d.issue_date BETWEEN %s AND %s
-                        ORDER BY d.issue_date DESC""",
-                    (is_income, NON_FINANCIAL_KINDS,
-                     booked - timedelta(days=DATE_WINDOW * 4),
-                     booked + timedelta(days=DATE_WINDOW)))
-        return [dict(r) for r in cur.fetchall()]
+    return _documents_between(*_window(_booked(txn)), is_income=is_income)
+
+
+def _fx_close(doc: dict, value: Decimal, target: Decimal) -> bool:
+    """Czy kwota przelewu to `target` przeliczony po innym kursie."""
+    if (doc.get('currency') or 'PLN') == 'PLN' or target <= 0:
+        return False
+    return abs(value - target) / target <= FX_TOLERANCE
 
 
 def _name_overlap(a: str, b: str) -> float:
@@ -320,6 +346,11 @@ def score_match(txn: dict, doc: dict) -> dict:
     elif abs(value - gross) <= AMOUNT_TOLERANCE:
         score += 25
         reasons.append('kwota równa brutto dokumentu')
+    elif _fx_close(doc, value, left if left > 0 else gross):
+        # Słabszy sygnał niż równa kwota: sam, bez nazwy czy numeru, nie
+        # wystarcza na podpowiedź — w takim przedziale mieści się wiele opłat.
+        score += 14
+        reasons.append(f"kwota zgodna z {doc.get('currency')} po kursie banku")
     elif gross > 0 and abs(value - gross) / gross <= Decimal('0.01'):
         score += 8
         reasons.append('kwota zgodna z brutto do 1%')
@@ -362,20 +393,80 @@ def score_match(txn: dict, doc: dict) -> dict:
         'gross_pln': gross,
         'paid_amount': paid,
         'amount_left': left,
+        'currency': doc.get('currency') or 'PLN',
+        'source': doc.get('source') or 'fakturownia',
         'score': score,
         'reasons': reasons,
     }
 
 
-def suggest_matches(txn: dict, limit: int = 5, min_score: int = 25) -> list[dict]:
+def suggest_matches(txn: dict, limit: int = 5, min_score: int = 25, candidates=None) -> list[dict]:
     """Kandydaci posortowani od najlepszego. `min_score` odcina losowe trafienia
     — lepiej nie podpowiedzieć nic niż podpowiedzieć fakturę obcego dostawcy."""
     linked = {l['fakturownia_id'] for l in fin_bank.links_for_transaction(txn['id'])} \
         if txn.get('id') else set()
-    scored = [score_match(txn, doc) for doc in _candidates(txn)]
+    scored = [score_match(txn, doc) for doc in (_candidates(txn) if candidates is None else candidates)]
     scored = [s for s in scored if s['score'] >= min_score and s['fakturownia_id'] not in linked]
     scored.sort(key=lambda s: (-s['score'], s['payment_to'] or s['issue_date'] or datetime.max.date()))
     return scored[:max(1, min(int(limit), 20))]
+
+
+def suggest_for_rows(rows: list[dict], limit: int = 3, min_score: int = 25) -> dict:
+    """Podpowiedzi dla całej listy operacji naraz: `{id operacji: [kandydaci]}`.
+
+    Dokumenty pobieramy jednym zapytaniem dla całego zakresu dat, a okno
+    każdej operacji przycinamy w pamięci — dzięki temu podpowiedzi dostaje
+    cały wyciąg, a nie tylko jego najświeższy kawałek.
+    """
+    rows = [r for r in rows if r.get('booked_date')]
+    if not rows:
+        return {}
+    dates = [_booked(r) for r in rows]
+    docs = _documents_between(_window(min(dates))[0], _window(max(dates))[1])
+    out = {}
+    for txn, booked in zip(rows, dates):
+        is_income = 1 if Decimal(str(txn['amount'])) > 0 else 0
+        date_from, date_to = _window(booked)
+        pool = [d for d in docs if d['is_income'] == is_income
+                and d['issue_date'] and date_from <= d['issue_date'] <= date_to]
+        # Powiązania sprawdzamy tylko tam, gdzie jakieś są — zwykle nigdzie.
+        probe = txn if txn.get('link_count') else {**txn, 'id': None}
+        found = suggest_matches(probe, limit=limit, min_score=min_score, candidates=pool)
+        if found:
+            out[txn['id']] = found
+    return out
+
+
+def search_documents(txn: dict, query: str = '', limit: int = 12) -> list[dict]:
+    """Ręczne wskazanie dokumentu dla operacji, gdy podpowiedź nie trafiła.
+
+    Bez frazy: najbliżsi kandydaci z okna dat, także ci poniżej progu
+    podpowiedzi. Z frazą: szukanie po numerze, kontrahencie, NIP-ie i opisie
+    w całej historii — człowiek wie, czego szuka, więc okno dat go nie
+    ogranicza. Strona (koszt/przychód) zawsze zgodna z kierunkiem operacji.
+    """
+    query = (query or '').strip()
+    linked = {l['fakturownia_id'] for l in fin_bank.links_for_transaction(txn['id'])}
+    if query:
+        is_income = 1 if Decimal(str(txn['amount'])) > 0 else 0
+        like = f'%{query}%'
+        digits = normalize_tax_no(query)
+        with get_db().cursor() as cur:
+            cur.execute(f"""SELECT {CANDIDATE_COLUMNS}
+                            FROM fin_documents d
+                            WHERE {FINANCIAL_CLAUSE} AND d.is_income = %s
+                              AND (d.number LIKE %s OR d.counterparty_name LIKE %s
+                                   OR d.description LIKE %s OR d.counterparty_tax_no_norm = %s)
+                            ORDER BY d.issue_date DESC LIMIT 60""",
+                        (NON_FINANCIAL_KINDS, is_income, like, like, like, digits or '-'))
+            docs = [dict(r) for r in cur.fetchall()]
+    else:
+        docs = _candidates(txn)
+    scored = [score_match(txn, doc) for doc in docs if doc['fakturownia_id'] not in linked]
+    if not query:
+        scored = [s for s in scored if s['amount_left'] > 0]
+    scored.sort(key=lambda s: (s['amount_left'] <= 0, -s['score']))
+    return scored[:max(1, min(int(limit), 30))]
 
 
 def suggest_for_pending(limit: int = 25, min_score: int = 25, scan: int = 200) -> list[dict]:
@@ -439,6 +530,10 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
 
     if amount not in (None, ''):
         applied = abs(Decimal(str(amount))).quantize(Decimal('0.01'))
+    elif _fx_close(doc, txn_left, doc_left):
+        # Faktura walutowa zapłacona po kursie banku: cały przelew jest jej
+        # zapłatą, a różnica to kurs — nie reszta czekająca na inny dokument.
+        applied = txn_left
     else:
         applied = min(txn_left, doc_left) if doc_left > 0 else txn_left
     if applied <= 0:

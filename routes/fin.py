@@ -29,7 +29,8 @@ from models.settings import get_setting
 from database import get_db
 from services.fakturownia_api import FakturowniaError
 from services.fin_bank import (BANK_LABELS, BankImportError, import_csv, link_payment,
-                               suggest_matches, unlink_payment)
+                               search_documents, suggest_for_rows, suggest_matches,
+                               unlink_payment)
 from services.fin_invoice import FinWriteError
 import models.fin_drive as fin_drive_store
 from services import fin_drive
@@ -497,14 +498,8 @@ def bank_view():
         'search': request.args.get('q', '').strip(),
     }
     rows = fin_bank_store.list_transactions(**filters, limit=300)
-    suggestions = {}
-    if status == 'pending':
-        # Scoring na 300 wierszach to 300 zapytań — na kolejce do zatwierdzenia
-        # ma sens, na całej historii już nie.
-        for txn in rows[:60]:
-            found = suggest_matches(txn, limit=3)
-            if found:
-                suggestions[txn['id']] = found
+    # Podpowiedzi tylko na kolejce do zatwierdzenia — na historii nic nie wnoszą.
+    suggestions = suggest_for_rows(rows, limit=3) if status == 'pending' else {}
     links = {}
     for txn in rows:
         if txn['link_count']:
@@ -605,16 +600,20 @@ def bank_ignore(txn_id: int):
 
 @bp.route('/bank/<int:txn_id>/dopasowania')
 def bank_matches(txn_id: int):
-    """Podpowiedzi dla jednej operacji — dla wiersza rozwijanego na liście."""
+    """Dokumenty do ręcznego wskazania dla jednej operacji („Wskaż dokument”).
+    Bez `q` — najbliżsi kandydaci, z `q` — szukanie w całej historii."""
     txn = fin_bank_store.get_transaction(txn_id)
     if not txn:
         return jsonify({'ok': False, 'error': 'Nie znam tej operacji.'}), 404
-    matches = suggest_matches(txn, limit=8, min_score=0)
+    matches = search_documents(txn, request.args.get('q', ''))
     return jsonify({'ok': True, 'matches': [
         {'fakturownia_id': m['fakturownia_id'], 'number': m['number'],
          'counterparty_name': m['counterparty_name'], 'score': m['score'],
          'gross_pln': str(m['gross_pln']), 'amount_left': str(m['amount_left']),
-         'status': m['status'], 'reasons': m['reasons'],
+         'status': m['status'], 'status_label': STATUS_LABELS.get(m['status'], m['status']),
+         'reasons': m['reasons'], 'source': m['source'], 'currency': m['currency'],
+         'url': url_for('fin.document', fakturownia_id=m['fakturownia_id']),
+         'issue_date': m['issue_date'].isoformat() if m['issue_date'] else None,
          'payment_to': m['payment_to'].isoformat() if m['payment_to'] else None}
         for m in matches]})
 

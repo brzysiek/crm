@@ -3985,6 +3985,8 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .fin-fluxa .fin-drive-grid label { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; color: var(--text-muted); }
 .fin-fluxa .fin-drive-grid .fin-drive-wide { grid-column: span 2; }
 .fin-fluxa .fin-drive-grid .filter-input, .fin-fluxa .fin-drive-grid .filter-select { width: 100%; }
+.fin-fluxa .fin-pick { margin-top: .4rem; min-width: 320px; }
+.fin-fluxa .fin-pick .filter-input { width: 100%; margin-bottom: .4rem; }
 .fin-fluxa .fin-match-row {
   display: grid; grid-template-columns: auto auto auto; align-items: baseline;
   gap: .3rem .5rem; margin: .35rem 0 0; padding: .3rem .45rem;
