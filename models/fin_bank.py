@@ -51,9 +51,15 @@ def get_transaction(txn_id: int) -> dict | None:
 
 
 def list_transactions(status: str = '', bank: str = '', search: str = '',
-                      month: str = '', direction: str = '',
+                      month: str = '', direction: str = '', category: str = '',
                       sort: str = 'booked_date', limit: int = 200) -> list[dict]:
+    """`category`: identyfikator kategorii albo 'none' — operacje bez kategorii."""
     where, params = ['1=1'], []
+    if category == 'none':
+        where.append('t.category_id IS NULL')
+    elif str(category).isdigit():
+        where.append('t.category_id = %s')
+        params.append(int(category))
     if status:
         where.append('t.status = %s')
         params.append(status)
@@ -72,9 +78,10 @@ def list_transactions(status: str = '', bank: str = '', search: str = '',
         params += [f'%{search}%'] * 2
     order = TXN_SORTS.get(sort, 'booked_date')
     with get_db().cursor() as cur:
-        cur.execute(f"""SELECT t.*, COUNT(l.id) AS link_count
+        cur.execute(f"""SELECT t.*, COUNT(l.id) AS link_count, c.name AS category_name
                         FROM fin_bank_transactions t
                         LEFT JOIN fin_payment_links l ON l.transaction_id = t.id
+                        LEFT JOIN fin_categories c ON c.id = t.category_id
                         WHERE {' AND '.join(where)}
                         GROUP BY t.id
                         ORDER BY t.{order} DESC, t.id DESC LIMIT %s""",
@@ -191,6 +198,18 @@ def refresh_status(txn_id: int) -> str:
         cur.execute("UPDATE fin_bank_transactions SET matched_amount = %s, status = %s WHERE id = %s",
                     (applied, status, int(txn_id)))
     return status
+
+
+def set_category_many(txn_ids: list[int], category_id: int | None) -> int:
+    """Kategoria operacji — jej własna, niezależna od kategorii dokumentu.
+    `None` zdejmuje kategorię."""
+    ids = [int(i) for i in txn_ids]
+    if not ids:
+        return 0
+    with get_db().cursor() as cur:
+        cur.execute(f"""UPDATE fin_bank_transactions SET category_id = %s
+                        WHERE id IN ({', '.join(['%s'] * len(ids))})""", [category_id] + ids)
+    return len(ids)
 
 
 def ignore_many(txn_ids: list[int]) -> int:

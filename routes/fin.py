@@ -523,8 +523,10 @@ def bank_view():
     status = request.args.get('status', 'pending')
     if status not in ('', 'all', *BANK_STATUS_LABELS):
         status = 'pending'
+    category = request.args.get('category', '')
     filters = {
         'status': '' if status in ('', 'all') else status,
+        'category': category if category == 'none' or category.isdigit() else '',
         'bank': request.args.get('bank', ''),
         'month': request.args.get('month', '')[:7],
         'direction': request.args.get('direction', ''),
@@ -551,6 +553,7 @@ def bank_view():
         pending_transfers=fin_bank_store.count_by_status().get('pending', 0),
         open_documents=_open_documents_count(),
         months=fin_bank_store.months(),
+        categories=list_categories(),
         banks=fin_bank_store.banks(),
         bank_labels=BANK_LABELS,
         status_labels=BANK_STATUS_LABELS,
@@ -634,6 +637,24 @@ def bank_ignore(txn_id: int):
     get_db().commit()
     flash('Operacja pominięta — nie będzie już w kolejce.' if ignored
           else 'Operacja wróciła do kolejki.', 'success')
+    return redirect(request.form.get('back') or url_for('fin.bank_view'))
+
+
+@bp.route('/bank/kategoria', methods=['POST'])
+def bank_assign_category():
+    """Hurtowa kategoria operacji z wyciągu."""
+    ids = [int(v) for v in request.form.getlist('txn_id') if v.isdigit()]
+    raw_category = request.form.get('category_id', '')
+    if not ids:
+        flash('Nie zaznaczono żadnej operacji.', 'error')
+    elif raw_category == 'none' or raw_category.isdigit():
+        category_id = int(raw_category) if raw_category.isdigit() else None
+        count = fin_bank_store.set_category_many(ids, category_id)
+        get_db().commit()
+        flash(f'Przypisano kategorię do {count} operacji.' if category_id
+              else f'Usunięto kategorię z {count} operacji.', 'success')
+    else:
+        flash('Nie wybrano kategorii.', 'error')
     return redirect(request.form.get('back') or url_for('fin.bank_view'))
 
 

@@ -60,6 +60,13 @@
       <option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m|month_pl }}</option>
       {% endfor %}
     </select>
+    <select name="category" class="filter-select" onchange="this.form.submit()">
+      <option value="">wszystkie kategorie</option>
+      <option value="none" {{ 'selected' if filters.category == 'none' }}>bez kategorii</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {{ 'selected' if filters.category == c.id|string }}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
     {% if banks|length > 1 %}
     <select name="bank" class="filter-select" onchange="this.form.submit()">
       <option value="">wszystkie banki</option>
@@ -82,20 +89,27 @@
 </p>
 {% else %}
 
-{# Hurtowe „Pomiń”: formularz stoi przed tabelą, a pola wyboru wskazują na niego
+{# Akcje hurtowe: formularz stoi przed tabelą, a pola wyboru wskazują na niego
    atrybutem `form` — w wierszach są już własne formularze powiązań. #}
-{% set selectable = rows|selectattr('status', 'equalto', 'pending')|list|length > 0 %}
-{% if selectable %}
-<form method="post" action="{{ url_for('fin.bank_ignore_many') }}" id="bulk-ignore" class="fin-bulk-bar">
+<form method="post" action="{{ url_for('fin.bank_assign_category') }}" id="bulk-form" class="fin-bulk-bar">
   <input type="hidden" name="back" value="{{ request.full_path }}">
   <label class="filter-check">
     <input type="checkbox" id="check-all"> zaznacz wszystkie
   </label>
   <span class="text-muted small" id="check-count"></span>
-  <button type="submit" class="btn btn-primary btn-sm"
-          title="Nie są zapłatą faktury (ZUS, podatek, przelew własny, opłaty bankowe…)">Pomiń zaznaczone</button>
+  <select name="category_id" class="filter-select">
+    <option value="">Kategoria…</option>
+    {% for c in categories %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+    {% endfor %}
+    <option value="none">— usuń kategorię —</option>
+  </select>
+  <button type="submit" class="btn btn-primary btn-sm">Przypisz kategorię zaznaczonym</button>
+  {% if rows|selectattr('status', 'equalto', 'pending')|list %}
+  <button type="submit" class="btn btn-outline btn-sm" formaction="{{ url_for('fin.bank_ignore_many') }}"
+          title="Nie są zapłatą faktury (ZUS, podatek, przelew własny, opłaty bankowe…). Dotyczy operacji czekających na dopasowanie.">Pomiń zaznaczone</button>
+  {% endif %}
 </form>
-{% endif %}
 
 <div class="table-wrapper">
   <table class="data-table">
@@ -114,9 +128,7 @@
       {% for txn in rows %}
       <tr>
         <td class="col-checkbox">
-          {% if txn.status == 'pending' %}
-          <input type="checkbox" name="txn_id" value="{{ txn.id }}" class="txn-check" form="bulk-ignore">
-          {% endif %}
+          <input type="checkbox" name="txn_id" value="{{ txn.id }}" class="txn-check" form="bulk-form">
         </td>
         <td class="nowrap">{{ txn.booked_date|ddmmyyyy }}
           <div class="text-muted small">{{ bank_labels.get(txn.bank, txn.bank) }}</div>
@@ -124,6 +136,7 @@
         <td>
           <strong>{{ txn.counterparty_name or '—' }}</strong>
           <div class="text-muted small">{{ txn.title }}</div>
+          {% if txn.category_name %}<span class="badge badge-gray">{{ txn.category_name }}</span>{% endif %}
         </td>
         <td class="text-right nowrap fin-bank-amount {{ 'is-out' if txn.amount < 0 }}">
           {{ money(txn.amount) }} {{ txn.currency }}

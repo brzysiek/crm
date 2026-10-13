@@ -19,8 +19,15 @@
   {% include 'fin/_settle_fields.html' %}
   <button type="submit" class="btn btn-primary btn-sm">Rozlicz zaznaczone bez przelewu</button>
 </div>
-{# Kategoria dla tych samych zaznaczonych — ten sam formularz, inny adres. #}
+{% endif %}
+{# Kategoria dla zaznaczonych — ten sam formularz, inny adres; także na liście rozliczonych. #}
 <div class="fin-bulk-bar">
+  {% if settle_mode == 'settled' %}
+  <label class="filter-check">
+    <input type="checkbox" id="check-all"> zaznacz wszystkie
+  </label>
+  <span class="text-muted small" id="check-count"></span>
+  {% endif %}
   <select name="category_id" class="filter-select">
     <option value="">Kategoria…</option>
     {% for c in categories %}
@@ -28,10 +35,9 @@
     {% endfor %}
     <option value="none">— usuń kategorię —</option>
   </select>
-  <button type="submit" class="btn btn-outline btn-sm" formnovalidate
+  <button type="submit" class="btn {{ 'btn-primary' if settle_mode == 'settled' else 'btn-outline' }} btn-sm" formnovalidate
           formaction="{{ url_for('fin.assign_category') }}">Przypisz kategorię zaznaczonym</button>
 </div>
-{% endif %}
 </form>
 {% else %}
 <form method="post" action="{{ url_for('fin.assign_category') }}" id="bulk-form">
@@ -75,9 +81,7 @@
       {% for r in rows %}
       <tr class="{% if r.status == 'paid' %}row-paid{% elif r.payment_to and r.payment_to < today_date %}row-unpaid{% endif %}">
         <td class="col-checkbox">
-          {% if settle_mode != 'settled' %}
           <input type="checkbox" name="doc_id" value="{{ r.fakturownia_id }}" class="doc-check" form="bulk-form">
-          {% endif %}
         </td>
         <td class="nowrap">{{ r.issue_date|ddmmyyyy }}</td>
         <td class="nowrap">
