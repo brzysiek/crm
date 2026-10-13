@@ -82,10 +82,26 @@
 </p>
 {% else %}
 
+{# Hurtowe „Pomiń”: formularz stoi przed tabelą, a pola wyboru wskazują na niego
+   atrybutem `form` — w wierszach są już własne formularze powiązań. #}
+{% set selectable = rows|selectattr('status', 'equalto', 'pending')|list|length > 0 %}
+{% if selectable %}
+<form method="post" action="{{ url_for('fin.bank_ignore_many') }}" id="bulk-ignore" class="fin-bulk-bar">
+  <input type="hidden" name="back" value="{{ request.full_path }}">
+  <label class="filter-check">
+    <input type="checkbox" id="check-all"> zaznacz wszystkie
+  </label>
+  <span class="text-muted small" id="check-count"></span>
+  <button type="submit" class="btn btn-primary btn-sm"
+          title="Nie są zapłatą faktury (ZUS, podatek, przelew własny, opłaty bankowe…)">Pomiń zaznaczone</button>
+</form>
+{% endif %}
+
 <div class="table-wrapper">
   <table class="data-table">
     <thead>
       <tr>
+        <th class="col-checkbox"></th>
         <th>Data</th>
         <th>Kontrahent i tytuł</th>
         <th class="text-right">Kwota</th>
@@ -97,6 +113,11 @@
     <tbody>
       {% for txn in rows %}
       <tr>
+        <td class="col-checkbox">
+          {% if txn.status == 'pending' %}
+          <input type="checkbox" name="txn_id" value="{{ txn.id }}" class="txn-check" form="bulk-ignore">
+          {% endif %}
+        </td>
         <td class="nowrap">{{ txn.booked_date|ddmmyyyy }}
           <div class="text-muted small">{{ bank_labels.get(txn.bank, txn.bank) }}</div>
         </td>
@@ -186,7 +207,7 @@
     <tfoot class="fin-totals">
       {% for t in totals %}
       <tr>
-        <th colspan="2" class="text-right">
+        <th colspan="3" class="text-right">
           {% if loop.first %}Razem ({{ rows|length }}{{ ' pokazanych' if rows|length >= 300 }}){% endif %}
           <span class="text-muted small">wpływy {{ money(t['in']) }} · wypływy {{ money(t['out']) }}</span>
         </th>
@@ -209,6 +230,26 @@
   {% endif %}
 </p>
 {% endif %}
+<script>
+/* Zaznaczanie hurtem — pomijanie opłat bankowych i przelewów własnych po jednym nie ma sensu. */
+(function () {
+  var all = document.getElementById('check-all');
+  if (!all) return;
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.txn-check'));
+  var counter = document.getElementById('check-count');
+  function refresh() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    counter.textContent = n ? n + ' zaznaczonych' : '';
+    all.checked = n === boxes.length && n > 0;
+  }
+  all.addEventListener('change', function () {
+    boxes.forEach(function (b) { b.checked = all.checked; });
+    refresh();
+  });
+  boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+  refresh();
+})();
+</script>
 <script>
 /* „Wskaż dokument”: ręczne powiązanie, gdy podpowiedź nie trafiła — np. faktura
    walutowa zapłacona kartą albo przelew zbiorczy. Lista ładuje się dopiero po

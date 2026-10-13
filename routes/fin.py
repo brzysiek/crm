@@ -637,6 +637,18 @@ def bank_ignore(txn_id: int):
     return redirect(request.form.get('back') or url_for('fin.bank_view'))
 
 
+@bp.route('/bank/pomin', methods=['POST'])
+def bank_ignore_many():
+    ids = [int(v) for v in request.form.getlist('txn_id') if v.isdigit()]
+    if not ids:
+        flash('Nie zaznaczono żadnej operacji.', 'error')
+    else:
+        count = fin_bank_store.ignore_many(ids)
+        get_db().commit()
+        flash(f'Pominięto {count} operacji — znajdziesz je w „Pominięte”.', 'success')
+    return redirect(request.form.get('back') or url_for('fin.bank_view'))
+
+
 @bp.route('/bank/<int:txn_id>/dopasowania')
 def bank_matches(txn_id: int):
     """Dokumenty do ręcznego wskazania dla jednej operacji („Wskaż dokument”).
@@ -742,7 +754,7 @@ def settlements_view():
                                            'month': filters['month']})
                      for key in SETTLEMENT_VIEWS},
         months=available_months(),
-        categories=[],
+        categories=list_categories(kind='income' if filters['kind'] == 'income' else None),
         kind_labels=KIND_LABELS,
         status_labels=STATUS_LABELS,
         gov_labels=GOV_STATUS_LABELS,

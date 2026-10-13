@@ -19,6 +19,18 @@
   {% include 'fin/_settle_fields.html' %}
   <button type="submit" class="btn btn-primary btn-sm">Rozlicz zaznaczone bez przelewu</button>
 </div>
+{# Kategoria dla tych samych zaznaczonych — ten sam formularz, inny adres. #}
+<div class="fin-bulk-bar">
+  <select name="category_id" class="filter-select">
+    <option value="">Kategoria…</option>
+    {% for c in categories %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+    {% endfor %}
+    <option value="none">— usuń kategorię —</option>
+  </select>
+  <button type="submit" class="btn btn-outline btn-sm" formnovalidate
+          formaction="{{ url_for('fin.assign_category') }}">Przypisz kategorię zaznaczonym</button>
+</div>
 {% endif %}
 </form>
 {% else %}

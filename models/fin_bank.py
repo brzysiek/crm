@@ -193,6 +193,18 @@ def refresh_status(txn_id: int) -> str:
     return status
 
 
+def ignore_many(txn_ids: list[int]) -> int:
+    """Hurtowe „Pomiń”. Tylko operacje czekające na dopasowanie — powiązanych
+    (w całości lub części) nie ruszamy, bo zgubiłyby swój stan."""
+    ids = [int(i) for i in txn_ids]
+    if not ids:
+        return 0
+    with get_db().cursor() as cur:
+        cur.execute(f"""UPDATE fin_bank_transactions SET status = 'ignored'
+                        WHERE status = 'pending' AND id IN ({', '.join(['%s'] * len(ids))})""", ids)
+        return cur.rowcount
+
+
 def set_ignored(txn_id: int, ignored: bool = True) -> str:
     with get_db().cursor() as cur:
         cur.execute("UPDATE fin_bank_transactions SET status = %s WHERE id = %s",
