@@ -1,6 +1,6 @@
 {% extends 'fin/_layout.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Dokumenty{% endblock %}
+{% block title %}Fakturownia{% endblock %}
 
 {% macro sort_link(key, label) %}
   {% set next_dir = 'asc' if sort == key and direction == 'desc' else 'desc' %}
@@ -16,7 +16,7 @@
 
 {% block fin_content %}
 <div class="page-header">
-  <h1>Dokumenty</h1>
+  <h1>Fakturownia</h1>
   <div class="header-actions">
     <span class="text-muted">{{ total }} dokumentów</span>
   </div>
