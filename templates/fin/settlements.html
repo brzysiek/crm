@@ -1,0 +1,206 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Rozliczenia{% endblock %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Rozliczenia</h1>
+  <div class="header-actions">
+    <span class="text-muted">{{ total }} dokumentów</span>
+  </div>
+</div>
+
+{% set settle_tab = 'documents' %}{% set pending_transfers = counts.pending %}{% set open_documents = counts.open %}
+{% include 'fin/_settle_tabs.html' %}
+
+<p class="text-muted small">
+  Dokumenty, do których nie ma operacji na wyciągu. Jeśli przelew był — znajdź go i powiąż.
+  Jeśli go nie było (gotówka, karta prywatna, kompensata) albo poszedł z konta, którego
+  wyciągów tu nie ma — rozlicz dokument bez przelewu, z powodem.
+</p>
+
+<div class="filter-bar">
+  {% for key, label in views.items() %}
+  <a href="{{ url_for('fin.settlements_view', view=key) }}"
+     class="btn btn-sm {{ 'btn-primary' if view == key else 'btn-outline' }}">
+    {{ label }}{% if counts[key] %} ({{ counts[key] }}){% endif %}
+  </a>
+  {% endfor %}
+
+  <form method="get" class="filter-bar" style="margin:0 0 0 auto">
+    <input type="hidden" name="view" value="{{ view }}">
+    <select name="kind" class="filter-select" onchange="this.form.submit()">
+      <option value="">koszty i przychody</option>
+      <option value="cost" {{ 'selected' if filters.kind == 'cost' }}>tylko koszty</option>
+      <option value="income" {{ 'selected' if filters.kind == 'income' }}>tylko przychody</option>
+    </select>
+    <select name="payment" class="filter-select" onchange="this.form.submit()">
+      <option value="">opłacone i nieopłacone</option>
+      <option value="paid" {{ 'selected' if filters.payment == 'paid' }}>opłacone</option>
+      <option value="unpaid" {{ 'selected' if filters.payment == 'unpaid' }}>nieopłacone</option>
+    </select>
+    <select name="source" class="filter-select" onchange="this.form.submit()">
+      <option value="">Fakturownia i Dysk</option>
+      <option value="fakturownia" {{ 'selected' if filters.source == 'fakturownia' }}>Fakturownia</option>
+      <option value="gdrive" {{ 'selected' if filters.source == 'gdrive' }}>Dysk</option>
+    </select>
+    <select name="month" class="filter-select" onchange="this.form.submit()">
+      <option value="">wszystkie miesiące</option>
+      {% for m in months %}
+        <option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m|month_pl }}</option>
+      {% endfor %}
+    </select>
+    {% if first_statement %}
+    <label class="filter-check" title="Wystawione przed pierwszą operacją na wgranych wyciągach — przelewu tu nie znajdą.">
+      <input type="checkbox" name="before_statements" value="1" onchange="this.form.submit()"
+             {{ 'checked' if filters.before_statements }}>
+      sprzed wyciągów ({{ first_statement|ddmmyyyy }})
+    </label>
+    {% endif %}
+    <input type="search" name="search" value="{{ filters.search }}" placeholder="Numer, kontrahent, NIP…"
+           class="filter-input">
+    <button type="submit" class="btn btn-outline btn-sm">Filtruj</button>
+  </form>
+</div>
+
+{% set settle_mode = view %}
+{% include 'fin/_documents_table.html' %}
+
+{% if total > rows|length %}
+<p class="text-muted small">Pokazuję {{ rows|length }} z {{ total }} — zawęź filtrami, żeby zobaczyć resztę.</p>
+{% endif %}
+
+{% if view == 'open' %}
+<p class="text-muted small">
+  „Powiąż” działa jak w kolejce operacji: zapisuje powiązanie i dopisuje zapłatę.
+  „Bez przelewu” zamyka dokument decyzją z powodem; nieopłaconemu dopisuje pełną zapłatę
+  (w Fakturowni, a dla dokumentu z Dysku — w CRM), chyba że zaznaczysz inaczej.
+  Opłaconych nie ruszam. Decyzję można cofnąć na liście „Rozliczone bez przelewu”.
+</p>
+
+{# Formularz pojedynczego rozliczenia stoi poza tabelą; pola z rozwiniętego
+   wiersza wskazują na niego atrybutem `form`. #}
+<form method="post" action="{{ url_for('fin.settle_documents') }}" id="settle-one">
+  <input type="hidden" name="back" value="{{ request.full_path }}">
+  <input type="hidden" name="doc_id" value="">
+</form>
+<template id="settle-panel">
+  <div class="fin-bulk-bar">
+    {% set form_id = 'settle-one' %}
+    {% include 'fin/_settle_fields.html' %}
+    <button type="submit" class="btn btn-primary btn-sm" form="settle-one">Rozlicz bez przelewu</button>
+  </div>
+</template>
+
+<script>
+/* Wiersz pod dokumentem: „Znajdź przelew” (lista operacji z wyciągu, ładowana
+   po kliknięciu) albo „Bez przelewu” (decyzja z powodem). Naraz jeden. */
+(function () {
+  var back = {{ request.full_path|tojson }};
+  var one = document.getElementById('settle-one');
+  var template = document.getElementById('settle-panel');
+  var open = null;                       // {row, key}
+
+  function el(tag, text, cls) {
+    var node = document.createElement(tag);
+    if (text != null) node.textContent = text;
+    if (cls) node.className = cls;
+    return node;
+  }
+  function hidden(name, value) {
+    var input = el('input');
+    input.type = 'hidden'; input.name = name; input.value = value;
+    return input;
+  }
+  function money(value) { return Number(value).toFixed(2); }
+
+  function panelFor(button, key) {
+    var row = button.closest('tr');
+    var same = open && open.key === key;
+    if (open) { open.row.remove(); open = null; }
+    if (same) return null;
+    var panelRow = el('tr', null, 'fin-drive-edit');
+    var cell = el('td');
+    cell.colSpan = row.children.length;
+    panelRow.appendChild(cell);
+    row.after(panelRow);
+    open = {row: panelRow, key: key};
+    return cell;
+  }
+
+  function render(list, docId, transfers) {
+    list.innerHTML = '';
+    if (!transfers.length) {
+      list.appendChild(el('div', 'Nie widzę pasującej operacji na wyciągach — spróbuj innej frazy ' +
+                                 'albo rozlicz dokument bez przelewu.', 'text-muted small'));
+      return;
+    }
+    transfers.forEach(function (t) {
+      var form = el('form', null, 'fin-match-row');
+      form.method = 'post';
+      form.action = t.link_url;
+      form.appendChild(hidden('fakturownia_id', docId));
+      form.appendChild(hidden('back', back));
+      form.appendChild(el('span', t.booked_date + ' · ' + t.bank, 'nowrap'));
+      var left = Number(t.amount_left);
+      var info = (t.counterparty_name || '—') + ' · ' + (t.title || '') + ' · ' +
+                 money(t.amount) + ' ' + t.currency;
+      if (Math.abs(Math.abs(Number(t.amount)) - left) > 0.02) info += ' (wolne ' + money(left) + ')';
+      form.appendChild(el('span', info, 'text-muted small'));
+      var btn = el('button', 'Powiąż', 'btn btn-outline btn-sm');
+      btn.type = 'submit';
+      form.appendChild(btn);
+      if (t.reasons.length) form.appendChild(el('div', t.reasons.join(' · '), 'fin-match-why'));
+      list.appendChild(form);
+    });
+  }
+
+  function load(url, list, docId, query) {
+    list.innerHTML = '';
+    list.appendChild(el('div', 'Szukam…', 'text-muted small'));
+    fetch(url + '?q=' + encodeURIComponent(query))
+      .then(function (r) { return r.json(); })
+      .then(function (data) { render(list, docId, data.transfers || []); })
+      .catch(function () {
+        list.innerHTML = '';
+        list.appendChild(el('div', 'Nie udało się wczytać operacji.', 'text-muted small'));
+      });
+  }
+
+  document.querySelectorAll('.fin-find-transfer').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var cell = panelFor(button, 'find-' + button.dataset.docId);
+      if (!cell) return;
+      var box = el('div', null, 'fin-pick');
+      var input = el('input', null, 'filter-input');
+      input.type = 'search';
+      input.placeholder = 'Tytuł, kontrahent albo kwota…';
+      var list = el('div');
+      var timer;
+      input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          load(button.dataset.url, list, button.dataset.docId, input.value.trim());
+        }, 300);
+      });
+      box.appendChild(input);
+      box.appendChild(list);
+      cell.appendChild(box);
+      load(button.dataset.url, list, button.dataset.docId, '');
+      input.focus();
+    });
+  });
+
+  document.querySelectorAll('.fin-settle-toggle').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var cell = panelFor(button, 'settle-' + button.dataset.docId);
+      if (!cell) return;
+      one.elements.doc_id.value = button.dataset.docId;
+      cell.appendChild(template.content.cloneNode(true));
+      cell.querySelector('select').focus();
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

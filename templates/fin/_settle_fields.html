@@ -1,0 +1,15 @@
+{# Pola decyzji „rozlicz bez przelewu”. `form_id` przypina je do formularza
+   stojącego poza tabelą — pola w wierszu nie mogą siedzieć w formularzu hurtowym. #}
+{% set fa = ('form="' ~ form_id ~ '"')|safe if form_id else '' %}
+<select name="reason" class="filter-select" required {{ fa }}>
+  <option value="">Powód…</option>
+  {% for key, label in settle_labels.items() %}
+    <option value="{{ key }}">{{ label }}</option>
+  {% endfor %}
+</select>
+<input type="date" name="settled_date" class="filter-input" {{ fa }}
+       title="Data rozliczenia. Pusta: data zapłaty dokumentu, a dla nieopłaconego — dziś.">
+<input type="text" name="note" class="filter-input" maxlength="500" placeholder="Notatka (opcjonalnie)" {{ fa }}>
+<label class="filter-check" title="Dotyczy dokumentów nieopłaconych. Opłaconych nie ruszam.">
+  <input type="checkbox" name="push" value="0" {{ fa }}> bez dopisywania zapłaty
+</label>

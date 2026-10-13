@@ -88,6 +88,13 @@ def count_by_status() -> dict:
         return {r['status']: r['n'] for r in cur.fetchall()}
 
 
+def first_booked_date():
+    """Początek wgranych wyciągów — dokumenty sprzed tej daty nie znajdą tu przelewu."""
+    with get_db().cursor() as cur:
+        cur.execute("SELECT MIN(booked_date) AS first FROM fin_bank_transactions")
+        return cur.fetchone()['first']
+
+
 def banks() -> list[str]:
     with get_db().cursor() as cur:
         cur.execute("SELECT DISTINCT bank FROM fin_bank_transactions ORDER BY bank")

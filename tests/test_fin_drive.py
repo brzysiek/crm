@@ -243,6 +243,14 @@ class UnlinkTest(unittest.TestCase):
         mock.patch.object(fin_bank.fin_bank, 'refresh_status', return_value='new').start()
         mock.patch.object(fin_bank.fin_bank, 'applied_to_document', return_value=Decimal('100.00')).start()
         self.paid = mock.patch.object(fin_invoice, 'mark_paid').start()
+        self.settlement = mock.patch('models.fin_settlement.get', return_value=None).start()
+
+    def test_settled_drive_document_keeps_its_payment(self):
+        """Rozliczony bez przelewu: o zapłacie mówi tamta decyzja, nie suma powiązań."""
+        self.settlement.return_value = {'reason': 'cash'}
+        out = fin_bank.unlink_payment(5, DRIVE_DOC['fakturownia_id'])
+        self.paid.assert_not_called()
+        self.assertFalse(out['payment_reverted'])
 
     def test_drive_document_payment_follows_the_remaining_links(self):
         out = fin_bank.unlink_payment(5, DRIVE_DOC['fakturownia_id'])

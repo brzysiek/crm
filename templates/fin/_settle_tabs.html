@@ -1,0 +1,10 @@
+{# Dwie kolejki rozliczeń: operacja szuka dokumentu albo dokument szuka operacji.
+   Kontekst: settle_tab ('transfers' | 'documents'), pending_transfers, open_documents. #}
+<div class="fin-settle-tabs">
+  <a href="{{ url_for('fin.bank_view') }}" class="{{ 'is-active' if settle_tab == 'transfers' }}">
+    Operacje bez dokumentu{% if pending_transfers %} <span class="badge badge-gray">{{ pending_transfers }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('fin.settlements_view') }}" class="{{ 'is-active' if settle_tab == 'documents' }}">
+    Dokumenty bez przelewu{% if open_documents %} <span class="badge badge-gray">{{ open_documents }}</span>{% endif %}
+  </a>
+</div>

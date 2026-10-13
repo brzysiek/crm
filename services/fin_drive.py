@@ -343,7 +343,7 @@ def return_to_queue(fakturownia_id: int, actor: str = '') -> dict:
     if not row:
         raise FinDriveError('To nie jest dokument z Dysku.')
     if fin_bank.links_for_document(fakturownia_id):
-        raise FinDriveError('Dokument jest powiązany z przelewem — najpierw odwiąż go w zakładce Bank.')
+        raise FinDriveError('Dokument jest powiązany z przelewem — najpierw odwiąż go w zakładce Rozliczenia.')
     db = get_db()
     try:
         fin_document.delete_document(fakturownia_id)

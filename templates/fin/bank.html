@@ -1,12 +1,12 @@
 {% extends 'fin/_layout.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Bank{% endblock %}
+{% block title %}Rozliczenia{% endblock %}
 
 {% macro money(value) %}{{ '%.2f'|format(value|float) }}{% endmacro %}
 
 {% block fin_content %}
 <div class="page-header">
-  <h1>Bank</h1>
+  <h1>Rozliczenia</h1>
   <div class="header-actions">
     <form method="post" action="{{ url_for('fin.bank_import') }}" enctype="multipart/form-data"
           class="filter-bar" style="margin:0">
@@ -22,6 +22,9 @@
   obawy o duplikaty: każda operacja ma własny identyfikator, a wykonane
   dopasowania zostają nietknięte.
 </p>
+
+{% set settle_tab = 'transfers' %}{% set pending_transfers = counts.pending %}
+{% include 'fin/_settle_tabs.html' %}
 
 {# ── Kubełki stanu ────────────────────────────────────────────────────── #}
 <div class="filter-bar">

@@ -2,8 +2,26 @@
    wyglądać i działać tak samo. Kontekst: rows, categories, kind_labels,
    status_labels, gov_labels, non_financial, today_date; `sortable` włącza
    sortowanie nagłówkami (wymaga makra sort_link), `drive_table` zamienia
-   kolumnę KSeF na link do PDF-a — dokument z Dysku do KSeF nie trafia. #}
+   kolumnę KSeF na link do PDF-a — dokument z Dysku do KSeF nie trafia.
+   `settle_mode` ('open' | 'settled') robi z niej kolejkę rozliczeń: akcja
+   hurtowa rozlicza bez przelewu, a ostatnia kolumna to rozliczenie dokumentu
+   (wymaga `transfers` i `settle_labels`). #}
 {% macro head(key, label) %}{% if sortable %}{{ sort_link(key, label) }}{% else %}{{ label }}{% endif %}{% endmacro %}
+{% if settle_mode %}
+<form method="post" action="{{ url_for('fin.settle_documents') }}" id="bulk-form">
+<input type="hidden" name="back" value="{{ request.full_path }}">
+{% if settle_mode == 'open' %}
+<div class="fin-bulk-bar">
+  <label class="filter-check">
+    <input type="checkbox" id="check-all"> zaznacz wszystkie
+  </label>
+  <span class="text-muted small" id="check-count"></span>
+  {% include 'fin/_settle_fields.html' %}
+  <button type="submit" class="btn btn-primary btn-sm">Rozlicz zaznaczone bez przelewu</button>
+</div>
+{% endif %}
+</form>
+{% else %}
 <form method="post" action="{{ url_for('fin.assign_category') }}" id="bulk-form">
 <input type="hidden" name="back" value="{{ request.full_path }}">
 
@@ -22,6 +40,8 @@
   <button type="submit" class="btn btn-primary btn-sm">Przypisz zaznaczonym</button>
 </div>
 
+{% endif %}
+
 <div class="table-wrapper">
   <table class="data-table">
     <thead>
@@ -36,14 +56,16 @@
         <th class="text-right">{{ head('gross', 'Brutto') }}</th>
         <th>{{ head('payment_to', 'Termin') }}</th>
         <th>Stan</th>
-        <th>{{ 'PDF' if drive_table else 'KSeF' }}</th>
+        <th>{{ 'Rozliczenie' if settle_mode else 'PDF' if drive_table else 'KSeF' }}</th>
       </tr>
     </thead>
     <tbody>
       {% for r in rows %}
       <tr class="{% if r.status == 'paid' %}row-paid{% elif r.payment_to and r.payment_to < today_date %}row-unpaid{% endif %}">
         <td class="col-checkbox">
-          <input type="checkbox" name="doc_id" value="{{ r.fakturownia_id }}" class="doc-check">
+          {% if settle_mode != 'settled' %}
+          <input type="checkbox" name="doc_id" value="{{ r.fakturownia_id }}" class="doc-check" form="bulk-form">
+          {% endif %}
         </td>
         <td class="nowrap">{{ r.issue_date|ddmmyyyy }}</td>
         <td class="nowrap">
@@ -83,7 +105,43 @@
           {% if r.status == 'partial' %}
             <div class="text-muted small">wpłacono {{ r.paid_amount|pln }}</div>
           {% endif %}
+          {% if r.settlement_reason and not settle_mode %}
+            <div class="text-muted small" title="Rozliczony bez przelewu{% if r.settlement_note %}: {{ r.settlement_note }}{% endif %}">
+              bez przelewu: {{ settle_labels.get(r.settlement_reason, r.settlement_reason) }}</div>
+          {% endif %}
         </td>
+        {% if settle_mode == 'settled' %}
+        <td>
+          <span class="badge badge-outline">{{ settle_labels.get(r.settlement_reason, r.settlement_reason) }}</span>
+          <span class="text-muted small">{{ r.settlement_date|ddmmyyyy }}</span>
+          {% if r.settlement_note %}<div class="text-muted small">{{ r.settlement_note }}</div>{% endif %}
+          <form method="post" action="{{ url_for('fin.unsettle_document', fakturownia_id=r.fakturownia_id) }}">
+            <input type="hidden" name="back" value="{{ request.full_path }}">
+            <button type="submit" class="link-danger small">cofnij</button>
+          </form>
+        </td>
+        {% elif settle_mode %}
+        <td class="fin-settle-cell">
+          {% set t = transfers.get(r.fakturownia_id) %}
+          {% if t %}
+          <form method="post" action="{{ url_for('fin.bank_link', txn_id=t.transaction_id) }}" class="fin-match-row">
+            <input type="hidden" name="fakturownia_id" value="{{ r.fakturownia_id }}">
+            <input type="hidden" name="back" value="{{ request.full_path }}">
+            <span class="nowrap">{{ t.booked_date|ddmmyyyy }}</span>
+            <span class="text-muted small">{{ t.counterparty_name or t.title or '—' }} · {{ '%.2f'|format(t.amount|float) }} {{ t.currency }}</span>
+            <button type="submit" class="btn btn-outline btn-sm">Powiąż</button>
+            <div class="fin-match-why"><span class="badge badge-gray">{{ t.score }}</span>{{ t.reasons|join(' · ') }}</div>
+          </form>
+          {% endif %}
+          <div class="fin-settle-actions">
+            <button type="button" class="btn btn-outline btn-sm fin-find-transfer"
+                    data-doc-id="{{ r.fakturownia_id }}"
+                    data-url="{{ url_for('fin.document_transfers', fakturownia_id=r.fakturownia_id) }}">Znajdź przelew</button>
+            <button type="button" class="btn btn-outline btn-sm fin-settle-toggle"
+                    data-doc-id="{{ r.fakturownia_id }}">Bez przelewu</button>
+          </div>
+        </td>
+        {% else %}
         <td class="nowrap">
           {% if drive_table %}
             <a href="{{ drive_url(r.gdrive_file_id) }}" target="_blank" rel="noopener">otwórz</a>
@@ -95,6 +153,7 @@
             <span class="text-muted">—</span>
           {% endif %}
         </td>
+        {% endif %}
       </tr>
       {% else %}
       <tr><td colspan="11" class="text-muted">Brak dokumentów dla tych filtrów.</td></tr>
@@ -102,7 +161,7 @@
     </tbody>
   </table>
 </div>
-</form>
+{% if not settle_mode %}</form>{% endif %}
 <script>
 // Zaznaczanie hurtem — kategoryzacja 139 dokumentów po jednym nie ma sensu.
 (function () {
@@ -111,7 +170,7 @@
   var counter = document.getElementById('check-count');
   function refresh() {
     var n = boxes.filter(function (b) { return b.checked; }).length;
-    counter.textContent = n ? n + ' zaznaczonych' : '';
+    if (counter) { counter.textContent = n ? n + ' zaznaczonych' : ''; }
     if (all) { all.checked = n === boxes.length && n > 0; }
   }
   if (all) {

@@ -469,6 +469,108 @@ def search_documents(txn: dict, query: str = '', limit: int = 12) -> list[dict]:
     return scored[:max(1, min(int(limit), 30))]
 
 
+# ── od strony dokumentu ──────────────────────────────────────────────────────
+# Ta sama ocena (`score_match`), tylko pytanie odwrócone: nie „który dokument
+# opłaca ta operacja”, a „która operacja opłaciła ten dokument”.
+
+TRANSFER_COLUMNS = """t.id, t.bank, t.booked_date, t.amount, t.currency, t.counterparty_name,
+                      t.title, t.matched_amount, t.status"""
+
+
+def _doc_window(issued) -> tuple:
+    """Lustro `_window`: przelew bywa długo po wystawieniu, rzadko przed."""
+    return issued - timedelta(days=DATE_WINDOW), issued + timedelta(days=DATE_WINDOW * 4)
+
+
+def _open_transfers(date_from=None, date_to=None, is_income=None, query: str = '') -> list[dict]:
+    """Operacje, na których zostało jeszcze coś do powiązania."""
+    where, params = ["t.status IN ('pending', 'partial')"], []
+    if is_income is not None:
+        where.append('t.amount > 0' if is_income else 't.amount < 0')
+    if date_from and date_to:
+        where.append('t.booked_date BETWEEN %s AND %s')
+        params += [date_from, date_to]
+    if query:
+        like = f'%{query}%'
+        clause, extra = '(t.title LIKE %s OR t.counterparty_name LIKE %s', [like, like]
+        try:
+            value = _amount(query)
+        except ValueError:
+            value = None
+        if value:
+            clause += ' OR ABS(t.amount) = %s'
+            extra.append(abs(value))
+        where.append(clause + ')')
+        params += extra
+    with get_db().cursor() as cur:
+        cur.execute(f"""SELECT {TRANSFER_COLUMNS} FROM fin_bank_transactions t
+                        WHERE {' AND '.join(where)}
+                        ORDER BY t.booked_date DESC LIMIT 2000""", params)
+        return [dict(r) for r in cur.fetchall()]
+
+
+def _transfer_result(txn: dict, doc: dict) -> dict:
+    scored = score_match(txn, doc)
+    amount = Decimal(str(txn['amount']))
+    return {
+        'transaction_id': txn['id'],
+        'bank': txn.get('bank'),
+        'booked_date': txn['booked_date'],
+        'counterparty_name': txn.get('counterparty_name'),
+        'title': txn.get('title'),
+        'amount': amount,
+        'amount_left': abs(amount) - Decimal(str(txn.get('matched_amount') or '0')),
+        'currency': txn.get('currency') or 'PLN',
+        'score': scored['score'],
+        'reasons': scored['reasons'],
+    }
+
+
+def search_transfers(doc: dict, query: str = '', limit: int = 12) -> list[dict]:
+    """„Znajdź przelew” dla dokumentu. Bez frazy: najbliższe operacje z okna
+    dat, także te poniżej progu podpowiedzi. Z frazą: tytuł, kontrahent albo
+    kwota w całym wyciągu. Kierunek zawsze zgodny ze stroną dokumentu."""
+    query = (query or '').strip()
+    is_income = bool(doc['is_income'])
+    if query:
+        rows = _open_transfers(is_income=is_income, query=query)
+    elif doc.get('issue_date'):
+        rows = _open_transfers(*_doc_window(doc['issue_date']), is_income=is_income)
+    else:
+        rows = []
+    scored = [_transfer_result(txn, doc) for txn in rows]
+    if not query:
+        scored = [s for s in scored if s['score'] > 0]
+    scored.sort(key=lambda s: -s['score'])
+    return scored[:max(1, min(int(limit), 30))]
+
+
+def suggest_transfers_for_docs(docs: list[dict], min_score: int = 25) -> dict:
+    """Najlepsza operacja dla każdego dokumentu z listy: `{fakturownia_id: operacja}`.
+    Wyciąg pobieramy jednym zapytaniem dla całego zakresu dat."""
+    docs = [d for d in docs if d.get('issue_date')]
+    if not docs:
+        return {}
+    dates = [d['issue_date'] for d in docs]
+    rows = _open_transfers(_doc_window(min(dates))[0], _doc_window(max(dates))[1])
+    for txn in rows:
+        txn['booked_date'] = _booked(txn)
+    out = {}
+    for doc in docs:
+        date_from, date_to = _doc_window(doc['issue_date'])
+        income = bool(doc['is_income'])
+        best = None
+        for txn in rows:
+            if (txn['amount'] > 0) != income or not date_from <= txn['booked_date'] <= date_to:
+                continue
+            found = _transfer_result(txn, doc)
+            if found['score'] >= min_score and (best is None or found['score'] > best['score']):
+                best = found
+        if best:
+            out[doc['fakturownia_id']] = best
+    return out
+
+
 def suggest_for_pending(limit: int = 25, min_score: int = 25, scan: int = 200) -> list[dict]:
     """Kolejka do zatwierdzenia: niedopasowane przelewy z najlepszą podpowiedzią.
 
@@ -503,6 +605,7 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
     `pushed=False` i powód w `push_error`.
     """
     import models.fin_document as fin_document
+    import models.fin_settlement as fin_settlement
     from services import fin_invoice
 
     txn = fin_bank.get_transaction(txn_id)
@@ -556,6 +659,10 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
               'amount_applied': applied, 'transaction_status': status,
               'pushed': False, 'document': None}
 
+    # Dokument rozliczony bez przelewu i opłacony: suma powiązań nie jest jego
+    # całą zapłatą (reszta poszła np. gotówką), więc nie nadpisujemy nią stanu.
+    if push and doc['status'] == 'paid' and fin_settlement.get(fakturownia_id):
+        push = False
     if push:
         total = fin_bank.applied_to_document(fakturownia_id)
         # Powiązanie jest już zapisane, więc odmowa Fakturowni nie jest
@@ -576,6 +683,7 @@ def unlink_payment(txn_id: int, fakturownia_id: int) -> dict:
     zapisu księgowego musi być świadomą decyzją człowieka, nie skutkiem ubocznym
     porządków w kolejce dopasowań. Wyjątek: dokument z Dysku (patrz niżej)."""
     import models.fin_drive as fin_drive
+    import models.fin_settlement as fin_settlement
     from services import fin_invoice
 
     db = get_db()
@@ -589,8 +697,10 @@ def unlink_payment(txn_id: int, fakturownia_id: int) -> dict:
     result = {'removed': removed, 'transaction_status': status, 'payment_reverted': False}
     # Dokument z Dysku żyje tylko w CRM: jego zapłata to dokładnie suma
     # powiązań, więc po odwiązaniu trzeba ją przeliczyć — inaczej zostałby
-    # „opłacony” bez żadnego przelewu.
-    if removed and fin_drive.is_drive_document(fakturownia_id):
+    # „opłacony” bez żadnego przelewu. Chyba że rozliczono go bez przelewu —
+    # wtedy o zapłacie mówi tamta decyzja, nie suma powiązań.
+    if removed and fin_drive.is_drive_document(fakturownia_id) \
+            and not fin_settlement.get(fakturownia_id):
         fin_invoice.mark_paid(int(fakturownia_id), amount=fin_bank.applied_to_document(fakturownia_id),
                               actor='bank')
         result['payment_reverted'] = True

@@ -3981,6 +3981,19 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .fin-fluxa .fin-drive-grid label { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; color: var(--text-muted); }
 .fin-fluxa .fin-drive-grid .fin-drive-wide { grid-column: span 2; }
 .fin-fluxa .fin-drive-grid .filter-input, .fin-fluxa .fin-drive-grid .filter-select { width: 100%; }
+/* Rozliczenia: dwie kolejki pod jednym nagłówkiem. */
+.fin-fluxa .fin-settle-tabs {
+  display: flex; gap: 1.25rem; margin: 0 0 1rem; border-bottom: 1px solid var(--border);
+}
+.fin-fluxa .fin-settle-tabs a {
+  padding: .45rem 0; margin-bottom: -1px; border-bottom: 2px solid transparent;
+  color: var(--text-secondary); font-weight: 600; text-decoration: none;
+}
+.fin-fluxa .fin-settle-tabs a.is-active { color: var(--text-primary); border-bottom-color: var(--primary); }
+.fin-fluxa .fin-settle-cell { min-width: 230px; }
+.fin-fluxa .fin-settle-cell .fin-match-row { margin: 0 0 .35rem; }
+.fin-fluxa .fin-settle-actions { display: flex; gap: .3rem; flex-wrap: wrap; }
+.fin-fluxa .fin-drive-edit .fin-bulk-bar { margin: 0; }
 .fin-fluxa .fin-pick { margin-top: .4rem; min-width: 320px; }
 .fin-fluxa .fin-pick .filter-input { width: 100%; margin-bottom: .4rem; }
 .fin-fluxa .fin-match-row {

@@ -29,10 +29,12 @@ from models.settings import get_setting
 from database import get_db
 from services.fakturownia_api import FakturowniaError
 from services.fin_bank import (BANK_LABELS, BankImportError, import_csv, link_payment,
-                               search_documents, suggest_for_rows, suggest_matches,
-                               unlink_payment)
+                               search_documents, search_transfers, suggest_for_rows,
+                               suggest_matches, suggest_transfers_for_docs, unlink_payment)
 from services.fin_invoice import FinWriteError
 import models.fin_drive as fin_drive_store
+import models.fin_settlement as fin_settlement_store
+from services import fin_settlement
 from services import fin_drive
 from services.fin_drive import FinDriveError
 from services.fin_rules import (FIELD_LABELS, MATCH_FIELDS, MATCH_TYPES, TYPE_LABELS,
@@ -167,6 +169,7 @@ def documents():
         status_labels=STATUS_LABELS,
         gov_labels=GOV_STATUS_LABELS,
         non_financial=NON_FINANCIAL_KINDS,
+        settle_labels=fin_settlement_store.REASONS,
         uncategorized=count_uncategorized(),
         sync=get_sync_state('documents'),
     )
@@ -198,6 +201,9 @@ def document(fakturownia_id: int):
         categories=list_categories(kind='income' if row['is_income'] else 'cost'),
         positions=_positions(row.get('raw_json')),
         payments=fin_bank_store.links_for_document(fakturownia_id),
+        settlement=fin_settlement_store.get(fakturownia_id),
+        settle_labels=fin_settlement_store.REASONS,
+        non_financial=NON_FINANCIAL_KINDS,
         bank_labels=BANK_LABELS,
         fakturownia_url=(f'https://{subdomain}.fakturownia.pl/invoices/{fakturownia_id}'
                          if subdomain and not from_drive else None),
@@ -514,6 +520,7 @@ def bank_view():
         suggestions=suggestions,
         links=links,
         counts=fin_bank_store.count_by_status(),
+        open_documents=_open_documents_count(),
         banks=fin_bank_store.banks(),
         bank_labels=BANK_LABELS,
         status_labels=BANK_STATUS_LABELS,
@@ -617,6 +624,125 @@ def bank_matches(txn_id: int):
          'payment_to': m['payment_to'].isoformat() if m['payment_to'] else None}
         for m in matches]})
 
+
+
+# ── Rozliczenia od strony dokumentu ──────────────────────────────────────────
+# Druga kolejka: dokumenty, do których nie ma operacji na wyciągu. Albo się ją
+# znajdzie („Znajdź przelew”), albo dokument zamyka decyzja „bez przelewu”.
+
+SETTLEMENT_VIEWS = {'open': 'Do rozliczenia', 'settled': 'Rozliczone bez przelewu'}
+SETTLEMENT_LIMIT = 500
+
+
+def _open_documents_count() -> int:
+    return count_documents({'financial_only': True, 'settlement': 'open'})
+
+
+def _transfer_json(m: dict) -> dict:
+    return {'transaction_id': m['transaction_id'], 'bank': BANK_LABELS.get(m['bank'], m['bank']),
+            'booked_date': m['booked_date'].isoformat() if m['booked_date'] else None,
+            'counterparty_name': m['counterparty_name'], 'title': m['title'],
+            'amount': str(m['amount']), 'amount_left': str(m['amount_left']),
+            'currency': m['currency'], 'score': m['score'], 'reasons': m['reasons'],
+            'link_url': url_for('fin.bank_link', txn_id=m['transaction_id'])}
+
+
+@bp.route('/rozliczenia/dokumenty')
+def settlements_view():
+    view = request.args.get('view', 'open')
+    if view not in SETTLEMENT_VIEWS:
+        view = 'open'
+    first_statement = fin_bank_store.first_booked_date()
+    filters = {
+        'kind': request.args.get('kind', ''),
+        'payment': request.args.get('payment', ''),
+        'source': request.args.get('source', ''),
+        'month': request.args.get('month', '')[:7],
+        'search': request.args.get('search', '').strip(),
+        'before_statements': request.args.get('before_statements') == '1' and bool(first_statement),
+    }
+    query = {**filters, 'financial_only': True, 'settlement': view,
+             'issued_before': first_statement if filters['before_statements'] else None}
+    total = count_documents(query)
+    rows = list_documents(query, sort='issue_date', direction='desc',
+                          limit=SETTLEMENT_LIMIT, offset=0)
+    return render_template(
+        'fin/settlements.html',
+        active_tab='bank',
+        view=view,
+        views=SETTLEMENT_VIEWS,
+        rows=rows,
+        total=total,
+        filters=filters,
+        first_statement=first_statement,
+        # Podpowiedzi tylko tam, gdzie jest co wiązać — rozliczone już ich nie potrzebują.
+        transfers=suggest_transfers_for_docs(rows) if view == 'open' else {},
+        counts={'open': _open_documents_count(),
+                'settled': count_documents({'financial_only': True, 'settlement': 'settled'}),
+                'pending': fin_bank_store.count_by_status().get('pending', 0)},
+        months=available_months(),
+        categories=[],
+        kind_labels=KIND_LABELS,
+        status_labels=STATUS_LABELS,
+        gov_labels=GOV_STATUS_LABELS,
+        bank_labels=BANK_LABELS,
+        settle_labels=fin_settlement_store.REASONS,
+        non_financial=NON_FINANCIAL_KINDS,
+        today_date=date.today(),
+        uncategorized=count_uncategorized(),
+        sync=get_sync_state('documents'),
+    )
+
+
+@bp.route('/rozliczenia/bez-przelewu', methods=['POST'])
+def settle_documents():
+    """Rozlicza bez przelewu jeden dokument (z wiersza albo karty) lub zaznaczone."""
+    back = request.form.get('back') or url_for('fin.settlements_view')
+    ids = [int(v) for v in request.form.getlist('doc_id') if v.isdigit()]
+    if not ids:
+        flash('Zaznacz dokumenty do rozliczenia.', 'error')
+        return redirect(back)
+    reason = request.form.get('reason', '')
+    result = fin_settlement.settle_many(
+        ids, reason, settled_date=request.form.get('settled_date', '').strip(),
+        note=request.form.get('note', ''), push=request.form.get('push') != '0', actor=_actor())
+    label = fin_settlement_store.REASONS.get(reason, reason)
+    if result['settled']:
+        message = f"Rozliczono bez przelewu: {result['settled']} ({label})."
+        if result['pushed']:
+            message += f" Zapłatę dopisałem przy {result['pushed']}."
+        if result['push_errors']:
+            message += ' Zapłaty nie udało się dopisać — ' + '; '.join(result['push_errors'][:3])
+        flash(message, 'warning' if result['push_errors'] else 'success')
+    if result['errors']:
+        flash(result['errors'][0], 'error')
+    return redirect(back)
+
+
+@bp.route('/rozliczenia/<int:fakturownia_id>/cofnij', methods=['POST'])
+def unsettle_document(fakturownia_id: int):
+    result = fin_settlement.unsettle(fakturownia_id, actor=_actor())
+    if not result['removed']:
+        flash('Ten dokument nie był rozliczony bez przelewu.', 'error')
+    elif result['payment_reverted']:
+        flash('Rozliczenie cofnięte, a zapłata dokumentu z Dysku przeliczona na nowo.', 'success')
+    elif result['payment_marked']:
+        flash('Rozliczenie cofnięte — dokument wrócił do kolejki. Zapłaty w Fakturowni nie '
+              'cofam, zrób to świadomie, jeśli trzeba.', 'success')
+    else:
+        flash('Rozliczenie cofnięte — dokument wrócił do kolejki.', 'success')
+    return redirect(request.form.get('back') or url_for('fin.settlements_view'))
+
+
+@bp.route('/dokumenty/<int:fakturownia_id>/przelewy')
+def document_transfers(fakturownia_id: int):
+    """Operacje do wskazania dla jednego dokumentu („Znajdź przelew”)."""
+    doc = get_document(fakturownia_id)
+    if not doc:
+        return jsonify({'ok': False, 'error': 'Nie znam tego dokumentu.'}), 404
+    matches = search_transfers(doc, request.args.get('q', ''))
+    return jsonify({'ok': True, 'transfers': [_transfer_json(m) for m in matches]})
+
 # ── Ustawienia modułu ────────────────────────────────────────────────────────
 
 def _rate_form_rows(year: int) -> list[dict]:
@@ -656,6 +782,7 @@ def drive_view():
         categories=list_categories(),
         gov_labels=GOV_STATUS_LABELS,
         non_financial=NON_FINANCIAL_KINDS,
+        settle_labels=fin_settlement_store.REASONS,
         today_date=date.today(),
         counts=counts,
         queue_labels=fin_drive_store.STATUS_LABELS,

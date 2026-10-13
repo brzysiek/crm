@@ -94,6 +94,7 @@ def delete_document(fakturownia_id: int) -> None:
     Fakturowni — lustro odtworzyłoby się przy najbliższej synchronizacji."""
     with get_db().cursor() as cur:
         cur.execute("DELETE FROM fin_document_meta WHERE fakturownia_id = %s", (int(fakturownia_id),))
+        cur.execute("DELETE FROM fin_settlements WHERE fakturownia_id = %s", (int(fakturownia_id),))
         cur.execute("DELETE FROM fin_documents WHERE fakturownia_id = %s", (int(fakturownia_id),))
 
 
@@ -139,6 +140,18 @@ def _filters_sql(filters: dict) -> tuple[str, list]:
     elif ksef == 'without':
         where.append("d.gov_id = ''")
 
+    # Kolejka rozliczeń: `open` = dokument bez przelewu i bez decyzji
+    # „rozliczony bez przelewu”, `settled` = z taką decyzją.
+    settlement = filters.get('settlement')
+    if settlement == 'open':
+        where.append("NOT EXISTS (SELECT 1 FROM fin_payment_links l WHERE l.fakturownia_id = d.fakturownia_id)")
+        where.append("NOT EXISTS (SELECT 1 FROM fin_settlements s WHERE s.fakturownia_id = d.fakturownia_id)")
+    elif settlement == 'settled':
+        where.append("EXISTS (SELECT 1 FROM fin_settlements s WHERE s.fakturownia_id = d.fakturownia_id)")
+    if filters.get('issued_before'):
+        where.append("d.issue_date < %s")
+        params.append(filters['issued_before'])
+
     if filters.get('source') in ('fakturownia', 'gdrive'):
         where.append("d.source = %s")
         params.append(filters['source'])
@@ -169,10 +182,13 @@ def list_documents(filters: dict = None, sort: str = 'issue_date', direction: st
     with db.cursor() as cur:
         cur.execute(
             f"""SELECT d.*, m.category_id, m.vat_deduction_percent, m.tax_deductible_percent,
-                       m.source AS category_source, c.name AS category_name, c.slug AS category_slug
+                       m.source AS category_source, c.name AS category_name, c.slug AS category_slug,
+                       st.reason AS settlement_reason, st.settled_date AS settlement_date,
+                       st.note AS settlement_note
                 FROM fin_documents d
                 LEFT JOIN fin_document_meta m ON m.fakturownia_id = d.fakturownia_id
                 LEFT JOIN fin_categories c ON c.id = m.category_id
+                LEFT JOIN fin_settlements st ON st.fakturownia_id = d.fakturownia_id
                 WHERE {where}{_order_by(sort, direction)}
                 LIMIT %s OFFSET %s""",
             tuple(params) + (int(limit), int(offset)))

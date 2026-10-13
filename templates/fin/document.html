@@ -179,9 +179,24 @@
 </section>
 {% endif %}
 
-{% if payments %}
+{# Rozliczenie: przelewy z wyciągu albo decyzja „bez przelewu”. Proformy i noty
+   nie są zdarzeniem finansowym, więc nie mają czego rozliczać. #}
+{% if doc.kind not in non_financial or payments or settlement %}
 <section class="fin-section">
-  <h2>Powiązane przelewy</h2>
+  <h2>Rozliczenie</h2>
+  {% if settlement %}
+  <div class="filter-bar">
+    <span>Rozliczony bez przelewu:
+      <strong>{{ settle_labels.get(settlement.reason, settlement.reason) }}</strong>{% if settlement.settled_date %},
+      {{ settlement.settled_date|ddmmyyyy }}{% endif %}{% if settlement.note %} — {{ settlement.note }}{% endif %}
+    </span>
+    <form method="post" action="{{ url_for('fin.unsettle_document', fakturownia_id=doc.fakturownia_id) }}" class="inline-form">
+      <input type="hidden" name="back" value="{{ request.full_path }}">
+      <button type="submit" class="btn btn-outline btn-sm">Cofnij rozliczenie</button>
+    </form>
+  </div>
+  {% endif %}
+  {% if payments %}
   <div class="table-wrapper">
     <table class="data-table">
       <thead>
@@ -210,8 +225,25 @@
     </table>
   </div>
   <p class="text-muted small">
-    Powiązania zmienia się na ekranie <a href="{{ url_for('fin.bank_view') }}">Bank</a>.
+    Powiązania z przelewami zmienia się na ekranie <a href="{{ url_for('fin.bank_view') }}">Rozliczenia</a>.
   </p>
+  {% endif %}
+  {% if not settlement %}
+  <form method="post" action="{{ url_for('fin.settle_documents') }}" class="filter-bar">
+    <input type="hidden" name="back" value="{{ request.full_path }}">
+    <input type="hidden" name="doc_id" value="{{ doc.fakturownia_id }}">
+    {% include 'fin/_settle_fields.html' %}
+    <button type="submit" class="btn btn-outline btn-sm">Rozlicz bez przelewu</button>
+    {% if not payments %}
+    <a href="{{ url_for('fin.settlements_view', search=doc.number) }}" class="btn btn-outline btn-sm">Znajdź przelew</a>
+    {% endif %}
+  </form>
+  <p class="text-muted small">
+    {{ 'Dla reszty, która nie przeszła przez wyciąg' if payments else 'Gdy do dokumentu nie ma operacji na wyciągu' }}:
+    gotówka, karta prywatna, kompensata, inne konto.
+    {% if doc.status != 'paid' %}Dokument dostanie pełną zapłatę, chyba że zaznaczysz inaczej.{% endif %}
+  </p>
+  {% endif %}
 </section>
 {% endif %}
 
