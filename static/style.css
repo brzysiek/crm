@@ -3861,18 +3861,17 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .rd-deal-targets .star-btn.save-err { background: none; color: var(--error-text); }
 
 /* ── Finanse v2 (/fin) ────────────────────────────────────────────────────── */
-.fin-fluxa .fin-sync-box {
-  margin-top: 1rem; padding: .75rem; border: 1px solid var(--border);
-  border-radius: var(--radius-sm); background: var(--surface); font-size: .8rem;
+/* Synchronizacja to jedna linia nad treścią, dosunięta do prawej — menu działów
+   wisi w menu głównym, więc nie ma już kolumny, pod którą stała jako ramka. */
+.fin-fluxa .fin-sync-bar {
+  display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap;
+  gap: .25rem .6rem; margin-bottom: .75rem; font-size: .8rem;
 }
-.fin-fluxa .fin-sync-label { font-weight: 600; margin-bottom: .25rem; }
-.fin-fluxa .fin-sync-when { margin-bottom: .5rem; }
-.fin-fluxa .fin-sync-msg {
-  margin-bottom: .5rem; color: var(--warning-text); word-break: break-word;
-}
-.fin-fluxa .fin-sync-box form { margin: 0; }
+.fin-fluxa .fin-sync-label { font-weight: 600; }
+.fin-fluxa .fin-sync-msg { color: var(--warning-text); word-break: break-word; }
+.fin-fluxa .fin-sync-bar form { margin: 0; }
 .fin-fluxa .fin-sync-full {
-  margin-top: .35rem; padding: 0; background: none; border: none; cursor: pointer;
+  padding: 0; background: none; border: none; cursor: pointer;
   color: var(--text-muted); font-size: .75rem; text-decoration: underline;
 }
 .fin-fluxa .fin-sync-full:hover { color: var(--text-secondary); }
