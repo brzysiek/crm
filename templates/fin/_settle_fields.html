@@ -2,9 +2,9 @@
    stojącego poza tabelą — pola w wierszu nie mogą siedzieć w formularzu hurtowym. #}
 {% set fa = ('form="' ~ form_id ~ '"')|safe if form_id else '' %}
 <select name="reason" class="filter-select" required {{ fa }}>
-  <option value="">Powód…</option>
+  {# Najczęstszy przypadek jest wybrany z góry — zostaje tylko kliknąć „Rozlicz”. #}
   {% for key, label in settle_labels.items() %}
-    <option value="{{ key }}">{{ label }}</option>
+    <option value="{{ key }}" {{ 'selected' if key == 'private' }}>{{ label }}</option>
   {% endfor %}
 </select>
 <input type="date" name="settled_date" class="filter-input" {{ fa }}
