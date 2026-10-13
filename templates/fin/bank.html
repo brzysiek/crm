@@ -171,7 +171,7 @@
             <input type="hidden" name="fakturownia_id" value="{{ match.fakturownia_id }}">
             <input type="hidden" name="back" value="{{ request.full_path }}">
             <a href="{{ url_for('fin.document', fakturownia_id=match.fakturownia_id) }}">{{ match.number }}</a>
-            <span class="text-muted small">{% if match.source == 'gdrive' %}<span class="badge badge-outline">Dysk</span> {% endif %}{{ match.counterparty_name }} · {% if match.amount_left > 0 %}{{ money(match.amount_left) }} do zapłaty{% else %}{{ money(match.open_amount) }}, opłacony{% endif %}</span>
+            <span class="text-muted small">{% if match.source == 'gdrive' %}<span class="badge badge-outline">Dysk</span> {% endif %}{{ match.counterparty_name }} · {% if match.issue_date %}wystawiona {{ match.issue_date|ddmmyyyy }} · {% endif %}{% if match.amount_left > 0 %}{{ money(match.amount_left) }} do zapłaty{% else %}{{ money(match.open_amount) }}, opłacony{% endif %}</span>
             <button type="submit" class="btn btn-outline btn-sm">Powiąż</button>
             <div class="fin-match-why">
               <span class="badge badge-gray">{{ match.score }}</span>
@@ -305,7 +305,7 @@
         info.appendChild(document.createTextNode(' '));
       }
       info.appendChild(document.createTextNode((m.counterparty_name || '—') + ' · ' +
-        (m.issue_date || '') + ' · ' + (left > 0 ? money(left) + ' do zapłaty'
+        (m.issue_date ? 'wystawiona ' + m.issue_date.split('-').reverse().join('.') + ' · ' : '') + (left > 0 ? money(left) + ' do zapłaty'
                      : m.accounted ? m.status_label + ', ma już przelew'
                      : money(m.open_amount) + ', ' + m.status_label) +
         (m.currency !== 'PLN' ? ' (' + m.currency + ')' : '')));
