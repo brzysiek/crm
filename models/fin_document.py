@@ -3,6 +3,8 @@
 Tabela `fin_documents` jest tylko kopią: niczego tu nie tworzymy ręcznie,
 wszystko przychodzi z synchronizacji (services/fin_sync.py).
 """
+from decimal import Decimal
+
 from database import get_db
 
 # Dokumenty, które nie są zdarzeniem finansowym — nie wchodzą do sum ani do
@@ -98,6 +100,30 @@ def delete_document(fakturownia_id: int) -> None:
         cur.execute("DELETE FROM fin_documents WHERE fakturownia_id = %s", (int(fakturownia_id),))
 
 
+# Zapłata „po naszemu”: dokument jest opłacony, gdy ma przelew(y) na całą kwotę
+# albo decyzję „rozliczony bez przelewu” — niezależnie od tego, co o zapłacie
+# mówi Fakturownia. Faktura walutowa płacona po kursie banku rzadko trafia w
+# gross_pln co do grosza, stąd luz taki sam jak przy dopasowaniu (FX_TOLERANCE).
+LINKED_SQL = ("(SELECT COALESCE(SUM(l.amount_applied), 0) FROM fin_payment_links l "
+              "WHERE l.fakturownia_id = d.fakturownia_id)")
+SETTLED_SQL = "EXISTS (SELECT 1 FROM fin_settlements s WHERE s.fakturownia_id = d.fakturownia_id)"
+LOCAL_PAID_SQL = (f"({SETTLED_SQL} OR ({LINKED_SQL} > 0 AND {LINKED_SQL} >= "
+                  "d.gross_pln * (CASE WHEN d.currency = 'PLN' THEN 1 ELSE 0.92 END) - 0.02))")
+
+
+def local_payment_state(row: dict) -> str:
+    """'paid' | 'partial' | 'unpaid' — to samo co LOCAL_PAID_SQL, dla wiersza
+    z `linked_amount` i `settlement_reason`."""
+    linked = Decimal(str(row.get('linked_amount') or '0'))
+    if row.get('settlement_reason'):
+        return 'paid'
+    if linked <= 0:
+        return 'unpaid'
+    gross = Decimal(str(row.get('gross_pln') or '0'))
+    share = Decimal('1') if (row.get('currency') or 'PLN') == 'PLN' else Decimal('0.92')
+    return 'paid' if linked >= gross * share - Decimal('0.02') else 'partial'
+
+
 def _filters_sql(filters: dict) -> tuple[str, list]:
     """Buduje WHERE z białej listy — nic z URL-a nie trafia do SQL-a wprost."""
     where = ["1=1"]
@@ -114,7 +140,14 @@ def _filters_sql(filters: dict) -> tuple[str, list]:
         params.append(NON_FINANCIAL_KINDS)
 
     payment = filters.get('payment')
-    if payment == 'paid':
+    if filters.get('local_payment'):
+        if payment == 'paid':
+            where.append(LOCAL_PAID_SQL)
+        elif payment == 'unpaid':
+            where.append(f"NOT {LOCAL_PAID_SQL}")
+        elif payment == 'overdue':
+            where.append(f"NOT {LOCAL_PAID_SQL} AND d.payment_to IS NOT NULL AND d.payment_to < CURDATE()")
+    elif payment == 'paid':
         where.append("d.status = 'paid'")
     elif payment == 'unpaid':
         where.append("d.status <> 'paid'")
@@ -184,7 +217,7 @@ def list_documents(filters: dict = None, sort: str = 'issue_date', direction: st
             f"""SELECT d.*, m.category_id, m.vat_deduction_percent, m.tax_deductible_percent,
                        m.source AS category_source, c.name AS category_name, c.slug AS category_slug,
                        st.reason AS settlement_reason, st.settled_date AS settlement_date,
-                       st.note AS settlement_note
+                       st.note AS settlement_note, {LINKED_SQL} AS linked_amount
                 FROM fin_documents d
                 LEFT JOIN fin_document_meta m ON m.fakturownia_id = d.fakturownia_id
                 LEFT JOIN fin_categories c ON c.id = m.category_id
@@ -192,7 +225,10 @@ def list_documents(filters: dict = None, sort: str = 'issue_date', direction: st
                 WHERE {where}{_order_by(sort, direction)}
                 LIMIT %s OFFSET %s""",
             tuple(params) + (int(limit), int(offset)))
-        return [dict(r) for r in cur.fetchall()]
+        rows = [dict(r) for r in cur.fetchall()]
+    for row in rows:
+        row['pay_state'] = local_payment_state(row)
+    return rows
 
 
 def count_documents(filters: dict = None) -> int:

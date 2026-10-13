@@ -79,7 +79,9 @@
     </thead>
     <tbody>
       {% for r in rows %}
-      <tr class="{% if r.status == 'paid' %}row-paid{% elif r.payment_to and r.payment_to < today_date %}row-unpaid{% endif %}">
+      {# `local_payment`: o zapłacie mówi przelew albo rozliczenie, nie Fakturownia. #}
+      {% set is_paid = (r.pay_state == 'paid') if local_payment else (r.status == 'paid') %}
+      <tr class="{% if is_paid %}row-paid{% elif r.payment_to and r.payment_to < today_date %}row-unpaid{% endif %}">
         <td class="col-checkbox">
           <input type="checkbox" name="doc_id" value="{{ r.fakturownia_id }}" class="doc-check" form="bulk-form">
         </td>
@@ -117,9 +119,18 @@
         <td class="text-right nowrap">{{ r.gross_pln|pln }}</td>
         <td class="nowrap">{{ r.payment_to|ddmmyyyy or '—' }}</td>
         <td class="nowrap">
+          {% if local_payment %}
+            {{ {'paid': 'Opłacona', 'partial': 'Częściowo opłacona'}.get(r.pay_state, 'Nieopłacona') }}
+            {% if r.pay_state == 'partial' %}
+              <div class="text-muted small">przelewy: {{ r.linked_amount|pln }}</div>
+            {% elif r.pay_state == 'unpaid' and r.status == 'paid' %}
+              <div class="text-muted small" title="Fakturownia ma ją jako opłaconą, ale nie ma przelewu ani rozliczenia bez przelewu">w Fakturowni: opłacona</div>
+            {% endif %}
+          {% else %}
           {{ status_labels.get(r.status, r.status) }}
           {% if r.status == 'partial' %}
             <div class="text-muted small">wpłacono {{ r.paid_amount|pln }}</div>
+          {% endif %}
           {% endif %}
           {% if r.settlement_reason and not settle_mode %}
             <div class="text-muted small" title="Rozliczony bez przelewu{% if r.settlement_note %}: {{ r.settlement_note }}{% endif %}">

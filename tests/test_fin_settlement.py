@@ -185,5 +185,28 @@ class LinkOnSettledDocumentTest(unittest.TestCase):
         self.assertFalse(out['pushed'])
 
 
+
+
+class LocalPaymentStateTest(unittest.TestCase):
+    """Stan zapłaty z przelewów i rozliczeń — status Fakturowni nie ma tu głosu."""
+
+    def state(self, **row):
+        from models.fin_document import local_payment_state
+        return local_payment_state({'gross_pln': '100.00', 'currency': 'PLN', **row})
+
+    def test_fakturownia_status_alone_does_not_make_it_paid(self):
+        self.assertEqual(self.state(status='paid', linked_amount='0'), 'unpaid')
+
+    def test_full_transfer_or_settlement_makes_it_paid(self):
+        self.assertEqual(self.state(status='issued', linked_amount='100.00'), 'paid')
+        self.assertEqual(self.state(status='issued', linked_amount='0', settlement_reason='private'), 'paid')
+
+    def test_smaller_transfer_is_partial(self):
+        self.assertEqual(self.state(linked_amount='40.00'), 'partial')
+
+    def test_foreign_invoice_paid_at_bank_rate_is_paid(self):
+        self.assertEqual(self.state(currency='EUR', linked_amount='96.50'), 'paid')
+
+
 if __name__ == '__main__':
     unittest.main()

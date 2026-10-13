@@ -169,6 +169,10 @@ def documents():
     query = dict(filters)
     if query['kind'] == 'all':
         query['kind'] = ''
+    # Ten widok to lustro Fakturowni — dokumenty z Dysku mają własną zakładkę.
+    # „Opłacona” znaczy tu: ma przelew albo rozliczenie bez przelewu.
+    query['source'] = 'fakturownia'
+    query['local_payment'] = True
 
     sort = request.args.get('sort', 'issue_date')
     direction = request.args.get('dir', 'desc')
