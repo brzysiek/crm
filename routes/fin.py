@@ -515,6 +515,7 @@ def bank_view():
         'fin/bank.html',
         active_tab='bank',
         rows=rows,
+        totals=_transfer_totals(rows),
         status=status,
         filters=filters,
         suggestions=suggestions,
@@ -636,6 +637,29 @@ SETTLEMENT_VIEWS = {'open': 'Do rozliczenia', 'settled': 'Rozliczone bez przelew
 SETTLEMENT_LIMIT = 500
 
 
+def _transfer_totals(rows: list[dict]) -> list[dict]:
+    """Stopka kolejki operacji: wpływy, wypływy i saldo — osobno dla każdej waluty."""
+    totals: dict = {}
+    for txn in rows:
+        entry = totals.setdefault(txn['currency'] or 'PLN', {'in': Decimal('0'), 'out': Decimal('0')})
+        amount = txn['amount'] or Decimal('0')
+        entry['in' if amount > 0 else 'out'] += amount
+    return [{'currency': currency, **entry, 'balance': entry['in'] + entry['out']}
+            for currency, entry in sorted(totals.items(), key=lambda item: (item[0] != 'PLN', item[0]))]
+
+
+def _document_totals(rows: list[dict]) -> list[dict]:
+    """Stopka kolejki dokumentów: koszty i przychody osobno, bo to nie jest jedna suma."""
+    out = []
+    for label, is_income in (('Koszty', False), ('Przychody', True)):
+        group = [r for r in rows if bool(r['is_income']) == is_income]
+        if group:
+            out.append({'label': label, 'count': len(group),
+                        **{key: sum((r[key] or Decimal('0') for r in group), Decimal('0'))
+                           for key in ('net_pln', 'tax_pln', 'gross_pln')}})
+    return out
+
+
 def _open_documents_count() -> int:
     return count_documents({'financial_only': True, 'settlement': 'open'})
 
@@ -675,6 +699,7 @@ def settlements_view():
         views=SETTLEMENT_VIEWS,
         rows=rows,
         total=total,
+        totals=_document_totals(rows),
         filters=filters,
         first_statement=first_statement,
         # Podpowiedzi tylko tam, gdzie jest co wiązać — rozliczone już ich nie potrzebują.

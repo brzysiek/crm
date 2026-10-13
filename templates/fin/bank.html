@@ -183,6 +183,18 @@
       </tr>
       {% endfor %}
     </tbody>
+    <tfoot class="fin-totals">
+      {% for t in totals %}
+      <tr>
+        <th colspan="2" class="text-right">
+          {% if loop.first %}Razem ({{ rows|length }}{{ ' pokazanych' if rows|length >= 300 }}){% endif %}
+          <span class="text-muted small">wpływy {{ money(t['in']) }} · wypływy {{ money(t['out']) }}</span>
+        </th>
+        <th class="text-right nowrap fin-bank-amount {{ 'is-out' if t.balance < 0 }}">{{ money(t.balance) }} {{ t.currency }}</th>
+        <th colspan="3"></th>
+      </tr>
+      {% endfor %}
+    </tfoot>
   </table>
 </div>
 

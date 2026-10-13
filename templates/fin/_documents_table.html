@@ -159,6 +159,19 @@
       <tr><td colspan="11" class="text-muted">Brak dokumentów dla tych filtrów.</td></tr>
       {% endfor %}
     </tbody>
+    {% if settle_mode and totals %}
+    <tfoot class="fin-totals">
+      {% for t in totals %}
+      <tr>
+        <th colspan="5" class="text-right">{{ t.label }} <span class="text-muted small">({{ t.count }})</span></th>
+        <th class="text-right nowrap">{{ t.net_pln|pln }}</th>
+        <th class="text-right nowrap">{{ t.tax_pln|pln }}</th>
+        <th class="text-right nowrap">{{ t.gross_pln|pln }}</th>
+        <th colspan="3"></th>
+      </tr>
+      {% endfor %}
+    </tfoot>
+    {% endif %}
   </table>
 </div>
 {% if not settle_mode %}</form>{% endif %}

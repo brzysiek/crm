@@ -3943,6 +3943,7 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
 .fin-fluxa .fin-pivot { font-size: .8rem; }
 .fin-fluxa .fin-pivot td, .fin-fluxa .fin-pivot th { padding: .3rem .5rem; }
 .fin-fluxa .fin-pivot tfoot th { background: var(--surface-secondary); }
+.fin-fluxa .fin-totals th { background: var(--surface-secondary); font-weight: 600; }
 
 .fin-fluxa .fin-chart {
   display: flex; align-items: flex-end; gap: .4rem; height: 180px;
