@@ -17,8 +17,10 @@ from services.fin_invoice import FinWriteError
 class FakeApi:
     """Podstawka pod klienta API: zapisuje, co dostała, oddaje, co jej kazano."""
 
-    def __init__(self, created=None, existing=None, updated=None, error=None):
+    def __init__(self, created=None, existing=None, updated=None, error=None,
+                 status_error=None):
         self.created, self.existing, self.updated, self.error = created, existing, updated, error
+        self.status_error = status_error
         self.calls = []
 
     def find_invoice_by_oid(self, oid):
@@ -36,6 +38,12 @@ class FakeApi:
         if self.error:
             raise self.error
         return self.updated or {'id': invoice_id, **fields}
+
+    def change_invoice_status(self, invoice_id, status):
+        self.calls.append(('status', invoice_id, status))
+        if self.status_error:
+            raise self.status_error
+        return {'status': 'ok'}
 
     def send_invoice_to_ksef(self, invoice_id):
         self.calls.append(('ksef', invoice_id))
@@ -258,6 +266,41 @@ class MarkPaidTest(NoDbMixin, unittest.TestCase):
                 fin_invoice.mark_paid(900, api=api)
         self.assertIn('zsynchronizuj', str(ctx.exception))
         self.assertEqual(api.calls, [])
+
+    def test_invoice_in_ksef_gets_status_change_instead_of_edit(self):
+        """`PUT` na fakturze w KSeF to 422 — zapłatę zapisuje sama zmiana statusu."""
+        api = FakeApi()
+        docs = [mirrored(gov_status='ok'), mirrored(gov_status='ok', status='paid',
+                                                    paid_amount=Decimal('123.00'))]
+        with mock.patch.object(fin_invoice.fin_document, 'get_document', side_effect=docs):
+            result = fin_invoice.mark_paid(900, api=api)
+        self.assertEqual(api.calls, [('status', 900, 'paid')])
+        self.assertEqual(result['status'], 'paid')
+        self.assertIsNone(result['warning'])
+
+    def test_ksef_refusal_with_stale_mirror_falls_back_to_status_change(self):
+        api = FakeApi(error=FakturowniaError(
+            'PUT /invoices/900.json → 422: {"message":"Nie można edytować dokumentu, '
+            'ponieważ został przesłany do KSeF."}'))
+        with mock.patch.object(fin_invoice.fin_document, 'get_document',
+                               side_effect=[mirrored(), mirrored(status='paid')]):
+            fin_invoice.mark_paid(900, api=api)
+        self.assertEqual([c[0] for c in api.calls], ['update', 'status'])
+
+    def test_partial_payment_on_ksef_invoice_warns_that_amount_is_not_saved(self):
+        api = FakeApi()
+        docs = [mirrored(gov_status='ok'), mirrored(gov_status='ok', status='partial')]
+        with mock.patch.object(fin_invoice.fin_document, 'get_document', side_effect=docs):
+            result = fin_invoice.mark_paid(900, amount='50', api=api)
+        self.assertEqual(api.calls, [('status', 900, 'partial')])
+        self.assertIn('KSeF', result['warning'])
+
+    def test_other_refusals_are_not_retried_as_status_change(self):
+        api = FakeApi(error=FakturowniaError('PUT /invoices/900.json → 422: zła data'))
+        with mock.patch.object(fin_invoice.fin_document, 'get_document', return_value=mirrored()):
+            with self.assertRaises(FinWriteError):
+                fin_invoice.mark_paid(900, api=api)
+        self.assertEqual([c[0] for c in api.calls], ['update'])
 
 
 class UpdateDocumentTest(NoDbMixin, unittest.TestCase):

@@ -312,6 +312,24 @@ class LinkPaymentPushTest(unittest.TestCase):
         self.assertEqual(mark_paid.call_args.kwargs['amount'], Decimal('1704.10'))
         self.assertEqual(mark_paid.call_args.kwargs['paid_date'], date(2026, 6, 10))
 
+    def test_refused_payment_keeps_the_link_and_reports_the_reason(self):
+        """Powiązanie jest już w bazie — odmowa Fakturowni nie może wyglądać jak porażka."""
+        from services.fin_invoice import FinWriteError
+        with mock.patch.object(fin_bank.fin_bank, 'get_transaction', return_value=txn()), \
+             mock.patch.object(fin_bank.fin_bank, 'links_for_transaction', return_value=[]), \
+             mock.patch('models.fin_document.get_document', return_value=doc()), \
+             mock.patch.object(fin_bank.fin_bank, 'add_link') as add_link, \
+             mock.patch.object(fin_bank.fin_bank, 'refresh_status', return_value='matched'), \
+             mock.patch.object(fin_bank.fin_bank, 'applied_to_document',
+                               return_value=Decimal('1704.10')), \
+             mock.patch.object(fin_bank, 'get_db'), \
+             mock.patch('services.fin_invoice.mark_paid',
+                        side_effect=FinWriteError('Fakturownia odrzuciła zapis płatności: 422')):
+            result = fin_bank.link_payment(1, 500, amount='1704.10', actor='test')
+        add_link.assert_called_once()
+        self.assertFalse(result['pushed'])
+        self.assertIn('odrzuciła', result['push_error'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -119,6 +119,13 @@ class FakturowniaApi:
     def update_invoice(self, invoice_id: int, fields: dict) -> dict:
         return self.put(f'/invoices/{invoice_id}.json', {'invoice': fields})
 
+    def change_invoice_status(self, invoice_id: int, status: str) -> dict:
+        """Sama zmiana statusu, bez edycji dokumentu. Jedyna droga zapisu
+        zapłaty na fakturze wysłanej do KSeF — `PUT` na takim dokumencie kończy
+        się 422 „Nie można edytować dokumentu”.
+        """
+        return self.post(f'/invoices/{invoice_id}/change_status.json', {}, {'status': status})
+
     def send_invoice_to_ksef(self, invoice_id: int) -> dict:
         """Wysyłka istniejącej faktury. Tak, to GET — tak każe dokumentacja
         Fakturowni (`GET /invoices/{ID}.json?send_to_ksef=yes`); metoda nie jest

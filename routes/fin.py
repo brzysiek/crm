@@ -556,13 +556,21 @@ def bank_link(txn_id: int):
         flash(str(e), 'error')
     else:
         message = f"Powiązano {result['amount_applied']} zł."
+        category = 'success'
         if result['pushed']:
             doc = result['document']
             message += (f" W Fakturowni: {doc['number']} → {doc['paid_amount']} zł "
                         f"({STATUS_LABELS.get(doc['status'], doc['status'])}).")
+            if doc.get('warning'):
+                message += f" {doc['warning']}"
+                category = 'warning'
+        elif result.get('push_error'):
+            message += (' Zapłaty w Fakturowni nie udało się dopisać — oznacz ją tam ręcznie. '
+                        f"{result['push_error']}")
+            category = 'warning'
         else:
             message += ' Zapłaty w Fakturowni nie dopisywałem.'
-        flash(message, 'success')
+        flash(message, category)
     return redirect(request.form.get('back') or url_for('fin.bank_view'))
 
 

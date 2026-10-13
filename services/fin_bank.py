@@ -407,6 +407,9 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
     ta rata: `fin_invoice.mark_paid` ustawia łączną kwotę zapłaconą, więc
     powtórzenie operacji nie podwaja niczego. `push=False` zostawia zapis tylko
     w CRM, gdy chcesz najpierw obejrzeć wynik.
+
+    Gdy Fakturownia odrzuci zapłatę, powiązanie zostaje, a wynik ma
+    `pushed=False` i powód w `push_error`.
     """
     import models.fin_document as fin_document
     from services import fin_invoice
@@ -460,10 +463,16 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
 
     if push:
         total = fin_bank.applied_to_document(fakturownia_id)
-        paid = fin_invoice.mark_paid(int(fakturownia_id), amount=total,
-                                     paid_date=txn['booked_date'], actor=actor or 'bank')
-        result['pushed'] = True
-        result['document'] = paid
+        # Powiązanie jest już zapisane, więc odmowa Fakturowni nie jest
+        # porażką całej operacji — wraca jako `push_error`, nie jako wyjątek.
+        try:
+            paid = fin_invoice.mark_paid(int(fakturownia_id), amount=total,
+                                         paid_date=txn['booked_date'], actor=actor or 'bank')
+        except fin_invoice.FinWriteError as e:
+            result['push_error'] = str(e)
+        else:
+            result['pushed'] = True
+            result['document'] = paid
     return result
 
 

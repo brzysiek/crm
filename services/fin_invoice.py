@@ -279,6 +279,15 @@ def create_document(is_income: bool, *, counterparty: dict, positions: list[dict
     return _created_response(raw, send_to_ksef, is_income)
 
 
+def _ksef_locked(doc: dict) -> bool:
+    return bool(doc.get('is_income')) and (doc.get('gov_status') or '') in KSEF_LOCKED_STATUSES
+
+
+def _is_ksef_edit_refusal(error: Exception) -> bool:
+    text = str(error)
+    return '422' in text and 'KSeF' in text
+
+
 # ── płatności ────────────────────────────────────────────────────────────────
 
 def mark_paid(fakturownia_id: int, amount=None, paid_date=None, actor: str = 'agent',
@@ -313,13 +322,32 @@ def mark_paid(fakturownia_id: int, amount=None, paid_date=None, actor: str = 'ag
         'paid_date': _day(paid_date or date.today(), 'paid_date'),
         'status': status,
     }
+    # Faktury w KSeF nie da się edytować, więc kwoty i daty zapłaty Fakturownia
+    # nie przyjmie — zostaje sama zmiana statusu. Zamknięcie rozpoznajemy po
+    # lustrze, a gdy lustro jest nieświeże, po odmowie samego zapisu.
+    locked = _ksef_locked(doc)
     try:
-        raw = api.update_invoice(int(fakturownia_id), fields)
+        if not locked:
+            try:
+                raw = api.update_invoice(int(fakturownia_id), fields)
+            except FakturowniaError as e:
+                if not _is_ksef_edit_refusal(e):
+                    raise
+                locked = True
+        if locked:
+            raw = api.change_invoice_status(int(fakturownia_id), status)
     except FakturowniaError as e:
         fin_audit.log('mark_paid', actor=actor, fakturownia_id=int(fakturownia_id),
-                      payload=fields, response=str(e), ok=False)
+                      payload={**fields, 'status_only': locked}, response=str(e), ok=False)
         get_db().commit()
         raise FinWriteError(f'Fakturownia odrzuciła zapis płatności: {e}') from e
+
+    if locked:
+        fields = {'status': status, 'status_only': True}
+        if status == 'partial':
+            note = (f'Faktura jest w KSeF, więc Fakturownia przyjęła tylko status '
+                    f'„częściowo opłacona” — kwoty {paid} nie da się na niej zapisać.')
+            warning = f'{warning} {note}' if warning else note
 
     fin_audit.log('mark_paid', actor=actor, fakturownia_id=int(fakturownia_id),
                   payload=fields, response=raw, ok=True)

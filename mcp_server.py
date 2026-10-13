@@ -2205,6 +2205,8 @@ def fin_link_payment(transaction_id: int, fakturownia_id: int, amount: str = "",
     rata, więc powtórzenie wywołania niczego nie podwoi. `push_to_fakturownia=False`
     zostawia zapis tylko w CRM. Wpływu z dokumentem kosztowym (i odwrotnie) nie
     powiążę. Sprawdź `document.status` w odpowiedzi — to stan po zapisie.
+    Gdy Fakturownia odrzuci zapłatę, powiązanie zostaje: `pushed=false`, a powód
+    jest w `push_error`.
     """
     with flask_app.app_context():
         try:
