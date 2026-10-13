@@ -137,7 +137,7 @@
             <input type="hidden" name="fakturownia_id" value="{{ match.fakturownia_id }}">
             <input type="hidden" name="back" value="{{ request.full_path }}">
             <a href="{{ url_for('fin.document', fakturownia_id=match.fakturownia_id) }}">{{ match.number }}</a>
-            <span class="text-muted small">{% if match.source == 'gdrive' %}<span class="badge badge-outline">Dysk</span> {% endif %}{{ match.counterparty_name }} · {{ money(match.amount_left) }} do zapłaty</span>
+            <span class="text-muted small">{% if match.source == 'gdrive' %}<span class="badge badge-outline">Dysk</span> {% endif %}{{ match.counterparty_name }} · {% if match.amount_left > 0 %}{{ money(match.amount_left) }} do zapłaty{% else %}{{ money(match.open_amount) }}, opłacony{% endif %}</span>
             <button type="submit" class="btn btn-outline btn-sm">Powiąż</button>
             <div class="fin-match-why">
               <span class="badge badge-gray">{{ match.score }}</span>
@@ -146,7 +146,7 @@
             <label class="fin-match-opt">
               kwota
               <input type="text" name="amount" inputmode="decimal" class="filter-input"
-                     placeholder="{{ money(match.amount_left) }}">
+                     placeholder="{{ money(match.open_amount) }}">
             </label>
             <label class="fin-match-opt">
               <input type="checkbox" name="push" value="0">
@@ -251,7 +251,9 @@
         info.appendChild(document.createTextNode(' '));
       }
       info.appendChild(document.createTextNode((m.counterparty_name || '—') + ' · ' +
-        (m.issue_date || '') + ' · ' + (left > 0 ? money(left) + ' do zapłaty' : m.status_label) +
+        (m.issue_date || '') + ' · ' + (left > 0 ? money(left) + ' do zapłaty'
+                     : m.accounted ? m.status_label + ', ma już przelew'
+                     : money(m.open_amount) + ', ' + m.status_label) +
         (m.currency !== 'PLN' ? ' (' + m.currency + ')' : '')));
       form.appendChild(info);
       var btn = el('button', 'Powiąż', 'btn btn-outline btn-sm');

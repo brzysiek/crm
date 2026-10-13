@@ -187,11 +187,29 @@ class ScoreMatchTest(unittest.TestCase):
         result = fin_bank.score_match(txn(booked_date=date(2026, 1, 5), title='leasing'), doc())
         self.assertIn('przelew wcześniejszy niż wystawienie dokumentu', result['reasons'])
 
-    def test_paid_document_is_pushed_down(self):
-        paid = doc(status='paid', paid_amount=Decimal('1704.10'))
+    def test_document_that_already_has_its_transfer_is_pushed_down(self):
+        paid = doc(status='paid', paid_amount=Decimal('1704.10'), linked_amount=Decimal('1704.10'))
         with_number = fin_bank.score_match(txn(), paid)
-        self.assertIn('dokument już oznaczony jako opłacony', with_number['reasons'])
+        self.assertIn('dokument ma już przelew albo rozliczenie', with_number['reasons'])
+        self.assertTrue(with_number['accounted'])
         self.assertLess(with_number['score'], fin_bank.score_match(txn(), doc())['score'])
+        settled = fin_bank.score_match(txn(), doc(status='paid', paid_amount=Decimal('1704.10'), settled=1))
+        self.assertTrue(settled['accounted'])
+
+    def test_paid_document_without_a_transfer_still_matches_on_amount_and_date(self):
+        """Faktura opłacona w Fakturowni (np. BLIK-iem przez pośrednika): nazwy
+        ani numeru w operacji nie ma, zostaje kwota i data — to ma wystarczyć."""
+        paid = doc(number='WH/1169276/2026', counterparty_name='PKP Intercity S.A.',
+                   counterparty_tax_no_norm='5262544258', status='paid', payment_to=None,
+                   issue_date=date(2026, 9, 23), gross_pln=Decimal('69.21'),
+                   paid_amount=Decimal('69.21'), linked_amount=Decimal('0'), settled=0)
+        blik = txn(amount=Decimal('-69.21'), booked_date=date(2026, 9, 23),
+                   counterparty_name='PayPro S.A.', title='Płatność BLIK w internecie')
+        result = fin_bank.score_match(blik, paid)
+        self.assertGreaterEqual(result['score'], 25)
+        self.assertFalse(result['accounted'])
+        self.assertEqual(result['open_amount'], Decimal('69.21'))
+        self.assertIn('kwota równa brutto dokumentu', result['reasons'])
 
     def test_legal_form_alone_is_not_a_name_match(self):
         """„SP. Z O.O.” mają wszyscy — dopasowanie po formie prawnej to fałszywy trop."""
@@ -295,6 +313,27 @@ class LinkPaymentGuardsTest(unittest.TestCase):
 
 
 class LinkPaymentPushTest(unittest.TestCase):
+    def test_linking_a_paid_document_leaves_its_payment_alone(self):
+        """Powiązanie mówi tylko, którą operacją poszła zapłata — i bierze z
+        przelewu tyle, ile wynosi dokument, nie całą operację."""
+        paid = doc(status='paid', paid_amount=Decimal('1704.10'))
+        with mock.patch.object(fin_bank.fin_bank, 'get_transaction',
+                               return_value=txn(amount=Decimal('-2000.00'))), \
+             mock.patch.object(fin_bank.fin_bank, 'links_for_transaction', return_value=[]), \
+             mock.patch('models.fin_document.get_document', return_value=paid), \
+             mock.patch('models.fin_settlement.get', return_value=None), \
+             mock.patch.object(fin_bank.fin_bank, 'add_link') as add_link, \
+             mock.patch.object(fin_bank.fin_bank, 'refresh_status', return_value='partial'), \
+             mock.patch.object(fin_bank.fin_bank, 'applied_to_document',
+                               side_effect=[Decimal('0'), Decimal('1704.10')]), \
+             mock.patch.object(fin_bank, 'get_db'), \
+             mock.patch('services.fin_invoice.mark_paid') as mark_paid:
+            result = fin_bank.link_payment(1, 500, actor='test')
+        self.assertEqual(add_link.call_args[0][2], Decimal('1704.10'))
+        mark_paid.assert_not_called()
+        self.assertTrue(result['already_paid'])
+        self.assertFalse(result['pushed'])
+
     def test_the_sum_of_all_links_goes_to_fakturownia_not_just_this_instalment(self):
         """`mark_paid` ustawia łączną kwotę — wysyłamy sumę, więc powtórka nie podwoi."""
         with mock.patch.object(fin_bank.fin_bank, 'get_transaction', return_value=txn()), \

@@ -258,7 +258,11 @@ def import_csv(content_bytes: bytes, bank: str = '') -> dict:
 CANDIDATE_COLUMNS = """d.fakturownia_id, d.number, d.kind, d.is_income, d.issue_date,
                        d.payment_to, d.paid_date, d.status, d.gross_pln, d.paid_amount,
                        d.currency, d.source,
-                       d.counterparty_name, d.counterparty_tax_no_norm, d.description"""
+                       d.counterparty_name, d.counterparty_tax_no_norm, d.description,
+                       (SELECT COALESCE(SUM(l.amount_applied), 0) FROM fin_payment_links l
+                         WHERE l.fakturownia_id = d.fakturownia_id) AS linked_amount,
+                       EXISTS (SELECT 1 FROM fin_settlements st
+                                WHERE st.fakturownia_id = d.fakturownia_id) AS settled"""
 
 
 def _booked(txn: dict):
@@ -323,6 +327,11 @@ def score_match(txn: dict, doc: dict) -> dict:
     paid = Decimal(str(doc['paid_amount'] or '0'))
     left = gross - paid
     value = abs(Decimal(str(txn['amount'])))
+    # „Opłacony” w Fakturowni nie znaczy jeszcze „rozliczony”: dopóki dokument
+    # nie ma przelewu ani decyzji „bez przelewu”, wciąż szuka swojej operacji.
+    linked = Decimal(str(doc.get('linked_amount') or '0'))
+    unlinked = max(gross - linked, Decimal('0'))
+    accounted = bool(doc.get('settled')) or (linked > 0 and unlinked <= AMOUNT_TOLERANCE)
 
     booked = txn['booked_date']
     if isinstance(booked, str):
@@ -379,8 +388,11 @@ def score_match(txn: dict, doc: dict) -> dict:
         reasons.append('przelew wcześniejszy niż wystawienie dokumentu')
 
     if doc.get('status') == 'paid' and left <= 0:
-        score -= 20
-        reasons.append('dokument już oznaczony jako opłacony')
+        if accounted:
+            score -= 20
+            reasons.append('dokument ma już przelew albo rozliczenie')
+        else:
+            reasons.append('opłacony, ale bez przelewu z wyciągu')
 
     return {
         'fakturownia_id': doc['fakturownia_id'],
@@ -393,6 +405,10 @@ def score_match(txn: dict, doc: dict) -> dict:
         'gross_pln': gross,
         'paid_amount': paid,
         'amount_left': left,
+        # Ile dokumentu nie ma jeszcze pokrycia w przelewach — to jest kwota
+        # do powiązania, także gdy dokument jest już opłacony.
+        'open_amount': left if left > 0 else unlinked,
+        'accounted': accounted,
         'currency': doc.get('currency') or 'PLN',
         'source': doc.get('source') or 'fakturownia',
         'score': score,
@@ -464,8 +480,8 @@ def search_documents(txn: dict, query: str = '', limit: int = 12) -> list[dict]:
         docs = _candidates(txn)
     scored = [score_match(txn, doc) for doc in docs if doc['fakturownia_id'] not in linked]
     if not query:
-        scored = [s for s in scored if s['amount_left'] > 0]
-    scored.sort(key=lambda s: (s['amount_left'] <= 0, -s['score']))
+        scored = [s for s in scored if not s['accounted']]
+    scored.sort(key=lambda s: (s['accounted'], -s['score']))
     return scored[:max(1, min(int(limit), 30))]
 
 
@@ -637,8 +653,13 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
         # Faktura walutowa zapłacona po kursie banku: cały przelew jest jej
         # zapłatą, a różnica to kurs — nie reszta czekająca na inny dokument.
         applied = txn_left
+    elif doc_left > 0:
+        applied = min(txn_left, doc_left)
     else:
-        applied = min(txn_left, doc_left) if doc_left > 0 else txn_left
+        # Dokument opłacony: przelew pokrywa tyle, ile nie ma jeszcze pokrycia
+        # w innych przelewach — nadwyżka zostaje na operacji dla innego dokumentu.
+        unlinked = Decimal(str(doc['gross_pln'] or '0')) - fin_bank.applied_to_document(fakturownia_id)
+        applied = min(txn_left, unlinked) if unlinked > 0 else txn_left
     if applied <= 0:
         raise BankImportError('Nie ma czego powiązać: przelew jest już rozdysponowany '
                               'albo dokument nie ma nic do zapłaty.')
@@ -665,6 +686,12 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
         push = False
     if push:
         total = fin_bank.applied_to_document(fakturownia_id)
+        # Zapłata jest już zapisana i przelewy jej nie przekraczają: powiązanie
+        # tylko wskazuje, którą operacją poszła — nie ma czego dopisywać.
+        if doc['status'] == 'paid' and doc_left <= 0 \
+                and total <= Decimal(str(doc['paid_amount'] or '0')) + AMOUNT_TOLERANCE:
+            result['already_paid'] = True
+            return result
         # Powiązanie jest już zapisane, więc odmowa Fakturowni nie jest
         # porażką całej operacji — wraca jako `push_error`, nie jako wyjątek.
         try:

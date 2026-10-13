@@ -606,6 +606,8 @@ def bank_link(txn_id: int):
             message += (' Zapłaty w Fakturowni nie udało się dopisać — oznacz ją tam ręcznie. '
                         f"{result['push_error']}")
             category = 'warning'
+        elif result.get('already_paid'):
+            message += ' Dokument był już opłacony — zapłaty nie zmieniałem.'
         else:
             message += ' Zapłaty w Fakturowni nie dopisywałem.'
         flash(message, category)
@@ -647,6 +649,7 @@ def bank_matches(txn_id: int):
         {'fakturownia_id': m['fakturownia_id'], 'number': m['number'],
          'counterparty_name': m['counterparty_name'], 'score': m['score'],
          'gross_pln': str(m['gross_pln']), 'amount_left': str(m['amount_left']),
+         'open_amount': str(m['open_amount']), 'accounted': m['accounted'],
          'status': m['status'], 'status_label': STATUS_LABELS.get(m['status'], m['status']),
          'reasons': m['reasons'], 'source': m['source'], 'currency': m['currency'],
          'url': url_for('fin.document', fakturownia_id=m['fakturownia_id']),
