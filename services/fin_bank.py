@@ -479,7 +479,10 @@ def link_payment(txn_id: int, fakturownia_id: int, amount=None, push: bool = Tru
 def unlink_payment(txn_id: int, fakturownia_id: int) -> dict:
     """Zdejmuje powiązanie w CRM. Zapłaty w Fakturowni **nie cofa** — cofnięcie
     zapisu księgowego musi być świadomą decyzją człowieka, nie skutkiem ubocznym
-    porządków w kolejce dopasowań."""
+    porządków w kolejce dopasowań. Wyjątek: dokument z Dysku (patrz niżej)."""
+    import models.fin_drive as fin_drive
+    from services import fin_invoice
+
     db = get_db()
     try:
         removed = fin_bank.remove_link(txn_id, fakturownia_id)
@@ -488,4 +491,12 @@ def unlink_payment(txn_id: int, fakturownia_id: int) -> dict:
     except Exception:
         db.rollback()
         raise
-    return {'removed': removed, 'transaction_status': status}
+    result = {'removed': removed, 'transaction_status': status, 'payment_reverted': False}
+    # Dokument z Dysku żyje tylko w CRM: jego zapłata to dokładnie suma
+    # powiązań, więc po odwiązaniu trzeba ją przeliczyć — inaczej zostałby
+    # „opłacony” bez żadnego przelewu.
+    if removed and fin_drive.is_drive_document(fakturownia_id):
+        fin_invoice.mark_paid(int(fakturownia_id), amount=fin_bank.applied_to_document(fakturownia_id),
+                              actor='bank')
+        result['payment_reverted'] = True
+    return result

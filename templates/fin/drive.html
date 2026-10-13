@@ -1,0 +1,340 @@
+{% extends 'fin/_layout.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Dysk{% endblock %}
+
+{% block fin_content %}
+<div class="page-header">
+  <h1>Dysk</h1>
+  <div class="header-actions">
+    <span class="text-muted">dokumenty PDF spoza Fakturowni</span>
+  </div>
+</div>
+
+<p class="text-muted small">
+  Wskaż pliki PDF na Dysku Google — odczytam je (Gemini) i odłożę do kolejki. Dopiero
+  zatwierdzony odczyt staje się dokumentem: wchodzi do wyniku, podatków i „Do zapłaty”
+  i można go wiązać z przelewami w zakładce Bank, tak jak faktury z Fakturowni.
+</p>
+
+{# ── Przeglądarka Dysku ───────────────────────────────────────────────── #}
+<section class="fin-section">
+  <h2>Pliki na Dysku</h2>
+  {% if not configured %}
+  <p class="empty-state">
+    Dysk Google nie jest skonfigurowany —
+    <a href="{{ url_for('settings.general') }}">uzupełnij folder i klucz w Ustawieniach → Integracje</a>.
+  </p>
+  {% else %}
+  <div class="filter-bar">
+    <span id="driveCrumbs" class="fin-drive-crumbs"></span>
+    <span style="margin-left:auto"></span>
+    <button type="button" class="btn btn-outline btn-sm" id="driveSelectNew">Zaznacz nowe</button>
+    <button type="button" class="btn btn-primary btn-sm" id="driveRun" disabled>Odczytaj zaznaczone</button>
+  </div>
+  <div id="driveFolders" class="fin-drive-folders"></div>
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th class="col-checkbox"></th>
+          <th>Plik</th>
+          <th>Zmieniony</th>
+          <th>Stan</th>
+        </tr>
+      </thead>
+      <tbody id="driveFiles">
+        <tr><td colspan="4" class="text-muted">Wczytuję…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted small" id="driveProgress"></p>
+  {% endif %}
+</section>
+
+{# ── Kolejka ──────────────────────────────────────────────────────────── #}
+<section class="fin-section">
+  <h2>Kolejka odczytów</h2>
+  <div class="filter-bar">
+    {% for key, label in status_labels.items() %}
+    <a href="{{ url_for('fin.drive_view', status=key) }}"
+       class="btn btn-sm {{ 'btn-primary' if status == key else 'btn-outline' }}">
+      {{ label }}{% if counts.get(key) %} ({{ counts.get(key) }}){% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if not rows %}
+  <p class="empty-state">
+    {% if status == 'pending' %}Kolejka jest pusta — odczytaj pliki z Dysku powyżej.
+    {% else %}Nic tu nie ma.{% endif %}
+  </p>
+  {% endif %}
+
+  {% for r in rows %}
+  <div class="fin-drive-card">
+    <div class="fin-drive-card-head">
+      <a href="{{ drive_url(r.gdrive_file_id) }}" target="_blank" rel="noopener">
+        {{ icon('link', 14) }} {{ r.file_name or r.gdrive_file_id }}
+      </a>
+      {% if r.ocr_note %}<span class="text-muted small">OCR: {{ r.ocr_note }}</span>{% endif %}
+    </div>
+
+    {% if status == 'accepted' %}
+    <div class="fin-drive-card-foot">
+      <a href="{{ url_for('fin.document', fakturownia_id=r.fakturownia_id) }}">{{ r.number or 'Dokument' }}</a>
+      <span class="text-muted small">
+        {{ r.counterparty_name }} · {{ r.issue_date|ddmmyyyy }} · {{ r.price_gross }} {{ r.currency }}
+      </span>
+    </div>
+    {% else %}
+    <form method="post" action="{{ url_for('fin.drive_accept', queue_id=r.id) }}" id="driveForm{{ r.id }}">
+      <div class="fin-drive-grid">
+        <label>Typ
+          <select name="is_income" class="filter-select">
+            <option value="0" {{ 'selected' if not r.is_income }}>Koszt</option>
+            <option value="1" {{ 'selected' if r.is_income }}>Przychód</option>
+          </select>
+        </label>
+        <label>Rodzaj
+          <select name="kind" class="filter-select">
+            {% for k in kinds %}
+            <option value="{{ k }}" {{ 'selected' if r.kind == k }}>{{ kind_labels.get(k, k) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Numer
+          <input type="text" name="number" class="filter-input" value="{{ r.number }}">
+        </label>
+        <label class="fin-drive-wide">Kontrahent
+          <input type="text" name="counterparty_name" class="filter-input" value="{{ r.counterparty_name }}">
+        </label>
+        <label>NIP
+          <input type="text" name="counterparty_tax_no" class="filter-input" value="{{ r.counterparty_tax_no }}">
+        </label>
+        <label>Data wystawienia
+          <input type="date" name="issue_date" class="filter-input" required
+                 value="{{ r.issue_date.isoformat() if r.issue_date else '' }}">
+        </label>
+        <label>Termin płatności
+          <input type="date" name="payment_to" class="filter-input"
+                 value="{{ r.payment_to.isoformat() if r.payment_to else '' }}">
+        </label>
+        <label>Netto
+          <input type="text" name="price_net" inputmode="decimal" class="filter-input" value="{{ r.price_net }}">
+        </label>
+        <label>VAT
+          <input type="text" name="price_tax" inputmode="decimal" class="filter-input" value="{{ r.price_tax }}">
+        </label>
+        <label>Brutto
+          <input type="text" name="price_gross" inputmode="decimal" class="filter-input" required
+                 value="{{ r.price_gross }}">
+        </label>
+        <label>Waluta
+          <input type="text" name="currency" class="filter-input" maxlength="3" value="{{ r.currency }}">
+        </label>
+        <label>Kurs
+          <input type="text" name="exchange_rate" inputmode="decimal" class="filter-input"
+                 placeholder="{{ 'z NBP' if r.currency != 'PLN' else '—' }}">
+        </label>
+      </div>
+    </form>
+    <div class="fin-drive-card-foot">
+      <button type="submit" form="driveForm{{ r.id }}" class="btn btn-primary btn-sm">
+        {{ icon('check', 14) }} Zatwierdź
+      </button>
+      {% if status == 'pending' %}
+      <form method="post" action="{{ url_for('fin.drive_reject', queue_id=r.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-outline btn-sm">Odrzuć</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('fin.drive_restore', queue_id=r.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-outline btn-sm">Przywróć do kolejki</button>
+      </form>
+      {% endif %}
+      <span class="text-muted small">Kurs zostaw pusty, żeby wziąć średni NBP z dnia wystawienia.</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{% if configured %}
+<script>
+(function () {
+  var filesUrl = {{ url_for('fin.drive_files')|tojson }};
+  var ocrUrl = {{ url_for('fin.drive_ocr')|tojson }};
+  var stateLabels = {pending: 'w kolejce', accepted: 'zatwierdzony', rejected: 'odrzucony'};
+  var trail = [{id: '', name: 'Folder główny'}];
+  var files = [];
+  var busy = false;
+
+  var elFiles = document.getElementById('driveFiles');
+  var elFolders = document.getElementById('driveFolders');
+  var elCrumbs = document.getElementById('driveCrumbs');
+  var elRun = document.getElementById('driveRun');
+  var elProgress = document.getElementById('driveProgress');
+
+  function el(tag, text, cls) {
+    var node = document.createElement(tag);
+    if (text != null) node.textContent = text;
+    if (cls) node.className = cls;
+    return node;
+  }
+
+  function message(text) {
+    elFiles.innerHTML = '';
+    var cell = el('td', text, 'text-muted');
+    cell.colSpan = 4;
+    elFiles.appendChild(el('tr')).appendChild(cell);
+  }
+
+  function renderCrumbs() {
+    elCrumbs.innerHTML = '';
+    trail.forEach(function (step, i) {
+      if (i) elCrumbs.appendChild(document.createTextNode(' / '));
+      if (i === trail.length - 1) {
+        elCrumbs.appendChild(el('strong', step.name));
+      } else {
+        var link = el('a', step.name);
+        link.href = '#';
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (busy) return;
+          trail = trail.slice(0, i + 1);
+          load();
+        });
+        elCrumbs.appendChild(link);
+      }
+    });
+  }
+
+  function syncRun() {
+    var n = elFiles.querySelectorAll('.drive-check:checked').length;
+    elRun.disabled = busy || !n;
+    elRun.textContent = n ? 'Odczytaj zaznaczone (' + n + ')' : 'Odczytaj zaznaczone';
+  }
+
+  function stateCell(file) {
+    var cell = el('td');
+    cell.className = 'drive-state';
+    if (file.state) {
+      cell.appendChild(el('span', stateLabels[file.state] || file.state,
+                          'badge ' + (file.state === 'accepted' ? 'badge-green' : 'badge-gray')));
+    } else {
+      cell.appendChild(el('span', 'nowy', 'badge badge-outline'));
+    }
+    return cell;
+  }
+
+  function renderFiles() {
+    elFiles.innerHTML = '';
+    if (!files.length) { message('W tym folderze nie ma plików PDF.'); syncRun(); return; }
+    files.forEach(function (file) {
+      var row = el('tr');
+      row.dataset.id = file.id;
+      var box = el('input');
+      box.type = 'checkbox';
+      box.className = 'drive-check';
+      box.disabled = file.state === 'accepted';
+      box.addEventListener('change', syncRun);
+      row.appendChild(el('td', null, 'col-checkbox')).appendChild(box);
+      row.appendChild(el('td', file.name));
+      row.appendChild(el('td', (file.modifiedTime || '').slice(0, 10), 'nowrap text-muted'));
+      row.appendChild(stateCell(file));
+      elFiles.appendChild(row);
+    });
+    syncRun();
+  }
+
+  function load() {
+    var current = trail[trail.length - 1];
+    renderCrumbs();
+    elFolders.innerHTML = '';
+    message('Wczytuję…');
+    fetch(filesUrl + '?folder_id=' + encodeURIComponent(current.id))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) { files = []; message(data.error); return; }
+        data.folders.forEach(function (folder) {
+          var btn = el('button', folder.name, 'btn btn-outline btn-sm');
+          btn.type = 'button';
+          btn.addEventListener('click', function () {
+            if (busy) return;
+            trail.push({id: folder.id, name: folder.name});
+            load();
+          });
+          elFolders.appendChild(btn);
+        });
+        files = data.files;
+        renderFiles();
+      })
+      .catch(function () { files = []; message('Nie udało się wczytać listy plików.'); });
+  }
+
+  document.getElementById('driveSelectNew').addEventListener('click', function () {
+    elFiles.querySelectorAll('tr').forEach(function (row) {
+      var file = files.find(function (f) { return f.id === row.dataset.id; });
+      var box = row.querySelector('.drive-check');
+      if (file && box) box.checked = !file.state;
+    });
+    syncRun();
+  });
+
+  /* OCR jednego pliku trwa do kilkudziesięciu sekund, więc pliki idą po kolei,
+     każdy osobnym żądaniem — jedno długie żądanie padłoby na limicie czasu. */
+  elRun.addEventListener('click', function () {
+    var queue = [];
+    elFiles.querySelectorAll('tr').forEach(function (row) {
+      var box = row.querySelector('.drive-check');
+      if (box && box.checked) queue.push(row);
+    });
+    if (!queue.length) return;
+    busy = true;
+    syncRun();
+    var done = 0, failed = 0;
+
+    function next() {
+      if (!queue.length) {
+        busy = false;
+        elProgress.textContent = 'Gotowe: ' + done + ' odczytanych' +
+          (failed ? ', ' + failed + ' z błędem' : '') + '. Odświeżam kolejkę…';
+        if (done) { window.location.reload(); } else { syncRun(); }
+        return;
+      }
+      var row = queue.shift();
+      var file = files.find(function (f) { return f.id === row.dataset.id; });
+      var cell = row.querySelector('.drive-state');
+      cell.textContent = 'czytam…';
+      elProgress.textContent = 'Czytam: ' + file.name + ' (zostało ' + queue.length + ')';
+      fetch(ocrUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({file_id: file.id, name: file.name, modified: file.modifiedTime})
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          cell.textContent = '';
+          if (data.error) {
+            failed += 1;
+            cell.appendChild(el('span', data.error, 'text-danger small'));
+          } else {
+            done += 1;
+            file.state = data.outcome === 'accepted' ? 'accepted' : 'pending';
+            cell.appendChild(el('span', stateLabels[file.state], 'badge badge-gray'));
+            row.querySelector('.drive-check').checked = false;
+          }
+        })
+        .catch(function () {
+          failed += 1;
+          cell.textContent = 'błąd połączenia';
+        })
+        .then(next);
+    }
+    next();
+  });
+
+  load();
+})();
+</script>
+{% endif %}
+{% endblock %}

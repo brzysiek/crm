@@ -18,6 +18,16 @@
       <a href="{{ url_for('fin.documents', kind='all', search=doc.counterparty_tax_no_norm) }}"
          class="btn btn-outline btn-sm">Wszystko od tego kontrahenta</a>
     {% endif %}
+    {% if drive_url %}
+      <a href="{{ drive_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">
+        {{ icon('link', 14) }} Otwórz PDF na Dysku
+      </a>
+      <form method="post" action="{{ url_for('fin.drive_return', fakturownia_id=doc.fakturownia_id) }}"
+            class="inline-form"
+            onsubmit="return confirm('Cofnąć dokument do kolejki? Zniknie z finansów do ponownego zatwierdzenia.')">
+        <button type="submit" class="btn btn-outline btn-sm">Cofnij do kolejki</button>
+      </form>
+    {% endif %}
     {% if fakturownia_url %}
       <a href="{{ fakturownia_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">
         {{ icon('link', 14) }} Otwórz w Fakturowni
@@ -102,6 +112,7 @@
     {{ field('NIP', doc.counterparty_tax_no or '—') }}
 
     {{ field('Rodzaj dokumentu', kind_labels.get(doc.kind, doc.kind)) }}
+    {{ field('Źródło', 'Dysk Google (OCR)' if drive_url else 'Fakturownia') }}
     {{ field('Dział', doc.department_id or '—') }}
   </div>
 </section>

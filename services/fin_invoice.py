@@ -279,6 +279,50 @@ def create_document(is_income: bool, *, counterparty: dict, positions: list[dict
     return _created_response(raw, send_to_ksef, is_income)
 
 
+def _is_local(doc: dict) -> bool:
+    """Dokument spoza Fakturowni (np. z Dysku) — nie ma go gdzie tam zapisywać."""
+    return (doc.get('source') or 'fakturownia') != 'fakturownia'
+
+
+def _refuse_local(doc: dict, what: str) -> None:
+    if _is_local(doc):
+        raise FinWriteError(f'Dokument {doc.get("number") or doc.get("fakturownia_id")} pochodzi '
+                            f'z Dysku i nie istnieje w Fakturowni — {what}.')
+
+
+def _mark_paid_local(doc: dict, amount, paid_date, actor: str) -> dict:
+    """Zapłata dokumentu z Dysku: CRM jest jego jedynym rejestrem, więc zapis
+    zostaje w `fin_documents`. Kwoty w PLN — tak jak przelewy, z którymi się
+    go wiąże."""
+    fakturownia_id = int(doc['fakturownia_id'])
+    gross = Decimal(str(doc['gross_pln'] or '0'))
+    paid = _money(amount, 'amount') if amount not in (None, '') else gross
+    if paid < 0:
+        raise FinWriteError('Kwota zapłaty nie może być ujemna.')
+    warning = None
+    if paid > gross:
+        warning = (f'Kwota {paid} przekracza brutto dokumentu ({gross}) — zapisuję ją '
+                   'tak, jak podałeś, ale sprawdź, czy to nie pomyłka.')
+    status = 'paid' if paid >= gross and gross > 0 else ('partial' if paid > 0 else 'issued')
+    when = _day(paid_date or date.today(), 'paid_date') if paid > 0 else None
+    fin_document.set_local_payment(fakturownia_id, paid, when, status)
+    fin_audit.log('mark_paid_local', actor=actor, fakturownia_id=fakturownia_id,
+                  payload={'paid': str(paid), 'paid_date': when, 'status': status}, ok=True)
+    get_db().commit()
+    return {
+        'fakturownia_id': fakturownia_id,
+        'number': doc.get('number'),
+        'status': status,
+        'price_gross': gross,
+        'paid_amount': paid,
+        'paid_date': when,
+        'amount_left': gross - paid,
+        'warning': warning,
+        'mirror': None,
+        'local': True,
+    }
+
+
 def _ksef_locked(doc: dict) -> bool:
     return bool(doc.get('is_income')) and (doc.get('gov_status') or '') in KSEF_LOCKED_STATUSES
 
@@ -302,10 +346,12 @@ def mark_paid(fakturownia_id: int, amount=None, paid_date=None, actor: str = 'ag
     na nim ani jednej płatności w rejestrze bankowym, a statusy opłacenia
     siedzą wprost na fakturach. Drugi rejestr tylko rozjechałby te dane.
     """
-    api = api or FakturowniaApi.from_settings()
     doc = fin_document.get_document(int(fakturownia_id))
     if not doc:
         raise FinWriteError(f'Nie znam dokumentu {fakturownia_id} — zsynchronizuj najpierw lustro.')
+    if _is_local(doc):
+        return _mark_paid_local(doc, amount, paid_date, actor)
+    api = api or FakturowniaApi.from_settings()
 
     gross = Decimal(str(doc['price_gross'] or '0'))
     paid = _money(amount, 'amount') if amount not in (None, '') else gross
@@ -382,6 +428,7 @@ def update_document(fakturownia_id: int, fields: dict, actor: str = 'agent',
     doc = fin_document.get_document(int(fakturownia_id))
     if not doc:
         raise FinWriteError(f'Nie znam dokumentu {fakturownia_id} — zsynchronizuj najpierw lustro.')
+    _refuse_local(doc, 'edytuj go przez „Cofnij do kolejki” na jego karcie')
 
     clean, rejected = {}, []
     for key, value in (fields or {}).items():
@@ -430,6 +477,7 @@ def send_to_ksef(fakturownia_id: int, actor: str = 'agent',
     doc = fin_document.get_document(int(fakturownia_id))
     if not doc:
         raise FinWriteError(f'Nie znam dokumentu {fakturownia_id} — zsynchronizuj najpierw lustro.')
+    _refuse_local(doc, 'do KSeF go nie wyślę')
     if not doc.get('is_income'):
         raise FinWriteError('To dokument kosztowy — wystawił go dostawca i to on odpowiada '
                             'za jego obecność w KSeF. Z CRM go nie wysyłam.')

@@ -86,6 +86,19 @@ class GoogleDriveClient:
         resp = self._get('/files', params)
         return resp.json().get('files', [])
 
+    def list_pdfs_in_folder(self, folder_id: str) -> list[dict]:
+        """PDF-y leżące bezpośrednio w folderze (bez schodzenia w podfoldery)."""
+        params = {
+            'q':        f"'{folder_id}' in parents and trashed = false "
+                        "and mimeType != 'application/vnd.google-apps.folder'",
+            'fields':   'files(id,name,mimeType,modifiedTime,size)',
+            'orderBy':  'name',
+            'pageSize': 500,
+        }
+        items = self._get('/files', params).json().get('files', [])
+        return [f for f in items if f.get('mimeType') == 'application/pdf'
+                or f.get('name', '').lower().endswith('.pdf')]
+
     def list_pdf_files(self, folder_id: str) -> list[dict]:
         """Return all PDF files recursively under folder_id."""
         results = []

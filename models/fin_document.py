@@ -73,6 +73,30 @@ def upsert_document(data: dict) -> str:
     return {1: 'new', 2: 'updated'}.get(affected, 'unchanged')
 
 
+def mark_source(fakturownia_id: int, source: str, gdrive_file_id: str = '') -> None:
+    """Źródło dokumentu spoza Fakturowni. Osobno od `upsert_document`, żeby
+    synchronizacja lustra nigdy nie musiała o tych kolumnach wiedzieć."""
+    with get_db().cursor() as cur:
+        cur.execute("UPDATE fin_documents SET source = %s, gdrive_file_id = %s WHERE fakturownia_id = %s",
+                    (source, gdrive_file_id, int(fakturownia_id)))
+
+
+def set_local_payment(fakturownia_id: int, paid_amount, paid_date, status: str) -> None:
+    """Zapłata dokumentu, którego nie ma w Fakturowni — CRM jest tu jedynym rejestrem."""
+    with get_db().cursor() as cur:
+        cur.execute("""UPDATE fin_documents SET paid_amount = %s, paid_date = %s, status = %s
+                       WHERE fakturownia_id = %s""",
+                    (paid_amount, paid_date, status, int(fakturownia_id)))
+
+
+def delete_document(fakturownia_id: int) -> None:
+    """Usuwa dokument razem z kategoryzacją. Tylko dla dokumentów spoza
+    Fakturowni — lustro odtworzyłoby się przy najbliższej synchronizacji."""
+    with get_db().cursor() as cur:
+        cur.execute("DELETE FROM fin_document_meta WHERE fakturownia_id = %s", (int(fakturownia_id),))
+        cur.execute("DELETE FROM fin_documents WHERE fakturownia_id = %s", (int(fakturownia_id),))
+
+
 def _filters_sql(filters: dict) -> tuple[str, list]:
     """Buduje WHERE z białej listy — nic z URL-a nie trafia do SQL-a wprost."""
     where = ["1=1"]
@@ -114,6 +138,10 @@ def _filters_sql(filters: dict) -> tuple[str, list]:
         where.append("d.gov_id <> ''")
     elif ksef == 'without':
         where.append("d.gov_id = ''")
+
+    if filters.get('source') in ('fakturownia', 'gdrive'):
+        where.append("d.source = %s")
+        params.append(filters['source'])
 
     if filters.get('department_id'):
         where.append("d.department_id = %s")

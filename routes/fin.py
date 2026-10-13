@@ -31,6 +31,9 @@ from services.fakturownia_api import FakturowniaError
 from services.fin_bank import (BANK_LABELS, BankImportError, import_csv, link_payment,
                                suggest_matches, unlink_payment)
 from services.fin_invoice import FinWriteError
+import models.fin_drive as fin_drive_store
+from services import fin_drive
+from services.fin_drive import FinDriveError
 from services.fin_rules import (FIELD_LABELS, MATCH_FIELDS, MATCH_TYPES, TYPE_LABELS,
                                 apply_rules, create_rule, delete_rule, list_rules, toggle_rule)
 from services.fin_sync import get_sync_state, sync_documents
@@ -185,6 +188,7 @@ def document(fakturownia_id: int):
         flash('Nie znam takiego dokumentu — może nie został jeszcze zsynchronizowany.', 'error')
         return redirect(url_for('fin.documents'))
     subdomain = get_setting('fakturownia_subdomain', '')
+    from_drive = row.get('source') == fin_drive_store.SOURCE
     return render_template(
         'fin/document.html',
         active_tab='documents',
@@ -195,7 +199,8 @@ def document(fakturownia_id: int):
         payments=fin_bank_store.links_for_document(fakturownia_id),
         bank_labels=BANK_LABELS,
         fakturownia_url=(f'https://{subdomain}.fakturownia.pl/invoices/{fakturownia_id}'
-                         if subdomain else None),
+                         if subdomain and not from_drive else None),
+        drive_url=fin_drive.drive_url(row['gdrive_file_id']) if from_drive else None,
         kind_labels=KIND_LABELS,
         status_labels=STATUS_LABELS,
         gov_labels=GOV_STATUS_LABELS,
@@ -559,7 +564,8 @@ def bank_link(txn_id: int):
         category = 'success'
         if result['pushed']:
             doc = result['document']
-            message += (f" W Fakturowni: {doc['number']} → {doc['paid_amount']} zł "
+            where = 'Dokument z Dysku' if doc.get('local') else 'W Fakturowni'
+            message += (f" {where}: {doc['number']} → {doc['paid_amount']} zł "
                         f"({STATUS_LABELS.get(doc['status'], doc['status'])}).")
             if doc.get('warning'):
                 message += f" {doc['warning']}"
@@ -578,9 +584,12 @@ def bank_link(txn_id: int):
 def bank_unlink(txn_id: int):
     fakturownia_id = request.form.get('fakturownia_id', '')
     if fakturownia_id.isdigit():
-        unlink_payment(txn_id, int(fakturownia_id))
-        flash('Powiązanie usunięte. Zapłaty w Fakturowni nie cofam — zrób to świadomie, '
-              'jeśli trzeba.', 'success')
+        result = unlink_payment(txn_id, int(fakturownia_id))
+        if result['payment_reverted']:
+            flash('Powiązanie usunięte, a zapłata dokumentu z Dysku przeliczona na nowo.', 'success')
+        else:
+            flash('Powiązanie usunięte. Zapłaty w Fakturowni nie cofam — zrób to świadomie, '
+                  'jeśli trzeba.', 'success')
     return redirect(request.form.get('back') or url_for('fin.bank_view'))
 
 
@@ -617,6 +626,97 @@ def _rate_form_rows(year: int) -> list[dict]:
     keys = list(RATE_LABELS) + [k for k in saved if k not in RATE_LABELS]
     return [dict(saved.get(key) or {'key': key, 'value': None, 'note': '', 'is_confirmed': 1},
                  label=RATE_LABELS.get(key, key)) for key in keys]
+
+
+# ── Dysk Google ──────────────────────────────────────────────────────────────
+# Dokumenty, których nie ma w Fakturowni: PDF z Dysku → OCR → kolejka → dokument.
+
+def _actor() -> str:
+    return f'user:{session.get("user_id", "?")}'
+
+
+@bp.route('/dysk')
+def drive_view():
+    status = request.args.get('status', 'pending')
+    if status not in fin_drive_store.STATUS_LABELS:
+        status = 'pending'
+    return render_template(
+        'fin/drive.html',
+        active_tab='drive',
+        status=status,
+        rows=fin_drive_store.list_queue(status),
+        counts=fin_drive_store.count_by_status(),
+        status_labels=fin_drive_store.STATUS_LABELS,
+        kinds=fin_drive.DRIVE_KINDS,
+        kind_labels=KIND_LABELS,
+        configured=fin_drive.is_configured(),
+        drive_url=fin_drive.drive_url,
+        uncategorized=count_uncategorized(),
+        sync=get_sync_state('documents'),
+    )
+
+
+@bp.route('/dysk/pliki')
+def drive_files():
+    try:
+        return jsonify(fin_drive.browse(request.args.get('folder_id', '')))
+    except FinDriveError as e:
+        return jsonify({'error': str(e)})
+
+
+@bp.route('/dysk/ocr', methods=['POST'])
+def drive_ocr():
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(fin_drive.ocr_file(data.get('file_id', ''), file_name=data.get('name', ''),
+                                          modified=data.get('modified')))
+    except FinDriveError as e:
+        return jsonify({'error': str(e)})
+
+
+@bp.route('/dysk/<int:queue_id>/zatwierdz', methods=['POST'])
+def drive_accept(queue_id: int):
+    try:
+        result = fin_drive.accept(queue_id, request.form, actor=_actor())
+    except FinDriveError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('fin.drive_view', status=request.args.get('status', 'pending')))
+    message = f"Dokument {result['number'] or 'bez numeru'} dodany do finansów."
+    if not result['categorized']:
+        message += ' Nie ma jeszcze kategorii.'
+    flash(message, 'success')
+    return redirect(url_for('fin.drive_view'))
+
+
+@bp.route('/dysk/<int:queue_id>/odrzuc', methods=['POST'])
+def drive_reject(queue_id: int):
+    try:
+        fin_drive.reject(queue_id, actor=_actor())
+        flash('Odczyt odrzucony.', 'success')
+    except FinDriveError as e:
+        flash(str(e), 'error')
+    return redirect(url_for('fin.drive_view'))
+
+
+@bp.route('/dysk/<int:queue_id>/przywroc', methods=['POST'])
+def drive_restore(queue_id: int):
+    try:
+        fin_drive.restore(queue_id, actor=_actor())
+        flash('Odczyt wrócił do kolejki.', 'success')
+    except FinDriveError as e:
+        flash(str(e), 'error')
+    return redirect(url_for('fin.drive_view'))
+
+
+@bp.route('/dokumenty/<int:fakturownia_id>/do-kolejki', methods=['POST'])
+def drive_return(fakturownia_id: int):
+    try:
+        fin_drive.return_to_queue(fakturownia_id, actor=_actor())
+    except FinDriveError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('fin.document', fakturownia_id=fakturownia_id))
+    flash('Dokument cofnięty do kolejki — popraw odczyt i zatwierdź ponownie.', 'success')
+    return redirect(url_for('fin.drive_view'))
 
 
 @bp.route('/ustawienia')

@@ -19,6 +19,8 @@ SYSTEM_PROMPT = (
     "- invoice_number: invoice/document number\n"
     "- vendor_name: name of the vendor/seller (the company that issued the invoice)\n"
     "- vendor_nip: tax ID (NIP) of the vendor\n"
+    "- buyer_name: name of the buyer (the company the invoice was issued to)\n"
+    "- buyer_nip: tax ID (NIP) of the buyer\n"
     "- issue_date: issue date in YYYY-MM-DD format\n"
     "- payment_to: payment due date in YYYY-MM-DD format\n"
     "- currency: currency code of the invoice (e.g. PLN, EUR, USD, GBP); default PLN if not stated\n"

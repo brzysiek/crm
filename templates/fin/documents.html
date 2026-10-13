@@ -125,6 +125,7 @@
         <td class="nowrap">{{ r.issue_date|ddmmyyyy }}</td>
         <td class="nowrap">
           <a href="{{ url_for('fin.document', fakturownia_id=r.fakturownia_id) }}">{{ r.number or '—' }}</a>
+          {% if r.source == 'gdrive' %}<span class="badge badge-outline" title="Dokument z Dysku Google">Dysk</span>{% endif %}
           {% if r.kind in non_financial %}
             <span class="badge badge-gray" title="Nie wchodzi do sum">{{ kind_labels.get(r.kind, r.kind) }}</span>
           {% elif r.kind != 'vat' %}
