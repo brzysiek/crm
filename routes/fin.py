@@ -69,11 +69,33 @@ def _group_by_bucket(rows: list[dict]) -> list[dict]:
 @bp.route('/')
 def index():
     today = date.today()
-    month = today.strftime('%Y-%m')
-    month_end = date(today.year, today.month, calendar.monthrange(today.year, today.month)[1])
+    # Filtr okresu patrzy na datę wystawienia, jak wszędzie w finansach. Miesiąc
+    # jest węższy niż rok, więc wygrywa, gdy podano oba.
+    picked_month = request.args.get('month', '')[:7]
+    try:
+        picked_month = date.fromisoformat(f'{picked_month}-01').strftime('%Y-%m')
+    except ValueError:
+        picked_month = ''
+    picked_year = request.args.get('year', type=int)
+    if picked_month:
+        picked_year = int(picked_month[:4])
+    elif picked_year is not None and not 2000 <= picked_year <= 2100:
+        picked_year = None
+    if picked_month:
+        last_day = calendar.monthrange(picked_year, int(picked_month[5:]))[1]
+        issued = (f'{picked_month}-01', f'{picked_month}-{last_day}')
+    elif picked_year:
+        issued = (f'{picked_year}-01-01', f'{picked_year}-12-31')
+    else:
+        issued = ('', '')
 
-    payables = open_items(is_income=False)
-    receivables = open_items(is_income=True)
+    month = picked_month or today.strftime('%Y-%m')
+    month_start = date.fromisoformat(f'{month}-01')
+    month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
+    result_year = picked_year or today.year
+
+    payables = open_items(is_income=False, issued_from=issued[0], issued_to=issued[1])
+    receivables = open_items(is_income=True, issued_from=issued[0], issued_to=issued[1])
 
     # Podatki bieżącego rozliczenia: symulacja za ostatni zamknięty miesiąc plus to,
     # co leży niezapłacone w rejestrze z innych okresów. Brak stawek nie może wywalić
@@ -112,7 +134,12 @@ def index():
                          if r['due_date'] and r['due_date'] < today), Decimal('0')),
         tax_warning=tax_warning,
         month_totals=period_totals(f'{month}-01', month_end.isoformat()),
-        year_totals=period_totals(f'{today.year}-01-01', f'{today.year}-12-31'),
+        year_totals=period_totals(f'{result_year}-01-01', f'{result_year}-12-31'),
+        result_year=result_year,
+        picked_month=picked_month,
+        picked_year=picked_year,
+        years=available_years(),
+        months=[m for m in available_months() if not picked_year or m.startswith(str(picked_year))],
         uncategorized=count_uncategorized(),
         sync=get_sync_state('documents'),
     )

@@ -55,9 +55,32 @@
 <div class="page-header">
   <h1>Do zapłaty</h1>
   <div class="header-actions">
+    <form method="get" class="filter-bar" style="margin:0">
+      {# Zmiana roku zeruje miesiąc — inaczej miesiąc z innego roku wygrałby z wyborem. #}
+      <select name="year" class="filter-select" onchange="this.form.month.value=''; this.form.submit()">
+        <option value="">wszystkie lata</option>
+        {% for y in years %}
+        <option value="{{ y }}" {{ 'selected' if picked_year == y }}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <select name="month" class="filter-select" onchange="this.form.submit()">
+        <option value="">{{ 'cały rok' if picked_year else 'wszystkie miesiące' }}</option>
+        {% for m in months %}
+        <option value="{{ m }}" {{ 'selected' if picked_month == m }}>{{ m|month_pl }}</option>
+        {% endfor %}
+      </select>
+      {% if picked_year %}<a href="{{ url_for('fin.index') }}" class="btn btn-outline btn-sm">Wyczyść</a>{% endif %}
+    </form>
     <span class="text-muted">{{ today|ddmmyyyy }}</span>
   </div>
 </div>
+
+{% if picked_year %}
+<p class="text-muted small">
+  Zobowiązania i należności z dokumentów wystawionych w {{ picked_month|month_pl if picked_month else picked_year }}.
+  Podatki i ZUS pokazuję w całości, niezależnie od filtra.
+</p>
+{% endif %}
 
 {% if uncategorized > 0 %}
 <div class="fin-banner">
@@ -93,7 +116,7 @@
     <div class="kpi-sub">należności minus zobowiązania</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Wynik {{ today.year }} (netto)</div>
+    <div class="kpi-label">Wynik {{ result_year }} (netto)</div>
     <div class="kpi-value">{{ (year_totals.income.net - year_totals.cost.net)|pln }}</div>
     <div class="kpi-sub">
       przychód {{ year_totals.income.net|pln }} · koszty {{ year_totals.cost.net|pln }}
@@ -160,6 +183,9 @@
   {% endif %}
 </section>
 
+{# Podsumowanie miesiąca: wybranego, a bez wyboru — bieżącego. Przy samym roku
+   innym niż bieżący nie ma miesiąca, który by tu pasował. #}
+{% if picked_month or result_year == today.year %}
 <section class="fin-section">
   <h2>{{ month|month_pl }}</h2>
   <div class="table-wrapper">
@@ -198,4 +224,5 @@
     VAT pokazany wprost z dokumentów — symulacja podatku (z odliczeniami) pojawi się w zakładce Podatki.
   </p>
 </section>
+{% endif %}
 {% endblock %}

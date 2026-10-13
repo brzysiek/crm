@@ -220,8 +220,13 @@ def get_document(fakturownia_id: int) -> dict | None:
     return dict(row) if row else None
 
 
-def open_items(is_income: bool, limit: int = 200) -> list[dict]:
-    """Nieopłacone dokumenty z kubełkiem terminu — rdzeń ekranu „Do zapłaty”."""
+def open_items(is_income: bool, limit: int = 200,
+               issued_from: str = '', issued_to: str = '') -> list[dict]:
+    """Nieopłacone dokumenty z kubełkiem terminu — rdzeń ekranu „Do zapłaty”.
+    `issued_from`/`issued_to` zawężają do dokumentów wystawionych w oknie dat."""
+    period, period_params = '', ()
+    if issued_from and issued_to:
+        period, period_params = 'AND d.issue_date BETWEEN %s AND %s', (issued_from, issued_to)
     db = get_db()
     with db.cursor() as cur:
         cur.execute(
@@ -238,10 +243,10 @@ def open_items(is_income: bool, limit: int = 200) -> list[dict]:
                 FROM fin_documents d
                 LEFT JOIN fin_document_meta m ON m.fakturownia_id = d.fakturownia_id
                 LEFT JOIN fin_categories c ON c.id = m.category_id
-                WHERE d.is_income = %s AND d.status <> 'paid' AND {FINANCIAL_CLAUSE}
+                WHERE d.is_income = %s AND d.status <> 'paid' AND {FINANCIAL_CLAUSE} {period}
                 ORDER BY d.payment_to IS NULL, d.payment_to ASC
                 LIMIT %s""",
-            (1 if is_income else 0, NON_FINANCIAL_KINDS, int(limit)))
+            (1 if is_income else 0, NON_FINANCIAL_KINDS, *period_params, int(limit)))
         return [dict(r) for r in cur.fetchall()]
 
 
