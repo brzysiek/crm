@@ -352,8 +352,10 @@ def mark_paid(fakturownia_id: int, amount=None, paid_date=None, actor: str = 'ag
     fin_audit.log('mark_paid', actor=actor, fakturownia_id=int(fakturownia_id),
                   payload=fields, response=raw, ok=True)
     get_db().commit()
-    mirror = sync_one(int(fakturownia_id), raw=raw if isinstance(raw, dict) and raw.get('id') else None,
-                      api=api)
+    # Zmiana statusu oddaje okrojony dokument (bez kwot) — do lustra musi
+    # pójść pełna faktura, więc w tej ścieżce zawsze pobieramy ją od nowa.
+    full = raw if not locked and isinstance(raw, dict) and raw.get('id') else None
+    mirror = sync_one(int(fakturownia_id), raw=full, api=api)
     fresh = fin_document.get_document(int(fakturownia_id)) or {}
     return {
         'fakturownia_id': int(fakturownia_id),

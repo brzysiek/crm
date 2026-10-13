@@ -43,7 +43,7 @@ class FakeApi:
         self.calls.append(('status', invoice_id, status))
         if self.status_error:
             raise self.status_error
-        return {'status': 'ok'}
+        return {'id': invoice_id, 'status': status}
 
     def send_invoice_to_ksef(self, invoice_id):
         self.calls.append(('ksef', invoice_id))
@@ -276,6 +276,8 @@ class MarkPaidTest(NoDbMixin, unittest.TestCase):
             result = fin_invoice.mark_paid(900, api=api)
         self.assertEqual(api.calls, [('status', 900, 'paid')])
         self.assertEqual(result['status'], 'paid')
+        # Odpowiedź zmiany statusu nie ma kwot — lustro musi pobrać pełną fakturę.
+        self.assertIsNone(fin_invoice.sync_one.call_args.kwargs['raw'])
         self.assertIsNone(result['warning'])
 
     def test_ksef_refusal_with_stale_mirror_falls_back_to_status_change(self):
