@@ -336,6 +336,19 @@
       </a>
     </div>
   </aside>
+  <script>
+  /* Menu boczne zostaje tam, gdzie było przewinięte na poprzedniej stronie.
+     Skrypt stoi zaraz za menu, żeby pozycja wróciła przed pierwszym malowaniem. */
+  (function () {
+    var sidebar = document.getElementById('sidebar');
+    try {
+      sidebar.scrollTop = parseInt(sessionStorage.getItem('sidebarScroll'), 10) || 0;
+      window.addEventListener('pagehide', function () {
+        sessionStorage.setItem('sidebarScroll', sidebar.scrollTop);
+      });
+    } catch (e) { /* bez sessionStorage menu zaczyna od góry, jak dotąd */ }
+  })();
+  </script>
 
   <div class="mobile-menu-backdrop" onclick="toggleMobileMenu(false)"></div>
 
