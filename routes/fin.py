@@ -519,8 +519,10 @@ def bank_view():
         filters=filters,
         suggestions=suggestions,
         links=links,
-        counts=fin_bank_store.count_by_status(),
+        counts=fin_bank_store.count_by_status(filters['month']),
+        pending_transfers=fin_bank_store.count_by_status().get('pending', 0),
         open_documents=_open_documents_count(),
+        months=fin_bank_store.months(),
         banks=fin_bank_store.banks(),
         bank_labels=BANK_LABELS,
         status_labels=BANK_STATUS_LABELS,
@@ -680,6 +682,10 @@ def settlements_view():
         counts={'open': _open_documents_count(),
                 'settled': count_documents({'financial_only': True, 'settlement': 'settled'}),
                 'pending': fin_bank_store.count_by_status().get('pending', 0)},
+        # Liczniki przy przyciskach idą za wybranym miesiącem, te na zakładkach — nie.
+        view_counts={key: count_documents({'financial_only': True, 'settlement': key,
+                                           'month': filters['month']})
+                     for key in SETTLEMENT_VIEWS},
         months=available_months(),
         categories=[],
         kind_labels=KIND_LABELS,

@@ -10,7 +10,7 @@
   </div>
 </div>
 
-{% set settle_tab = 'documents' %}{% set pending_transfers = counts.pending %}{% set open_documents = counts.open %}
+{% set settle_tab = 'documents' %}{% set tab_month = filters.month %}{% set pending_transfers = counts.pending %}{% set open_documents = counts.open %}
 {% include 'fin/_settle_tabs.html' %}
 
 <p class="text-muted small">
@@ -21,9 +21,9 @@
 
 <div class="filter-bar">
   {% for key, label in views.items() %}
-  <a href="{{ url_for('fin.settlements_view', view=key) }}"
+  <a href="{{ url_for('fin.settlements_view', view=key, month=filters.month or none) }}"
      class="btn btn-sm {{ 'btn-primary' if view == key else 'btn-outline' }}">
-    {{ label }}{% if counts[key] %} ({{ counts[key] }}){% endif %}
+    {{ label }}{% if view_counts[key] %} ({{ view_counts[key] }}){% endif %}
   </a>
   {% endfor %}
 

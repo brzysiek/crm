@@ -82,10 +82,22 @@ def list_transactions(status: str = '', bank: str = '', search: str = '',
         return [dict(r) for r in cur.fetchall()]
 
 
-def count_by_status() -> dict:
+def count_by_status(month: str = '') -> dict:
+    where, params = '', ()
+    if month:
+        where, params = "WHERE DATE_FORMAT(booked_date, '%%Y-%%m') = %s", (month,)
     with get_db().cursor() as cur:
-        cur.execute("SELECT status, COUNT(*) n FROM fin_bank_transactions GROUP BY status")
+        cur.execute(f"SELECT status, COUNT(*) n FROM fin_bank_transactions {where} GROUP BY status", params)
         return {r['status']: r['n'] for r in cur.fetchall()}
+
+
+def months() -> list[str]:
+    """Miesiące, z których są operacje na wyciągach — od najnowszego."""
+    with get_db().cursor() as cur:
+        cur.execute("""SELECT DISTINCT DATE_FORMAT(booked_date, '%Y-%m') AS month
+                       FROM fin_bank_transactions WHERE booked_date IS NOT NULL
+                       ORDER BY month DESC""")
+        return [r['month'] for r in cur.fetchall()]
 
 
 def first_booked_date():

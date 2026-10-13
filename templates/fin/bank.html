@@ -23,28 +23,28 @@
   dopasowania zostają nietknięte.
 </p>
 
-{% set settle_tab = 'transfers' %}{% set pending_transfers = counts.pending %}
+{% set settle_tab = 'transfers' %}{% set tab_month = filters.month %}
 {% include 'fin/_settle_tabs.html' %}
 
 {# ── Kubełki stanu ────────────────────────────────────────────────────── #}
 <div class="filter-bar">
-  <a href="{{ url_for('fin.bank_view', status='pending') }}"
+  <a href="{{ url_for('fin.bank_view', status='pending', month=filters.month or none) }}"
      class="btn btn-sm {{ 'btn-primary' if status == 'pending' else 'btn-outline' }}">
     Do dopasowania{% if counts.pending %} ({{ counts.pending }}){% endif %}
   </a>
-  <a href="{{ url_for('fin.bank_view', status='partial') }}"
+  <a href="{{ url_for('fin.bank_view', status='partial', month=filters.month or none) }}"
      class="btn btn-sm {{ 'btn-primary' if status == 'partial' else 'btn-outline' }}">
     Częściowe{% if counts.partial %} ({{ counts.partial }}){% endif %}
   </a>
-  <a href="{{ url_for('fin.bank_view', status='matched') }}"
+  <a href="{{ url_for('fin.bank_view', status='matched', month=filters.month or none) }}"
      class="btn btn-sm {{ 'btn-primary' if status == 'matched' else 'btn-outline' }}">
     Dopasowane{% if counts.matched %} ({{ counts.matched }}){% endif %}
   </a>
-  <a href="{{ url_for('fin.bank_view', status='ignored') }}"
+  <a href="{{ url_for('fin.bank_view', status='ignored', month=filters.month or none) }}"
      class="btn btn-sm {{ 'btn-primary' if status == 'ignored' else 'btn-outline' }}">
     Pominięte{% if counts.ignored %} ({{ counts.ignored }}){% endif %}
   </a>
-  <a href="{{ url_for('fin.bank_view', status='all') }}"
+  <a href="{{ url_for('fin.bank_view', status='all', month=filters.month or none) }}"
      class="btn btn-sm {{ 'btn-primary' if status == 'all' else 'btn-outline' }}">Wszystkie</a>
 
   <form method="get" class="filter-bar" style="margin:0 0 0 auto">
@@ -53,6 +53,12 @@
       <option value="">wpływy i wypływy</option>
       <option value="out" {{ 'selected' if filters.direction == 'out' }}>tylko wypływy</option>
       <option value="in" {{ 'selected' if filters.direction == 'in' }}>tylko wpływy</option>
+    </select>
+    <select name="month" class="filter-select" onchange="this.form.submit()">
+      <option value="">wszystkie miesiące</option>
+      {% for m in months %}
+      <option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m|month_pl }}</option>
+      {% endfor %}
     </select>
     {% if banks|length > 1 %}
     <select name="bank" class="filter-select" onchange="this.form.submit()">
