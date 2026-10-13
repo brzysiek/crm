@@ -55,7 +55,7 @@
 <section class="fin-section">
   <h2>Kolejka odczytów</h2>
   <div class="filter-bar">
-    {% for key, label in status_labels.items() %}
+    {% for key, label in queue_labels.items() %}
     <a href="{{ url_for('fin.drive_view', status=key) }}"
        class="btn btn-sm {{ 'btn-primary' if status == key else 'btn-outline' }}">
       {{ label }}{% if counts.get(key) %} ({{ counts.get(key) }}){% endif %}
@@ -63,99 +63,145 @@
     {% endfor %}
   </div>
 
-  {% if not rows %}
-  <p class="empty-state">
-    {% if status == 'pending' %}Kolejka jest pusta — odczytaj pliki z Dysku powyżej.
-    {% else %}Nic tu nie ma.{% endif %}
-  </p>
-  {% endif %}
-
-  {% for r in rows %}
-  <div class="fin-drive-card">
-    <div class="fin-drive-card-head">
-      <a href="{{ drive_url(r.gdrive_file_id) }}" target="_blank" rel="noopener">
-        {{ icon('link', 14) }} {{ r.file_name or r.gdrive_file_id }}
-      </a>
-      {% if r.ocr_note %}<span class="text-muted small">OCR: {{ r.ocr_note }}</span>{% endif %}
-    </div>
-
-    {% if status == 'accepted' %}
-    <div class="fin-drive-card-foot">
-      <a href="{{ url_for('fin.document', fakturownia_id=r.fakturownia_id) }}">{{ r.number or 'Dokument' }}</a>
-      <span class="text-muted small">
-        {{ r.counterparty_name }} · {{ r.issue_date|ddmmyyyy }} · {{ r.price_gross }} {{ r.currency }}
-      </span>
-    </div>
-    {% else %}
-    <form method="post" action="{{ url_for('fin.drive_accept', queue_id=r.id) }}" id="driveForm{{ r.id }}">
-      <div class="fin-drive-grid">
-        <label>Typ
-          <select name="is_income" class="filter-select">
-            <option value="0" {{ 'selected' if not r.is_income }}>Koszt</option>
-            <option value="1" {{ 'selected' if r.is_income }}>Przychód</option>
-          </select>
-        </label>
-        <label>Rodzaj
-          <select name="kind" class="filter-select">
-            {% for k in kinds %}
-            <option value="{{ k }}" {{ 'selected' if r.kind == k }}>{{ kind_labels.get(k, k) }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Numer
-          <input type="text" name="number" class="filter-input" value="{{ r.number }}">
-        </label>
-        <label class="fin-drive-wide">Kontrahent
-          <input type="text" name="counterparty_name" class="filter-input" value="{{ r.counterparty_name }}">
-        </label>
-        <label>NIP
-          <input type="text" name="counterparty_tax_no" class="filter-input" value="{{ r.counterparty_tax_no }}">
-        </label>
-        <label>Data wystawienia
-          <input type="date" name="issue_date" class="filter-input" required
-                 value="{{ r.issue_date.isoformat() if r.issue_date else '' }}">
-        </label>
-        <label>Termin płatności
-          <input type="date" name="payment_to" class="filter-input"
-                 value="{{ r.payment_to.isoformat() if r.payment_to else '' }}">
-        </label>
-        <label>Netto
-          <input type="text" name="price_net" inputmode="decimal" class="filter-input" value="{{ r.price_net }}">
-        </label>
-        <label>VAT
-          <input type="text" name="price_tax" inputmode="decimal" class="filter-input" value="{{ r.price_tax }}">
-        </label>
-        <label>Brutto
-          <input type="text" name="price_gross" inputmode="decimal" class="filter-input" required
-                 value="{{ r.price_gross }}">
-        </label>
-        <label>Waluta
-          <input type="text" name="currency" class="filter-input" maxlength="3" value="{{ r.currency }}">
-        </label>
-        <label>Kurs
-          <input type="text" name="exchange_rate" inputmode="decimal" class="filter-input"
-                 placeholder="{{ 'z NBP' if r.currency != 'PLN' else '—' }}">
-        </label>
-      </div>
-    </form>
-    <div class="fin-drive-card-foot">
-      <button type="submit" form="driveForm{{ r.id }}" class="btn btn-primary btn-sm">
-        {{ icon('check', 14) }} Zatwierdź
-      </button>
-      {% if status == 'pending' %}
-      <form method="post" action="{{ url_for('fin.drive_reject', queue_id=r.id) }}" class="inline-form">
-        <button type="submit" class="btn btn-outline btn-sm">Odrzuć</button>
-      </form>
-      {% else %}
-      <form method="post" action="{{ url_for('fin.drive_restore', queue_id=r.id) }}" class="inline-form">
-        <button type="submit" class="btn btn-outline btn-sm">Przywróć do kolejki</button>
-      </form>
-      {% endif %}
-      <span class="text-muted small">Kurs zostaw pusty, żeby wziąć średni NBP z dnia wystawienia.</span>
-    </div>
-    {% endif %}
+  {% if status == 'accepted' %}
+  {# Zatwierdzone to już zwykłe dokumenty — ta sama tabela co w „Dokumentach”. #}
+  {% set rows = documents %}
+  {% set drive_table = true %}
+  {% include 'fin/_documents_table.html' %}
+  {% else %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Wystawiona</th>
+          <th>Numer</th>
+          <th>Kontrahent</th>
+          <th>Typ</th>
+          <th class="text-right">Netto</th>
+          <th class="text-right">VAT</th>
+          <th class="text-right">Brutto</th>
+          <th>Termin</th>
+          <th>PDF</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="nowrap">{{ r.issue_date|ddmmyyyy or '—' }}</td>
+          <td class="nowrap">
+            {{ r.number or '—' }}
+            {% if r.kind != 'vat' %}<span class="badge badge-gray">{{ kind_labels.get(r.kind, r.kind) }}</span>{% endif %}
+          </td>
+          <td>
+            <span class="desc-cell" title="{{ r.counterparty_name }}">{{ r.counterparty_name or '—' }}</span>
+            {% if r.counterparty_tax_no %}<div class="text-muted small">{{ r.counterparty_tax_no }}</div>{% endif %}
+          </td>
+          <td class="nowrap">{{ 'Przychód' if r.is_income else 'Koszt' }}</td>
+          <td class="text-right nowrap">{{ r.price_net }}</td>
+          <td class="text-right nowrap">{{ r.price_tax }}</td>
+          <td class="text-right nowrap">{{ r.price_gross }} {{ r.currency }}</td>
+          <td class="nowrap">{{ r.payment_to|ddmmyyyy or '—' }}</td>
+          <td>
+            <a href="{{ drive_url(r.gdrive_file_id) }}" target="_blank" rel="noopener"
+               title="{{ r.file_name }}">otwórz</a>
+          </td>
+          <td class="text-right nowrap">
+            <button type="button" class="btn btn-outline btn-sm drive-edit-toggle"
+                    data-target="driveEdit{{ r.id }}">Popraw</button>
+            <button type="submit" form="driveForm{{ r.id }}" class="btn btn-primary btn-sm">Zatwierdź</button>
+            {% if status == 'pending' %}
+            <form method="post" action="{{ url_for('fin.drive_reject', queue_id=r.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-outline btn-sm">Odrzuć</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('fin.drive_restore', queue_id=r.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-outline btn-sm">Przywróć</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {# Formularz poprawek siedzi w wierszu pod spodem: „Zatwierdź” wysyła go
+           także zwinięty, z wartościami z odczytu. #}
+        <tr id="driveEdit{{ r.id }}" class="fin-drive-edit" hidden>
+          <td colspan="10">
+            <form method="post" action="{{ url_for('fin.drive_accept', queue_id=r.id, status=status) }}"
+                  id="driveForm{{ r.id }}">
+              <div class="fin-drive-grid">
+                <label>Typ
+                  <select name="is_income" class="filter-select">
+                    <option value="0" {{ 'selected' if not r.is_income }}>Koszt</option>
+                    <option value="1" {{ 'selected' if r.is_income }}>Przychód</option>
+                  </select>
+                </label>
+                <label>Rodzaj
+                  <select name="kind" class="filter-select">
+                    {% for k in kinds %}
+                    <option value="{{ k }}" {{ 'selected' if r.kind == k }}>{{ kind_labels.get(k, k) }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>Numer
+                  <input type="text" name="number" class="filter-input" value="{{ r.number }}">
+                </label>
+                <label class="fin-drive-wide">Kontrahent
+                  <input type="text" name="counterparty_name" class="filter-input" value="{{ r.counterparty_name }}">
+                </label>
+                <label>NIP
+                  <input type="text" name="counterparty_tax_no" class="filter-input" value="{{ r.counterparty_tax_no }}">
+                </label>
+                <label>Data wystawienia
+                  <input type="date" name="issue_date" class="filter-input"
+                         value="{{ r.issue_date.isoformat() if r.issue_date else '' }}">
+                </label>
+                <label>Termin płatności
+                  <input type="date" name="payment_to" class="filter-input"
+                         value="{{ r.payment_to.isoformat() if r.payment_to else '' }}">
+                </label>
+                <label>Netto
+                  <input type="text" name="price_net" inputmode="decimal" class="filter-input" value="{{ r.price_net }}">
+                </label>
+                <label>VAT
+                  <input type="text" name="price_tax" inputmode="decimal" class="filter-input" value="{{ r.price_tax }}">
+                </label>
+                <label>Brutto
+                  <input type="text" name="price_gross" inputmode="decimal" class="filter-input"
+                         value="{{ r.price_gross }}">
+                </label>
+                <label>Waluta
+                  <input type="text" name="currency" class="filter-input" maxlength="3" value="{{ r.currency }}">
+                </label>
+                <label>Kurs
+                  <input type="text" name="exchange_rate" inputmode="decimal" class="filter-input"
+                         placeholder="{{ 'z NBP' if r.currency != 'PLN' else '—' }}">
+                </label>
+              </div>
+            </form>
+            <span class="text-muted small">
+              Plik: {{ r.file_name or r.gdrive_file_id }}.
+              {% if r.ocr_note %}OCR: {{ r.ocr_note }}.{% endif %}
+              Kurs zostaw pusty, żeby wziąć średni NBP z dnia wystawienia.
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="text-muted">
+          {% if status == 'pending' %}Kolejka jest pusta — odczytaj pliki z Dysku powyżej.
+          {% else %}Nic tu nie ma.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  {% endfor %}
+  <script>
+  document.querySelectorAll('.drive-edit-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = document.getElementById(btn.dataset.target);
+      row.hidden = !row.hidden;
+    });
+  });
+  </script>
+  {% endif %}
 </section>
 
 {% if configured %}

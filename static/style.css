@@ -3974,11 +3974,7 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
    przycisk i powody scoringu w jednej komórce tabeli, bez rozpychania kolumny. */
 .fin-fluxa .fin-drive-crumbs { font-size: .85rem; }
 .fin-fluxa .fin-drive-folders { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
-.fin-fluxa .fin-drive-card {
-  border: 1px solid var(--border); border-radius: 8px; padding: .75rem .9rem; margin-bottom: .75rem;
-}
-.fin-fluxa .fin-drive-card-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline; margin-bottom: .6rem; }
-.fin-fluxa .fin-drive-card-foot { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.fin-fluxa .fin-drive-edit > td { background: var(--surface-secondary); }
 .fin-fluxa .fin-drive-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem .75rem; margin-bottom: .6rem;
 }

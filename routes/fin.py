@@ -636,16 +636,30 @@ def _actor() -> str:
 
 @bp.route('/dysk')
 def drive_view():
-    status = request.args.get('status', 'pending')
+    counts = fin_drive_store.count_by_status()
+    status = request.args.get('status', '')
     if status not in fin_drive_store.STATUS_LABELS:
-        status = 'pending'
+        # Bez czekających odczytów ciekawsze są dokumenty, które już weszły.
+        status = 'pending' if counts.get('pending') or not counts.get('accepted') else 'accepted'
+    documents = []
+    if status == 'accepted':
+        # Zatwierdzone pokazujemy jako dokumenty, nie jako odczyty: liczą się
+        # ich kategoria, kwoty w PLN i stan płatności.
+        documents = list_documents({'source': fin_drive_store.SOURCE}, sort='issue_date',
+                                   direction='desc', limit=500, offset=0)
     return render_template(
         'fin/drive.html',
         active_tab='drive',
         status=status,
-        rows=fin_drive_store.list_queue(status),
-        counts=fin_drive_store.count_by_status(),
-        status_labels=fin_drive_store.STATUS_LABELS,
+        rows=fin_drive_store.list_queue(status) if status != 'accepted' else [],
+        documents=documents,
+        categories=list_categories(),
+        gov_labels=GOV_STATUS_LABELS,
+        non_financial=NON_FINANCIAL_KINDS,
+        today_date=date.today(),
+        counts=counts,
+        queue_labels=fin_drive_store.STATUS_LABELS,
+        status_labels=STATUS_LABELS,
         kinds=fin_drive.DRIVE_KINDS,
         kind_labels=KIND_LABELS,
         configured=fin_drive.is_configured(),
