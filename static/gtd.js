@@ -827,6 +827,27 @@ function gtdSubmitBulkAssign() {
 /* ── Modal nowego zadania (follow-up z pierwotnego zadania, albo zaawansowane
    dodawanie z widoku Dziś/Tydzień/Miesiąc — presetScheduled/presetWeek/presetMonth
    wstępnie wypełniają termin z kontekstu widoku, z którego modal został otwarty) ── */
+/* „@kontekst” z szybkiego pola przenosimy do listy wyboru okna „Zaawansowane…”
+   i wycinamy z tytułu — te same reguły co extract_context_tag w models/task.py:
+   wielkość liter bez znaczenia, wygrywa pierwszy znany, nieznane „@coś” zostaje. */
+function _gtdTakeContextTag(title, select) {
+  if (!title || title.indexOf('@') < 0) return title;
+  const byName = {};
+  Array.from(select.options).forEach(o => {
+    if (o.value) byName[o.textContent.trim().replace(/^@/, '').toLowerCase()] = o.value;
+  });
+  let found = null;
+  const cleaned = title.replace(/(^|\s)@([^\s@]+)/g, (all, lead, name) => {
+    const id = byName[name.toLowerCase()];
+    if (!id) return all;
+    if (found === null) found = id;
+    return lead;
+  }).replace(/\s{2,}/g, ' ').trim();
+  if (found === null || !cleaned) return title;
+  select.value = found;
+  return cleaned;
+}
+
 function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, currentDealId, currentDealName,
                           presetScheduled, presetWeek, presetMonth, presetTitle, presetStatus, presetContextId, isProject,
                           currentMnaOfferId, currentMnaOfferName, currentMnaDealId, currentMnaDealName) {
@@ -837,6 +858,8 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpMonth').value = presetMonth || '';
   document.getElementById('gtdFollowUpStatus').value = presetStatus || 'next';
   document.getElementById('gtdFollowUpContext').value = presetContextId || '';
+  document.getElementById('gtdFollowUpTitle').value =
+    _gtdTakeContextTag(presetTitle || '', document.getElementById('gtdFollowUpContext'));
   document.getElementById('gtdFollowUpIsProject').value = isProject ? '1' : '0';
   document.getElementById('gtdFollowUpModalTitle').textContent = isProject ? 'Nowy projekt' : 'Nowe zadanie';
   document.getElementById('gtdFollowUpTitle').placeholder = isProject ? 'Nazwa nowego projektu…' : 'Nazwa nowego zadania…';
