@@ -4351,3 +4351,12 @@ html.mobile-menu-open .rd-menu-fab { display: none; }
   font-size: .68rem;
   text-decoration: underline;
 }
+
+/* Podpowiedź kontekstu po „@” w polu tytułu zadania (static/gtd.js). */
+.gtd-ctx-suggest {
+  position: fixed; z-index: 10000;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, .12); padding: 4px; max-height: 240px; overflow-y: auto;
+}
+.gtd-ctx-suggest-item { padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+.gtd-ctx-suggest-item.active, .gtd-ctx-suggest-item:hover { background: var(--surface-secondary); }

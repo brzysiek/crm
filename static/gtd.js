@@ -1297,3 +1297,115 @@ function initGtdBoard() {
     });
   });
 }
+
+/* ── Podpowiedź kontekstu po „@” w polu tytułu zadania ──
+   Serwer i tak rozpoznaje „@nazwa” przy zapisie (models/task.py); tu tylko
+   podpowiadamy nazwy, żeby nie trzeba było ich pamiętać. Nasłuch jest na
+   dokumencie w fazie przechwytywania — dzięki temu Enter przy otwartej liście
+   wybiera kontekst, zamiast od razu zapisywać zadanie handlerem pola. */
+(function () {
+  const FIELD = '[id^="gtd"][id$="AddInput"], #gtdFollowUpTitle, .gtd-board-add input, [data-context-tags]';
+  let contexts = null, loading = null;
+  let box = null, field = null, items = [], active = 0, tagStart = -1;
+
+  function load() {
+    if (contexts) return Promise.resolve(contexts);
+    if (!loading) {
+      loading = fetch(window.API_BASE + '/api/gtd/contexts')
+        .then(r => r.json())
+        .then(list => (contexts = list))
+        .catch(() => (contexts = []));
+    }
+    return loading;
+  }
+
+  function close() {
+    if (box) box.remove();
+    box = null; field = null; items = []; tagStart = -1;
+  }
+
+  /* „@” liczy się tylko na początku albo po odstępie — adres e-mail nie otwiera listy. */
+  function currentTag(input) {
+    const upto = input.value.slice(0, input.selectionStart);
+    const m = upto.match(/(^|\s)@([^\s@]*)$/);
+    return m ? { start: upto.length - m[2].length - 1, query: m[2].toLowerCase() } : null;
+  }
+
+  function render() {
+    box.innerHTML = '';
+    items.forEach((c, i) => {
+      const row = document.createElement('div');
+      row.className = 'gtd-ctx-suggest-item' + (i === active ? ' active' : '');
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = '@' + c.name;
+      if (c.badge_color) badge.style.background = c.badge_color;
+      if (c.text_color) badge.style.color = c.text_color;
+      row.appendChild(badge);
+      row.addEventListener('mousedown', e => { e.preventDefault(); pick(i); });
+      box.appendChild(row);
+    });
+  }
+
+  function open(input, tag) {
+    load().then(list => {
+      if (document.activeElement !== input) return;
+      items = list.filter(c => c.name.toLowerCase().startsWith(tag.query));
+      if (!items.length) { close(); return; }
+      if (!box || field !== input) {
+        close();
+        box = document.createElement('div');
+        box.className = 'gtd-ctx-suggest';
+        document.body.appendChild(box);
+      }
+      field = input; tagStart = tag.start;
+      active = Math.min(active, items.length - 1);
+      const r = input.getBoundingClientRect();
+      box.style.left = r.left + 'px';
+      box.style.top = (r.bottom + 4) + 'px';
+      box.style.minWidth = Math.min(r.width, 220) + 'px';
+      render();
+    });
+  }
+
+  function pick(i) {
+    const c = items[i], input = field;
+    if (!c || !input) return;
+    const end = input.selectionStart;
+    const before = input.value.slice(0, tagStart);
+    const after = input.value.slice(end).replace(/^[^\s]*/, '');
+    const insert = '@' + c.name + (after.startsWith(' ') ? '' : ' ');
+    input.value = before + insert + after;
+    const caret = before.length + insert.length;
+    input.setSelectionRange(caret, caret);
+    close();
+    input.focus();
+  }
+
+  document.addEventListener('input', e => {
+    const input = e.target;
+    if (!input.matches || !input.matches(FIELD)) return;
+    const tag = currentTag(input);
+    if (tag) { active = 0; open(input, tag); } else if (field === input) close();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (!box || e.target !== field) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      active = (active + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
+      render();
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      pick(active);
+    } else if (e.key === 'Escape') {
+      close();
+    } else {
+      return;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+
+  document.addEventListener('focusout', e => { if (e.target === field) close(); });
+  window.addEventListener('scroll', close, true);
+  window.addEventListener('resize', close);
+})();

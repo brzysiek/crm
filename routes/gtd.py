@@ -609,6 +609,14 @@ def context_board():
 
 # ── API: szybkie dodawanie ───────────────────────────────────────────────────
 
+@bp.route('/api/gtd/contexts')
+def api_contexts():
+    """Lista kontekstów do podpowiedzi po „@” w polu tytułu zadania."""
+    return jsonify([{'id': c['id'], 'name': c['name'], 'badge_color': c['badge_color'],
+                     'text_color': c['text_color']}
+                    for c in gtd_context_model.get_all_contexts()])
+
+
 @bp.route('/api/gtd/quick_add', methods=['POST'])
 def api_quick_add():
     data = request.get_json(silent=True) or {}
