@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime, timedelta
 
 from database import get_db
@@ -74,11 +75,44 @@ def get_task(task_id: int) -> dict | None:
         return cur.fetchone()
 
 
+_CONTEXT_TAG = re.compile(r'(?<!\S)@([^\s@]+)')
+
+
+def extract_context_tag(title: str, contexts: list[dict] | None = None) -> tuple[str, int | None]:
+    """„Zadzwonić do Piotra @bp” → („Zadzwonić do Piotra”, id kontekstu „bp”).
+
+    Nazwy porównujemy bez wielkości liter. Znacznik, który nie jest nazwą
+    kontekstu (np. „@jutro”), zostaje w tytule bez zmian — tak samo adres
+    e-mail, bo przed @ nie ma tam odstępu. Przy kilku znacznikach wygrywa
+    pierwszy, ale z tytułu znikają wszystkie rozpoznane."""
+    if '@' not in (title or ''):
+        return title, None
+    if contexts is None:
+        contexts = gtd_context_model.get_all_contexts()
+    by_name = {(c['name'] or '').strip().lower(): c['id'] for c in contexts}
+    found = []
+
+    def replace(match):
+        context_id = by_name.get(match.group(1).lower())
+        if context_id is None:
+            return match.group(0)
+        found.append(context_id)
+        return ''
+
+    cleaned = re.sub(r'\s{2,}', ' ', _CONTEXT_TAG.sub(replace, title)).strip()
+    if not found or not cleaned:
+        return title, None
+    return cleaned, found[0]
+
+
 def create_task(title: str, user_id: int | None, is_project: bool = False,
                  status: str = 'ideas', **fields) -> int:
     db = get_db()
     parent_id = fields.get('parent_id') or None
-    context_id = fields.get('context_id') or None
+    # „@kontekst” wpisany w tytuł to świadomy wybór — wygrywa z kontekstem
+    # podanym w formularzu i z dziedziczeniem po projekcie czy dealu.
+    title, tagged_context_id = extract_context_tag(title)
+    context_id = tagged_context_id or fields.get('context_id') or None
     crm_contact_id = fields.get('crm_contact_id') or None
     crm_company_id = fields.get('crm_company_id') or None
     crm_deal_id = fields.get('crm_deal_id') or None
