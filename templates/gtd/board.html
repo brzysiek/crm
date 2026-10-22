@@ -18,6 +18,15 @@
   {%- endif -%}
 {%- endmacro -%}
 
+{%- macro card_url(c) -%}
+  {%- if c.kind == 'project' -%}{{ url_for('gtd.project_detail', project_id=c.id) }}
+  {%- elif c.kind == 'deal' -%}{{ url_for('crm_deals.view_deal', deal_id=c.id) }}
+  {%- elif c.kind == 'mna_deal' -%}{{ url_for('mna_deals.view_deal', deal_id=c.id) }}
+  {%- elif c.kind == 'mna_offer' -%}{{ url_for('mna_offers.view_mna_offer', offer_id=c.id) }}
+  {%- else -%}{{ url_for('gtd.task_detail', task_id=c.id) }}
+  {%- endif -%}
+{%- endmacro -%}
+
 {% macro subtask_row(s) %}
 <div class="gtd-sub {{ 'is-done' if s.status == 'done' }}">
   {% if s.status != 'done' %}
@@ -111,25 +120,37 @@
 
     <div class="kanban-column-body">
       {% for c in col.cards %}
-      <div class="kanban-card gtd-card {{ 'gtd-card-project' if c.kind == 'project' }}"
-           data-task-id="{{ c.id }}" data-kind="{{ c.kind }}" data-status="{{ c.status }}"
-           draggable="{{ 'false' if c.kind == 'project' and c.open_count else 'true' }}">
+      {% set is_group = c.kind != 'task' %}
+      {# Deal i oferta stoją tam, gdzie wskazują ich zadania albo etap — przeciąga się
+         zadania w środku, a etap zmienia na karcie deala. #}
+      <div class="kanban-card gtd-card {{ 'gtd-card-project' if is_group }} {{ 'gtd-card-crm' if c.kind not in ('task', 'project') }}"
+           {% if c.kind in ('task', 'project') %}data-task-id="{{ c.id }}"{% endif %}
+           data-card-key="{{ c.key }}" data-kind="{{ c.kind }}" data-status="{{ c.status }}"
+           draggable="{{ 'true' if c.kind == 'task' or (c.kind == 'project' and not c.open_count) else 'false' }}">
 
         <div class="gtd-card-head">
-          {% if c.kind == 'project' %}
+          {% if is_group %}
           <button type="button" class="gtd-card-caret" onclick="gtdBoardToggleCard(this)"
                   aria-label="Rozwiń">▸</button>
           {% endif %}
-          <a class="gtd-card-title"
-             href="{{ url_for('gtd.project_detail', project_id=c.id) if c.is_project else url_for('gtd.task_detail', task_id=c.id) }}">{{ c.title }}</a>
+          <a class="gtd-card-title" href="{{ card_url(c) }}">{{ c.title }}</a>
           {% if c.is_today_priority %}<span class="gtd-card-flag" title="Gwiazdka dnia">★</span>{% endif %}
           {% if c.is_important %}<span class="gtd-card-flag" title="Ważne">❗</span>{% endif %}
         </div>
 
         <div class="gtd-card-meta">
+          {% if c.kind_label %}
+          <span class="gtd-card-kind">{{ c.kind_label }}{{ ' · ' ~ c.stage_label if c.stage_label }}</span>
+          {% endif %}
           {{ ctx_badge(c) }}
           {% if c.kind == 'task' and c.project_title %}
           <a class="gtd-card-crumb" href="{{ url_for('gtd.project_detail', project_id=c.parent_id) }}">{{ c.project_title }}</a>
+          {% elif c.kind == 'task' and c.crm_deal_id %}
+          <a class="gtd-card-crumb" href="{{ url_for('crm_deals.view_deal', deal_id=c.crm_deal_id) }}">{{ c.crm_deal_name }}</a>
+          {% elif c.kind == 'task' and c.crm_mna_deal_id %}
+          <a class="gtd-card-crumb" href="{{ url_for('mna_deals.view_deal', deal_id=c.crm_mna_deal_id) }}">{{ c.crm_mna_deal_name }}</a>
+          {% elif c.kind == 'task' and c.crm_mna_offer_id %}
+          <a class="gtd-card-crumb" href="{{ url_for('mna_offers.view_mna_offer', offer_id=c.crm_mna_offer_id) }}">{{ c.crm_mna_offer_name }}</a>
           {% endif %}
           {% if c.crm_company_id %}
           <a class="gtd-card-crumb" href="{{ url_for('crm_companies.view_company', company_id=c.crm_company_id) }}">{{ c.crm_company_short_name or c.crm_company_name }}</a>
@@ -139,7 +160,7 @@
           {% endif %}
         </div>
 
-        {% if c.kind == 'project' %}
+        {% if c.kind == 'project' or (is_group and c.subtask_total) %}
         <div class="gtd-card-progress" title="{{ c.subtask_done }} z {{ c.subtask_total }} zrobione">
           <span style="width:{{ (100 * c.subtask_done / c.subtask_total)|round|int if c.subtask_total else 0 }}%"></span>
         </div>
@@ -161,7 +182,7 @@
         <div class="gtd-card-age">{{ age(c.completed_at, today) }}</div>
         {% endif %}
 
-        {% if c.kind == 'project' %}
+        {% if is_group %}
         <div class="gtd-card-subs">
           {% for s in c.subtasks %}{{ subtask_row(s) }}{% endfor %}
           {% if not c.subtasks %}

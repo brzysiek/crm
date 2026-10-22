@@ -40,9 +40,19 @@ def row(task_id, status='next', is_project=0, parent_id=None, **kw):
     return base
 
 
-def board(rows, **kwargs):
+def deal(deal_id, stage='in_progress', **kw):
+    base = {'id': deal_id, 'name': f'deal {deal_id}', 'stage': stage, 'context_id': None,
+            'updated_at': datetime(2026, 10, 5, 9, 0), 'crm_company_id': None,
+            'crm_company_name': None, 'crm_company_short_name': None, 'context_name': None,
+            'context_badge_color': None, 'context_text_color': None}
+    base.update(kw)
+    return base
+
+
+def board(rows, deals=(), mna_deals=(), offers=(), **kwargs):
+    """Zapytania idą po kolei: zadania, deale, deale M&A, oferty M&A bez deala."""
     cur = mock.MagicMock()
-    cur.fetchall.return_value = rows
+    cur.fetchall.side_effect = [rows, list(deals), list(mna_deals), list(offers)]
     db = mock.MagicMock()
     db.cursor.return_value.__enter__.return_value = cur
     with mock.patch.object(task_model, 'get_db', return_value=db):
@@ -55,6 +65,10 @@ def column(data, key):
 
 def titles(data, key):
     return [c['id'] for c in column(data, key)['cards']]
+
+
+def keys(data, key):
+    return [c['key'] for c in column(data, key)['cards']]
 
 
 class ProjectColumnTest(unittest.TestCase):
@@ -179,6 +193,61 @@ class BoardLayoutTest(unittest.TestCase):
                       row(6, status='ideas')])
         ids = [c['id'] for col in data['columns'] for c in col['cards']]
         self.assertEqual(len(ids), len(set(ids)))
+
+
+class BoardDealsTest(unittest.TestCase):
+    """Deale, deale M&A i oferty M&A bez deala mają karty jak projekty."""
+
+    def test_deal_bez_zadan_stoi_wg_etapu(self):
+        data = board([], deals=[deal(1, 'new'), deal(2, 'in_progress'), deal(3, 'in_delivery'),
+                                deal(4, 'someday')],
+                     mna_deals=[deal(5, 'long_list'), deal(6, 'nda')], offers=[deal(7, None)])
+        self.assertEqual(['deal-1', 'mna_offer-7'], sorted(keys(data, 'ideas')))
+        self.assertEqual(['deal-2', 'mna_deal-5'], sorted(keys(data, 'next')))
+        self.assertEqual(['deal-3', 'mna_deal-6'], sorted(keys(data, 'doing')))
+        self.assertEqual(['deal-4'], keys(data, 'someday'))
+
+    def test_przegrane_nie_maja_karty(self):
+        data = board([], deals=[deal(1, 'lost'), deal(2, 'unqualified')],
+                     mna_deals=[deal(3, 'przegrany')])
+        self.assertEqual([], [c for col in data['columns'] for c in col['cards']])
+
+    def test_zadanie_deala_siedzi_w_jego_karcie(self):
+        data = board([row(10, crm_deal_id=1, status='doing'), row(11, crm_mna_offer_id=7)],
+                     deals=[deal(1, 'new')], offers=[deal(7, None)])
+        self.assertEqual(['deal-1'], keys(data, 'doing'))
+        self.assertEqual(['mna_offer-7'], keys(data, 'next'))
+        self.assertEqual([10], [s['id'] for s in column(data, 'doing')['cards'][0]['subtasks']])
+
+    def test_zadanie_z_projektem_zostaje_w_projekcie(self):
+        data = board([row(1, is_project=1), row(2, parent_id=1, crm_deal_id=5)],
+                     deals=[deal(5, 'new')])
+        self.assertEqual(['1'], keys(data, 'next'))
+        self.assertEqual(['deal-5'], keys(data, 'ideas'))
+
+    def test_zadanie_przegranego_deala_zostaje_luzem(self):
+        data = board([row(10, crm_deal_id=1)], deals=[deal(1, 'lost')])
+        self.assertEqual(['10'], keys(data, 'next'))
+
+    def test_zakonczony_deal_z_otwartym_zadaniem_nie_znika_w_zrobionych(self):
+        data = board([row(10, crm_deal_id=1)], deals=[deal(1, 'completed')])
+        self.assertEqual(['deal-1'], keys(data, 'next'))
+
+    def test_zakonczony_deal_wisi_w_zrobionych_tylko_w_oknie(self):
+        stary = deal(1, 'completed', updated_at=datetime(2026, 9, 1, 9, 0))
+        swiezy = deal(2, 'completed', updated_at=datetime(2026, 10, 2, 9, 0))
+        self.assertEqual(['deal-2'], keys(board([], deals=[stary, swiezy]), 'done'))
+
+    def test_deal_nie_jest_gotowy_do_zamkniecia(self):
+        data = board([row(10, crm_deal_id=1, status='done', completed_at=datetime(2026, 10, 2))],
+                     deals=[deal(1, 'in_progress')])
+        self.assertFalse(column(data, 'next')['cards'][0]['ready_to_close'])
+        self.assertEqual(0, data['ready_count'])
+
+    def test_filtr_kontekstu_i_szukania_dziala_na_dealach(self):
+        deals = [deal(1, context_id=3, name='Szkolenie ABC'), deal(2)]
+        self.assertEqual(['deal-1'], keys(board([], deals=deals, context_ids=[3]), 'next'))
+        self.assertEqual(['deal-1'], keys(board([], deals=deals, search='abc'), 'next'))
 
 
 class StatusStaysVisibleTest(unittest.TestCase):

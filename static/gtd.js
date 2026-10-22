@@ -1163,6 +1163,8 @@ if (document.getElementById('gtdBulkAssignContactPicker')) {
  * więc projekt z otwartymi zadaniami ma draggable="false" — przeciągnięcie go
  * ręcznie byłoby cofnięte przez serwer w następnej sekundzie. Przestawia się go,
  * zmieniając status zadania w rozwiniętej karcie.
+ * Deale, deale M&A i oferty M&A nie przesuwają się wcale: stoją tam, gdzie
+ * wskazują ich zadania albo etap (models/task.deal_board_column).
  * Zadania przestawiamy optymistycznie (karta przeskakuje od razu, jak na tablicy
  * deali), projekty przez przeładowanie — bo zamknięcie projektu może pociągnąć
  * podzadania i przeliczyć pół tablicy.
@@ -1188,7 +1190,7 @@ function gtdBoardToggleCard(btn) {
   const open = card.classList.toggle('is-open');
   btn.textContent = open ? '▾' : '▸';
   const set = gtdBoardOpenSet();
-  if (open) set.add(card.dataset.taskId); else set.delete(card.dataset.taskId);
+  if (open) set.add(card.dataset.cardKey); else set.delete(card.dataset.cardKey);
   gtdBoardSaveOpen(set);
 }
 
@@ -1248,7 +1250,7 @@ function initGtdBoard() {
 
   const open = gtdBoardOpenSet();
   board.querySelectorAll('.gtd-card-project').forEach(card => {
-    if (open.has(card.dataset.taskId)) {
+    if (open.has(card.dataset.cardKey)) {
       card.classList.add('is-open');
       const caret = card.querySelector('.gtd-card-caret');
       if (caret) caret.textContent = '▾';
