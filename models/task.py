@@ -1080,8 +1080,9 @@ def project_board_column(project: dict) -> str:
 
 
 # Kolumna deala, deala M&A i oferty M&A, dopóki nie mają otwartych zadań —
-# z etapu. Etapy nieobecne w mapie (przegrane, niekwalifikowane) nie dostają
-# karty: to zamknięte sprawy, a „Zrobione” są na wygrane.
+# z etapu. Etapy nieobecne w mapie (przegrane, niekwalifikowane) to zamknięte
+# sprawy i „Zrobione” są nie dla nich: kartę dostają tylko wtedy, gdy wisi pod
+# nimi coś otwartego — inaczej to zadanie nie miałoby gdzie się pokazać.
 _BOARD_CRM_DEAL_COLUMNS = {
     'new': 'ideas', 'in_progress': 'next', 'won': 'doing', 'in_delivery': 'doing',
     'completed': 'done', 'someday': 'someday',
@@ -1112,6 +1113,9 @@ def deal_board_column(card: dict) -> str:
     for status in ('doing', 'next', 'waiting'):
         if counts[status]:
             return status
+    if card['status'] is None:
+        # Przegrany deal z samymi pomysłami czy „kiedyś” — też je gdzieś trzeba pokazać.
+        return next((s for s in ('ideas', 'someday') if counts[s]), None)
     return card['status']
 
 
@@ -1132,7 +1136,7 @@ def _board_crm_cards() -> list[dict]:
             "LEFT JOIN gtd_contexts gc ON gc.id = d.context_id WHERE d.deleted_at IS NULL"
         )
         deals = cur.fetchall()
-        cur.execute("SELECT id, name, stage, updated_at FROM mna_deals WHERE archived_at IS NULL")
+        cur.execute("SELECT id, name, stage, offer_id, updated_at FROM mna_deals WHERE archived_at IS NULL")
         mna_deals = cur.fetchall()
         cur.execute(
             "SELECT o.id, o.name, o.updated_at FROM crm_mna_offers o WHERE o.deleted_at IS NULL "
@@ -1147,8 +1151,6 @@ def _board_crm_cards() -> list[dict]:
             ('mna_offer', offers, None, {})):
         for r in rows:
             status = stages.get(r['stage']) if stages else 'ideas'
-            if status is None:
-                continue
             card = {
                 'context_id': None, 'context_name': None, 'context_badge_color': None,
                 'context_text_color': None, 'crm_company_id': None, 'stage': None,
@@ -1190,12 +1192,9 @@ def get_board(context_ids: list[int] | None = None, search: str | None = None,
     żadnego z nich. Zadanie podpięte pod deal lub ofertę siedzi w jej karcie
     jak podzadanie w projekcie (chyba że ma projekt — wtedy w projekcie).
 
-    Podzadania nie mają własnych kart — 215 podzadań zamieniłoby tablicę w listę
-    nie do czytania. Widać je dopiero po rozwinięciu projektu i domyślnie tylko
-    te otwarte. Jedyny wyjątek to kolumna „Zrobione”: tam zamknięte podzadanie
-    dostaje kartę z okruszkiem rodzica, bo inaczej zniknęłoby z tablicy
-    całkowicie i tydzień wyglądałby na chudszy, niż był (23 z 72 zamkniętych
-    pozycji w dwutygodniowym oknie to podzadania).
+    Podzadania nie mają własnych kart w żadnej kolumnie, także w „Zrobionych” —
+    215 podzadań zamieniłoby tablicę w listę nie do czytania. Widać je dopiero
+    po rozwinięciu projektu czy deala, zamknięte za „pokaż zrobione”.
 
     Cała tabela to dziś ~520 wierszy, więc idzie jednym zapytaniem i jest
     składana w Pythonie — osobne zapytania na kolumny i liczniki kosztowałyby
@@ -1212,6 +1211,10 @@ def get_board(context_ids: list[int] | None = None, search: str | None = None,
 
     projects = {r['id']: r for r in rows if r['is_project']}
     crm_cards = {(c['kind'], c['id']): c for c in _board_crm_cards()}
+    # Oferta, która stała się dealem M&A, nie ma karty — jej zadania idą do deala.
+    for card in list(crm_cards.values()):
+        if card['kind'] == 'mna_deal' and card.get('offer_id'):
+            crm_cards.setdefault(('mna_offer', card['offer_id']), card)
     for proj in projects.values():
         proj['kind'] = 'project'
         proj['key'] = str(proj['id'])
@@ -1239,12 +1242,12 @@ def get_board(context_ids: list[int] | None = None, search: str | None = None,
         if parent is not None:
             parent['counts'][row['status']] += 1
             (parent['done_subtasks'] if row['status'] == 'done' else parent['subtasks']).append(row)
-        if row['status'] == 'done':
-            if in_done_window(row):
-                done_cards.append(row)
-        elif parent is None:
+        elif row['status'] != 'done':
             loose.append(row)
+        elif in_done_window(row):
+            done_cards.append(row)
 
+    crm_cards = {c['key']: c for c in crm_cards.values()}
     for proj in list(projects.values()) + list(crm_cards.values()):
         proj['subtasks'].sort(key=_board_sort_key)
         proj['done_subtasks'].sort(key=_board_done_sort_key)
@@ -1278,8 +1281,8 @@ def get_board(context_ids: list[int] | None = None, search: str | None = None,
     cards = [p for p in projects.values() if p['status'] != 'done']
     # Zakończony deal wisi w „Zrobionych” tak długo jak zamknięte zadanie: datą
     # zamknięcia jest ostatnia zmiana, bo osobnej deal nie ma.
-    cards.extend(c for c in crm_cards.values()
-                  if c['board_column'] != 'done' or in_done_window(c))
+    cards.extend(c for c in crm_cards.values() if c['board_column'] is not None
+                 and (c['board_column'] != 'done' or in_done_window(c)))
     for task in loose:
         task['board_column'] = task['status']
     cards.extend(loose)

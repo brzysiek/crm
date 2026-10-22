@@ -6,8 +6,8 @@ Dwie rzeczy, których ta tablica pilnuje i które łatwo zepsuć:
    do intuicji „jedno zablokowane zadanie blokuje projekt”. Na produkcji taka
    intuicja zabrałaby dwa największe żywe projekty (14 i 13 otwartych zadań,
    w tym kilka czekających) z TODO i położyła je na parkingu.
-2. Podzadanie nie ma własnej karty — poza kolumną „Zrobione”, gdzie bez niego
-   zniknęłoby z tablicy całkowicie (w dwutygodniowym oknie to 23 z 72 pozycji).
+2. Podzadanie nie ma własnej karty w żadnej kolumnie, także w „Zrobionych” —
+   widać je tylko po rozwinięciu projektu czy deala.
 
 Składanie tablicy testujemy na danych syntetycznych (prawdziwa baza zmienia się
 z każdym zamkniętym zadaniem), a na żywej bazie tylko to, czy widok się renderuje.
@@ -148,11 +148,12 @@ class BoardLayoutTest(unittest.TestCase):
         # Projekt, w którym nigdy nic nie było, nie jest „gotowy do zamknięcia”.
         self.assertFalse(cards[9]['ready_to_close'])
 
-    def test_zamkniete_podzadanie_ma_karte_tylko_w_zrobionych(self):
+    def test_zamkniete_podzadanie_nie_ma_karty_nawet_w_zrobionych(self):
         data = board([row(1, is_project=1),
                       row(2, parent_id=1, status='done', completed_at=datetime(2026, 10, 2, 9, 0))])
-        self.assertEqual([2], titles(data, 'done'))
+        self.assertEqual([], titles(data, 'done'))
         self.assertEqual([1], titles(data, 'next'))
+        self.assertEqual([2], [s['id'] for s in column(data, 'next')['cards'][0]['done_subtasks']])
 
     def test_zrobione_obejmuja_ten_i_ubiegly_tydzien(self):
         stare = row(5, status='done', completed_at=datetime(2026, 9, 1, 9, 0))
@@ -225,9 +226,23 @@ class BoardDealsTest(unittest.TestCase):
         self.assertEqual(['1'], keys(data, 'next'))
         self.assertEqual(['deal-5'], keys(data, 'ideas'))
 
-    def test_zadanie_przegranego_deala_zostaje_luzem(self):
-        data = board([row(10, crm_deal_id=1)], deals=[deal(1, 'lost')])
-        self.assertEqual(['10'], keys(data, 'next'))
+    def test_przegrany_deal_z_otwartym_zadaniem_dostaje_karte(self):
+        """Zadanie z nadrzędnym dealem nigdy nie stoi luzem — nawet gdy deal przegrany."""
+        data = board([row(10, crm_deal_id=1), row(11, crm_deal_id=2, status='ideas')],
+                     deals=[deal(1, 'lost'), deal(2, 'unqualified')])
+        self.assertEqual(['deal-1'], keys(data, 'next'))
+        self.assertEqual(['deal-2'], keys(data, 'ideas'))
+
+    def test_zrobione_zadanie_deala_nie_ma_karty(self):
+        data = board([row(10, crm_deal_id=1, status='done', completed_at=datetime(2026, 10, 2))],
+                     deals=[deal(1, 'in_progress')])
+        self.assertEqual([], keys(data, 'done'))
+
+    def test_zadanie_oferty_z_dealem_idzie_do_deala_ma(self):
+        data = board([row(10, crm_mna_offer_id=7)],
+                     mna_deals=[deal(5, 'nda', offer_id=7)])
+        self.assertEqual(['mna_deal-5'], keys(data, 'next'))
+        self.assertEqual([10], [s['id'] for s in column(data, 'next')['cards'][0]['subtasks']])
 
     def test_zakonczony_deal_z_otwartym_zadaniem_nie_znika_w_zrobionych(self):
         data = board([row(10, crm_deal_id=1)], deals=[deal(1, 'completed')])
