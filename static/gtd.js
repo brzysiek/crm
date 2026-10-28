@@ -871,6 +871,24 @@ function gtdOpenFollowUp(currentParentId, currentContactId, currentCompanyId, cu
   document.getElementById('gtdFollowUpTitle').focus();
 }
 
+/* Follow-up z istniejącego zadania (ikonka „reply” na listach). Domyślnie ląduje
+   w bieżącym tygodniu — serwer sprowadza dowolny dzień tygodnia do poniedziałku.
+   Pole „Powiązanie” mieści jedną pozycję, a deal wygrywa w nim z projektem —
+   więc przy zadaniu z projektem deal i oferty nie są podawane, żeby follow-up
+   nie wypadł z projektu. */
+function gtdOpenTaskFollowUp(btn) {
+  const t = JSON.parse(btn.dataset.followup);
+  if (t.parent_id) {
+    t.deal_id = t.mna_offer_id = t.mna_deal_id = null;
+  }
+  const d = new Date();
+  const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+  gtdOpenFollowUp(t.parent_id, t.contact_id, t.company_id, t.deal_id, t.deal_name,
+                  null, today, null, t.title + ' - follow up', null, t.context_id, false,
+                  t.mna_offer_id, t.mna_offer_name, t.mna_deal_id, t.mna_deal_name);
+}
+
 function gtdSubmitFollowUp() {
   const title = document.getElementById('gtdFollowUpTitle').value.trim();
   if (!title) { alert('Nazwa zadania nie może być pusta.'); return; }
